@@ -56,7 +56,8 @@ int dnat(struct __sk_buff *ctx)
     struct dnat_target *tgt = bpf_map_lookup_elem(&ptp_dnat_targets, &hport);
 
     if (tgt == NULL) {
-        bpf_printk("no dnat target for port %d", hport);
+        /* prevent SSH connections from spamming */
+        if (hport != 22) bpf_printk("no dnat target for port %d", hport);
         return TC_ACT_OK;
     }
 
