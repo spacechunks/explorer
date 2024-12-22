@@ -34,7 +34,7 @@ import (
 func TestExecAdd(t *testing.T) {
 	tests := []struct {
 		name string
-		prep func(*mock.MockPtpnatHandler, *skel.CmdArgs)
+		prep func(*mock.MockCniHandler, *skel.CmdArgs)
 		args *skel.CmdArgs
 		err  string
 	}{
@@ -45,7 +45,7 @@ func TestExecAdd(t *testing.T) {
 				Netns:       "/path/to/netns",
 				StdinData:   []byte(`{"hostIface":"eth0","ipam":{"type":"host-local"}}`),
 			},
-			prep: func(h *mock.MockPtpnatHandler, args *skel.CmdArgs) {
+			prep: func(h *mock.MockCniHandler, args *skel.CmdArgs) {
 				ips := []*current.IPConfig{
 					{
 						Interface: nil,
@@ -69,7 +69,7 @@ func TestExecAdd(t *testing.T) {
 					ConfigureSNAT("eth0").
 					Return(nil)
 				h.EXPECT().
-					AddDefaultRoute(args.Netns).
+					AddDefaultRoute(args.Netns, ""). // TODO fix
 					Return(nil)
 			},
 		},
@@ -79,7 +79,7 @@ func TestExecAdd(t *testing.T) {
 				StdinData: []byte(`{"hostIface":"eth0","ipam":{"type":"host-local"}}`),
 			},
 			err: "alloc ips: some error",
-			prep: func(h *mock.MockPtpnatHandler, args *skel.CmdArgs) {
+			prep: func(h *mock.MockCniHandler, args *skel.CmdArgs) {
 				h.EXPECT().
 					AttachDNATBPF("eth0").
 					Return(nil)
@@ -97,7 +97,7 @@ func TestExecAdd(t *testing.T) {
 				StdinData: []byte(`{"ipam":{"type":"host-local"}}`),
 			},
 			err: cni.ErrHostIfaceNotFound.Error(),
-			prep: func(h *mock.MockPtpnatHandler, args *skel.CmdArgs) {
+			prep: func(h *mock.MockCniHandler, args *skel.CmdArgs) {
 			},
 		},
 		{
@@ -106,14 +106,14 @@ func TestExecAdd(t *testing.T) {
 				StdinData: []byte(`{}`),
 			},
 			err: cni.ErrIPAMConfigNotFound.Error(),
-			prep: func(h *mock.MockPtpnatHandler, args *skel.CmdArgs) {
+			prep: func(h *mock.MockCniHandler, args *skel.CmdArgs) {
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				h = mock.NewMockPtpnatHandler(t)
+				h = mock.NewMockCniHandler(t)
 				c = cni.NewCNI(h)
 			)
 			tt.prep(h, tt.args)

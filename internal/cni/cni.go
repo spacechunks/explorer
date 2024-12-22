@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/netip"
 	"os"
 	"strings"
 
@@ -108,6 +109,14 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return fmt.Errorf("alloc ips: %w", err)
 	}
 
+	if len(ips) < 2 {
+		return fmt.Errorf("ipam: need two ips")
+	}
+
+	// TODO: refactor
+	hostPeerAddr := ips[0].Address
+	podPeerAddr := ips[1].Address
+
 	hostVethName, podVethName, err := c.handler.CreateAndConfigureVethPair(args.Netns, ips)
 	if err != nil {
 		return fmt.Errorf("configure veth pair: %w", err)
@@ -125,8 +134,12 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 	//	return fmt.Errorf("configure snat: %w", err)
 	//}
 
-	if err := c.handler.AddDefaultRoute(args.Netns); err != nil {
+	if err := c.handler.AddDefaultRoute(args.Netns, netip.MustParseAddr(podPeerAddr.IP.String())); err != nil {
 		return fmt.Errorf("add default route: %w", err)
+	}
+
+	if err := c.handler.AddFullMatchRoute(hostVethName, netip.MustParseAddr(podPeerAddr.IP.String())); err != nil {
+		return fmt.Errorf("add full match route: %w", err)
 	}
 
 	proxyConn, err := grpc.NewClient(
@@ -140,7 +153,7 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 	client := proxyv1alpha1.NewProxyServiceClient(proxyConn)
 	if _, err := client.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: wlID,
-		Ip:         ips[0].Address.IP.String(),
+		Ip:         hostPeerAddr.IP.String(),
 	}); err != nil {
 		return fmt.Errorf("create proxy listeners: %w", err)
 	}

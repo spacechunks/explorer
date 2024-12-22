@@ -38,14 +38,20 @@ import (
 
 type Handler interface {
 	CreateAndConfigureVethPair(netNS string, ips []*current.IPConfig) (string, string, error)
+
 	// AttachHostVethBPF installs all BPF programs intended for the host-side veth peer
 	AttachHostVethBPF(ifaceName string) error
+
 	AttachCtrVethBPF(ifaceName string, netNS string) error
 	AllocIPs(plugin string, stdinData []byte) ([]*current.IPConfig, error)
 	DeallocIPs(plugin string, stdinData []byte) error
 	AttachDNATBPF(ifaceName string) error
 	ConfigureSNAT(ifaceName string) error
-	AddDefaultRoute(nsPath string) error
+	AddDefaultRoute(nsPath string, ip netip.Addr) error
+
+	// AddFullMatchRoute will create a rule in the root ns, which routes packets
+	// with the fully matching ip address (/32 CIDR) to the given interface.
+	AddFullMatchRoute(ifname string, ip netip.Addr) error
 }
 
 type cniHandler struct {
@@ -126,11 +132,12 @@ func (h *cniHandler) CreateAndConfigureVethPair(netNS string, ips []*current.IPC
 
 	defer ctrNS.Close()
 
-	if err := configureCTRPeer(ctrNS, podVethName); err != nil {
+	hostPeerAddr := ips[0].Address
+	podPeerAddr := ips[1].Address
+
+	if err := configureCTRPeer(ctrNS, podPeerAddr, podVethName); err != nil {
 		return "", "", fmt.Errorf("setup ctr side veth: %w", err)
 	}
-
-	hostPeerAddr := ips[0].Address
 
 	if err := configureHostPeer(hostPeerAddr, hostVethName); err != nil {
 		return "", "", fmt.Errorf("setup host side veth: %w", err)
@@ -225,13 +232,13 @@ func (h *cniHandler) ConfigureSNAT(ifaceName string) error {
 	return nil
 }
 
-func (h *cniHandler) AddDefaultRoute(nsPath string) error {
+func (h *cniHandler) AddDefaultRoute(nsPath string, addr netip.Addr) error {
 	if err := ns.WithNetNSPath(nsPath, func(_ ns.NetNS) error {
 		// for default gateway we can leave destination empty.
 		// we also do not need to specify the device, the kernel
 		// will figure this out for us.
 		if err := netlink.RouteAdd(&netlink.Route{
-			Gw:     PodVethCIDR.IP,
+			Gw:     net.ParseIP(addr.String()),
 			Family: unix.AF_INET,
 			Scope:  netlink.SCOPE_LINK,
 		}); err != nil {
@@ -244,9 +251,29 @@ func (h *cniHandler) AddDefaultRoute(nsPath string) error {
 	return nil
 }
 
-func configureCTRPeer(ctrNS ns.NetNS, ifaceName string) error {
+func (h *cniHandler) AddFullMatchRoute(ifname string, ip netip.Addr) error {
+	iface, err := net.InterfaceByName(ifname)
+	if err != nil {
+		return fmt.Errorf("get iface: %w", err)
+	}
+	s := &net.IPNet{
+		IP:   net.ParseIP(ip.String()),
+		Mask: net.IPv4Mask(255, 255, 255, 255), // /32
+	}
+	if err := netlink.RouteAdd(&netlink.Route{
+		LinkIndex: iface.Index,
+		Scope:     netlink.SCOPE_LINK,
+		Dst:       s,
+		Family:    unix.AF_INET,
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func configureCTRPeer(ctrNS ns.NetNS, ip net.IPNet, ifaceName string) error {
 	if err := ctrNS.Do(func(ns.NetNS) error {
-		return configureIface(ifaceName, PodVethCIDR, nil)
+		return configureIface(ifaceName, &ip, nil)
 	}); err != nil {
 		return fmt.Errorf("ctr ns: %w", err)
 	}
