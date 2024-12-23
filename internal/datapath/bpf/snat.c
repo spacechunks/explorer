@@ -21,12 +21,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "bpf/bpf_endian.h"
 #include "linux/if_ether.h"
 #include "vmlinux.h"
-#include "net_helpers.h"
+#include "lib/net_helpers.h"
 
 #define IP_SRC_OFF (ETH_HLEN + offsetof(struct iphdr, saddr))
 
 struct ptp_snat_entry {
-    __u32 ip_addr; /* host byte order */
+    __u32 ip_addr;
     __u8 iface_idx;
 };
 
@@ -52,6 +52,20 @@ int snat(struct __sk_buff *ctx)
      */
     if (ctx->protocol != bpf_htons(ETH_P_IP))
         return TC_ACT_UNSPEC;
+
+    struct iphdr *iph = data + ETH_HLEN;
+    if (data + ETH_HLEN + sizeof(*iph) > data_end)
+        return TC_ACT_SHOT;
+
+    __u8 proto = iph->protocol;
+    if (proto != IPPROTO_TCP)
+       return TC_ACT_OK;
+
+    __be16 sport = get_port(&ctx, TCP_SPORT_OFF, UDP_SPORT_OFF, proto);
+    if (sport != bpf_htons(MC_SERVER_PORT))
+        return TC_ACT_OK;
+
+    /* below only handles tcp minecraft related traffic */
 
     __u8 idx = 0;
     struct ptp_snat_entry *entry = bpf_map_lookup_elem(&ptp_snat_config, &idx);
