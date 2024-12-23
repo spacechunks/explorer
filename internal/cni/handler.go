@@ -74,10 +74,10 @@ func (h *cniHandler) AttachHostVethBPF(ifaceName string) error {
 	if err != nil {
 		return fmt.Errorf("get iface: %w", err)
 	}
-	//
-	//if err := h.bpf.AttachAndPinSNAT(iface); err != nil {
-	//	return fmt.Errorf("snat: %w", err)
-	//}
+
+	if err := h.bpf.AttachAndPinSNAT(iface); err != nil {
+		return fmt.Errorf("snat: %w", err)
+	}
 
 	if err := h.bpf.AttachAndPinARP(iface); err != nil {
 		return fmt.Errorf("arp: %w", err)
