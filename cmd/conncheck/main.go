@@ -19,32 +19,73 @@
 package main
 
 import (
-	"context"
+	"bufio"
 	"log"
+	"net"
 	"net/http"
 	"time"
 )
 
 func main() {
-	t := time.NewTicker(200 * time.Millisecond)
-	ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second)) //nolint:govet
+	t := time.NewTicker(1000 * time.Millisecond)
+
+	go func() {
+		listener, err := net.Listen("tcp", "0.0.0.0:25565")
+		if err != nil {
+			log.Fatalf("listen: %v\n", err)
+		}
+		defer listener.Close()
+
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Printf("accept: %v\n", err)
+				continue
+			}
+			go handleConnection(conn)
+		}
+	}()
+
+	//ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second)) //nolint:govet
 	for {
 		select {
-		case <-ctx.Done():
-			return
+		//case <-ctx.Done():
+		//	return
 		case <-t.C:
 			httpsResp, err := http.Get("https://www.google.com")
 			if err != nil {
-				log.Fatalf("failed to fetch https: %s", err)
+				log.Printf("failed to fetch https: %v\n", err)
+				continue
 			}
 			httpResp, err := http.Get("http://www.google.com")
 			if err != nil {
-				log.Fatalf("failed to fetch http: %s", err)
+				log.Printf("failed to fetch http: %v\n", err)
+				continue
 			}
+			//log.Println("--")
 			defer httpsResp.Body.Close()
 			defer httpResp.Body.Close()
-			log.Printf("https: %s\n", httpsResp.Status)
-			log.Printf("http: %s\n", httpResp.Status)
+			//log.Printf("https: %s\n", httpsResp.Status)
+			//log.Printf("http: %s\n", httpResp.Status)
+		}
+	}
+}
+
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
+	log.Printf("client connected: %s\n", conn.RemoteAddr())
+	reader := bufio.NewReader(conn)
+
+	for {
+		message, err := reader.ReadString('\n')
+		if err != nil {
+			log.Printf("client disconnected: %s\n", conn.RemoteAddr())
+			return
+		}
+
+		if _, err = conn.Write([]byte(message)); err != nil {
+			log.Printf("error writing to client: %v\n", err)
+			return
 		}
 	}
 }
