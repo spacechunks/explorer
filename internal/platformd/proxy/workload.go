@@ -47,13 +47,16 @@ func workloadResources(
 	}
 
 	return xds.ResourceGroup{
-		Listeners: []*listenerv3.Listener{httpLis, tcpLis},
+		Listeners: []*listenerv3.Listener{
+			tcpLis,
+			httpLis,
+		},
 	}, nil
 }
 
 func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*listenerv3.Listener, error) {
 	tcpLis, err := xds.TCPProxyListener(xds.ListenerConfig{
-		ListenerName: workloadID,
+		ListenerName: "tcp-" + workloadID,
 		Addr:         addr,
 		Proto:        corev3.SocketAddress_TCP,
 	}, xds.TCPProxyConfig{
@@ -75,7 +78,7 @@ func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*l
 
 func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*listenerv3.Listener, error) {
 	httpLis := xds.CreateListener(xds.ListenerConfig{
-		ListenerName: workloadID,
+		ListenerName: "http-" + workloadID,
 		StatPrefix:   workloadID,
 		Addr:         addr,
 		Proto:        corev3.SocketAddress_TCP,
