@@ -46,28 +46,19 @@ func main() {
 		}
 	}()
 
-	//ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second)) //nolint:govet
-	for {
-		select {
-		//case <-ctx.Done():
-		//	return
-		case <-t.C:
-			httpsResp, err := http.Get("https://www.google.com")
-			if err != nil {
-				log.Printf("failed to fetch https: %v\n", err)
-				continue
-			}
-			httpResp, err := http.Get("http://www.google.com")
-			if err != nil {
-				log.Printf("failed to fetch http: %v\n", err)
-				continue
-			}
-			//log.Println("--")
-			defer httpsResp.Body.Close()
-			defer httpResp.Body.Close()
-			//log.Printf("https: %s\n", httpsResp.Status)
-			//log.Printf("http: %s\n", httpResp.Status)
+	for range t.C {
+		httpsResp, err := http.Get("https://www.google.com")
+		if err != nil {
+			log.Printf("failed to fetch https: %v\n", err)
+			continue
 		}
+		httpResp, err := http.Get("http://www.google.com")
+		if err != nil {
+			log.Printf("failed to fetch http: %v\n", err)
+			continue
+		}
+		defer httpsResp.Body.Close() //nolint:staticcheck
+		defer httpResp.Body.Close()  //nolint:staticcheck
 	}
 }
 
