@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "name": "nginx"
+    "name": "conncheck"
   },
   "image":{
-    "image": "docker.io/nginx:stable-alpine-slim"
+    "image": "ghcr.io/spacechunks/explorer/conncheck:latest"
   },
   "log_path":"nginx.0.log",
   "envs": [],

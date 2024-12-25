@@ -16,12 +16,20 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package proxy
+package datapath
 
-const (
-	dnsClusterName         = "dns"
-	originalDstClusterName = "public"
-	proxyTCPPort           = 9111
-	proxyHTTPPort          = 9080
-	proxyDNSPort           = 9053
+import (
+	"fmt"
+	"net"
 )
+
+func IfaceByName(name string) (Iface, error) {
+	iface, err := net.InterfaceByName(name)
+	if err != nil {
+		return Iface{}, fmt.Errorf("get iface: %w", err)
+	}
+	return Iface{
+		Index: iface.Index,
+		Name:  iface.Name,
+	}, nil
+}

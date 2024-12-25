@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 
 # Explorer Platform, a platform for hosting and discovering Minecraft servers.
 # Copyright (C) 2024 Yannic Rieger <oss@76k.io>
@@ -16,19 +16,4 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-export GOOS=linux
-export GOARCH=arm64
-
-go build -o nodedev/netglue cmd/netglue/main.go \
-  && go build -o nodedev/platformd cmd/platformd/main.go \
-  && go build -o nodedev/test cmd/test/main.go
-
-hcloud server delete nodedev-yannic
-hcloud server create --name nodedev-yannic --type cax21 --image ubuntu-24.04 --ssh-key macos-m2-pro
-
-ip=$(hcloud server ip nodedev-yannic)
-
-sleep 30 # takes a bit of time until the server is reachable from the network
-
-scp -r -o StrictHostKeyChecking=no nodedev/* root@$ip:/root
-ssh -o StrictHostKeyChecking=no root@$ip '/root/provision-full.sh'
+curl http://localhost:5555/config_dump?include_eds | less

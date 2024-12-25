@@ -18,18 +18,9 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func dnsResourceGroup(clusterName string, listenerAddr, upstreamAddr netip.AddrPort) (xds.ResourceGroup, error) {
-	udpCLA, udpListener, err := dnsUDPResources(clusterName, listenerAddr, upstreamAddr)
-	if err != nil {
-		return xds.ResourceGroup{}, fmt.Errorf("udp resources: %w", err)
-	}
-	tcpCLA, tcpListener, err := dnsTCPResources(clusterName, listenerAddr, upstreamAddr)
-	if err != nil {
-		return xds.ResourceGroup{}, fmt.Errorf("tcp resources: %w", err)
-	}
-
-	cluster := &clusterv3.Cluster{
-		Name: clusterName,
+func dnsClusterResource() *clusterv3.Cluster {
+	return &clusterv3.Cluster{
+		Name: dnsClusterName,
 		ClusterDiscoveryType: &clusterv3.Cluster_Type{
 			Type: clusterv3.Cluster_EDS,
 		},
@@ -40,9 +31,23 @@ func dnsResourceGroup(clusterName string, listenerAddr, upstreamAddr netip.AddrP
 		},
 		LbPolicy: clusterv3.Cluster_ROUND_ROBIN,
 	}
+}
+
+func dnsListenerResourceGroup(
+	clusterName string,
+	listenerAddr netip.AddrPort,
+	upstreamAddr netip.AddrPort,
+) (xds.ResourceGroup, error) {
+	udpCLA, udpListener, err := dnsUDPResources(clusterName, listenerAddr, upstreamAddr)
+	if err != nil {
+		return xds.ResourceGroup{}, fmt.Errorf("udp resources: %w", err)
+	}
+	tcpCLA, tcpListener, err := dnsTCPResources(clusterName, listenerAddr, upstreamAddr)
+	if err != nil {
+		return xds.ResourceGroup{}, fmt.Errorf("tcp resources: %w", err)
+	}
 
 	return xds.ResourceGroup{
-		Clusters:  []*clusterv3.Cluster{cluster},
 		Listeners: []*listenerv3.Listener{udpListener, tcpListener},
 		CLAS:      []*endpointv3.ClusterLoadAssignment{udpCLA, tcpCLA},
 	}, nil

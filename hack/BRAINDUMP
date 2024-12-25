@@ -34,4 +34,5 @@
 
 # TODO
   * test handler_linux.go (AdDefaultRoute)
+  * execute in xcomp if we are on macos when running make gogen (limactl shell xcomp /usr/bin/make gogen)
 

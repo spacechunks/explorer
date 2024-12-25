@@ -6,8 +6,6 @@ import (
 	"log/slog"
 	"net"
 	"net/netip"
-	"os"
-	"path"
 
 	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
 	"github.com/spacechunks/platform/internal/datapath"
@@ -45,6 +43,18 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("failed to parse dns server address: %w", err)
 	}
 
+	// hardcode envoy node id here, because implementing support
+	// for multiple proxy nodes is currently way out of scope
+	// and might not even be needed at all. being configurable
+	// at the current time is also not needed, due to being a
+	// wholly internal property that is not expected to be changed
+	// by end users.
+	//
+	// note that if the node id in proxy.conf differs from this one,
+	// configuring the proxy will fail and network connectivity will
+	// be impaired for the workloads.
+	const proxyNodeID = "proxy-0"
+
 	var (
 		xdsCfg = cache.NewSnapshotCache(true, cache.IDHash{}, nil)
 		wlSvc  = workload.NewService(
@@ -57,7 +67,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			proxy.Config{
 				DNSUpstream: dnsUpstream,
 			},
-			xds.NewMap(xdsCfg),
+			xds.NewMap(proxyNodeID, xdsCfg),
 		)
 
 		mgmtServer  = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
@@ -67,15 +77,15 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 
 	proxyv1alpha1.RegisterProxyServiceServer(mgmtServer, proxyServer)
 	workloadv1alpha1.RegisterWorkloadServiceServer(mgmtServer, wlServer)
-	xds.CreateAndRegisterServer(ctx, mgmtServer, xdsCfg)
+	xds.CreateAndRegisterServer(ctx, s.logger, mgmtServer, xdsCfg)
 
 	bpf, err := datapath.LoadBPF()
 	if err != nil {
 		return fmt.Errorf("failed to load bpf: %w", err)
 	}
 
-	if err := proxySvc.ApplyOriginalDstCluster(ctx); err != nil {
-		return fmt.Errorf("apply original dst cluster: %w", err)
+	if err := proxySvc.ApplyGlobalResources(ctx); err != nil {
+		return fmt.Errorf("apply global resources: %w", err)
 	}
 
 	if err := bpf.AttachAndPinGetsockopt(cfg.GetsockoptCGroup); err != nil {
@@ -89,21 +99,40 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		Namespace:            "system",
 		NetworkNamespaceMode: int32(runtimev1.NamespaceMode_NODE),
 		Labels:               workload.SystemWorkloadLabels("envoy"),
+		Args:                 []string{"-c /etc/envoy/config.yaml", "-l debug"},
+		Mounts: []workload.Mount{
+			{
+				HostPath:      "/etc/platformd/proxy.conf",
+				ContainerPath: "/etc/envoy/config.yaml",
+			},
+		},
 	}, workload.SystemWorkloadLabels("envoy")); err != nil {
 		return fmt.Errorf("ensure envoy: %w", err)
 	}
 
-	if err := os.MkdirAll(path.Dir(cfg.ProxyServiceListenSock), os.ModePerm); err != nil {
-		return fmt.Errorf("create mgmt listen sock dir: %w", err)
+	if err := wlSvc.EnsureWorkload(ctx, workload.RunOptions{
+		Name:                 "coredns",
+		Image:                "docker.io/coredns/coredns",
+		Namespace:            "system",
+		NetworkNamespaceMode: int32(runtimev1.NamespaceMode_NODE),
+		Labels:               workload.SystemWorkloadLabels("coredns"),
+		Args:                 []string{"-conf", "/etc/coredns/Corefile"},
+		Mounts: []workload.Mount{
+			{
+				HostPath:      "/etc/platformd/dns.conf",
+				ContainerPath: "/etc/coredns/Corefile",
+			},
+		},
+	}, workload.SystemWorkloadLabels("coredns")); err != nil {
+		return fmt.Errorf("ensure coredns: %w", err)
 	}
 
-	unixSock, err := net.Listen("unix", cfg.ProxyServiceListenSock)
+	unixSock, err := net.Listen("unix", cfg.ManagementServerListenSock)
 	if err != nil {
 		return fmt.Errorf("failed to listen on unix socket: %v", err)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-
 	var g multierror.Group
 	g.Go(func() error {
 		if err := mgmtServer.Serve(unixSock); err != nil {

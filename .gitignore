@@ -3,5 +3,6 @@ conf
 .DS_Store
 .envrc
 work/
-nodedev/ptpnat
-/platformd
+nodedev/netglue
+nodedev/platformd
+/cmd/test

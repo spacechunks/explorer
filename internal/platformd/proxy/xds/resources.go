@@ -5,15 +5,15 @@ import (
 	"net/netip"
 
 	accesslogv3 "github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v3"
+	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	streamv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/access_loggers/stream/v3"
+	originaldstv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/listener/original_dst/v3"
 	tcpproxyv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/tcp_proxy/v3"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
-
-	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
-	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
-	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 )
 
 type ListenerConfig struct {
@@ -139,4 +139,17 @@ func TCPProxyListener(listenerCfg ListenerConfig, proxyCfg TCPProxyConfig) (*lis
 		},
 	}
 	return l, nil
+}
+
+func OriginalDstListenerFilter() (*listenerv3.ListenerFilter, error) {
+	var origDstAny anypb.Any
+	if err := anypb.MarshalFrom(&origDstAny, &originaldstv3.OriginalDst{}, proto.MarshalOptions{}); err != nil {
+		return nil, fmt.Errorf("marshal to any: %w", err)
+	}
+	return &listenerv3.ListenerFilter{
+		Name: "envoy.filters.listener.original_dst",
+		ConfigType: &listenerv3.ListenerFilter_TypedConfig{
+			TypedConfig: &origDstAny,
+		},
+	}, nil
 }

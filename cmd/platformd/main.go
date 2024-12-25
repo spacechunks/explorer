@@ -37,11 +37,11 @@ func main() {
 
 	var (
 		cfg = platformd.Config{
-			ProxyServiceListenSock: *proxyServiceListenSock,
-			CRIListenSock:          *criListenSock,
-			EnvoyImage:             *envoyImage,
-			GetsockoptCGroup:       *getsockoptCgroup,
-			DNSServer:              *dnsServer,
+			ManagementServerListenSock: *proxyServiceListenSock,
+			CRIListenSock:              *criListenSock,
+			EnvoyImage:                 *envoyImage,
+			GetsockoptCGroup:           *getsockoptCgroup,
+			DNSServer:                  *dnsServer,
 		}
 		ctx    = context.Background()
 		server = platformd.NewServer(logger)

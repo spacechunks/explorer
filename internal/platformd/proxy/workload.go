@@ -3,18 +3,32 @@ package proxy
 import (
 	"fmt"
 	"net/netip"
+	"time"
 
 	accesslogv3 "github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v3"
+	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	routerv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
-	originaldstv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/listener/original_dst/v3"
 	httpconnmgr "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	"github.com/spacechunks/platform/internal/platformd/proxy/xds"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
+
+func originalDstClusterResource() *clusterv3.Cluster {
+	return &clusterv3.Cluster{
+		Name: originalDstClusterName,
+		ClusterDiscoveryType: &clusterv3.Cluster_Type{
+			Type: clusterv3.Cluster_ORIGINAL_DST,
+		},
+		ConnectTimeout:  durationpb.New(time.Second * 5),
+		DnsLookupFamily: clusterv3.Cluster_V4_ONLY,
+		LbPolicy:        clusterv3.Cluster_CLUSTER_PROVIDED,
+	}
+}
 
 func workloadResources(
 	workloadID string,
@@ -27,26 +41,44 @@ func workloadResources(
 		return xds.ResourceGroup{}, fmt.Errorf("create http listener: %w", err)
 	}
 
-	tcpLis, err := xds.TCPProxyListener(xds.ListenerConfig{
-		ListenerName: workloadID,
-		Addr:         tcpListenerAddr,
-		Proto:        corev3.SocketAddress_TCP,
-	}, xds.TCPProxyConfig{
-		StatPrefix:  workloadID,
-		ClusterName: originalDstClusterName,
-	})
+	tcpLis, err := tcpListener(workloadID, tcpListenerAddr, originalDstClusterName)
 	if err != nil {
-		return xds.ResourceGroup{}, fmt.Errorf("create tcp proxy listener: %w", err)
+		return xds.ResourceGroup{}, fmt.Errorf("create tcp listener: %w", err)
 	}
 
 	return xds.ResourceGroup{
-		Listeners: []*listenerv3.Listener{httpLis, tcpLis},
+		Listeners: []*listenerv3.Listener{
+			tcpLis,
+			httpLis,
+		},
 	}, nil
+}
+
+func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*listenerv3.Listener, error) {
+	tcpLis, err := xds.TCPProxyListener(xds.ListenerConfig{
+		ListenerName: "tcp-" + workloadID,
+		Addr:         addr,
+		Proto:        corev3.SocketAddress_TCP,
+	}, xds.TCPProxyConfig{
+		StatPrefix:  workloadID,
+		ClusterName: clusterName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create listener: %w", err)
+	}
+
+	dst, err := xds.OriginalDstListenerFilter()
+	if err != nil {
+		return nil, fmt.Errorf("original dst filter: %v", err)
+	}
+	tcpLis.ListenerFilters = []*listenerv3.ListenerFilter{dst}
+
+	return tcpLis, nil
 }
 
 func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*listenerv3.Listener, error) {
 	httpLis := xds.CreateListener(xds.ListenerConfig{
-		ListenerName: workloadID,
+		ListenerName: "http-" + workloadID,
 		StatPrefix:   workloadID,
 		Addr:         addr,
 		Proto:        corev3.SocketAddress_TCP,
@@ -75,19 +107,11 @@ func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*
 		},
 	}
 
-	var origDstAny anypb.Any
-	if err := anypb.MarshalFrom(&origDstAny, &originaldstv3.OriginalDst{}, proto.MarshalOptions{}); err != nil {
-		return nil, fmt.Errorf("marshal to any: %w", err)
+	dst, err := xds.OriginalDstListenerFilter()
+	if err != nil {
+		return nil, fmt.Errorf("original dst filter: %v", err)
 	}
-
-	httpLis.ListenerFilters = []*listenerv3.ListenerFilter{
-		{
-			Name: "envoy.filters.listener.original_dst",
-			ConfigType: &listenerv3.ListenerFilter_TypedConfig{
-				TypedConfig: &origDstAny,
-			},
-		},
-	}
+	httpLis.ListenerFilters = []*listenerv3.ListenerFilter{dst}
 
 	return httpLis, nil
 }

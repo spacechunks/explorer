@@ -21,20 +21,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "bpf/bpf_endian.h"
 #include "linux/if_ether.h"
 #include "vmlinux.h"
-#include "net_helpers.h"
+#include "lib/net_helpers.h"
 
 #define TCP_DPORT_OFF (ETH_HLEN + sizeof(struct iphdr) + offsetof(struct tcphdr, dest))
 #define IP_DST_OFF (ETH_HLEN + offsetof(struct iphdr, daddr))
 
 struct dnat_target {
-    __u32 ip_addr; /* host byte order */
+    __u32 ip_addr;
     __u8 iface_idx;
     __u8 mac_addr[ETH_ALEN];
 };
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, __u16); /* host byte order */
+    __type(key, __u16);
     __type(value, struct dnat_target);
     __uint(max_entries, 256); /* TODO: determine sane value */
     __uint(pinning, LIBBPF_PIN_BY_NAME);
@@ -56,7 +56,8 @@ int dnat(struct __sk_buff *ctx)
     struct dnat_target *tgt = bpf_map_lookup_elem(&ptp_dnat_targets, &hport);
 
     if (tgt == NULL) {
-        bpf_printk("no dnat target for port %d", hport);
+        /* prevent SSH connections from spamming */
+        if (hport != 22) bpf_printk("no dnat target for port %d", hport);
         return TC_ACT_OK;
     }
 

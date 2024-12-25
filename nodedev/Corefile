@@ -1,0 +1,7 @@
+.:1053 {
+    bind 127.0.0.1
+    whoami
+    log
+    errors
+    forward . 1.1.1.1
+}

@@ -3,7 +3,7 @@
 #include "bpf/bpf_endian.h"
 #include "linux/if_ether.h"
 #include "vmlinux.h"
-#include "net_helpers.h"
+#include "lib/net_helpers.h"
 
 #define ARP_OP_OFF  20
 #define ARP_SHA_OFF 22

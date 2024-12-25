@@ -1,0 +1,3 @@
+FROM ghcr.io/spacechunks/paper-docker:1.21.3-82
+COPY server.properties /opt/paper/server.properties
+COPY ops.json /opt/paper/ops.json

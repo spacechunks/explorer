@@ -31,10 +31,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create handler: %v", err)
 	}
-	cni := cni.NewCNI(handler)
+	c := cni.NewCNI(handler)
 	skel.PluginMainFuncs(skel.CNIFuncs{
-		Add:    cni.ExecAdd,
-		Del:    cni.ExecDel,
+		Add:    c.ExecAdd,
+		Del:    c.ExecDel,
 		Check:  nil,
 		GC:     nil,
 		Status: nil,

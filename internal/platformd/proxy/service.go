@@ -5,17 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net/netip"
-	"time"
 
 	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	"google.golang.org/protobuf/types/known/durationpb"
-
 	"github.com/spacechunks/platform/internal/platformd/proxy/xds"
 )
 
 type Service interface {
 	CreateListeners(ctx context.Context, workloadID string, addr netip.Addr) error
-	ApplyOriginalDstCluster(ctx context.Context) error
+	ApplyGlobalResources(ctx context.Context) error
 }
 
 type proxyService struct {
@@ -32,6 +29,26 @@ func NewService(logger *slog.Logger, cfg Config, resourceMap *xds.Map) Service {
 	}
 }
 
+// ApplyGlobalResources configures a resources group with globally
+// used resources like:
+//   - original destination cluster where all traffic originating
+//     from the container destined to the outside world will be
+//     routed to.
+//   - dns cluster where dns traffic from all workloads will be
+//     routed to.
+func (s *proxyService) ApplyGlobalResources(ctx context.Context) error {
+	rg := xds.ResourceGroup{
+		Clusters: []*clusterv3.Cluster{
+			dnsClusterResource(),
+			originalDstClusterResource(),
+		},
+	}
+	if _, err := s.resourceMap.Apply(ctx, "global", rg); err != nil {
+		return fmt.Errorf("apply envoy config: %w", err)
+	}
+	return nil
+}
+
 // CreateListeners creates HTTP, TCP as well as UDP(DNS) and TCP(DNS) listeners for the provided
 // workload. this will fail if the workload does not exist.
 func (s *proxyService) CreateListeners(ctx context.Context, workloadID string, addr netip.Addr) error {
@@ -45,7 +62,7 @@ func (s *proxyService) CreateListeners(ctx context.Context, workloadID string, a
 		return fmt.Errorf("create workload resources: %w", err)
 	}
 
-	drg, err := dnsResourceGroup(dnsCluster, netip.AddrPortFrom(addr, proxyDNSPort), s.cfg.DNSUpstream)
+	drg, err := dnsListenerResourceGroup(dnsClusterName, netip.AddrPortFrom(addr, proxyDNSPort), s.cfg.DNSUpstream)
 	if err != nil {
 		return fmt.Errorf("create dns resources: %w", err)
 	}
@@ -61,27 +78,5 @@ func (s *proxyService) CreateListeners(ctx context.Context, workloadID string, a
 		return fmt.Errorf("apply envoy config: %w", err)
 	}
 
-	return nil
-}
-
-// ApplyOriginalDstCluster configures the original destination cluster
-// where all traffic originating from the container destined to the
-// outside world will be routed through.
-func (s *proxyService) ApplyOriginalDstCluster(ctx context.Context) error {
-	rg := xds.ResourceGroup{
-		Clusters: []*clusterv3.Cluster{
-			{
-				Name: originalDstClusterName,
-				ClusterDiscoveryType: &clusterv3.Cluster_Type{
-					Type: clusterv3.Cluster_ORIGINAL_DST,
-				},
-				ConnectTimeout:  durationpb.New(time.Second * 5),
-				DnsLookupFamily: clusterv3.Cluster_V4_ONLY,
-			},
-		},
-	}
-	if _, err := s.resourceMap.Apply(ctx, "original_dst_cluster", rg); err != nil {
-		return fmt.Errorf("apply envoy config: %w", err)
-	}
 	return nil
 }

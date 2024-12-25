@@ -24,17 +24,16 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/netip"
 	"os"
-
-	current "github.com/containernetworking/cni/pkg/types/100"
-	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
-	"github.com/spacechunks/platform/internal/platformd/workload"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
+	"strings"
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
+	current "github.com/containernetworking/cni/pkg/types/100"
+	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -46,7 +45,6 @@ type Conf struct {
 	types.NetConf
 	HostIface           string `json:"hostIface"`
 	PlatformdListenSock string `json:"platformdListenSock"`
-	CRIListenSock       string `json:"criListenSock"`
 }
 
 type CNI struct {
@@ -69,6 +67,17 @@ func NewCNI(h Handler) *CNI {
 func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 	ctx := context.Background()
 
+	cniArgs, err := parseArgs(args.Args)
+	if err != nil {
+		return fmt.Errorf("CNI_ARGS parse error: %v", err)
+	}
+
+	// workload service sets the pod uid to the workloads ID
+	wlID, ok := cniArgs["K8S_POD_UID"]
+	if !ok {
+		return fmt.Errorf("CNI_ARGS K8S_POD_UID missing")
+	}
+
 	var conf Conf
 	if err := json.Unmarshal(args.StdinData, &conf); err != nil {
 		return fmt.Errorf("parse network config: %v", err)
@@ -82,6 +91,7 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return ErrHostIfaceNotFound
 	}
 
+	// TODO: move to platformd
 	if err := c.handler.AttachDNATBPF(conf.HostIface); err != nil {
 		return fmt.Errorf("failed to attach dnat bpf to %s: %w", conf.HostIface, err)
 	}
@@ -99,21 +109,37 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return fmt.Errorf("alloc ips: %w", err)
 	}
 
+	if len(ips) < 2 {
+		return fmt.Errorf("ipam: need two ips")
+	}
+
+	// TODO: refactor
+	hostPeerAddr := ips[0].Address
+	podPeerAddr := ips[1].Address
+
 	hostVethName, podVethName, err := c.handler.CreateAndConfigureVethPair(args.Netns, ips)
 	if err != nil {
 		return fmt.Errorf("configure veth pair: %w", err)
 	}
 
 	if err := c.handler.AttachHostVethBPF(hostVethName); err != nil {
-		return fmt.Errorf("attach snat: %w", err)
+		return fmt.Errorf("attach host peer: %w", err)
+	}
+
+	if err := c.handler.AttachCtrVethBPF(podVethName, args.Netns); err != nil {
+		return fmt.Errorf("attach ctr peer: %w", err)
 	}
 
 	if err := c.handler.ConfigureSNAT(conf.HostIface); err != nil {
 		return fmt.Errorf("configure snat: %w", err)
 	}
 
-	if err := c.handler.AddDefaultRoute(args.Netns); err != nil {
+	if err := c.handler.AddDefaultRoute(args.Netns, netip.MustParseAddr(podPeerAddr.IP.String())); err != nil {
 		return fmt.Errorf("add default route: %w", err)
+	}
+
+	if err := c.handler.AddFullMatchRoute(hostVethName, netip.MustParseAddr(podPeerAddr.IP.String())); err != nil {
+		return fmt.Errorf("add full match route: %w", err)
 	}
 
 	proxyConn, err := grpc.NewClient(
@@ -124,15 +150,10 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return fmt.Errorf("failed to create proxy service grpc client: %w", err)
 	}
 
-	id, err := getWorkloadID(ctx, conf.CRIListenSock, args.ContainerID)
-	if err != nil {
-		return fmt.Errorf("get workload id: %w", err)
-	}
-
 	client := proxyv1alpha1.NewProxyServiceClient(proxyConn)
 	if _, err := client.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
-		WorkloadID: id,
-		Ip:         ips[0].Address.IP.String(),
+		WorkloadID: wlID,
+		Ip:         hostPeerAddr.IP.String(),
 	}); err != nil {
 		return fmt.Errorf("create proxy listeners: %w", err)
 	}
@@ -154,48 +175,23 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 	return nil
 }
 
-func getWorkloadID(ctx context.Context, criListenSock, ctrID string) (string, error) {
-	criConn, err := grpc.NewClient(criListenSock, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return "", fmt.Errorf("failed to create cri grpc client: %w", err)
-	}
-	c := runtimev1.NewRuntimeServiceClient(criConn)
-	ctrResp, err := c.ListContainers(ctx, &runtimev1.ListContainersRequest{
-		Filter: &runtimev1.ContainerFilter{
-			Id: ctrID,
-		},
-	})
-	if err != nil {
-		return "", fmt.Errorf("list containers: %w", err)
-	}
-
-	if len(ctrResp.Containers) == 0 {
-		return "", fmt.Errorf("container %s not found", ctrID)
-	}
-
-	podID := ctrResp.Containers[0].PodSandboxId
-	podResp, err := c.ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
-		Filter: &runtimev1.PodSandboxFilter{
-			Id: podID,
-		},
-	})
-	if err != nil {
-		return "", fmt.Errorf("list pods: %w", err)
-	}
-
-	if len(podResp.Items) == 0 {
-		return "", fmt.Errorf("pod %s not found", podID)
-	}
-
-	id, ok := podResp.Items[0].Labels[workload.LabelID]
-	if !ok {
-		return "", errors.New("workload id label not found")
-	}
-	return id, nil
-}
-
 func (c *CNI) ExecDel(args *skel.CmdArgs) error {
 	log.Println("del")
 	// TODO: remove veth pairs
 	return nil
+}
+
+func parseArgs(args string) (map[string]string, error) {
+	var (
+		ret   = make(map[string]string)
+		pairs = strings.Split(args, ";")
+	)
+	for _, pair := range pairs {
+		kv := strings.Split(pair, "=")
+		if len(kv) != 2 || kv[0] == "" || kv[1] == "" {
+			return nil, fmt.Errorf("invalid CNI_ARGS pair %q", pair)
+		}
+		ret[kv[0]] = kv[1]
+	}
+	return ret, nil
 }

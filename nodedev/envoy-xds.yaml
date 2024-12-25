@@ -2,6 +2,13 @@ node:
   cluster: system
   id: proxy-0
 
+admin:
+  profile_path: /tmp/envoy.prof
+  address:
+    socket_address:
+      address: 127.0.0.1
+      port_value: 5555
+
 dynamic_resources:
   ads_config:
     api_type: GRPC

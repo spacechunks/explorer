@@ -19,7 +19,7 @@ func NewServer(svc Service) *Server {
 	}
 }
 
-func (s *Server) CreateListener(
+func (s *Server) CreateListeners(
 	ctx context.Context,
 	req *proxyv1alpha1.CreateListenersRequest,
 ) (*proxyv1alpha1.CreateListenersResponse, error) {
