@@ -39,8 +39,9 @@ type RunOptions struct {
 	// [runtimev1.NamespaceMode] value.
 	NetworkNamespaceMode int32
 
-	Mounts []Mount
-	Args   []string
+	Mounts    []Mount
+	Args      []string
+	DNSServer string
 }
 
 const podLogDir = "/var/log/platformd/pods"
@@ -125,6 +126,11 @@ func (s *criService) RunWorkload(ctx context.Context, opts RunOptions) (Workload
 		Hostname:     opts.Hostname, // TODO: explore if we can use the id as the hostname
 		LogDirectory: podLogDir,
 		Labels:       opts.Labels,
+		DnsConfig: &runtimev1.DNSConfig{
+			Servers:  []string{opts.DNSServer},
+			Options:  []string{"edns0", "trust-ad"},
+			Searches: []string{"."},
+		},
 		Linux: &runtimev1.LinuxPodSandboxConfig{
 			SecurityContext: &runtimev1.LinuxSandboxSecurityContext{
 				NamespaceOptions: &runtimev1.NamespaceOption{

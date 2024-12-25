@@ -142,32 +142,6 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return fmt.Errorf("add full match route: %w", err)
 	}
 
-	// test start
-	//objs, err := datapath.LoadBPF()
-	//if err != nil {
-	//	return fmt.Errorf("load BPF: %w", err)
-	//}
-	//hos, err := net.InterfaceByName(hostVethName)
-	//if err != nil {
-	//	return fmt.Errorf("hs: %v", err)
-	//}
-	//if err := ns.WithNetNSPath(args.Netns, func(_ ns.NetNS) error {
-	//	iface, err := net.InterfaceByName(podVethName)
-	//	if err != nil {
-	//		return fmt.Errorf("get pod interface %s: %w", podVethName, err)
-	//	}
-	//	if err := objs.AddDNATTarget(
-	//		25565,
-	//		netip.MustParseAddr(podPeerAddr.IP.String()),
-	//		uint8(hos.Index), iface.HardwareAddr); err != nil {
-	//		return fmt.Errorf("add dnat target: %w", err)
-	//	}
-	//	return nil
-	//}); err != nil {
-	//	return fmt.Errorf("target: %w", err)
-	//}
-	// test end
-
 	proxyConn, err := grpc.NewClient(
 		conf.PlatformdListenSock,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),

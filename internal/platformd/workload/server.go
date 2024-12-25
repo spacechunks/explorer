@@ -46,6 +46,7 @@ func (s *Server) RunWorkload(
 		Hostname:             req.Hostname,
 		Labels:               req.Labels,
 		NetworkNamespaceMode: req.NetworkNamespaceMode,
+		DNSServer:            "10.0.0.53", // TODO: refactor
 	}
 
 	w, err := s.svc.RunWorkload(ctx, opts)

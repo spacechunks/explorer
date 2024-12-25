@@ -99,15 +99,32 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		Namespace:            "system",
 		NetworkNamespaceMode: int32(runtimev1.NamespaceMode_NODE),
 		Labels:               workload.SystemWorkloadLabels("envoy"),
-		Args:                 []string{"-c /etc/envoy/config.yaml"},
+		Args:                 []string{"-c /etc/envoy/config.yaml", "-l debug"},
 		Mounts: []workload.Mount{
 			{
-				ContainerPath: "/etc/envoy/config.yaml",
 				HostPath:      "/etc/platformd/proxy.conf",
+				ContainerPath: "/etc/envoy/config.yaml",
 			},
 		},
 	}, workload.SystemWorkloadLabels("envoy")); err != nil {
 		return fmt.Errorf("ensure envoy: %w", err)
+	}
+
+	if err := wlSvc.EnsureWorkload(ctx, workload.RunOptions{
+		Name:                 "coredns",
+		Image:                "docker.io/coredns/coredns",
+		Namespace:            "system",
+		NetworkNamespaceMode: int32(runtimev1.NamespaceMode_NODE),
+		Labels:               workload.SystemWorkloadLabels("coredns"),
+		Args:                 []string{"-conf", "/etc/coredns/Corefile"},
+		Mounts: []workload.Mount{
+			{
+				HostPath:      "/etc/platformd/dns.conf",
+				ContainerPath: "/etc/coredns/Corefile",
+			},
+		},
+	}, workload.SystemWorkloadLabels("coredns")); err != nil {
+		return fmt.Errorf("ensure coredns: %w", err)
 	}
 
 	unixSock, err := net.Listen("unix", cfg.ManagementServerListenSock)
