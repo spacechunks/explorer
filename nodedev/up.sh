@@ -23,14 +23,6 @@ go build -o nodedev/netglue cmd/netglue/main.go \
   && go build -o nodedev/platformd cmd/platformd/main.go \
   && go build -o nodedev/test cmd/test/main.go
 
-
-ip=$(hcloud server ip nodedev-yannic)
-hcloud server reboot nodedev-yannic
-sleep 15
-scp -r -o StrictHostKeyChecking=no nodedev/* root@$ip:/root
-scp -r -o StrictHostKeyChecking=no nodedev/config.json root@$ip:/etc/platformd/config.json
-exit 0
-
 hcloud server delete nodedev-yannic
 hcloud server create --name nodedev-yannic --type cax21 --image ubuntu-24.04 --ssh-key macos-m2-pro
 

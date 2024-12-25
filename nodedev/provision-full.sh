@@ -24,6 +24,7 @@ apt-get install -y gnupg2 git linux-tools-6.8.0-38-generic
 # platformd
 mkdir /etc/platformd
 cp config.json /etc/platformd/config.json
+cp Corefile /etc/platformd/dns.conf
 cp envoy-xds.yaml /etc/platformd/proxy.conf
 
 # pwru
@@ -36,6 +37,13 @@ tar -C /usr/local -xzf go1.23.4.linux-arm64.tar.gz
 export PATH=$PATH:/usr/local/go/bin
 echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.profile
 
+# crictl
+VERSION=v1.32.0 # check latest version in /releases page
+ARCH=arm64
+wget https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-$ARCH.tar.gz
+sudo tar zxvf crictl-$VERSION-linux-$ARCH.tar.gz -C /usr/local/bin
+rm -f crictl-$VERSION-linux-$ARCH.tar.gz
+
 # cni plugins
 git clone https://github.com/containernetworking/plugins.git
 cd plugins
@@ -45,12 +53,12 @@ mkdir -p /opt/cni
 cp -r plugins/bin /opt/cni
 
 # install cni
-cp netglue /opt/cni/bin/netglue
 mkdir -p /etc/cni/net.d/
-cp /root/10-netglue.conflist /etc/cni/net.d/10-netglue.conflist
+cp netglue /opt/cni/bin/netglue
+cp /root/00-netglue.conflist /etc/cni/net.d/00-netglue.conflist
 
 # crio
-MAJOR_VERSION=1.31
+MAJOR_VERSION=1.32
 curl -fsSL https://pkgs.k8s.io/addons:/cri-o:/stable:/v$MAJOR_VERSION/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
 echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://pkgs.k8s.io/addons:/cri-o:/stable:/v$MAJOR_VERSION/deb/ /" | tee /etc/apt/sources.list.d/cri-o.list
 apt-get update
@@ -58,6 +66,8 @@ apt-get install -y cri-o
 systemctl start crio.service
 sysctl -w net.ipv4.ip_forward=1
 sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf # persist after reboot
+cp /root/crio.conf /etc/crio/crio.conf.d/99-nodedev.conf
+cp /etc/crio/policy.json /etc/containers/policy.json
 
 # criu
 wget https://github.com/checkpoint-restore/criu/archive/refs/tags/v4.0.tar.gz
@@ -72,12 +82,20 @@ cd criu-4.0
 make install
 cd -
 
-# crictl
-VERSION=v1.32.0 # check latest version in /releases page
-ARCH=arm64
-wget https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-$ARCH.tar.gz
-sudo tar zxvf crictl-$VERSION-linux-$ARCH.tar.gz -C /usr/local/bin
-rm -f crictl-$VERSION-linux-$ARCH.tar.gz
+# crun (version shipped with crio does not support checkpointing)
+# its also important to install after crio, otherwise we do not
+# have checkpointing enabled.
+git clone https://github.com/containers/crun.git
+apt-get install -y make git gcc build-essential pkgconf libtool \
+   libsystemd-dev libprotobuf-c-dev libcap-dev libseccomp-dev libyajl-dev \
+   go-md2man autoconf python3 automake
+cd ./crun
+./autogen.sh
+./configure
+make
+mv crun /usr/bin/crun
+cd -
+
 
 # run nginx pod
 # crictl pull ghcr.io/spacechunks/explorer/conncheck
