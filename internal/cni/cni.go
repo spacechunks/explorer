@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/netip"
 	"os"
 	"strings"
 
@@ -92,9 +91,9 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 	}
 
 	// TODO: move to platformd
-	if err := c.handler.AttachDNATBPF(conf.HostIface); err != nil {
-		return fmt.Errorf("failed to attach dnat bpf to %s: %w", conf.HostIface, err)
-	}
+	//if err := c.handler.AttachDNATBPF(conf.HostIface); err != nil {
+	//	return fmt.Errorf("failed to attach dnat bpf to %s: %w", conf.HostIface, err)
+	//}
 
 	defer func() {
 		if err != nil {
@@ -113,32 +112,28 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return fmt.Errorf("ipam: need two ips")
 	}
 
-	// TODO: refactor
-	hostPeerAddr := ips[0].Address
-	podPeerAddr := ips[1].Address
-
-	hostVethName, podVethName, err := c.handler.CreateAndConfigureVethPair(args.Netns, ips)
+	veth, err := c.handler.AllocVethPair(args.Netns, ips[0].Address, ips[1].Address)
 	if err != nil {
 		return fmt.Errorf("configure veth pair: %w", err)
 	}
 
-	if err := c.handler.AttachHostVethBPF(hostVethName); err != nil {
+	if err := c.handler.AttachHostVethBPF(veth); err != nil {
 		return fmt.Errorf("attach host peer: %w", err)
 	}
 
-	if err := c.handler.AttachCtrVethBPF(podVethName, args.Netns); err != nil {
+	if err := c.handler.AttachCtrVethBPF(veth, args.Netns); err != nil {
 		return fmt.Errorf("attach ctr peer: %w", err)
 	}
 
-	if err := c.handler.ConfigureSNAT(conf.HostIface); err != nil {
-		return fmt.Errorf("configure snat: %w", err)
-	}
+	//if err := c.handler.ConfigureSNAT(conf.HostIface); err != nil {
+	//	return fmt.Errorf("configure snat: %w", err)
+	//}
 
-	if err := c.handler.AddDefaultRoute(args.Netns, netip.MustParseAddr(podPeerAddr.IP.String())); err != nil {
+	if err := c.handler.AddDefaultRoute(args.Netns, veth); err != nil {
 		return fmt.Errorf("add default route: %w", err)
 	}
 
-	if err := c.handler.AddFullMatchRoute(hostVethName, netip.MustParseAddr(podPeerAddr.IP.String())); err != nil {
+	if err := c.handler.AddFullMatchRoute(veth); err != nil {
 		return fmt.Errorf("add full match route: %w", err)
 	}
 
@@ -153,7 +148,7 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 	client := proxyv1alpha1.NewProxyServiceClient(proxyConn)
 	if _, err := client.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: wlID,
-		Ip:         hostPeerAddr.IP.String(),
+		Ip:         veth.HostPeer.Addr.IP.String(),
 	}); err != nil {
 		return fmt.Errorf("create proxy listeners: %w", err)
 	}
@@ -162,7 +157,7 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		CNIVersion: supportedCNIVersion,
 		Interfaces: []*current.Interface{
 			{
-				Name:    podVethName,
+				Name:    veth.PodPeer.Iface.Name,
 				Sandbox: args.Netns,
 			},
 		},

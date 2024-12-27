@@ -43,6 +43,7 @@ const (
 type Iface struct {
 	Name  string
 	Index int
+	Addr  netip.Prefix
 }
 
 type Objects struct {
@@ -105,7 +106,7 @@ func LoadBPF() (*Objects, error) {
 	}, nil
 }
 
-func (o *Objects) AttachAndPinSNAT(iface Iface) error {
+func (o *Objects) AttachAndPinSNAT(iface *net.Interface) error {
 	l, err := link.AttachTCX(link.TCXOptions{
 		Interface: iface.Index,
 		Program:   o.snatObjs.Snat,
@@ -123,7 +124,7 @@ func (o *Objects) AttachAndPinSNAT(iface Iface) error {
 	return nil
 }
 
-func (o *Objects) AttachAndPinDNAT(iface Iface) error {
+func (o *Objects) AttachAndPinDNAT(iface *net.Interface) error {
 	l, err := link.AttachTCX(link.TCXOptions{
 		Interface: iface.Index,
 		Program:   o.dnatObjs.Dnat,
@@ -141,7 +142,7 @@ func (o *Objects) AttachAndPinDNAT(iface Iface) error {
 	return nil
 }
 
-func (o *Objects) AttachAndPinARP(iface Iface) error {
+func (o *Objects) AttachAndPinARP(iface *net.Interface) error {
 	l, err := link.AttachTCX(link.TCXOptions{
 		Interface: iface.Index,
 		Program:   o.arpObjs.Arp,
@@ -178,7 +179,7 @@ func (o *Objects) AttachAndPinGetsockopt(cgroupPath string) error {
 	return nil
 }
 
-func (o *Objects) AttachTProxyHostEgress(hostPeer Iface) error {
+func (o *Objects) AttachTProxyHostEgress(hostPeer *net.Interface) error {
 	l, err := link.AttachTCX(link.TCXOptions{
 		Interface: hostPeer.Index,
 		Program:   o.tproxyObjs.HostPeerEgress,
@@ -195,7 +196,7 @@ func (o *Objects) AttachTProxyHostEgress(hostPeer Iface) error {
 	return nil
 }
 
-func (o *Objects) AttachTProxyCtrEgress(ctrPeer Iface) error {
+func (o *Objects) AttachTProxyCtrEgress(ctrPeer *net.Interface) error {
 	l, err := link.AttachTCX(link.TCXOptions{
 		Interface: ctrPeer.Index,
 		Program:   o.tproxyObjs.CtrPeerEgress,
@@ -225,10 +226,9 @@ func (o *Objects) AddDNATTarget(key uint16, ip netip.Addr, ifaceIdx uint8, mac n
 	return nil
 }
 
-func (o *Objects) AddSNATTarget(key uint8, ip netip.Addr, ifaceIdx uint8) error {
-	sl := ip.As4()
+func (o *Objects) AddSNATTarget(key uint8, ip net.IP, ifaceIdx uint8) error {
 	if err := o.snatObjs.PtpSnatConfig.Put(key, snatPtpSnatEntry{
-		IpAddr:   binary.BigEndian.Uint32(sl[:]), // network byte order is big endian
+		IpAddr:   binary.BigEndian.Uint32(ip), // network byte order is big endian
 		IfaceIdx: ifaceIdx,
 	}); err != nil {
 		return err
@@ -237,18 +237,17 @@ func (o *Objects) AddSNATTarget(key uint8, ip netip.Addr, ifaceIdx uint8) error 
 	return nil
 }
 
-func (o *Objects) AddVethPairEntry(hostIfaceIdx uint32, ctrIfaceIdx uint32, ip netip.Addr) error {
-	sl := ip.As4()
+func (o *Objects) AddVethPairEntry(hostIfaceIdx uint32, ctrIfaceIdx uint32, ip net.IP) error {
 	if err := o.tproxyObjs.VethPairMap.Put(hostIfaceIdx, tproxyVethPair{
 		HostIfIndex: hostIfaceIdx,
-		HostIfAddr:  binary.BigEndian.Uint32(sl[:]),
+		HostIfAddr:  binary.BigEndian.Uint32(ip),
 	}); err != nil {
 		return fmt.Errorf("host: %w", err)
 	}
 
 	if err := o.tproxyObjs.VethPairMap.Put(ctrIfaceIdx, tproxyVethPair{
 		HostIfIndex: hostIfaceIdx,
-		HostIfAddr:  binary.BigEndian.Uint32(sl[:]),
+		HostIfAddr:  binary.BigEndian.Uint32(ip),
 	}); err != nil {
 		return fmt.Errorf("ctr: %w", err)
 	}

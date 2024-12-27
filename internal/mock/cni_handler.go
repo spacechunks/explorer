@@ -3,9 +3,10 @@
 package mock
 
 import (
-	netip "net/netip"
-
+	datapath "github.com/spacechunks/platform/internal/datapath"
 	mock "github.com/stretchr/testify/mock"
+
+	net "net"
 
 	types100 "github.com/containernetworking/cni/pkg/types/100"
 )
@@ -23,17 +24,17 @@ func (_m *MockCniHandler) EXPECT() *MockCniHandler_Expecter {
 	return &MockCniHandler_Expecter{mock: &_m.Mock}
 }
 
-// AddDefaultRoute provides a mock function with given fields: nsPath, ip
-func (_m *MockCniHandler) AddDefaultRoute(nsPath string, ip netip.Addr) error {
-	ret := _m.Called(nsPath, ip)
+// AddDefaultRoute provides a mock function with given fields: nsPath, veth
+func (_m *MockCniHandler) AddDefaultRoute(nsPath string, veth datapath.VethPair) error {
+	ret := _m.Called(nsPath, veth)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddDefaultRoute")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, netip.Addr) error); ok {
-		r0 = rf(nsPath, ip)
+	if rf, ok := ret.Get(0).(func(string, datapath.VethPair) error); ok {
+		r0 = rf(nsPath, veth)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -48,14 +49,14 @@ type MockCniHandler_AddDefaultRoute_Call struct {
 
 // AddDefaultRoute is a helper method to define mock.On call
 //   - nsPath string
-//   - ip netip.Addr
-func (_e *MockCniHandler_Expecter) AddDefaultRoute(nsPath interface{}, ip interface{}) *MockCniHandler_AddDefaultRoute_Call {
-	return &MockCniHandler_AddDefaultRoute_Call{Call: _e.mock.On("AddDefaultRoute", nsPath, ip)}
+//   - veth datapath.VethPair
+func (_e *MockCniHandler_Expecter) AddDefaultRoute(nsPath interface{}, veth interface{}) *MockCniHandler_AddDefaultRoute_Call {
+	return &MockCniHandler_AddDefaultRoute_Call{Call: _e.mock.On("AddDefaultRoute", nsPath, veth)}
 }
 
-func (_c *MockCniHandler_AddDefaultRoute_Call) Run(run func(nsPath string, ip netip.Addr)) *MockCniHandler_AddDefaultRoute_Call {
+func (_c *MockCniHandler_AddDefaultRoute_Call) Run(run func(nsPath string, veth datapath.VethPair)) *MockCniHandler_AddDefaultRoute_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(netip.Addr))
+		run(args[0].(string), args[1].(datapath.VethPair))
 	})
 	return _c
 }
@@ -65,22 +66,22 @@ func (_c *MockCniHandler_AddDefaultRoute_Call) Return(_a0 error) *MockCniHandler
 	return _c
 }
 
-func (_c *MockCniHandler_AddDefaultRoute_Call) RunAndReturn(run func(string, netip.Addr) error) *MockCniHandler_AddDefaultRoute_Call {
+func (_c *MockCniHandler_AddDefaultRoute_Call) RunAndReturn(run func(string, datapath.VethPair) error) *MockCniHandler_AddDefaultRoute_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// AddFullMatchRoute provides a mock function with given fields: ifname, ip
-func (_m *MockCniHandler) AddFullMatchRoute(ifname string, ip netip.Addr) error {
-	ret := _m.Called(ifname, ip)
+// AddFullMatchRoute provides a mock function with given fields: veth
+func (_m *MockCniHandler) AddFullMatchRoute(veth datapath.VethPair) error {
+	ret := _m.Called(veth)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddFullMatchRoute")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, netip.Addr) error); ok {
-		r0 = rf(ifname, ip)
+	if rf, ok := ret.Get(0).(func(datapath.VethPair) error); ok {
+		r0 = rf(veth)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -94,15 +95,14 @@ type MockCniHandler_AddFullMatchRoute_Call struct {
 }
 
 // AddFullMatchRoute is a helper method to define mock.On call
-//   - ifname string
-//   - ip netip.Addr
-func (_e *MockCniHandler_Expecter) AddFullMatchRoute(ifname interface{}, ip interface{}) *MockCniHandler_AddFullMatchRoute_Call {
-	return &MockCniHandler_AddFullMatchRoute_Call{Call: _e.mock.On("AddFullMatchRoute", ifname, ip)}
+//   - veth datapath.VethPair
+func (_e *MockCniHandler_Expecter) AddFullMatchRoute(veth interface{}) *MockCniHandler_AddFullMatchRoute_Call {
+	return &MockCniHandler_AddFullMatchRoute_Call{Call: _e.mock.On("AddFullMatchRoute", veth)}
 }
 
-func (_c *MockCniHandler_AddFullMatchRoute_Call) Run(run func(ifname string, ip netip.Addr)) *MockCniHandler_AddFullMatchRoute_Call {
+func (_c *MockCniHandler_AddFullMatchRoute_Call) Run(run func(veth datapath.VethPair)) *MockCniHandler_AddFullMatchRoute_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(netip.Addr))
+		run(args[0].(datapath.VethPair))
 	})
 	return _c
 }
@@ -112,7 +112,7 @@ func (_c *MockCniHandler_AddFullMatchRoute_Call) Return(_a0 error) *MockCniHandl
 	return _c
 }
 
-func (_c *MockCniHandler_AddFullMatchRoute_Call) RunAndReturn(run func(string, netip.Addr) error) *MockCniHandler_AddFullMatchRoute_Call {
+func (_c *MockCniHandler_AddFullMatchRoute_Call) RunAndReturn(run func(datapath.VethPair) error) *MockCniHandler_AddFullMatchRoute_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -176,17 +176,75 @@ func (_c *MockCniHandler_AllocIPs_Call) RunAndReturn(run func(string, []byte) ([
 	return _c
 }
 
-// AttachCtrVethBPF provides a mock function with given fields: ifaceName, netNS
-func (_m *MockCniHandler) AttachCtrVethBPF(ifaceName string, netNS string) error {
-	ret := _m.Called(ifaceName, netNS)
+// AllocVethPair provides a mock function with given fields: netNS, hostAddr, podAddr
+func (_m *MockCniHandler) AllocVethPair(netNS string, hostAddr net.IPNet, podAddr net.IPNet) (datapath.VethPair, error) {
+	ret := _m.Called(netNS, hostAddr, podAddr)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AllocVethPair")
+	}
+
+	var r0 datapath.VethPair
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, net.IPNet, net.IPNet) (datapath.VethPair, error)); ok {
+		return rf(netNS, hostAddr, podAddr)
+	}
+	if rf, ok := ret.Get(0).(func(string, net.IPNet, net.IPNet) datapath.VethPair); ok {
+		r0 = rf(netNS, hostAddr, podAddr)
+	} else {
+		r0 = ret.Get(0).(datapath.VethPair)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, net.IPNet, net.IPNet) error); ok {
+		r1 = rf(netNS, hostAddr, podAddr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCniHandler_AllocVethPair_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AllocVethPair'
+type MockCniHandler_AllocVethPair_Call struct {
+	*mock.Call
+}
+
+// AllocVethPair is a helper method to define mock.On call
+//   - netNS string
+//   - hostAddr net.IPNet
+//   - podAddr net.IPNet
+func (_e *MockCniHandler_Expecter) AllocVethPair(netNS interface{}, hostAddr interface{}, podAddr interface{}) *MockCniHandler_AllocVethPair_Call {
+	return &MockCniHandler_AllocVethPair_Call{Call: _e.mock.On("AllocVethPair", netNS, hostAddr, podAddr)}
+}
+
+func (_c *MockCniHandler_AllocVethPair_Call) Run(run func(netNS string, hostAddr net.IPNet, podAddr net.IPNet)) *MockCniHandler_AllocVethPair_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(net.IPNet), args[2].(net.IPNet))
+	})
+	return _c
+}
+
+func (_c *MockCniHandler_AllocVethPair_Call) Return(_a0 datapath.VethPair, _a1 error) *MockCniHandler_AllocVethPair_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCniHandler_AllocVethPair_Call) RunAndReturn(run func(string, net.IPNet, net.IPNet) (datapath.VethPair, error)) *MockCniHandler_AllocVethPair_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AttachCtrVethBPF provides a mock function with given fields: veth, netNS
+func (_m *MockCniHandler) AttachCtrVethBPF(veth datapath.VethPair, netNS string) error {
+	ret := _m.Called(veth, netNS)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AttachCtrVethBPF")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string) error); ok {
-		r0 = rf(ifaceName, netNS)
+	if rf, ok := ret.Get(0).(func(datapath.VethPair, string) error); ok {
+		r0 = rf(veth, netNS)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -200,15 +258,15 @@ type MockCniHandler_AttachCtrVethBPF_Call struct {
 }
 
 // AttachCtrVethBPF is a helper method to define mock.On call
-//   - ifaceName string
+//   - veth datapath.VethPair
 //   - netNS string
-func (_e *MockCniHandler_Expecter) AttachCtrVethBPF(ifaceName interface{}, netNS interface{}) *MockCniHandler_AttachCtrVethBPF_Call {
-	return &MockCniHandler_AttachCtrVethBPF_Call{Call: _e.mock.On("AttachCtrVethBPF", ifaceName, netNS)}
+func (_e *MockCniHandler_Expecter) AttachCtrVethBPF(veth interface{}, netNS interface{}) *MockCniHandler_AttachCtrVethBPF_Call {
+	return &MockCniHandler_AttachCtrVethBPF_Call{Call: _e.mock.On("AttachCtrVethBPF", veth, netNS)}
 }
 
-func (_c *MockCniHandler_AttachCtrVethBPF_Call) Run(run func(ifaceName string, netNS string)) *MockCniHandler_AttachCtrVethBPF_Call {
+func (_c *MockCniHandler_AttachCtrVethBPF_Call) Run(run func(veth datapath.VethPair, netNS string)) *MockCniHandler_AttachCtrVethBPF_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
+		run(args[0].(datapath.VethPair), args[1].(string))
 	})
 	return _c
 }
@@ -218,22 +276,22 @@ func (_c *MockCniHandler_AttachCtrVethBPF_Call) Return(_a0 error) *MockCniHandle
 	return _c
 }
 
-func (_c *MockCniHandler_AttachCtrVethBPF_Call) RunAndReturn(run func(string, string) error) *MockCniHandler_AttachCtrVethBPF_Call {
+func (_c *MockCniHandler_AttachCtrVethBPF_Call) RunAndReturn(run func(datapath.VethPair, string) error) *MockCniHandler_AttachCtrVethBPF_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// AttachDNATBPF provides a mock function with given fields: ifaceName
-func (_m *MockCniHandler) AttachDNATBPF(ifaceName string) error {
-	ret := _m.Called(ifaceName)
+// AttachDNATBPF provides a mock function with given fields: veth
+func (_m *MockCniHandler) AttachDNATBPF(veth datapath.VethPair) error {
+	ret := _m.Called(veth)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AttachDNATBPF")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(ifaceName)
+	if rf, ok := ret.Get(0).(func(datapath.VethPair) error); ok {
+		r0 = rf(veth)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -247,14 +305,14 @@ type MockCniHandler_AttachDNATBPF_Call struct {
 }
 
 // AttachDNATBPF is a helper method to define mock.On call
-//   - ifaceName string
-func (_e *MockCniHandler_Expecter) AttachDNATBPF(ifaceName interface{}) *MockCniHandler_AttachDNATBPF_Call {
-	return &MockCniHandler_AttachDNATBPF_Call{Call: _e.mock.On("AttachDNATBPF", ifaceName)}
+//   - veth datapath.VethPair
+func (_e *MockCniHandler_Expecter) AttachDNATBPF(veth interface{}) *MockCniHandler_AttachDNATBPF_Call {
+	return &MockCniHandler_AttachDNATBPF_Call{Call: _e.mock.On("AttachDNATBPF", veth)}
 }
 
-func (_c *MockCniHandler_AttachDNATBPF_Call) Run(run func(ifaceName string)) *MockCniHandler_AttachDNATBPF_Call {
+func (_c *MockCniHandler_AttachDNATBPF_Call) Run(run func(veth datapath.VethPair)) *MockCniHandler_AttachDNATBPF_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(datapath.VethPair))
 	})
 	return _c
 }
@@ -264,22 +322,22 @@ func (_c *MockCniHandler_AttachDNATBPF_Call) Return(_a0 error) *MockCniHandler_A
 	return _c
 }
 
-func (_c *MockCniHandler_AttachDNATBPF_Call) RunAndReturn(run func(string) error) *MockCniHandler_AttachDNATBPF_Call {
+func (_c *MockCniHandler_AttachDNATBPF_Call) RunAndReturn(run func(datapath.VethPair) error) *MockCniHandler_AttachDNATBPF_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// AttachHostVethBPF provides a mock function with given fields: ifaceName
-func (_m *MockCniHandler) AttachHostVethBPF(ifaceName string) error {
-	ret := _m.Called(ifaceName)
+// AttachHostVethBPF provides a mock function with given fields: veth
+func (_m *MockCniHandler) AttachHostVethBPF(veth datapath.VethPair) error {
+	ret := _m.Called(veth)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AttachHostVethBPF")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(ifaceName)
+	if rf, ok := ret.Get(0).(func(datapath.VethPair) error); ok {
+		r0 = rf(veth)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -293,14 +351,14 @@ type MockCniHandler_AttachHostVethBPF_Call struct {
 }
 
 // AttachHostVethBPF is a helper method to define mock.On call
-//   - ifaceName string
-func (_e *MockCniHandler_Expecter) AttachHostVethBPF(ifaceName interface{}) *MockCniHandler_AttachHostVethBPF_Call {
-	return &MockCniHandler_AttachHostVethBPF_Call{Call: _e.mock.On("AttachHostVethBPF", ifaceName)}
+//   - veth datapath.VethPair
+func (_e *MockCniHandler_Expecter) AttachHostVethBPF(veth interface{}) *MockCniHandler_AttachHostVethBPF_Call {
+	return &MockCniHandler_AttachHostVethBPF_Call{Call: _e.mock.On("AttachHostVethBPF", veth)}
 }
 
-func (_c *MockCniHandler_AttachHostVethBPF_Call) Run(run func(ifaceName string)) *MockCniHandler_AttachHostVethBPF_Call {
+func (_c *MockCniHandler_AttachHostVethBPF_Call) Run(run func(veth datapath.VethPair)) *MockCniHandler_AttachHostVethBPF_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(datapath.VethPair))
 	})
 	return _c
 }
@@ -310,22 +368,22 @@ func (_c *MockCniHandler_AttachHostVethBPF_Call) Return(_a0 error) *MockCniHandl
 	return _c
 }
 
-func (_c *MockCniHandler_AttachHostVethBPF_Call) RunAndReturn(run func(string) error) *MockCniHandler_AttachHostVethBPF_Call {
+func (_c *MockCniHandler_AttachHostVethBPF_Call) RunAndReturn(run func(datapath.VethPair) error) *MockCniHandler_AttachHostVethBPF_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// ConfigureSNAT provides a mock function with given fields: ifaceName
-func (_m *MockCniHandler) ConfigureSNAT(ifaceName string) error {
-	ret := _m.Called(ifaceName)
+// ConfigureSNAT provides a mock function with given fields: ip, ifaceIndex
+func (_m *MockCniHandler) ConfigureSNAT(ip net.IP, ifaceIndex uint8) error {
+	ret := _m.Called(ip, ifaceIndex)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ConfigureSNAT")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(ifaceName)
+	if rf, ok := ret.Get(0).(func(net.IP, uint8) error); ok {
+		r0 = rf(ip, ifaceIndex)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -339,14 +397,15 @@ type MockCniHandler_ConfigureSNAT_Call struct {
 }
 
 // ConfigureSNAT is a helper method to define mock.On call
-//   - ifaceName string
-func (_e *MockCniHandler_Expecter) ConfigureSNAT(ifaceName interface{}) *MockCniHandler_ConfigureSNAT_Call {
-	return &MockCniHandler_ConfigureSNAT_Call{Call: _e.mock.On("ConfigureSNAT", ifaceName)}
+//   - ip net.IP
+//   - ifaceIndex uint8
+func (_e *MockCniHandler_Expecter) ConfigureSNAT(ip interface{}, ifaceIndex interface{}) *MockCniHandler_ConfigureSNAT_Call {
+	return &MockCniHandler_ConfigureSNAT_Call{Call: _e.mock.On("ConfigureSNAT", ip, ifaceIndex)}
 }
 
-func (_c *MockCniHandler_ConfigureSNAT_Call) Run(run func(ifaceName string)) *MockCniHandler_ConfigureSNAT_Call {
+func (_c *MockCniHandler_ConfigureSNAT_Call) Run(run func(ip net.IP, ifaceIndex uint8)) *MockCniHandler_ConfigureSNAT_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(net.IP), args[1].(uint8))
 	})
 	return _c
 }
@@ -356,71 +415,7 @@ func (_c *MockCniHandler_ConfigureSNAT_Call) Return(_a0 error) *MockCniHandler_C
 	return _c
 }
 
-func (_c *MockCniHandler_ConfigureSNAT_Call) RunAndReturn(run func(string) error) *MockCniHandler_ConfigureSNAT_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// CreateAndConfigureVethPair provides a mock function with given fields: netNS, ips
-func (_m *MockCniHandler) CreateAndConfigureVethPair(netNS string, ips []*types100.IPConfig) (string, string, error) {
-	ret := _m.Called(netNS, ips)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CreateAndConfigureVethPair")
-	}
-
-	var r0 string
-	var r1 string
-	var r2 error
-	if rf, ok := ret.Get(0).(func(string, []*types100.IPConfig) (string, string, error)); ok {
-		return rf(netNS, ips)
-	}
-	if rf, ok := ret.Get(0).(func(string, []*types100.IPConfig) string); ok {
-		r0 = rf(netNS, ips)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(string, []*types100.IPConfig) string); ok {
-		r1 = rf(netNS, ips)
-	} else {
-		r1 = ret.Get(1).(string)
-	}
-
-	if rf, ok := ret.Get(2).(func(string, []*types100.IPConfig) error); ok {
-		r2 = rf(netNS, ips)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
-}
-
-// MockCniHandler_CreateAndConfigureVethPair_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateAndConfigureVethPair'
-type MockCniHandler_CreateAndConfigureVethPair_Call struct {
-	*mock.Call
-}
-
-// CreateAndConfigureVethPair is a helper method to define mock.On call
-//   - netNS string
-//   - ips []*types100.IPConfig
-func (_e *MockCniHandler_Expecter) CreateAndConfigureVethPair(netNS interface{}, ips interface{}) *MockCniHandler_CreateAndConfigureVethPair_Call {
-	return &MockCniHandler_CreateAndConfigureVethPair_Call{Call: _e.mock.On("CreateAndConfigureVethPair", netNS, ips)}
-}
-
-func (_c *MockCniHandler_CreateAndConfigureVethPair_Call) Run(run func(netNS string, ips []*types100.IPConfig)) *MockCniHandler_CreateAndConfigureVethPair_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].([]*types100.IPConfig))
-	})
-	return _c
-}
-
-func (_c *MockCniHandler_CreateAndConfigureVethPair_Call) Return(_a0 string, _a1 string, _a2 error) *MockCniHandler_CreateAndConfigureVethPair_Call {
-	_c.Call.Return(_a0, _a1, _a2)
-	return _c
-}
-
-func (_c *MockCniHandler_CreateAndConfigureVethPair_Call) RunAndReturn(run func(string, []*types100.IPConfig) (string, string, error)) *MockCniHandler_CreateAndConfigureVethPair_Call {
+func (_c *MockCniHandler_ConfigureSNAT_Call) RunAndReturn(run func(net.IP, uint8) error) *MockCniHandler_ConfigureSNAT_Call {
 	_c.Call.Return(run)
 	return _c
 }

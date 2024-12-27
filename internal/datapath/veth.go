@@ -19,17 +19,15 @@
 package datapath
 
 import (
-	"fmt"
 	"net"
 )
 
-func IfaceByName(name string) (Iface, error) {
-	iface, err := net.InterfaceByName(name)
-	if err != nil {
-		return Iface{}, fmt.Errorf("get iface: %w", err)
-	}
-	return Iface{
-		Index: iface.Index,
-		Name:  iface.Name,
-	}, nil
+type VethPair struct {
+	HostPeer VethPeer
+	PodPeer  VethPeer
+}
+
+type VethPeer struct {
+	Iface *net.Interface
+	Addr  net.IPNet
 }

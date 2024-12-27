@@ -25,6 +25,7 @@ import (
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/spacechunks/platform/internal/cni"
+	"github.com/spacechunks/platform/internal/datapath"
 	"github.com/spacechunks/platform/internal/mock"
 	"github.com/stretchr/testify/assert"
 
@@ -60,13 +61,13 @@ func TestExecAdd(t *testing.T) {
 					AllocIPs("host-local", args.StdinData).
 					Return(ips, nil)
 				h.EXPECT().
-					CreateAndConfigureVethPair(args.Netns, ips).
-					Return("hostVeth", "podVeth", nil)
+					AllocVethPair(args.Netns, nil, nil).
+					Return(datapath.VethPair{}, nil)
 				h.EXPECT().
 					AttachHostVethBPF("hostVeth").
 					Return(nil)
 				h.EXPECT().
-					ConfigureSNAT("eth0").
+					ConfigureSNAT(nil, "").
 					Return(nil)
 				h.EXPECT().
 					AddDefaultRoute(args.Netns, ""). // TODO fix
