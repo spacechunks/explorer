@@ -20,11 +20,9 @@ package cni
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"net/netip"
 	"os"
 	"strings"
 
@@ -32,18 +30,16 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	current "github.com/containernetworking/cni/pkg/types/100"
 	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
-	ErrHostIfaceNotFound  = errors.New("host interface not set")
-	ErrIPAMConfigNotFound = errors.New("ipam config not set")
+	ErrPlatformdListenSockNotSet = errors.New("platformd listen socket not set")
+	ErrIPAMConfigNotSet          = errors.New("ipam config not set")
+	ErrPodUIDMissing             = errors.New("K8S_POD_UID in CNI_ARGS missing")
 )
 
 type Conf struct {
 	types.NetConf
-	HostIface           string `json:"hostIface"`
 	PlatformdListenSock string `json:"platformdListenSock"`
 }
 
@@ -64,7 +60,7 @@ func NewCNI(h Handler) *CNI {
 // * configure ip address on container iface and bring it up.
 // * configure ip address on host iface and bring it up.
 // * attach snat bpf program to host-side veth peer (tc ingress)
-func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
+func (c *CNI) ExecAdd(args *skel.CmdArgs, conf Conf, client proxyv1alpha1.ProxyServiceClient) (err error) {
 	ctx := context.Background()
 
 	cniArgs, err := parseArgs(args.Args)
@@ -75,26 +71,21 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 	// workload service sets the pod uid to the workloads ID
 	wlID, ok := cniArgs["K8S_POD_UID"]
 	if !ok {
-		return fmt.Errorf("CNI_ARGS K8S_POD_UID missing")
+		return ErrPodUIDMissing
 	}
 
-	var conf Conf
-	if err := json.Unmarshal(args.StdinData, &conf); err != nil {
-		return fmt.Errorf("parse network config: %v", err)
+	if conf.PlatformdListenSock == "" {
+		return ErrPlatformdListenSockNotSet
 	}
 
 	if conf.IPAM == (types.IPAM{}) {
-		return ErrIPAMConfigNotFound
-	}
-
-	if conf.HostIface == "" {
-		return ErrHostIfaceNotFound
+		return ErrIPAMConfigNotSet
 	}
 
 	// TODO: move to platformd
-	if err := c.handler.AttachDNATBPF(conf.HostIface); err != nil {
-		return fmt.Errorf("failed to attach dnat bpf to %s: %w", conf.HostIface, err)
-	}
+	//if err := c.handler.AttachDNATBPF(conf.HostIface); err != nil {
+	//	return fmt.Errorf("failed to attach dnat bpf to %s: %w", conf.HostIface, err)
+	//}
 
 	defer func() {
 		if err != nil {
@@ -113,47 +104,35 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return fmt.Errorf("ipam: need two ips")
 	}
 
-	// TODO: refactor
-	hostPeerAddr := ips[0].Address
-	podPeerAddr := ips[1].Address
-
-	hostVethName, podVethName, err := c.handler.CreateAndConfigureVethPair(args.Netns, ips)
+	veth, err := c.handler.AllocVethPair(args.Netns, ips[0] /* host */, ips[1] /* pod */)
 	if err != nil {
 		return fmt.Errorf("configure veth pair: %w", err)
 	}
 
-	if err := c.handler.AttachHostVethBPF(hostVethName); err != nil {
+	if err := c.handler.AttachHostVethBPF(veth); err != nil {
 		return fmt.Errorf("attach host peer: %w", err)
 	}
 
-	if err := c.handler.AttachCtrVethBPF(podVethName, args.Netns); err != nil {
+	if err := c.handler.AttachCtrVethBPF(veth, args.Netns); err != nil {
 		return fmt.Errorf("attach ctr peer: %w", err)
 	}
 
-	if err := c.handler.ConfigureSNAT(conf.HostIface); err != nil {
-		return fmt.Errorf("configure snat: %w", err)
-	}
+	// TODO: move to plarformd
+	//if err := c.handler.ConfigureSNAT(conf.HostIface); err != nil {
+	//	return fmt.Errorf("configure snat: %w", err)
+	//}
 
-	if err := c.handler.AddDefaultRoute(args.Netns, netip.MustParseAddr(podPeerAddr.IP.String())); err != nil {
+	if err := c.handler.AddDefaultRoute(veth, args.Netns); err != nil {
 		return fmt.Errorf("add default route: %w", err)
 	}
 
-	if err := c.handler.AddFullMatchRoute(hostVethName, netip.MustParseAddr(podPeerAddr.IP.String())); err != nil {
+	if err := c.handler.AddFullMatchRoute(veth); err != nil {
 		return fmt.Errorf("add full match route: %w", err)
 	}
 
-	proxyConn, err := grpc.NewClient(
-		conf.PlatformdListenSock,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create proxy service grpc client: %w", err)
-	}
-
-	client := proxyv1alpha1.NewProxyServiceClient(proxyConn)
 	if _, err := client.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: wlID,
-		Ip:         hostPeerAddr.IP.String(),
+		Ip:         veth.HostPeer.Addr.IP.String(),
 	}); err != nil {
 		return fmt.Errorf("create proxy listeners: %w", err)
 	}
@@ -162,7 +141,7 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		CNIVersion: supportedCNIVersion,
 		Interfaces: []*current.Interface{
 			{
-				Name:    podVethName,
+				Name:    veth.PodPeer.Iface.Name,
 				Sandbox: args.Netns,
 			},
 		},

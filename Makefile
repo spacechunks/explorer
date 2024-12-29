@@ -1,21 +1,28 @@
 WORKDIR := work
-CNI_PLUGINS := $(WORKDIR)/plugins/bin
-SUDO := $(sudo --preserve-env=PATH,CNI_PATH env)
+CNI_PLUGINS := $(WORKDIR)/plugins
+SUDO := sudo --preserve-env=PATH env
+OS := $(shell uname)
+
+ifeq ($(OS), Darwin)
+	RUN := @limactl shell xcomp
+else
+	RUN := $(shell)
+endif
 
 
 .PHONY: setup
 setup:
-	$(SUDO) apt update
-	$(SUDO) apt install -y linux-tools-common libbpf-dev
-	$(SUDO) mount bpffs /sys/fs/bpf -t bpf
+	$(RUN) $(SUDO) apt update
+	$(RUN) $(SUDO) apt install -y linux-tools-common libbpf-dev
+	$(RUN) $(SUDO) mount bpffs /sys/fs/bpf -t bpf
 
 .PHONY: vmlinux
 vmlinux:
-	bpftool btf dump file /sys/kernel/btf/vmlinux format c > internal/tun/bpf/include/vmlinux.h
+	$(RUN) bpftool btf dump file /sys/kernel/btf/vmlinux format c > internal/datapath/bpf/include/vmlinux.h
 
 .PHONY: gogen
 gogen:
-	go generate ./...
+	$(RUN) go generate ./...
 
 .PHONY: genproto
 genproto:
@@ -30,11 +37,8 @@ e2etests:
 	GOOS=linux GOARCH=arm64 go build -o ./nodedev/ptpnat ./cmd/ptpnat/main.go
 	$(SUDO) go test ./test/e2e/...
 
-# functests require CNI_PATH to be set
-export CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)
-
 functests: $(CNI_PLUGINS)
-	$(SUDO) go test ./test/functional/...
+	$(RUN) $(SUDO) CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin go test -v ./test/functional/...
 
 $(CNI_PLUGINS): $(WORKDIR)
 	git clone git@github.com:containernetworking/plugins.git $(CNI_PLUGINS)

@@ -19,11 +19,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/version"
+	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
 	"github.com/spacechunks/platform/internal/cni"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -33,10 +38,22 @@ func main() {
 	}
 	c := cni.NewCNI(handler)
 	skel.PluginMainFuncs(skel.CNIFuncs{
-		Add:    c.ExecAdd,
-		Del:    c.ExecDel,
-		Check:  nil,
-		GC:     nil,
-		Status: nil,
-	}, version.All, "TODO")
+		Add: func(args *skel.CmdArgs) error {
+			var conf cni.Conf
+			if err := json.Unmarshal(args.StdinData, &conf); err != nil {
+				return fmt.Errorf("parse config: %v", err)
+			}
+			proxyConn, err := grpc.NewClient(
+				conf.PlatformdListenSock,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create proxy service grpc client: %w", err)
+			}
+
+			client := proxyv1alpha1.NewProxyServiceClient(proxyConn)
+			return c.ExecAdd(args, conf, client)
+		},
+		Del: c.ExecDel,
+	}, version.All, "netglue: provides networking for chunks")
 }

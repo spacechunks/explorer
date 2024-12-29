@@ -111,3 +111,6 @@ func RequireAddrConfigured(t *testing.T, ifaceName, expectedAddr string) {
 	}
 	t.Fatalf("expected %s to be configured", expectedAddr)
 }
+
+func ListProgs(t *testing.T) {
+}

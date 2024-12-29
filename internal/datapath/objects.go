@@ -36,13 +36,14 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang-18 -strip llvm-strip-18 tproxy ./bpf/tproxy.c -- -I ./bpf -I ./bpf/include
 
 const (
-	progPinPath = "/sys/fs/bpf/progs"
+	ProgPinPath = "/sys/fs/bpf/progs"
 	mapPinPath  = "/sys/fs/bpf/maps"
 )
 
 type Iface struct {
 	Name  string
 	Index int
+	Addr  netip.Prefix
 }
 
 type Objects struct {
@@ -53,7 +54,7 @@ type Objects struct {
 }
 
 func LoadBPF() (*Objects, error) {
-	if err := os.MkdirAll(progPinPath, 0777); err != nil {
+	if err := os.MkdirAll(ProgPinPath, 0777); err != nil {
 		return nil, fmt.Errorf("create prog dir: %w", err)
 	}
 
@@ -105,7 +106,7 @@ func LoadBPF() (*Objects, error) {
 	}, nil
 }
 
-func (o *Objects) AttachAndPinSNAT(iface Iface) error {
+func (o *Objects) AttachAndPinSNAT(iface *net.Interface) error {
 	l, err := link.AttachTCX(link.TCXOptions{
 		Interface: iface.Index,
 		Program:   o.snatObjs.Snat,
@@ -116,14 +117,14 @@ func (o *Objects) AttachAndPinSNAT(iface Iface) error {
 	}
 
 	// pin because cni is short-lived
-	if err := l.Pin(fmt.Sprintf("%s/snat_%s", progPinPath, iface.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/snat_%s", ProgPinPath, iface.Name)); err != nil {
 		return fmt.Errorf("pin link: %w", err)
 	}
 
 	return nil
 }
 
-func (o *Objects) AttachAndPinDNAT(iface Iface) error {
+func (o *Objects) AttachAndPinDNAT(iface *net.Interface) error {
 	l, err := link.AttachTCX(link.TCXOptions{
 		Interface: iface.Index,
 		Program:   o.dnatObjs.Dnat,
@@ -134,14 +135,14 @@ func (o *Objects) AttachAndPinDNAT(iface Iface) error {
 	}
 
 	// pin because cni is short-lived
-	if err := l.Pin(fmt.Sprintf("%s/dnat_%s", progPinPath, iface.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/dnat_%s", ProgPinPath, iface.Name)); err != nil {
 		return fmt.Errorf("pin link: %w", err)
 	}
 
 	return nil
 }
 
-func (o *Objects) AttachAndPinARP(iface Iface) error {
+func (o *Objects) AttachAndPinARP(iface *net.Interface) error {
 	l, err := link.AttachTCX(link.TCXOptions{
 		Interface: iface.Index,
 		Program:   o.arpObjs.Arp,
@@ -152,7 +153,7 @@ func (o *Objects) AttachAndPinARP(iface Iface) error {
 	}
 
 	// pin because cni is short-lived
-	if err := l.Pin(fmt.Sprintf("%s/arp_%s", progPinPath, iface.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/arp_%s", ProgPinPath, iface.Name)); err != nil {
 		return fmt.Errorf("pin link: %w", err)
 	}
 
@@ -168,7 +169,7 @@ func (o *Objects) AttachAndPinGetsockopt(cgroupPath string) error {
 	if err != nil {
 		return fmt.Errorf("attach: %w", err)
 	}
-	if err := l.Pin(fmt.Sprintf("%s/cgroup_getsockopt", progPinPath)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/cgroup_getsockopt", ProgPinPath)); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return nil
 		}
@@ -178,7 +179,7 @@ func (o *Objects) AttachAndPinGetsockopt(cgroupPath string) error {
 	return nil
 }
 
-func (o *Objects) AttachTProxyHostEgress(hostPeer Iface) error {
+func (o *Objects) AttachTProxyHostEgress(hostPeer *net.Interface) error {
 	l, err := link.AttachTCX(link.TCXOptions{
 		Interface: hostPeer.Index,
 		Program:   o.tproxyObjs.HostPeerEgress,
@@ -188,14 +189,14 @@ func (o *Objects) AttachTProxyHostEgress(hostPeer Iface) error {
 		return fmt.Errorf("attach: %w", err)
 	}
 
-	if err := l.Pin(fmt.Sprintf("%s/host_peer_egress_%s", progPinPath, hostPeer.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/host_peer_egress_%s", ProgPinPath, hostPeer.Name)); err != nil {
 		return fmt.Errorf("pin: %w", err)
 	}
 
 	return nil
 }
 
-func (o *Objects) AttachTProxyCtrEgress(ctrPeer Iface) error {
+func (o *Objects) AttachTProxyCtrEgress(ctrPeer *net.Interface) error {
 	l, err := link.AttachTCX(link.TCXOptions{
 		Interface: ctrPeer.Index,
 		Program:   o.tproxyObjs.CtrPeerEgress,
@@ -205,7 +206,7 @@ func (o *Objects) AttachTProxyCtrEgress(ctrPeer Iface) error {
 		return fmt.Errorf("attach: %w", err)
 	}
 
-	if err := l.Pin(fmt.Sprintf("%s/host_peer_egress_%s", progPinPath, ctrPeer.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/ctr_peer_egress_%s", ProgPinPath, ctrPeer.Name)); err != nil {
 		return fmt.Errorf("pin: %w", err)
 	}
 
@@ -225,10 +226,10 @@ func (o *Objects) AddDNATTarget(key uint16, ip netip.Addr, ifaceIdx uint8, mac n
 	return nil
 }
 
-func (o *Objects) AddSNATTarget(key uint8, ip netip.Addr, ifaceIdx uint8) error {
-	sl := ip.As4()
+func (o *Objects) AddSNATTarget(key uint8, ip net.IP, ifaceIdx uint8) error {
+	binary.BigEndian.Uint32(ip)
 	if err := o.snatObjs.PtpSnatConfig.Put(key, snatPtpSnatEntry{
-		IpAddr:   binary.BigEndian.Uint32(sl[:]), // network byte order is big endian
+		IpAddr:   binary.BigEndian.Uint32(ip), // network byte order is big endian
 		IfaceIdx: ifaceIdx,
 	}); err != nil {
 		return err
@@ -237,18 +238,17 @@ func (o *Objects) AddSNATTarget(key uint8, ip netip.Addr, ifaceIdx uint8) error 
 	return nil
 }
 
-func (o *Objects) AddVethPairEntry(hostIfaceIdx uint32, ctrIfaceIdx uint32, ip netip.Addr) error {
-	sl := ip.As4()
+func (o *Objects) AddVethPairEntry(hostIfaceIdx uint32, ctrIfaceIdx uint32, ip net.IP) error {
 	if err := o.tproxyObjs.VethPairMap.Put(hostIfaceIdx, tproxyVethPair{
 		HostIfIndex: hostIfaceIdx,
-		HostIfAddr:  binary.BigEndian.Uint32(sl[:]),
+		HostIfAddr:  binary.BigEndian.Uint32(ip),
 	}); err != nil {
 		return fmt.Errorf("host: %w", err)
 	}
 
 	if err := o.tproxyObjs.VethPairMap.Put(ctrIfaceIdx, tproxyVethPair{
 		HostIfIndex: hostIfaceIdx,
-		HostIfAddr:  binary.BigEndian.Uint32(sl[:]),
+		HostIfAddr:  binary.BigEndian.Uint32(ip),
 	}); err != nil {
 		return fmt.Errorf("ctr: %w", err)
 	}
