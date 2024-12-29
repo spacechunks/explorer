@@ -38,16 +38,3 @@ func mustParseMAC(s string) net.HardwareAddr {
 	}
 	return mac
 }
-
-func mustParseCIDR(cidr string) *net.IPNet {
-	ip, ipNet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		panic(err)
-	}
-	// for some reason the host part is lost
-	// in ipNet. 10.0.0.1/24 -> 10.0.0.0/24
-	return &net.IPNet{
-		IP:   ip,
-		Mask: ipNet.Mask,
-	}
-}
