@@ -166,8 +166,7 @@ func TestExecAdd(t *testing.T) {
 				PlatformdListenSock: "/some/path",
 			},
 			args: &skel.CmdArgs{
-				Args:      "K8S_POD_NAMESPACE=abc",
-				StdinData: []byte(`{}`),
+				Args: "K8S_POD_NAMESPACE=abc",
 			},
 			err:  cni.ErrPodUIDMissing,
 			prep: func(h *mock.MockCniHandler, _ *mock.MockV1alpha1ProxyServiceClient, args *skel.CmdArgs) {},
@@ -183,11 +182,33 @@ func TestExecAdd(t *testing.T) {
 				PlatformdListenSock: "/some/path",
 			},
 			args: &skel.CmdArgs{
-				Args:      "K8S_POD_NAMESPACE=abc,K8S_POD_NAME=",
-				StdinData: []byte(`{}`),
+				Args: "K8S_POD_NAMESPACE=abc,K8S_POD_NAME=",
 			},
 			err:  fmt.Errorf("CNI_ARGS parse error: invalid CNI_ARGS pair \"K8S_POD_NAMESPACE=abc,K8S_POD_NAME=\""),
 			prep: func(h *mock.MockCniHandler, _ *mock.MockV1alpha1ProxyServiceClient, args *skel.CmdArgs) {},
+		},
+		{
+			name: "fail if we have less than two ip addresses",
+			conf: cni.Conf{
+				NetConf: types.NetConf{
+					IPAM: types.IPAM{
+						Type: "host-local",
+					},
+				},
+				PlatformdListenSock: "/some/path",
+			},
+			args: &skel.CmdArgs{
+				Args: "K8S_POD_UID=uuidv7",
+			},
+			err: cni.ErrInsufficientAddresses,
+			prep: func(h *mock.MockCniHandler, _ *mock.MockV1alpha1ProxyServiceClient, args *skel.CmdArgs) {
+				h.EXPECT().
+					AllocIPs("host-local", args.StdinData).
+					Return([]net.IPNet{{}}, nil)
+				h.EXPECT().
+					DeallocIPs("host-local", args.StdinData).
+					Return(nil)
+			},
 		},
 	}
 	for _, tt := range tests {

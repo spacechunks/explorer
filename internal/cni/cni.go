@@ -36,6 +36,7 @@ var (
 	ErrPlatformdListenSockNotSet = errors.New("platformd listen socket not set")
 	ErrIPAMConfigNotSet          = errors.New("ipam config not set")
 	ErrPodUIDMissing             = errors.New("K8S_POD_UID in CNI_ARGS missing")
+	ErrInsufficientAddresses     = errors.New("ipam: need 2 ip addresses")
 )
 
 type Conf struct {
@@ -101,7 +102,7 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs, conf Conf, client proxyv1alpha1.ProxyS
 	}
 
 	if len(ips) < 2 {
-		return fmt.Errorf("ipam: need two ips")
+		return ErrInsufficientAddresses
 	}
 
 	veth, err := c.handler.AllocVethPair(args.Netns, ips[0] /* host */, ips[1] /* pod */)
