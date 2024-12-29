@@ -54,9 +54,6 @@ func main() {
 			client := proxyv1alpha1.NewProxyServiceClient(proxyConn)
 			return c.ExecAdd(args, conf, client)
 		},
-		Del:    c.ExecDel,
-		Check:  nil,
-		GC:     nil,
-		Status: nil,
-	}, version.All, "TODO")
+		Del: c.ExecDel,
+	}, version.All, "netglue: provide networking for chunks")
 }
