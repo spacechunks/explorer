@@ -36,7 +36,7 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang-18 -strip llvm-strip-18 tproxy ./bpf/tproxy.c -- -I ./bpf -I ./bpf/include
 
 const (
-	progPinPath = "/sys/fs/bpf/progs"
+	ProgPinPath = "/sys/fs/bpf/progs"
 	mapPinPath  = "/sys/fs/bpf/maps"
 )
 
@@ -54,7 +54,7 @@ type Objects struct {
 }
 
 func LoadBPF() (*Objects, error) {
-	if err := os.MkdirAll(progPinPath, 0777); err != nil {
+	if err := os.MkdirAll(ProgPinPath, 0777); err != nil {
 		return nil, fmt.Errorf("create prog dir: %w", err)
 	}
 
@@ -117,7 +117,7 @@ func (o *Objects) AttachAndPinSNAT(iface *net.Interface) error {
 	}
 
 	// pin because cni is short-lived
-	if err := l.Pin(fmt.Sprintf("%s/snat_%s", progPinPath, iface.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/snat_%s", ProgPinPath, iface.Name)); err != nil {
 		return fmt.Errorf("pin link: %w", err)
 	}
 
@@ -135,7 +135,7 @@ func (o *Objects) AttachAndPinDNAT(iface *net.Interface) error {
 	}
 
 	// pin because cni is short-lived
-	if err := l.Pin(fmt.Sprintf("%s/dnat_%s", progPinPath, iface.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/dnat_%s", ProgPinPath, iface.Name)); err != nil {
 		return fmt.Errorf("pin link: %w", err)
 	}
 
@@ -153,7 +153,7 @@ func (o *Objects) AttachAndPinARP(iface *net.Interface) error {
 	}
 
 	// pin because cni is short-lived
-	if err := l.Pin(fmt.Sprintf("%s/arp_%s", progPinPath, iface.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/arp_%s", ProgPinPath, iface.Name)); err != nil {
 		return fmt.Errorf("pin link: %w", err)
 	}
 
@@ -169,7 +169,7 @@ func (o *Objects) AttachAndPinGetsockopt(cgroupPath string) error {
 	if err != nil {
 		return fmt.Errorf("attach: %w", err)
 	}
-	if err := l.Pin(fmt.Sprintf("%s/cgroup_getsockopt", progPinPath)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/cgroup_getsockopt", ProgPinPath)); err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return nil
 		}
@@ -189,7 +189,7 @@ func (o *Objects) AttachTProxyHostEgress(hostPeer *net.Interface) error {
 		return fmt.Errorf("attach: %w", err)
 	}
 
-	if err := l.Pin(fmt.Sprintf("%s/host_peer_egress_%s", progPinPath, hostPeer.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/host_peer_egress_%s", ProgPinPath, hostPeer.Name)); err != nil {
 		return fmt.Errorf("pin: %w", err)
 	}
 
@@ -206,7 +206,7 @@ func (o *Objects) AttachTProxyCtrEgress(ctrPeer *net.Interface) error {
 		return fmt.Errorf("attach: %w", err)
 	}
 
-	if err := l.Pin(fmt.Sprintf("%s/host_peer_egress_%s", progPinPath, ctrPeer.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/host_peer_egress_%s", ProgPinPath, ctrPeer.Name)); err != nil {
 		return fmt.Errorf("pin: %w", err)
 	}
 
