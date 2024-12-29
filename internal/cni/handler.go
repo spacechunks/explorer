@@ -45,7 +45,7 @@ type Handler interface {
 	DeallocIPs(plugin string, stdinData []byte) error
 	AttachDNATBPF(veth datapath.VethPair) error
 	ConfigureSNAT(ip net.IP, ifaceIndex uint8) error
-	AddDefaultRoute(nsPath string, veth datapath.VethPair) error
+	AddDefaultRoute(veth datapath.VethPair, nsPath string) error
 
 	// AddFullMatchRoute will create a rule in the root ns, which routes packets
 	// with the fully matching ip address (/32 CIDR) to the given interface.
@@ -201,7 +201,7 @@ func (h *cniHandler) ConfigureSNAT(ip net.IP, ifaceIndex uint8) error {
 	return nil
 }
 
-func (h *cniHandler) AddDefaultRoute(nsPath string, veth datapath.VethPair) error {
+func (h *cniHandler) AddDefaultRoute(veth datapath.VethPair, nsPath string) error {
 	if err := ns.WithNetNSPath(nsPath, func(_ ns.NetNS) error {
 		// for default gateway we can leave destination empty.
 		// we also do not need to specify the device, the kernel

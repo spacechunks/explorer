@@ -134,7 +134,7 @@ func TestAddDefaultRoute(t *testing.T) {
 	require.NoError(t, err)
 
 	nsPath, veth := setup(t, h)
-	require.NoError(t, h.AddDefaultRoute(nsPath, veth))
+	require.NoError(t, h.AddDefaultRoute(veth, nsPath))
 
 	err = ns.WithNetNSPath(nsPath, func(netNS ns.NetNS) error {
 		routes, err := netlink.RouteList(nil, unix.AF_INET)

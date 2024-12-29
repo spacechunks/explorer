@@ -8,6 +8,9 @@ packages:
   github.com/spacechunks/platform/internal/cni:
     interfaces:
       Handler:
+  github.com/spacechunks/platform/api/platformd/proxy/v1alpha1:
+    interfaces:
+      ProxyServiceClient:
   github.com/envoyproxy/go-control-plane/pkg/cache/v3:
     interfaces:
       SnapshotCache:

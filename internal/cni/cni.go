@@ -20,7 +20,6 @@ package cni
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -31,18 +30,16 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	current "github.com/containernetworking/cni/pkg/types/100"
 	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
-	ErrHostIfaceNotFound  = errors.New("host interface not set")
-	ErrIPAMConfigNotFound = errors.New("ipam config not set")
+	ErrPlatformdListenSockNotSet = errors.New("platformd listen socket not set")
+	ErrIPAMConfigNotSet          = errors.New("ipam config not set")
+	ErrPodUIDMissing             = errors.New("K8S_POD_UID in CNI_ARGS missing")
 )
 
 type Conf struct {
 	types.NetConf
-	HostIface           string `json:"hostIface"`
 	PlatformdListenSock string `json:"platformdListenSock"`
 }
 
@@ -63,7 +60,7 @@ func NewCNI(h Handler) *CNI {
 // * configure ip address on container iface and bring it up.
 // * configure ip address on host iface and bring it up.
 // * attach snat bpf program to host-side veth peer (tc ingress)
-func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
+func (c *CNI) ExecAdd(args *skel.CmdArgs, conf Conf, client proxyv1alpha1.ProxyServiceClient) (err error) {
 	ctx := context.Background()
 
 	cniArgs, err := parseArgs(args.Args)
@@ -74,20 +71,15 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 	// workload service sets the pod uid to the workloads ID
 	wlID, ok := cniArgs["K8S_POD_UID"]
 	if !ok {
-		return fmt.Errorf("CNI_ARGS K8S_POD_UID missing")
+		return ErrPodUIDMissing
 	}
 
-	var conf Conf
-	if err := json.Unmarshal(args.StdinData, &conf); err != nil {
-		return fmt.Errorf("parse network config: %v", err)
+	if conf.PlatformdListenSock == "" {
+		return ErrPlatformdListenSockNotSet
 	}
 
 	if conf.IPAM == (types.IPAM{}) {
-		return ErrIPAMConfigNotFound
-	}
-
-	if conf.HostIface == "" {
-		return ErrHostIfaceNotFound
+		return ErrIPAMConfigNotSet
 	}
 
 	// TODO: move to platformd
@@ -130,7 +122,7 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 	//	return fmt.Errorf("configure snat: %w", err)
 	//}
 
-	if err := c.handler.AddDefaultRoute(args.Netns, veth); err != nil {
+	if err := c.handler.AddDefaultRoute(veth, args.Netns); err != nil {
 		return fmt.Errorf("add default route: %w", err)
 	}
 
@@ -138,16 +130,6 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return fmt.Errorf("add full match route: %w", err)
 	}
 
-	proxyConn, err := grpc.NewClient(
-		conf.PlatformdListenSock,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create proxy service grpc client: %w", err)
-	}
-
-	// TODO: retries
-	client := proxyv1alpha1.NewProxyServiceClient(proxyConn)
 	if _, err := client.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: wlID,
 		Ip:         veth.HostPeer.Addr.IP.String(),

@@ -22,17 +22,17 @@ func (_m *MockCniHandler) EXPECT() *MockCniHandler_Expecter {
 	return &MockCniHandler_Expecter{mock: &_m.Mock}
 }
 
-// AddDefaultRoute provides a mock function with given fields: nsPath, veth
-func (_m *MockCniHandler) AddDefaultRoute(nsPath string, veth datapath.VethPair) error {
-	ret := _m.Called(nsPath, veth)
+// AddDefaultRoute provides a mock function with given fields: veth, nsPath
+func (_m *MockCniHandler) AddDefaultRoute(veth datapath.VethPair, nsPath string) error {
+	ret := _m.Called(veth, nsPath)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddDefaultRoute")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, datapath.VethPair) error); ok {
-		r0 = rf(nsPath, veth)
+	if rf, ok := ret.Get(0).(func(datapath.VethPair, string) error); ok {
+		r0 = rf(veth, nsPath)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -46,15 +46,15 @@ type MockCniHandler_AddDefaultRoute_Call struct {
 }
 
 // AddDefaultRoute is a helper method to define mock.On call
-//   - nsPath string
 //   - veth datapath.VethPair
-func (_e *MockCniHandler_Expecter) AddDefaultRoute(nsPath interface{}, veth interface{}) *MockCniHandler_AddDefaultRoute_Call {
-	return &MockCniHandler_AddDefaultRoute_Call{Call: _e.mock.On("AddDefaultRoute", nsPath, veth)}
+//   - nsPath string
+func (_e *MockCniHandler_Expecter) AddDefaultRoute(veth interface{}, nsPath interface{}) *MockCniHandler_AddDefaultRoute_Call {
+	return &MockCniHandler_AddDefaultRoute_Call{Call: _e.mock.On("AddDefaultRoute", veth, nsPath)}
 }
 
-func (_c *MockCniHandler_AddDefaultRoute_Call) Run(run func(nsPath string, veth datapath.VethPair)) *MockCniHandler_AddDefaultRoute_Call {
+func (_c *MockCniHandler_AddDefaultRoute_Call) Run(run func(veth datapath.VethPair, nsPath string)) *MockCniHandler_AddDefaultRoute_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(datapath.VethPair))
+		run(args[0].(datapath.VethPair), args[1].(string))
 	})
 	return _c
 }
@@ -64,7 +64,7 @@ func (_c *MockCniHandler_AddDefaultRoute_Call) Return(_a0 error) *MockCniHandler
 	return _c
 }
 
-func (_c *MockCniHandler_AddDefaultRoute_Call) RunAndReturn(run func(string, datapath.VethPair) error) *MockCniHandler_AddDefaultRoute_Call {
+func (_c *MockCniHandler_AddDefaultRoute_Call) RunAndReturn(run func(datapath.VethPair, string) error) *MockCniHandler_AddDefaultRoute_Call {
 	_c.Call.Return(run)
 	return _c
 }
