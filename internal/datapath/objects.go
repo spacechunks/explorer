@@ -206,7 +206,7 @@ func (o *Objects) AttachTProxyCtrEgress(ctrPeer *net.Interface) error {
 		return fmt.Errorf("attach: %w", err)
 	}
 
-	if err := l.Pin(fmt.Sprintf("%s/host_peer_egress_%s", ProgPinPath, ctrPeer.Name)); err != nil {
+	if err := l.Pin(fmt.Sprintf("%s/ctr_peer_egress_%s", ProgPinPath, ctrPeer.Name)); err != nil {
 		return fmt.Errorf("pin: %w", err)
 	}
 

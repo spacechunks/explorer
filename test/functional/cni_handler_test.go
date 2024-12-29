@@ -74,9 +74,7 @@ func TestAllocVethPair(t *testing.T) {
 	require.Equal(t, cni.HostVethMAC.String(), hostVeth.Attrs().HardwareAddr.String())
 }
 
-// TestAttachHostVethBPF checks that all needed bpf programs are installed on
-// the host peer interface
-func TestAttachHostVethBPF(t *testing.T) {
+func TestAllHostPeerProgsAreAttached(t *testing.T) {
 	h, err := cni.NewHandler()
 	require.NoError(t, err)
 
@@ -99,6 +97,33 @@ func TestAttachHostVethBPF(t *testing.T) {
 
 		assert.Equal(t, uint32(veth.HostPeer.Iface.Index), info.TCX().Ifindex)
 	}
+}
+
+func TestAllPodPeerProgsAreAttached(t *testing.T) {
+	h, err := cni.NewHandler()
+	require.NoError(t, err)
+
+	nsPath, veth := setup(t, h)
+
+	pins := []string{
+		datapath.ProgPinPath + "/ctr_peer_egress_" + veth.PodPeer.Iface.Name,
+	}
+
+	require.NoError(t, h.AttachCtrVethBPF(veth, nsPath))
+
+	err = ns.WithNetNSPath(nsPath, func(netNS ns.NetNS) error {
+		for _, p := range pins {
+			l, err := link.LoadPinnedLink(p, nil)
+			require.NoError(t, err)
+
+			info, err := l.Info()
+			require.NoError(t, err)
+
+			assert.Equal(t, uint32(veth.PodPeer.Iface.Index), info.TCX().Ifindex)
+		}
+		return nil
+	})
+	require.NoError(t, err)
 }
 
 func TestConfigureSNAT(t *testing.T) {
