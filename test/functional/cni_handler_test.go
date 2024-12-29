@@ -43,10 +43,12 @@ import (
 // * github.com/containernetworking/plugins/pkg/ns
 //   provides us with the ability to execute functions in the context of
 //   a given network namespace.
+// also note the following:
+// * there is no separate AllocIPs test, because setup() covers our use case already
 
-// TestAllocVethPair tests that ip address and mac address could be allocated
+// TestAllocAndConfigureVethPair tests that ip address and mac address could be allocated
 // and configured on the veth-pairs.
-func TestAllocVethPair(t *testing.T) {
+func TestAllocAndConfigureVethPair(t *testing.T) {
 	h, err := cni.NewHandler()
 	require.NoError(t, err)
 
@@ -172,6 +174,24 @@ func TestAddFullMatchRoute(t *testing.T) {
 	t.Fatal("route not found")
 }
 
+func TestDeallocIPs(t *testing.T) {
+	h, err := cni.NewHandler()
+	require.NoError(t, err)
+
+	stdinData := []byte(
+		`{"cniVersion": "1.0.0","name":"t","ipam":{"type": "host-local","ranges":[[{"subnet": "10.2.2.0/24"}]]}}`,
+	)
+
+	// host-local cni plugin requires container id
+	test.SetCNIEnvVars("ABC", "ignored", "/e/g/a/l")
+
+	_, err = h.AllocIPs("host-local", stdinData)
+	require.NoError(t, err)
+
+	err = h.DeallocIPs("host-local", stdinData)
+	require.NoError(t, err)
+}
+
 func TestConfigureSNAT(t *testing.T) {
 	tests := []struct {
 		name string
@@ -193,13 +213,13 @@ func TestConfigureSNAT(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			iface, link := test.AddRandVethPair(t)
+			iface, l := test.AddRandVethPair(t)
 
 			h, err := cni.NewHandler()
 			require.NoError(t, err)
 
-			tt.prep(t, link)
-			defer netlink.LinkDel(link)
+			tt.prep(t, l)
+			defer netlink.LinkDel(l)
 
 			addrs, err := iface.Addrs()
 			require.NoError(t, err)

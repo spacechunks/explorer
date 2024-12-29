@@ -146,6 +146,7 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return fmt.Errorf("failed to create proxy service grpc client: %w", err)
 	}
 
+	// TODO: retries
 	client := proxyv1alpha1.NewProxyServiceClient(proxyConn)
 	if _, err := client.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: wlID,
