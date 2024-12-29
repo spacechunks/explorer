@@ -31,6 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
+	"golang.org/x/sys/unix"
 )
 
 // we use github.com/vishvananda/netns library and
@@ -126,6 +127,51 @@ func TestAllPodPeerProgsAreAttached(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestAddDefaultRoute(t *testing.T) {
+	h, err := cni.NewHandler()
+	require.NoError(t, err)
+
+	nsPath, veth := setup(t, h)
+	require.NoError(t, h.AddDefaultRoute(nsPath, veth))
+
+	err = ns.WithNetNSPath(nsPath, func(netNS ns.NetNS) error {
+		routes, err := netlink.RouteList(nil, unix.AF_INET)
+		require.NoError(t, err)
+
+		for _, r := range routes {
+			if r.Gw.Equal(veth.PodPeer.Addr.IP) && r.Scope == netlink.SCOPE_LINK {
+				return nil
+			}
+		}
+
+		t.Fatal("default route not found")
+		return nil
+	})
+	require.NoError(t, err)
+}
+
+func TestAddFullMatchRoute(t *testing.T) {
+	h, err := cni.NewHandler()
+	require.NoError(t, err)
+
+	_, veth := setup(t, h)
+	require.NoError(t, h.AddFullMatchRoute(veth))
+
+	routes, err := netlink.RouteList(nil, unix.AF_INET)
+	require.NoError(t, err)
+
+	for _, r := range routes {
+		if r.Dst.String() == veth.PodPeer.Addr.IP.String()+"/32" &&
+			r.Scope == netlink.SCOPE_LINK &&
+			r.LinkIndex == veth.HostPeer.Iface.Index &&
+			r.Family == unix.AF_INET {
+			return
+		}
+	}
+
+	t.Fatal("route not found")
+}
+
 func TestConfigureSNAT(t *testing.T) {
 	tests := []struct {
 		name string
@@ -187,7 +233,7 @@ func setup(t *testing.T, h cni.Handler) (string, datapath.VethPair) {
 	ips, err := h.AllocIPs("host-local", stdinData)
 	require.NoError(t, err)
 
-	veth, err := h.AllocVethPair(nsPath, ips[0].Address, ips[1].Address)
+	veth, err := h.AllocVethPair(nsPath, ips[0], ips[1])
 	require.NoError(t, err)
 
 	return nsPath, veth

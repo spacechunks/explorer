@@ -41,7 +41,7 @@ type Handler interface {
 	AttachHostVethBPF(veth datapath.VethPair) error
 
 	AttachCtrVethBPF(veth datapath.VethPair, netNS string) error
-	AllocIPs(plugin string, stdinData []byte) ([]*current.IPConfig, error)
+	AllocIPs(plugin string, stdinData []byte) ([]net.IPNet, error)
 	DeallocIPs(plugin string, stdinData []byte) error
 	AttachDNATBPF(veth datapath.VethPair) error
 	ConfigureSNAT(ip net.IP, ifaceIndex uint8) error
@@ -163,7 +163,7 @@ func (h *cniHandler) AllocVethPair(netNS string, hostAddr, podAddr net.IPNet) (d
 	}, nil
 }
 
-func (h *cniHandler) AllocIPs(plugin string, stdinData []byte) ([]*current.IPConfig, error) {
+func (h *cniHandler) AllocIPs(plugin string, stdinData []byte) ([]net.IPNet, error) {
 	ipamRes, err := ipam.ExecAdd(plugin, stdinData)
 	if err != nil {
 		return nil, fmt.Errorf("ipam: %v", err)
@@ -175,7 +175,12 @@ func (h *cniHandler) AllocIPs(plugin string, stdinData []byte) ([]*current.IPCon
 		return nil, fmt.Errorf("convert ipam result: %v", err)
 	}
 
-	return result.IPs, nil
+	addrs := make([]net.IPNet, 0, len(result.IPs))
+	for _, i := range result.IPs {
+		addrs = append(addrs, i.Address)
+	}
+
+	return addrs, nil
 }
 
 func (h *cniHandler) DeallocIPs(plugin string, stdinData []byte) error {

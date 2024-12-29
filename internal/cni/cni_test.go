@@ -20,7 +20,6 @@ package cni_test
 
 import (
 	"errors"
-	"net"
 	"testing"
 
 	"github.com/containernetworking/cni/pkg/skel"
@@ -28,8 +27,6 @@ import (
 	"github.com/spacechunks/platform/internal/datapath"
 	"github.com/spacechunks/platform/internal/mock"
 	"github.com/stretchr/testify/assert"
-
-	current "github.com/containernetworking/cni/pkg/types/100"
 )
 
 func TestExecAdd(t *testing.T) {
@@ -47,19 +44,12 @@ func TestExecAdd(t *testing.T) {
 				StdinData:   []byte(`{"hostIface":"eth0","ipam":{"type":"host-local"}}`),
 			},
 			prep: func(h *mock.MockCniHandler, args *skel.CmdArgs) {
-				ips := []*current.IPConfig{
-					{
-						Interface: nil,
-						Address:   net.IPNet{},
-						Gateway:   nil,
-					},
-				}
 				h.EXPECT().
 					AttachDNATBPF("eth0").
 					Return(nil)
 				h.EXPECT().
 					AllocIPs("host-local", args.StdinData).
-					Return(ips, nil)
+					Return(nil, nil)
 				h.EXPECT().
 					AllocVethPair(args.Netns, nil, nil).
 					Return(datapath.VethPair{}, nil)

@@ -112,7 +112,7 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return fmt.Errorf("ipam: need two ips")
 	}
 
-	veth, err := c.handler.AllocVethPair(args.Netns, ips[0].Address, ips[1].Address)
+	veth, err := c.handler.AllocVethPair(args.Netns, ips[0] /* host */, ips[1] /* pod */)
 	if err != nil {
 		return fmt.Errorf("configure veth pair: %w", err)
 	}
