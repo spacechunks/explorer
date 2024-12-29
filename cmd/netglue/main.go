@@ -41,7 +41,7 @@ func main() {
 		Add: func(args *skel.CmdArgs) error {
 			var conf cni.Conf
 			if err := json.Unmarshal(args.StdinData, &conf); err != nil {
-				return fmt.Errorf("parse network config: %v", err)
+				return fmt.Errorf("parse config: %v", err)
 			}
 			proxyConn, err := grpc.NewClient(
 				conf.PlatformdListenSock,
@@ -55,5 +55,5 @@ func main() {
 			return c.ExecAdd(args, conf, client)
 		},
 		Del: c.ExecDel,
-	}, version.All, "netglue: provide networking for chunks")
+	}, version.All, "netglue: provides networking for chunks")
 }
