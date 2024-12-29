@@ -125,6 +125,7 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs) (err error) {
 		return fmt.Errorf("attach ctr peer: %w", err)
 	}
 
+	// TODO: move to plarformd
 	//if err := c.handler.ConfigureSNAT(conf.HostIface); err != nil {
 	//	return fmt.Errorf("configure snat: %w", err)
 	//}

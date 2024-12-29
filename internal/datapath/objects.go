@@ -227,6 +227,7 @@ func (o *Objects) AddDNATTarget(key uint16, ip netip.Addr, ifaceIdx uint8, mac n
 }
 
 func (o *Objects) AddSNATTarget(key uint8, ip net.IP, ifaceIdx uint8) error {
+	binary.BigEndian.Uint32(ip)
 	if err := o.snatObjs.PtpSnatConfig.Put(key, snatPtpSnatEntry{
 		IpAddr:   binary.BigEndian.Uint32(ip), // network byte order is big endian
 		IfaceIdx: ifaceIdx,

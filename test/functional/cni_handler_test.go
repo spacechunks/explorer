@@ -19,7 +19,6 @@
 package functional
 
 import (
-	"errors"
 	"net"
 	"testing"
 
@@ -48,15 +47,16 @@ var stdinData = []byte(`
   "ipam":{
     "type": "host-local", 
     "ranges":[
-      [{"subnet": "10.0.10.0/24"}]
+      [{"subnet": "10.1.1.0/24"}],
+      [{"subnet": "10.2.2.0/24"}]
     ]
   }
 }
 `)
 
-// TestSetup tests that ip address and mac address could be allocated
+// TestAllocVethPair tests that ip address and mac address could be allocated
 // and configured on the veth-pairs.
-func TestIfaceConfig(t *testing.T) {
+func TestAllocVethPair(t *testing.T) {
 	var (
 		handle, name = test.CreateNetns(t)
 		ctrID        = "ABC"
@@ -96,12 +96,12 @@ func TestIfaceConfig(t *testing.T) {
 	require.Equal(t, cni.VethMTU, podVeth.Attrs().MTU)
 
 	err = ns.WithNetNSPath(nsPath, func(netNS ns.NetNS) error {
-		test.RequireAddrConfigured(t, podVethName, cni.PodVethCIDR.String())
+		test.RequireAddrConfigured(t, podVethName, veth.PodPeer.Addr.String())
 		return nil
 	})
 	require.NoError(t, err)
 
-	test.RequireAddrConfigured(t, hostVethName, ips[0].Address.String())
+	test.RequireAddrConfigured(t, hostVethName, veth.HostPeer.Addr.String())
 	require.Equal(t, cni.HostVethMAC.String(), hostVeth.Attrs().HardwareAddr.String())
 }
 
@@ -122,29 +122,25 @@ func TestConfigureSNAT(t *testing.T) {
 				}))
 			},
 		},
-		{
-			name: "no addresses configured",
-			prep: func(t *testing.T, veth netlink.Link) {},
-			err:  errors.New("no addresses configured"),
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, link := test.AddRandVethPair(t)
+			iface, link := test.AddRandVethPair(t)
 
-			_, err := cni.NewHandler()
+			h, err := cni.NewHandler()
 			require.NoError(t, err)
 
 			tt.prep(t, link)
 			defer netlink.LinkDel(link)
 
-			if tt.err != nil {
-				//require.EqualError(t, h.ConfigureSNAT(iface.Name), tt.err.Error())
-				return
-			}
+			addrs, err := iface.Addrs()
+			require.NoError(t, err)
 
-			//require.NoError(t, h.ConfigureSNAT(iface.Name))
+			ip, _, err := net.ParseCIDR(addrs[0].String())
+			require.NoError(t, err)
+
+			require.NoError(t, h.ConfigureSNAT(ip, uint8(iface.Index)))
 		})
 	}
 }
