@@ -11,7 +11,6 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
-	"github.com/google/uuid"
 )
 
 // ResourceGroup should be used for grouping related resources.
@@ -48,6 +47,7 @@ type Map struct {
 	mu        sync.Mutex
 	resources map[string]ResourceGroup
 	nodeID    string
+	version   uint64
 }
 
 func NewMap(nodeID string, cache cache.SnapshotCache) *Map {
@@ -83,12 +83,9 @@ func (m *Map) Apply(ctx context.Context, key string, rg ResourceGroup) (*cache.S
 		}
 	}
 
-	version, err := uuid.NewV7()
-	if err != nil {
-		return nil, fmt.Errorf("generate version: %w", err)
-	}
+	m.version++
 
-	snap, err := cache.NewSnapshot(version.String(), typeToRes)
+	snap, err := cache.NewSnapshot(fmt.Sprintf("%d", m.version), typeToRes)
 	if err != nil {
 		return nil, fmt.Errorf("create snapshot: %w", err)
 	}
