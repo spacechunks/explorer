@@ -15,4 +15,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      - run: |
+          cp .nodedev/10-ignore.link /etc/systemd/network/10-ignore.link
+          systemctl restart systemd-networkd
       - run: make functests
