@@ -1,5 +1,8 @@
 WORKDIR := work
 CNI_PLUGINS := $(WORKDIR)/plugins
+IMG_TESTDATA_DIR := internal/image/testdata
+REPACK_IMG := internal/image/testdata/repack-img.tar.gz
+UNPACK_IMG := internal/image/testdata/unpack-img.tar.gz
 SUDO := sudo --preserve-env=PATH env
 OS := $(shell uname)
 
@@ -32,16 +35,30 @@ genproto:
 nodedev:
 	./nodedev/up.sh
 
+.PHONY: unittests
+unittests: $(REPACK_IMG) $(UNPACK_IMG)
+	$(RUN) go test $$(go list ./... | grep -v github.com/spacechunks/platform/test/e2e \
+                                    | grep -v github.com/spacechunks/platform/test/functional)
+
 .PHONY: e2etests
 e2etests:
 	GOOS=linux GOARCH=arm64 go build -o ./nodedev/ptpnat ./cmd/ptpnat/main.go
 	$(SUDO) go test ./test/e2e/...
 
+.PHONY: functests
 functests: $(CNI_PLUGINS)
 	$(RUN) $(SUDO) CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin go test -v ./test/functional/...
 
+$(REPACK_IMG):
+	@docker build -t repack-img -f $(IMG_TESTDATA_DIR)/Dockerfile.repack $(IMG_TESTDATA_DIR)
+	@docker image save repack-img > $(IMG_TESTDATA_DIR)/repack-img.tar.gz
+
+$(UNPACK_IMG):
+	@docker build -t unpack-img -f $(IMG_TESTDATA_DIR)/Dockerfile.unpack $(IMG_TESTDATA_DIR)
+	@docker image save unpack-img > $(IMG_TESTDATA_DIR)/unpack-img.tar.gz
+
 $(CNI_PLUGINS): $(WORKDIR)
-	git clone git@github.com:containernetworking/plugins.git $(CNI_PLUGINS)
+	git clone https://github.com/containernetworking/plugins.git $(CNI_PLUGINS)
 	$(CNI_PLUGINS)/build_linux.sh
 
 $(WORKDIR):

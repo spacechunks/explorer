@@ -80,7 +80,7 @@ func GetLinkByNS(t *testing.T, name string, nsPath string) netlink.Link {
 // interface is needed.
 func AddRandVethPair(t *testing.T) (*net.Interface, netlink.Link) {
 	var (
-		ifaceName = RandHexStr(t)
+		ifaceName = "ft" + RandHexStr(t)
 		vethpair  = &netlink.Veth{
 			LinkAttrs: netlink.LinkAttrs{
 				Name: ifaceName,

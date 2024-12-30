@@ -151,7 +151,6 @@ func TestMap(t *testing.T) {
 				mockCache = mock.NewMockCacheSnapshotCache(t)
 				m         = xds.NewMap("id", mockCache)
 			)
-			mockCache.EXPECT().GetStatusKeys().Return([]string{"node1"})
 			tt.check(m, mockCache)
 		})
 	}

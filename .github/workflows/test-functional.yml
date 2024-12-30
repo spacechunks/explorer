@@ -1,0 +1,22 @@
+name: test-functional
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test-functional:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: |
+          sudo cp ./nodedev/10-ignore.link /etc/systemd/network/10-ignore.link
+          sudo systemctl restart systemd-networkd
+          sleep 2 # keep this here, because we need to wait a lil
+      - run: make functests
