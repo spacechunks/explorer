@@ -34,7 +34,7 @@ nodedev:
 
 .PHONY: unittests
 unittests:
-	@go generate ./internal/image/testdata
+	go generate ./internal/image/testdata
 	$(RUN) go test $$(go list ./... | grep -v github.com/spacechunks/platform/test/e2e \
                                     | grep -v github.com/spacechunks/platform/test/functional)
 	@echo "" > ./internal/image/testdata/repack-img.tar.gz
