@@ -41,7 +41,7 @@ functests: $(CNI_PLUGINS)
 	$(RUN) $(SUDO) CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin go test -v ./test/functional/...
 
 $(CNI_PLUGINS): $(WORKDIR)
-	git clone git@github.com:containernetworking/plugins.git $(CNI_PLUGINS)
+	git clone https://github.com/containernetworking/plugins.git $(CNI_PLUGINS)
 	$(CNI_PLUGINS)/build_linux.sh
 
 $(WORKDIR):
