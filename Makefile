@@ -32,11 +32,21 @@ genproto:
 nodedev:
 	./nodedev/up.sh
 
+.PHONY: unittests
+unittests:
+	@go generate ./internal/image/testdata
+	$(RUN) go test $$(go list ./... | grep -v github.com/spacechunks/platform/test/e2e \
+                                    | grep -v github.com/spacechunks/platform/test/functional)
+	@echo "" > ./internal/image/testdata/repack-img.tar.gz
+	@echo "" > ./internal/image/testdata/unpack-img.tar.gz
+
+
 .PHONY: e2etests
 e2etests:
 	GOOS=linux GOARCH=arm64 go build -o ./nodedev/ptpnat ./cmd/ptpnat/main.go
 	$(SUDO) go test ./test/e2e/...
 
+.PHONY: functests
 functests: $(CNI_PLUGINS)
 	$(RUN) $(SUDO) CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin go test -v ./test/functional/...
 
