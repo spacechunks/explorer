@@ -17,7 +17,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # only create files if they are emtpy
-[ -s unpack-img.tar.gz ] || docker build -t ghcr.io/spacechunks/tmp/unpack-img -f Dockerfile.unpack . && docker image save ghcr.io/spacechunks/tmp/unpack-img > unpack-img.tar.gz
-[ -s repack-img.tar.gz ] || docker build -t ghcr.io/spacechunks/tmp/repack-img -f Dockerfile.repack . && docker image save ghcr.io/spacechunks/tmp/repack-img > repack-img.tar.gz
+docker build -t ghcr.io/spacechunks/tmp/unpack-img -f Dockerfile.unpack . && docker image save ghcr.io/spacechunks/tmp/unpack-img > unpack-img.tar.gz
+docker build -t ghcr.io/spacechunks/tmp/repack-img -f Dockerfile.repack . && docker image save ghcr.io/spacechunks/tmp/repack-img > repack-img.tar.gz
 
 docker image ls
