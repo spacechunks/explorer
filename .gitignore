@@ -6,3 +6,5 @@ work/
 nodedev/netglue
 nodedev/platformd
 /cmd/test
+unpack-img.tar.gz
+repack-img.tar.gz
