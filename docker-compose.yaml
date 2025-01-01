@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  envoy:
+    image: docker.io/envoyproxy/envoy:v1.31.4
+    network_mode: host
+    command:
+      - '-c /etc/envoy/config.yaml'
+      - '-l debug'
+    volumes:
+      - ./nodedev/platformd/envoy-xds.yaml:/etc/envoy/config.yaml

@@ -47,6 +47,7 @@ e2etests:
 
 .PHONY: functests
 functests: $(CNI_PLUGINS)
+	$(RUN) $(SUDO) docker-compose up -d
 	$(RUN) $(SUDO) CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin go test -v ./test/functional/...
 
 $(REPACK_IMG):
