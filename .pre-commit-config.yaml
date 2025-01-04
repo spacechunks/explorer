@@ -1,10 +1,4 @@
 repos:
-  - repo: local
-    hooks:
-    - id: replace-file
-      name: replace testdata docker images
-      entry: bash -c 'echo "" > ./internal/image/testdata/repack-img.tar.gz && echo "" > ./internal/image/testdata/unpack-img.tar.gz'
-      language: system
   - repo: https://github.com/golangci/golangci-lint
     rev: v1.62.0
     hooks:
