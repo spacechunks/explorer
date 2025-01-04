@@ -1,0 +1,113 @@
+static_resources:
+  listeners:
+    - address:
+        socket_address:
+          protocol: UDP
+          address: 10.0.0.2
+          port_value: 9053
+      udp_listener_config:
+        downstream_socket_config:
+          max_rx_datagram_size: 9000
+      listener_filters:
+        - name: envoy.filters.udp_listener.udp_proxy
+          typed_config:
+            '@type': type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.UdpProxyConfig
+            stat_prefix: dns_udp
+            matcher:
+              on_no_match:
+                action:
+                  name: route
+                  typed_config:
+                    '@type': type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.Route
+                    cluster: dns
+            upstream_socket_config:
+              max_rx_datagram_size: 9000
+    - address:
+        socket_address:
+          protocol: TCP
+          address: 10.0.0.2
+          port_value: 9053
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.tcp_proxy
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+                cluster: dns
+                stat_prefix: dns_tcp
+      listener_filters:
+        - name: envoy.filters.listener.original_dst
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.listener.original_dst.v3.OriginalDst
+    - address:
+        socket_address:
+          address: 10.0.0.2
+          port_value: 9111
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.tcp_proxy
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+                cluster: public
+                stat_prefix: generic_tcp
+      listener_filters:
+        - name: envoy.filters.listener.original_dst
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.listener.original_dst.v3.OriginalDst
+    - address:
+        socket_address:
+          address: 10.0.0.2
+          port_value: 9080
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: http
+                access_log:
+                  - name: envoy.access_loggers.stdout
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                route_config:
+                  name: public
+                  virtual_hosts:
+                    - name: all
+                      domains:
+                        - "*"
+                      routes:
+                        - match:
+                            prefix: "/"
+                          route:
+                            cluster: public
+                http_filters:
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+                codec_type: AUTO
+      listener_filters:
+        - name: envoy.filters.listener.original_dst
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.listener.original_dst.v3.OriginalDst
+  clusters:
+    - name: public
+      type: ORIGINAL_DST
+      connect_timeout: 6s
+      lb_policy: CLUSTER_PROVIDED
+      dns_lookup_family: V4_ONLY
+    - name: service_udp
+      type: STATIC
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: dns
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: 127.0.0.1
+                      port_value: 53
+cluster_manager: {}
+admin:
+  address:
+    socket_address:
+      address: 127.0.0.1
+      port_value: 9901

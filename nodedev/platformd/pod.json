@@ -1,0 +1,10 @@
+{
+  "metadata": {
+    "name": "conncheck",
+    "namespace": "default",
+    "attempt": 1,
+    "uid": "hdishd83djaidiinduwk29bcsb"
+  },
+  "log_directory": "/tmp",
+  "linux": {}
+}

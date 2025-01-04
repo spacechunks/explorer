@@ -3,8 +3,8 @@ conf
 .DS_Store
 .envrc
 work/
-nodedev/netglue
-nodedev/platformd
+nodedev/cni/netglue.bin
+nodedev/platformd/platformd.bin
 /cmd/test
 unpack-img.tar.gz
 repack-img.tar.gz
