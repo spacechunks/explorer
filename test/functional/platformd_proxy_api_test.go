@@ -19,16 +19,34 @@
 package functional
 
 import (
+	"context"
 	"io"
 	"log"
 	"net/http"
 	"testing"
 
+	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-func TestProxyAPICreateListener(t *testing.T) {
-	//ctx := context.Background()
+func TestPlatformdProxyAPICreateListener(t *testing.T) {
+	ctx := context.Background()
+	runProxyFixture(ctx, t)
+
+	conn, err := grpc.NewClient("unix-abstract:"+proxyAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+
+	defer conn.Close()
+
+	c := proxyv1alpha1.NewProxyServiceClient(conn)
+
+	_, err = c.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
+		WorkloadID: "abcv",
+		Ip:         "127.0.0.1",
+	})
+	require.NoError(t, err)
 
 	resp, err := http.Get("http://127.0.0.1:5555/config_dump?include_eds")
 	require.NoError(t, err)
@@ -37,6 +55,9 @@ func TestProxyAPICreateListener(t *testing.T) {
 
 	data, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	//var j map[string]any
+	//require.NoError(t, json.Unmarshal(data, &j))
 
 	log.Println(string(data))
 }

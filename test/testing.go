@@ -38,12 +38,12 @@ func RandHexStr(t *testing.T) string {
 // WaitServerReady waits until a process, usually some kind of server, can
 // accept connections. Fails after no successful connection could be established
 // after the timeout.
-func WaitServerReady(t *testing.T, addr string, timeout time.Duration) {
+func WaitServerReady(t *testing.T, network, addr string, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	for {
-		conn, err := net.DialTimeout("tcp", addr, 1*time.Second)
+		conn, err := net.DialTimeout(network, addr, 1*time.Second)
 		if err == nil {
 			conn.Close()
 			return
