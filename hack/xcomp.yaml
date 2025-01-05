@@ -7,6 +7,6 @@ images:
   - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
     arch: "aarch64"
 mounts:
-  - location: "/Users/yannic/proj/spc/explorer-platform"
+  - location: "/Users/yannic/proj/spc/explorer"
     writable: true
 mountType: "virtiofs"
