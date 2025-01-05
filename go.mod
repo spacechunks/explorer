@@ -12,6 +12,7 @@ require (
 	github.com/containernetworking/plugins v1.5.0
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/envoyproxy/go-control-plane v0.13.1
+	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.17.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -26,7 +27,7 @@ require (
 	golang.org/x/sync v0.8.0
 	golang.org/x/sys v0.26.0
 	google.golang.org/grpc v1.67.1
-	google.golang.org/protobuf v1.35.1
+	google.golang.org/protobuf v1.36.1
 	k8s.io/cri-api v0.31.0
 )
 

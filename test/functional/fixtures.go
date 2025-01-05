@@ -47,7 +47,7 @@ var (
 	proxyAddr = "/run/platformd/platformd.sock"
 
 	envoyAdminAddr = "127.0.0.1:5555"
-	dnsUpstream    = netip.MustParseAddrPort("10.0.0.53:53")
+	dnsUpstream    = netip.MustParseAddrPort("127.0.0.1:53")
 )
 
 func runProxyFixture(ctx context.Context, t *testing.T) {
@@ -98,10 +98,12 @@ func runProxyFixture(ctx context.Context, t *testing.T) {
 	proxyv1alpha1.RegisterProxyServiceServer(grpcServ, proxyServ)
 	xds.CreateAndRegisterServer(context.Background(), logger, grpcServ, ca)
 
+	require.NoError(t, svc.ApplyGlobalResources(ctx))
+
 	unixSock, err := net.Listen("unix", "@"+proxyAddr)
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		grpcServ.GracefulStop()
+		grpcServ.Stop()
 		unixSock.Close()
 	})
 	go func() {

@@ -20,19 +20,36 @@ package functional
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
+	"net/netip"
+	"sort"
 	"testing"
+	"time"
 
+	adminv3 "github.com/envoyproxy/go-control-plane/envoy/admin/v3"
+	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	"github.com/google/go-cmp/cmp"
 	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
+	"github.com/spacechunks/platform/internal/platformd/proxy"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func TestPlatformdProxyAPICreateListener(t *testing.T) {
-	ctx := context.Background()
+	var (
+		ctx  = context.Background()
+		wlID = "abc"
+		ip   = "127.0.0.1"
+	)
+
 	runProxyFixture(ctx, t)
 
 	conn, err := grpc.NewClient("unix-abstract:"+proxyAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -43,12 +60,18 @@ func TestPlatformdProxyAPICreateListener(t *testing.T) {
 	c := proxyv1alpha1.NewProxyServiceClient(conn)
 
 	_, err = c.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
-		WorkloadID: "abcv",
-		Ip:         "127.0.0.1",
+		WorkloadID: wlID,
+		Ip:         ip,
 	})
 	require.NoError(t, err)
 
-	resp, err := http.Get("http://127.0.0.1:5555/config_dump?include_eds")
+	// FIXME(yannic): implement some sort of WaitReady function into
+	//                proxy package, that blocks until envoy has connected.
+	time.Sleep(10 * time.Second)
+
+	resp, err := http.Get(
+		fmt.Sprintf("http://%s/config_dump?include_eds&resource=dynamic_listeners", envoyAdminAddr),
+	)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -56,8 +79,69 @@ func TestPlatformdProxyAPICreateListener(t *testing.T) {
 	data, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	//var j map[string]any
-	//require.NoError(t, json.Unmarshal(data, &j))
+	dnsRG, err := proxy.DNSListenerResourceGroup(
+		proxy.DNSClusterName,
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.DNSPort)),
+		dnsUpstream,
+	)
+	require.NoError(t, err)
 
-	log.Println(string(data))
+	wlRG, err := proxy.WorkloadResources(wlID,
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.HTTPPort)),
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.TCPPort)),
+		proxy.OriginalDstClusterName,
+	)
+	require.NoError(t, err)
+
+	var (
+		actual   = parseListener(t, data)
+		expected = append(dnsRG.Listeners, wlRG.Listeners...)
+	)
+
+	// we have to sort both arrays, otherwise the Diff later
+	// will fail, because items in the slices are not in the ´
+	// same order.
+
+	sort.Slice(actual, func(i, j int) bool {
+		return actual[i].Name < actual[j].Name
+	})
+	sort.Slice(expected, func(i, j int) bool {
+		return expected[i].Name < expected[j].Name
+	})
+
+	d := cmp.Diff(expected, actual, protocmp.Transform())
+	if d != "" {
+		t.Fatal(d)
+	}
+}
+
+func parseListener(t *testing.T, data []byte) []*listenerv3.Listener {
+	payload := struct {
+		// configs is a list of listenerv3.Listener
+		Configs []json.RawMessage `json:"configs"`
+	}{}
+
+	err := json.Unmarshal(data, &payload)
+	require.NoError(t, err)
+
+	var ret []*listenerv3.Listener
+
+	unmarshal := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+	}
+
+	for _, cfg := range payload.Configs {
+		dyn := adminv3.ListenersConfigDump_DynamicListener{}
+		require.NoError(t, unmarshal.Unmarshal(cfg, &dyn))
+
+		lis := listenerv3.Listener{}
+		err = anypb.UnmarshalTo(dyn.ActiveState.Listener, &lis, proto.UnmarshalOptions{
+			Merge:          true,
+			DiscardUnknown: true,
+		})
+		require.NoError(t, err)
+
+		ret = append(ret, &lis)
+	}
+	return ret
 }

@@ -18,9 +18,9 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func dnsClusterResource() *clusterv3.Cluster {
+func DNSClusterResource() *clusterv3.Cluster {
 	return &clusterv3.Cluster{
-		Name: dnsClusterName,
+		Name: DNSClusterName,
 		ClusterDiscoveryType: &clusterv3.Cluster_Type{
 			Type: clusterv3.Cluster_EDS,
 		},
@@ -33,7 +33,7 @@ func dnsClusterResource() *clusterv3.Cluster {
 	}
 }
 
-func dnsListenerResourceGroup(
+func DNSListenerResourceGroup(
 	clusterName string,
 	listenerAddr netip.AddrPort,
 	upstreamAddr netip.AddrPort,

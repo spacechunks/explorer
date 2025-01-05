@@ -20,7 +20,7 @@ import (
 
 func originalDstClusterResource() *clusterv3.Cluster {
 	return &clusterv3.Cluster{
-		Name: originalDstClusterName,
+		Name: OriginalDstClusterName,
 		ClusterDiscoveryType: &clusterv3.Cluster_Type{
 			Type: clusterv3.Cluster_ORIGINAL_DST,
 		},
@@ -30,7 +30,7 @@ func originalDstClusterResource() *clusterv3.Cluster {
 	}
 }
 
-func workloadResources(
+func WorkloadResources(
 	workloadID string,
 	httpListenerAddr netip.AddrPort,
 	tcpListenerAddr netip.AddrPort,
