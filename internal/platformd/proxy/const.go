@@ -19,9 +19,9 @@
 package proxy
 
 const (
-	dnsClusterName         = "dns"
-	originalDstClusterName = "public"
-	proxyTCPPort           = 9111
-	proxyHTTPPort          = 9080
-	proxyDNSPort           = 9053
+	DNSClusterName         = "dns"
+	OriginalDstClusterName = "public"
+	TCPPort                = 9111
+	HTTPPort               = 9080
+	DNSPort                = 9053
 )

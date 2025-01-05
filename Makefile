@@ -47,7 +47,10 @@ e2etests:
 
 .PHONY: functests
 functests: $(CNI_PLUGINS)
-	$(RUN) $(SUDO) CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin go test -v ./test/functional/...
+	$(RUN) $(SUDO) FUNCTESTS_ENVOY_IMAGE=docker.io/envoyproxy/envoy:v1.31.4 \
+				   FUNCTESTS_ENVOY_CONFIG=../../nodedev/platformd/envoy-xds.yaml \
+				   CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin \
+				   go test -v ./test/functional/...
 
 $(REPACK_IMG):
 	@docker build -t repack-img -f $(IMG_TESTDATA_DIR)/Dockerfile.repack $(IMG_TESTDATA_DIR)

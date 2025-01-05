@@ -8,7 +8,6 @@ package v1alpha1
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -28,6 +27,12 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkloadServiceClient interface {
 	// RunWorkload runs a sandbox with the specified options.
+	//
+	// the created workload will be reachable from the public
+	// internet on port 25565/tcp. programs running in the workload
+	// have access to the external network, but cannot be reached
+	// from the outside without the program initiating the connection
+	// first.
 	RunWorkload(ctx context.Context, in *RunWorkloadRequest, opts ...grpc.CallOption) (*RunWorkloadResponse, error)
 }
 
@@ -54,6 +59,12 @@ func (c *workloadServiceClient) RunWorkload(ctx context.Context, in *RunWorkload
 // for forward compatibility.
 type WorkloadServiceServer interface {
 	// RunWorkload runs a sandbox with the specified options.
+	//
+	// the created workload will be reachable from the public
+	// internet on port 25565/tcp. programs running in the workload
+	// have access to the external network, but cannot be reached
+	// from the outside without the program initiating the connection
+	// first.
 	RunWorkload(context.Context, *RunWorkloadRequest) (*RunWorkloadResponse, error)
 	mustEmbedUnimplementedWorkloadServiceServer()
 }

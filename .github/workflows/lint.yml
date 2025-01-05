@@ -15,6 +15,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      - run: make internal
+      - run: make internal/image/testdata/unpack-img.tar.gz
+      - run: make internal/image/testdata/repack-img.tar.gz
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:

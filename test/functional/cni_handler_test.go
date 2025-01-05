@@ -44,7 +44,7 @@ import (
 //   provides us with the ability to execute functions in the context of
 //   a given network namespace.
 // also note the following:
-// * there is no separate AllocIPs test, because setup() covers our use case already
+// * there is no separate AllocIPs test, because setupCNIEnv() covers our use case already
 
 // TestAllocAndConfigureVethPair tests that ip address and mac address could be allocated
 // and configured on the veth-pairs.
@@ -53,7 +53,7 @@ func TestAllocAndConfigureVethPair(t *testing.T) {
 	require.NoError(t, err)
 
 	var (
-		nsPath, veth = setup(t, h)
+		nsPath, veth = setupCNIEnv(t, h)
 		podVethName  = veth.PodPeer.Iface.Name
 		hostVethName = veth.HostPeer.Iface.Name
 	)
@@ -81,7 +81,7 @@ func TestAllHostPeerProgsAreAttached(t *testing.T) {
 	h, err := cni.NewHandler()
 	require.NoError(t, err)
 
-	_, veth := setup(t, h)
+	_, veth := setupCNIEnv(t, h)
 
 	pins := []string{
 		datapath.ProgPinPath + "/snat_" + veth.HostPeer.Iface.Name,
@@ -106,7 +106,7 @@ func TestAllPodPeerProgsAreAttached(t *testing.T) {
 	h, err := cni.NewHandler()
 	require.NoError(t, err)
 
-	nsPath, veth := setup(t, h)
+	nsPath, veth := setupCNIEnv(t, h)
 
 	pins := []string{
 		datapath.ProgPinPath + "/ctr_peer_egress_" + veth.PodPeer.Iface.Name,
@@ -133,7 +133,7 @@ func TestAddDefaultRoute(t *testing.T) {
 	h, err := cni.NewHandler()
 	require.NoError(t, err)
 
-	nsPath, veth := setup(t, h)
+	nsPath, veth := setupCNIEnv(t, h)
 	require.NoError(t, h.AddDefaultRoute(veth, nsPath))
 
 	err = ns.WithNetNSPath(nsPath, func(netNS ns.NetNS) error {
@@ -156,7 +156,7 @@ func TestAddFullMatchRoute(t *testing.T) {
 	h, err := cni.NewHandler()
 	require.NoError(t, err)
 
-	_, veth := setup(t, h)
+	_, veth := setupCNIEnv(t, h)
 	require.NoError(t, h.AddFullMatchRoute(veth))
 
 	routes, err := netlink.RouteList(nil, unix.AF_INET)
@@ -232,7 +232,7 @@ func TestConfigureSNAT(t *testing.T) {
 	}
 }
 
-func setup(t *testing.T, h cni.Handler) (string, datapath.VethPair) {
+func setupCNIEnv(t *testing.T, h cni.Handler) (string, datapath.VethPair) {
 	var (
 		handle, name = test.CreateNetns(t)
 		ctrID        = "ABC"

@@ -43,7 +43,7 @@ func before(t *testing.T, ctx context.Context, testEnv *test.Env) {
 	})
 	testEnv.Setup(ctx)
 	addr := testEnv.CreateServer(ctx)
-	test.WaitServerReady(t, addr+":22", 1*time.Minute) // as soon as we can ssh we are ready
+	test.WaitServerReady(t, "unix", addr+":22", 1*time.Minute) // as soon as we can ssh we are ready
 	setup(t, ctx, testEnv, addr)
 }
 

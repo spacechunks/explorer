@@ -39,7 +39,7 @@ func NewService(logger *slog.Logger, cfg Config, resourceMap *xds.Map) Service {
 func (s *proxyService) ApplyGlobalResources(ctx context.Context) error {
 	rg := xds.ResourceGroup{
 		Clusters: []*clusterv3.Cluster{
-			dnsClusterResource(),
+			DNSClusterResource(),
 			originalDstClusterResource(),
 		},
 	}
@@ -52,17 +52,17 @@ func (s *proxyService) ApplyGlobalResources(ctx context.Context) error {
 // CreateListeners creates HTTP, TCP as well as UDP(DNS) and TCP(DNS) listeners for the provided
 // workload. this will fail if the workload does not exist.
 func (s *proxyService) CreateListeners(ctx context.Context, workloadID string, addr netip.Addr) error {
-	wrg, err := workloadResources(
+	wrg, err := WorkloadResources(
 		workloadID,
-		netip.AddrPortFrom(addr, proxyHTTPPort),
-		netip.AddrPortFrom(addr, proxyTCPPort),
-		originalDstClusterName,
+		netip.AddrPortFrom(addr, HTTPPort),
+		netip.AddrPortFrom(addr, TCPPort),
+		OriginalDstClusterName,
 	)
 	if err != nil {
 		return fmt.Errorf("create workload resources: %w", err)
 	}
 
-	drg, err := dnsListenerResourceGroup(dnsClusterName, netip.AddrPortFrom(addr, proxyDNSPort), s.cfg.DNSUpstream)
+	drg, err := DNSListenerResourceGroup(DNSClusterName, netip.AddrPortFrom(addr, DNSPort), s.cfg.DNSUpstream)
 	if err != nil {
 		return fmt.Errorf("create dns resources: %w", err)
 	}
