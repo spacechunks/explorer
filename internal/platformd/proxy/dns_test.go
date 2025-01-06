@@ -20,7 +20,6 @@ package proxy_test
 
 import (
 	"fmt"
-	"log"
 	"net/netip"
 	"testing"
 
@@ -196,6 +195,6 @@ func TestDNSResourceGroupConfig(t *testing.T) {
 
 	d := cmp.Diff(expectedRG, actualRG, protocmp.Transform())
 	if d != "" {
-		log.Fatal(d)
+		t.Fatal(d)
 	}
 }
