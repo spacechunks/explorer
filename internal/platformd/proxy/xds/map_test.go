@@ -56,11 +56,11 @@ func TestResourceGroupResourcesByType(t *testing.T) {
 func TestMap(t *testing.T) {
 	tests := []struct {
 		name  string
-		check func(*xds.Map, *mock.MockCacheSnapshotCache)
+		check func(xds.Map, *mock.MockCacheSnapshotCache)
 	}{
 		{
 			name: "check resource group is saved",
-			check: func(m *xds.Map, mockCache *mock.MockCacheSnapshotCache) {
+			check: func(m xds.Map, mockCache *mock.MockCacheSnapshotCache) {
 				expectedRg := xds.ResourceGroup{
 					Clusters: []*clusterv3.Cluster{
 						{
@@ -81,7 +81,7 @@ func TestMap(t *testing.T) {
 		},
 		{
 			name: "all resource groups are merged",
-			check: func(m *xds.Map, mockCache *mock.MockCacheSnapshotCache) {
+			check: func(m xds.Map, mockCache *mock.MockCacheSnapshotCache) {
 				var (
 					merged = make(map[resource.Type][]types.Resource)
 					ctx    = context.Background()

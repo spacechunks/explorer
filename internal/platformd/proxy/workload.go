@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-func originalDstClusterResource() *clusterv3.Cluster {
+func OriginalDstClusterResource() *clusterv3.Cluster {
 	return &clusterv3.Cluster{
 		Name: OriginalDstClusterName,
 		ClusterDiscoveryType: &clusterv3.Cluster_Type{
