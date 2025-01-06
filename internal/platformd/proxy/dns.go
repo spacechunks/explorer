@@ -70,7 +70,7 @@ func dnsTCPResources(clusterName string, listenerAddr, upstreamAddr netip.AddrPo
 		return nil, nil, fmt.Errorf("create tcp proxy listener: %w", err)
 	}
 
-	return xds.CreateCLA(clusterName, upstreamAddr, corev3.SocketAddress_UDP), l, nil
+	return xds.CreateCLA(clusterName, upstreamAddr, corev3.SocketAddress_TCP), l, nil
 }
 
 func dnsUDPResources(clusterName string, listenerAddr, upstreamAddr netip.AddrPort) (

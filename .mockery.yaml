@@ -5,6 +5,9 @@ outpkg: mock
 filename: "{{ .PackageName }}_{{ .InterfaceName | snakecase }}.go"
 mockname: "Mock{{ .PackageName | camelcase }}{{ .InterfaceName }}"
 packages:
+  github.com/spacechunks/platform/internal/platformd/proxy/xds:
+    interfaces:
+      Map:
   github.com/spacechunks/platform/internal/cni:
     interfaces:
       Handler:

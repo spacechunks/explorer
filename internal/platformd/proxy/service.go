@@ -18,10 +18,10 @@ type Service interface {
 type proxyService struct {
 	logger      *slog.Logger
 	cfg         Config
-	resourceMap *xds.Map
+	resourceMap xds.Map
 }
 
-func NewService(logger *slog.Logger, cfg Config, resourceMap *xds.Map) Service {
+func NewService(logger *slog.Logger, cfg Config, resourceMap xds.Map) Service {
 	return &proxyService{
 		logger:      logger,
 		cfg:         cfg,
@@ -40,7 +40,7 @@ func (s *proxyService) ApplyGlobalResources(ctx context.Context) error {
 	rg := xds.ResourceGroup{
 		Clusters: []*clusterv3.Cluster{
 			DNSClusterResource(),
-			originalDstClusterResource(),
+			OriginalDstClusterResource(),
 		},
 	}
 	if _, err := s.resourceMap.Apply(ctx, "global", rg); err != nil {
