@@ -14,6 +14,10 @@ packages:
   github.com/spacechunks/platform/api/platformd/proxy/v1alpha1:
     interfaces:
       ProxyServiceClient:
+  k8s.io/cri-api/pkg/apis/runtime/v1:
+    interfaces:
+      RuntimeServiceClient:
+      ImageServiceClient:
   github.com/envoyproxy/go-control-plane/pkg/cache/v3:
     interfaces:
       SnapshotCache:
