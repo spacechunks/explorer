@@ -16,7 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package functional
+package fixture
 
 import (
 	"context"
@@ -42,15 +42,11 @@ import (
 )
 
 var (
-	// grpc client does not accept @ as abstract socket identifier,
-	// so do not include it in the address string.
-	proxyAddr = "/run/platformd/platformd.sock"
-
-	envoyAdminAddr = "127.0.0.1:5555"
-	dnsUpstream    = netip.MustParseAddrPort("127.0.0.1:53")
+	EnvoyAdminAddr = "127.0.0.1:5555"
+	DNSUpstream    = netip.MustParseAddrPort("127.0.0.1:53")
 )
 
-func runProxyFixture(ctx context.Context, t *testing.T) {
+func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
 	var (
 		logger   = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		grpcServ = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
@@ -58,7 +54,7 @@ func runProxyFixture(ctx context.Context, t *testing.T) {
 		svc      = proxy.NewService(
 			logger,
 			proxy.Config{
-				DNSUpstream: dnsUpstream,
+				DNSUpstream: DNSUpstream,
 			}, xds.NewMap("proxy-0", ca),
 		)
 		proxyServ  = proxy.NewServer(svc)
@@ -93,14 +89,14 @@ func runProxyFixture(ctx context.Context, t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	test.WaitServerReady(t, "tcp", envoyAdminAddr, 20*time.Second)
+	test.WaitServerReady(t, "tcp", EnvoyAdminAddr, 20*time.Second)
 
 	proxyv1alpha1.RegisterProxyServiceServer(grpcServ, proxyServ)
 	xds.CreateAndRegisterServer(context.Background(), logger, grpcServ, ca)
 
 	require.NoError(t, svc.ApplyGlobalResources(ctx))
 
-	unixSock, err := net.Listen("unix", "@"+proxyAddr)
+	unixSock, err := net.Listen("unix", "@"+platformdAddr)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		grpcServ.Stop()
@@ -110,5 +106,5 @@ func runProxyFixture(ctx context.Context, t *testing.T) {
 		require.NoError(t, grpcServ.Serve(unixSock))
 	}()
 
-	test.WaitServerReady(t, "unix", "@"+proxyAddr, 20*time.Second)
+	test.WaitServerReady(t, "unix", "@"+platformdAddr, 20*time.Second)
 }
