@@ -112,6 +112,10 @@ func (s *criService) RunWorkload(ctx context.Context, opts RunOptions) (Workload
 		return Workload{}, fmt.Errorf("new uuid: %w", err)
 	}
 
+	// testify/mockery does not support ignoring certain fields
+	// when comparing. this is a problem for fields that have random
+	// values like the id we generate. so, in order to get predictable
+	// outcomes introduce this way of setting an id when in tests.
 	if os.Getenv("TEST_WORKLOAD_ID") != "" {
 		id = uuid.MustParse(os.Getenv("TEST_WORKLOAD_ID"))
 	}
