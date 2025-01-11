@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"slices"
 
 	"github.com/google/uuid"
@@ -44,7 +45,7 @@ type RunOptions struct {
 	DNSServer string
 }
 
-const podLogDir = "/var/log/platformd/pods"
+const PodLogDir = "/var/log/platformd/pods"
 
 type Service interface {
 	RunWorkload(ctx context.Context, opts RunOptions) (Workload, error)
@@ -111,6 +112,10 @@ func (s *criService) RunWorkload(ctx context.Context, opts RunOptions) (Workload
 		return Workload{}, fmt.Errorf("new uuid: %w", err)
 	}
 
+	if os.Getenv("TEST_WORKLOAD_ID") != "" {
+		id = uuid.MustParse(os.Getenv("TEST_WORKLOAD_ID"))
+	}
+
 	logger := s.logger.With("workload_id", id.String(), "pod_name", opts.Name, "namespace", opts.Namespace)
 
 	if err := s.pullImageIfNotPresent(ctx, logger, opts.Image); err != nil {
@@ -124,7 +129,7 @@ func (s *criService) RunWorkload(ctx context.Context, opts RunOptions) (Workload
 			Namespace: opts.Namespace,
 		},
 		Hostname:     opts.Hostname, // TODO: explore if we can use the id as the hostname
-		LogDirectory: podLogDir,
+		LogDirectory: PodLogDir,
 		Labels:       opts.Labels,
 		DnsConfig: &runtimev1.DNSConfig{
 			Servers:  []string{opts.DNSServer},
