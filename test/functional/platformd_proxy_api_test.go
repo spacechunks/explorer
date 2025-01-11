@@ -34,9 +34,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
 	"github.com/spacechunks/platform/internal/platformd/proxy"
+	"github.com/spacechunks/platform/test/functional/fixture"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -50,16 +49,11 @@ func TestPlatformdProxyAPICreateListener(t *testing.T) {
 		ip   = "127.0.0.1"
 	)
 
-	runProxyFixture(ctx, t)
+	fixture.RunProxyAPIFixtures(ctx, t)
 
-	conn, err := grpc.NewClient("unix-abstract:"+proxyAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	require.NoError(t, err)
+	c := proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
 
-	defer conn.Close()
-
-	c := proxyv1alpha1.NewProxyServiceClient(conn)
-
-	_, err = c.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
+	_, err := c.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: wlID,
 		Ip:         ip,
 	})
@@ -70,7 +64,7 @@ func TestPlatformdProxyAPICreateListener(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	resp, err := http.Get(
-		fmt.Sprintf("http://%s/config_dump?include_eds&resource=dynamic_listeners", envoyAdminAddr),
+		fmt.Sprintf("http://%s/config_dump?include_eds&resource=dynamic_listeners", fixture.EnvoyAdminAddr),
 	)
 	require.NoError(t, err)
 
@@ -82,7 +76,7 @@ func TestPlatformdProxyAPICreateListener(t *testing.T) {
 	dnsRG, err := proxy.DNSListenerResourceGroup(
 		proxy.DNSClusterName,
 		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.DNSPort)),
-		dnsUpstream,
+		fixture.DNSUpstream,
 	)
 	require.NoError(t, err)
 
