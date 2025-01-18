@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WorkloadService_RunWorkload_FullMethodName = "/platformd.workload.v1alpha1.WorkloadService/RunWorkload"
+	WorkloadService_RunWorkload_FullMethodName    = "/platformd.workload.v1alpha1.WorkloadService/RunWorkload"
+	WorkloadService_WorkloadStatus_FullMethodName = "/platformd.workload.v1alpha1.WorkloadService/WorkloadStatus"
 )
 
 // WorkloadServiceClient is the client API for WorkloadService service.
@@ -29,11 +30,11 @@ type WorkloadServiceClient interface {
 	// RunWorkload runs a sandbox with the specified options.
 	//
 	// the created workload will be reachable from the public
-	// internet on port 25565/tcp. programs running in the workload
-	// have access to the external network, but cannot be reached
-	// from the outside without the program initiating the connection
-	// first.
+	// internet. programs running in the workload have access to
+	// the external network, but cannot be reached from the outside
+	// without the program initiating the connection first.
 	RunWorkload(ctx context.Context, in *RunWorkloadRequest, opts ...grpc.CallOption) (*RunWorkloadResponse, error)
+	WorkloadStatus(ctx context.Context, in *WorkloadStatusRequest, opts ...grpc.CallOption) (*WorkloadStatusResponse, error)
 }
 
 type workloadServiceClient struct {
@@ -54,6 +55,16 @@ func (c *workloadServiceClient) RunWorkload(ctx context.Context, in *RunWorkload
 	return out, nil
 }
 
+func (c *workloadServiceClient) WorkloadStatus(ctx context.Context, in *WorkloadStatusRequest, opts ...grpc.CallOption) (*WorkloadStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkloadStatusResponse)
+	err := c.cc.Invoke(ctx, WorkloadService_WorkloadStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkloadServiceServer is the server API for WorkloadService service.
 // All implementations must embed UnimplementedWorkloadServiceServer
 // for forward compatibility.
@@ -61,11 +72,11 @@ type WorkloadServiceServer interface {
 	// RunWorkload runs a sandbox with the specified options.
 	//
 	// the created workload will be reachable from the public
-	// internet on port 25565/tcp. programs running in the workload
-	// have access to the external network, but cannot be reached
-	// from the outside without the program initiating the connection
-	// first.
+	// internet. programs running in the workload have access to
+	// the external network, but cannot be reached from the outside
+	// without the program initiating the connection first.
 	RunWorkload(context.Context, *RunWorkloadRequest) (*RunWorkloadResponse, error)
+	WorkloadStatus(context.Context, *WorkloadStatusRequest) (*WorkloadStatusResponse, error)
 	mustEmbedUnimplementedWorkloadServiceServer()
 }
 
@@ -78,6 +89,9 @@ type UnimplementedWorkloadServiceServer struct{}
 
 func (UnimplementedWorkloadServiceServer) RunWorkload(context.Context, *RunWorkloadRequest) (*RunWorkloadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunWorkload not implemented")
+}
+func (UnimplementedWorkloadServiceServer) WorkloadStatus(context.Context, *WorkloadStatusRequest) (*WorkloadStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method WorkloadStatus not implemented")
 }
 func (UnimplementedWorkloadServiceServer) mustEmbedUnimplementedWorkloadServiceServer() {}
 func (UnimplementedWorkloadServiceServer) testEmbeddedByValue()                         {}
@@ -118,6 +132,24 @@ func _WorkloadService_RunWorkload_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkloadService_WorkloadStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WorkloadStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkloadServiceServer).WorkloadStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkloadService_WorkloadStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkloadServiceServer).WorkloadStatus(ctx, req.(*WorkloadStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkloadService_ServiceDesc is the grpc.ServiceDesc for WorkloadService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -128,6 +160,10 @@ var WorkloadService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RunWorkload",
 			Handler:    _WorkloadService_RunWorkload_Handler,
+		},
+		{
+			MethodName: "WorkloadStatus",
+			Handler:    _WorkloadService_WorkloadStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

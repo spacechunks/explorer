@@ -8,11 +8,12 @@ service WorkloadService {
   // RunWorkload runs a sandbox with the specified options.
   //
   // the created workload will be reachable from the public
-  // internet on port 25565/tcp. programs running in the workload
-  // have access to the external network, but cannot be reached
-  // from the outside without the program initiating the connection
-  // first.
+  // internet. programs running in the workload have access to
+  // the external network, but cannot be reached from the outside
+  // without the program initiating the connection first.
   rpc RunWorkload(RunWorkloadRequest) returns (RunWorkloadResponse);
+
+  rpc WorkloadStatus(WorkloadStatusRequest) returns (WorkloadStatusResponse);
 }
 
 message Workload {
@@ -40,6 +41,22 @@ message Workload {
   int32 network_namespace_mode = 7;
 }
 
+enum WorkloadState {
+  UNKNOWN = 0;
+  STARTING = 1;
+  RUNNING = 2;
+  DELETING = 3;
+  DELETED = 4;
+}
+
+message WorkloadStatus {
+  WorkloadState state = 1;
+
+  // port allocated for the workload. programs binding
+  // to this port will be reachable from the internet.
+  uint32 port = 2;
+}
+
 message RunWorkloadRequest {
   string name = 1;
   string image = 2;
@@ -51,4 +68,12 @@ message RunWorkloadRequest {
 
 message RunWorkloadResponse {
   Workload workload = 1;
+}
+
+message WorkloadStatusRequest {
+  string id = 1;
+}
+
+message WorkloadStatusResponse {
+  WorkloadStatus status = 1;
 }
