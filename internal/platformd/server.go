@@ -72,7 +72,11 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 
 		mgmtServer  = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 		proxyServer = proxy.NewServer(proxySvc)
-		wlServer    = workload.NewServer(wlSvc)
+		wlServer    = workload.NewServer(
+			wlSvc,
+			workload.NewPortAllocator(30000, 40000),
+			workload.NewStore(),
+		)
 	)
 
 	proxyv1alpha1.RegisterProxyServiceServer(mgmtServer, proxyServer)
@@ -93,7 +97,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	}
 
 	// before we start our grpc services make sure our system workloads are running
-	if err := wlSvc.EnsureWorkload(ctx, workload.RunOptions{
+	if err := wlSvc.EnsureWorkload(ctx, workload.Workload{
 		Name:                 "envoy",
 		Image:                cfg.EnvoyImage,
 		Namespace:            "system",
@@ -110,7 +114,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("ensure envoy: %w", err)
 	}
 
-	if err := wlSvc.EnsureWorkload(ctx, workload.RunOptions{
+	if err := wlSvc.EnsureWorkload(ctx, workload.Workload{
 		Name:                 "coredns",
 		Image:                "docker.io/coredns/coredns",
 		Namespace:            "system",

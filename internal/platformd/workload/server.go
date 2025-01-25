@@ -20,18 +20,24 @@ package workload
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/google/uuid"
 	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
 )
 
 type Server struct {
 	workloadv1alpha1.UnimplementedWorkloadServiceServer
-	svc Service
+	svc       Service
+	portAlloc *PortAllocator
+	store     Store
 }
 
-func NewServer(svc Service) *Server {
+func NewServer(svc Service, alloc *PortAllocator, store Store) *Server {
 	return &Server{
-		svc: svc,
+		svc:       svc,
+		portAlloc: alloc,
+		store:     store,
 	}
 }
 
@@ -39,19 +45,31 @@ func (s *Server) RunWorkload(
 	ctx context.Context,
 	req *workloadv1alpha1.RunWorkloadRequest,
 ) (*workloadv1alpha1.RunWorkloadResponse, error) {
-	opts := RunOptions{
+	port, err := s.portAlloc.Allocate()
+	if err != nil {
+		return nil, fmt.Errorf("allocate port: %w", err)
+	}
+
+	id, err := uuid.NewV7()
+	if err != nil {
+		return nil, fmt.Errorf("create uuid: %w", err)
+	}
+
+	w := Workload{
+		ID:                   id.String(),
 		Name:                 req.Name,
 		Image:                req.Image,
 		Namespace:            req.Namespace,
 		Hostname:             req.Hostname,
 		Labels:               req.Labels,
 		NetworkNamespaceMode: req.NetworkNamespaceMode,
-		DNSServer:            "10.0.0.53", // TODO: refactor
+		Port:                 port,
 	}
 
-	w, err := s.svc.RunWorkload(ctx, opts)
-	if err != nil {
-		return nil, err
+	s.store.SaveWorkload(w)
+
+	if err := s.svc.RunWorkload(ctx, w); err != nil {
+		return nil, fmt.Errorf("run workload: %w", err)
 	}
 
 	// FIXME(yannic): if we have more objects create codec package
@@ -66,7 +84,29 @@ func (s *Server) RunWorkload(
 			Namespace:            w.Namespace,
 			Hostname:             w.Hostname,
 			Labels:               w.Labels,
-			NetworkNamespaceMode: int32(w.NetworkNamespaceMode),
+			NetworkNamespaceMode: w.NetworkNamespaceMode,
+			Port:                 uint32(port),
+		},
+	}, nil
+}
+
+func (s *Server) WorkloadStatus(
+	ctx context.Context,
+	req *workloadv1alpha1.WorkloadStatusRequest,
+) (*workloadv1alpha1.WorkloadStatusResponse, error) {
+	if req.Id == "" {
+		return nil, fmt.Errorf("workload id required")
+	}
+
+	w := s.store.GetWorkload(req.Id)
+	if w == nil {
+		return nil, fmt.Errorf("workload not found")
+	}
+
+	return &workloadv1alpha1.WorkloadStatusResponse{
+		Status: &workloadv1alpha1.WorkloadStatus{
+			State: workloadv1alpha1.WorkloadState_UNKNOWN,
+			Port:  uint32(w.Port),
 		},
 	}, nil
 }

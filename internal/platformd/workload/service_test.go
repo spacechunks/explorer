@@ -38,18 +38,19 @@ func TestEnsureWorkload(t *testing.T) {
 	tests := []struct {
 		name          string
 		labelSelector map[string]string
-		opts          workload.RunOptions
+		opts          workload.Workload
 		prep          func(
 			*mock.MockV1RuntimeServiceClient,
 			*mock.MockV1ImageServiceClient,
-			workload.RunOptions,
+			workload.Workload,
 			map[string]string,
 		)
 	}{
 		{
 			name:          "everything works",
 			labelSelector: map[string]string{"k": "v"},
-			opts: workload.RunOptions{
+			opts: workload.Workload{
+				ID:                   testWorkloadID,
 				Name:                 "test",
 				Image:                "test-image",
 				Namespace:            "test",
@@ -62,13 +63,12 @@ func TestEnsureWorkload(t *testing.T) {
 						HostPath:      "/tmp/test",
 					},
 				},
-				Args:      []string{"--test"},
-				DNSServer: "127.0.0.1",
+				Args: []string{"--test"},
 			},
 			prep: func(
 				rtMock *mock.MockV1RuntimeServiceClient,
 				imgMock *mock.MockV1ImageServiceClient,
-				opts workload.RunOptions,
+				opts workload.Workload,
 				labelSelector map[string]string,
 			) {
 				rtMock.EXPECT().
@@ -97,11 +97,11 @@ func TestEnsureWorkload(t *testing.T) {
 		{
 			name:          "return when pod is already present",
 			labelSelector: map[string]string{"k": "v"},
-			opts:          workload.RunOptions{},
+			opts:          workload.Workload{},
 			prep: func(
 				rtMock *mock.MockV1RuntimeServiceClient,
 				imgMock *mock.MockV1ImageServiceClient,
-				opts workload.RunOptions,
+				opts workload.Workload,
 				labelSelector map[string]string,
 			) {
 				rtMock.EXPECT().
@@ -130,8 +130,6 @@ func TestEnsureWorkload(t *testing.T) {
 			mockImgClient := mock.NewMockV1ImageServiceClient(t)
 			svc := workload.NewService(logger, mockRtClient, mockImgClient)
 
-			os.Setenv("TEST_WORKLOAD_ID", testWorkloadID)
-
 			tt.prep(mockRtClient, mockImgClient, tt.opts, tt.labelSelector)
 
 			require.NoError(t, svc.EnsureWorkload(ctx, tt.opts, tt.labelSelector))
@@ -141,7 +139,8 @@ func TestEnsureWorkload(t *testing.T) {
 
 func TestRunWorkload(t *testing.T) {
 	var (
-		opts = workload.RunOptions{
+		opts = workload.Workload{
+			ID:                   testWorkloadID,
 			Name:                 "test",
 			Image:                "test-image",
 			Namespace:            "test",
@@ -154,26 +153,25 @@ func TestRunWorkload(t *testing.T) {
 					HostPath:      "/tmp/test",
 				},
 			},
-			Args:      []string{"--test"},
-			DNSServer: "127.0.0.1",
+			Args: []string{"--test"},
 		}
 		wlID = "29533179-f25a-49e8-b2f7-ffb187327692"
 	)
 	tests := []struct {
 		name string
-		opts workload.RunOptions
+		w    workload.Workload
 		prep func(
 			*mock.MockV1RuntimeServiceClient,
 			*mock.MockV1ImageServiceClient,
-			workload.RunOptions,
+			workload.Workload,
 		)
 	}{
 		{
 			name: "all options set - pull image if not present",
-			opts: opts,
+			w:    opts,
 			prep: func(rtMock *mock.MockV1RuntimeServiceClient,
 				imgMock *mock.MockV1ImageServiceClient,
-				opts workload.RunOptions,
+				opts workload.Workload,
 			) {
 				imgMock.EXPECT().
 					ListImages(mocky.Anything, &runtimev1.ListImagesRequest{}).
@@ -192,22 +190,22 @@ func TestRunWorkload(t *testing.T) {
 		},
 		{
 			name: "image already present",
-			opts: opts,
+			w:    opts,
 			prep: func(rtMock *mock.MockV1RuntimeServiceClient,
 				imgMock *mock.MockV1ImageServiceClient,
-				opts workload.RunOptions,
+				w workload.Workload,
 			) {
 				imgMock.EXPECT().
 					ListImages(mocky.Anything, &runtimev1.ListImagesRequest{}).
 					Return(&runtimev1.ListImagesResponse{
 						Images: []*runtimev1.Image{
 							{
-								RepoTags: []string{opts.Image},
+								RepoTags: []string{w.Image},
 							},
 						},
 					}, nil)
 
-				expect(rtMock, opts, wlID)
+				expect(rtMock, w, wlID)
 			},
 		},
 	}
@@ -221,51 +219,37 @@ func TestRunWorkload(t *testing.T) {
 				svc           = workload.NewService(logger, mockRtClient, mockImgClient)
 			)
 
-			os.Setenv("TEST_WORKLOAD_ID", wlID)
+			tt.prep(mockRtClient, mockImgClient, tt.w)
 
-			tt.prep(mockRtClient, mockImgClient, tt.opts)
-
-			wl, err := svc.RunWorkload(ctx, tt.opts)
+			err := svc.RunWorkload(ctx, tt.w)
 			require.NoError(t, err)
-
-			expected := workload.Workload{
-				ID:                   wlID,
-				Name:                 tt.opts.Name,
-				Image:                tt.opts.Image,
-				Namespace:            tt.opts.Namespace,
-				Hostname:             tt.opts.Hostname,
-				Labels:               tt.opts.Labels,
-				NetworkNamespaceMode: tt.opts.NetworkNamespaceMode,
-			}
-
-			require.Equal(t, expected, wl)
 		})
 	}
 }
 
 // expect runs all expectations required for a successful pod creation and container start
-func expect(rtMock *mock.MockV1RuntimeServiceClient, opts workload.RunOptions, wlID string) {
+func expect(rtMock *mock.MockV1RuntimeServiceClient, w workload.Workload, wlID string) {
 	var (
 		ctrID   = "ctr-test"
 		podID   = "pod-test"
 		sboxCfg = &runtimev1.PodSandboxConfig{
 			Metadata: &runtimev1.PodSandboxMetadata{
-				Name:      opts.Name,
+				Name:      w.Name,
 				Uid:       wlID,
-				Namespace: opts.Namespace,
+				Namespace: w.Namespace,
 			},
-			Hostname:     opts.Hostname,
+			Hostname:     w.Hostname,
 			LogDirectory: workload.PodLogDir,
-			Labels:       opts.Labels,
+			Labels:       w.Labels,
 			DnsConfig: &runtimev1.DNSConfig{
-				Servers:  []string{opts.DNSServer},
+				Servers:  []string{"10.0.0.53"},
 				Options:  []string{"edns0", "trust-ad"},
 				Searches: []string{"."},
 			},
 			Linux: &runtimev1.LinuxPodSandboxConfig{
 				SecurityContext: &runtimev1.LinuxSandboxSecurityContext{
 					NamespaceOptions: &runtimev1.NamespaceOption{
-						Network: runtimev1.NamespaceMode(opts.NetworkNamespaceMode),
+						Network: runtimev1.NamespaceMode(w.NetworkNamespaceMode),
 					},
 				},
 			},
@@ -274,16 +258,16 @@ func expect(rtMock *mock.MockV1RuntimeServiceClient, opts workload.RunOptions, w
 			PodSandboxId: podID,
 			Config: &runtimev1.ContainerConfig{
 				Metadata: &runtimev1.ContainerMetadata{
-					Name:    opts.Name,
+					Name:    w.Name,
 					Attempt: 0,
 				},
 				Image: &runtimev1.ImageSpec{
-					UserSpecifiedImage: opts.Image,
-					Image:              opts.Image,
+					UserSpecifiedImage: w.Image,
+					Image:              w.Image,
 				},
-				Labels:  opts.Labels,
-				LogPath: fmt.Sprintf("%s_%s", opts.Namespace, opts.Name),
-				Args:    opts.Args,
+				Labels:  w.Labels,
+				LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
+				Args:    w.Args,
 			},
 			SandboxConfig: sboxCfg,
 		}
@@ -297,8 +281,8 @@ func expect(rtMock *mock.MockV1RuntimeServiceClient, opts workload.RunOptions, w
 			PodSandboxId: podID,
 		}, nil)
 
-	mnts := make([]*runtimev1.Mount, 0, len(opts.Mounts))
-	for _, m := range opts.Mounts {
+	mnts := make([]*runtimev1.Mount, 0, len(w.Mounts))
+	for _, m := range w.Mounts {
 		mnts = append(mnts, &runtimev1.Mount{
 			ContainerPath: m.ContainerPath,
 			HostPath:      m.HostPath,
