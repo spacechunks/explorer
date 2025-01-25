@@ -28,19 +28,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPlatformdWorkloadAPI(t *testing.T) {
+func TestRunWorkload(t *testing.T) {
 	fixture.RunWorkloadAPIFixtures(t)
 
-	c := workloadv1alpha1.NewWorkloadServiceClient(fixture.PlatformdClientConn(t))
-
-	expected := &workloadv1alpha1.Workload{
-		Name:                 "my-chunk",
-		Image:                "my-image",
-		Namespace:            "chunk-ns",
-		Hostname:             "my-chunk",
-		Labels:               map[string]string{"k": "v"},
-		NetworkNamespaceMode: 2,
-	}
+	var (
+		c        = workloadv1alpha1.NewWorkloadServiceClient(fixture.PlatformdClientConn(t))
+		expected = fixture.Workload()
+	)
 
 	resp, err := c.RunWorkload(context.Background(), &workloadv1alpha1.RunWorkloadRequest{
 		Name:                 expected.Name,
@@ -58,4 +52,31 @@ func TestPlatformdWorkloadAPI(t *testing.T) {
 	assert.Equal(t, expected.Hostname, resp.Workload.Hostname)
 	assert.Equal(t, expected.Labels, resp.Workload.Labels)
 	assert.Equal(t, expected.NetworkNamespaceMode, resp.Workload.NetworkNamespaceMode)
+	assert.NotEqual(t, 0, resp.Workload.Port) // makes sure we actually have a valid port set
+}
+
+func TestWorkloadStatus(t *testing.T) {
+	fixture.RunWorkloadAPIFixtures(t)
+
+	var (
+		c        = workloadv1alpha1.NewWorkloadServiceClient(fixture.PlatformdClientConn(t))
+		expected = fixture.Workload()
+	)
+
+	runResp, err := c.RunWorkload(context.Background(), &workloadv1alpha1.RunWorkloadRequest{
+		Name:                 expected.Name,
+		Image:                expected.Image,
+		Namespace:            expected.Namespace,
+		Hostname:             expected.Hostname,
+		Labels:               expected.Labels,
+		NetworkNamespaceMode: expected.NetworkNamespaceMode,
+	})
+	require.NoError(t, err)
+
+	statusResp, err := c.WorkloadStatus(context.Background(), &workloadv1alpha1.WorkloadStatusRequest{
+		Id: runResp.Workload.Id,
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, runResp.Workload.Port, statusResp.Status.Port)
 }
