@@ -23,9 +23,9 @@ apt-get install -y gnupg2 git linux-tools-6.8.0-38-generic
 
 # platformd
 mkdir /etc/platformd
-cp config.json /etc/platformd/config.json
-cp Corefile /etc/platformd/dns.conf
-cp envoy-xds.yaml /etc/platformd/proxy.conf
+cp platformd/config.json /etc/platformd/config.json
+cp platformd/Corefile /etc/platformd/dns.conf
+cp platformd/envoy-xds.yaml /etc/platformd/proxy.conf
 
 # pwru
 wget https://github.com/cilium/pwru/releases/download/v1.0.8/pwru-linux-arm64.tar.gz
@@ -54,8 +54,11 @@ cp -r plugins/bin /opt/cni
 
 # install cni
 mkdir -p /etc/cni/net.d/
-cp netglue /opt/cni/bin/netglue
-cp /root/00-netglue.conflist /etc/cni/net.d/00-netglue.conflist
+   cp netglue /opt/cni/bin/netglue
+cp cni/00-netglue.conflist /etc/cni/net.d/00-netglue.conflist
+
+cp cni/10-ignore.link /etc/systemd/network/10-ignore.link
+systemctl restart systemd-networkd
 
 # crio
 MAJOR_VERSION=1.32
@@ -66,7 +69,7 @@ apt-get install -y cri-o
 systemctl start crio.service
 sysctl -w net.ipv4.ip_forward=1
 sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf # persist after reboot
-cp /root/crio.conf /etc/crio/crio.conf.d/99-nodedev.conf
+cp platformd/crio.conf /etc/crio/crio.conf.d/99-nodedev.conf
 cp /etc/crio/policy.json /etc/containers/policy.json
 
 # criu
