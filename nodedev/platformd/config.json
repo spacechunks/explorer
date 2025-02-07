@@ -3,5 +3,6 @@
   "cri-listen-sock": "unix:///var/run/crio/crio.sock",
   "getsockopt-cgroup": "/sys/fs/cgroup",
   "dns-server": "127.0.0.1:1053",
-  "envoy-image": "docker.io/envoyproxy/envoy:v1.31.4"
+  "envoy-image": "docker.io/envoyproxy/envoy:v1.31.4",
+  "host-iface": "eth0"
 }

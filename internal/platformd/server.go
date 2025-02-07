@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/netip"
 
+	"github.com/google/uuid"
 	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
 	"github.com/spacechunks/platform/internal/datapath"
 
@@ -72,7 +73,11 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 
 		mgmtServer  = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 		proxyServer = proxy.NewServer(proxySvc)
-		wlServer    = workload.NewServer(wlSvc)
+		wlServer    = workload.NewServer(
+			wlSvc,
+			workload.NewPortAllocator(30000, 40000),
+			workload.NewStore(),
+		)
 	)
 
 	proxyv1alpha1.RegisterProxyServiceServer(mgmtServer, proxyServer)
@@ -84,16 +89,40 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("failed to load bpf: %w", err)
 	}
 
-	if err := proxySvc.ApplyGlobalResources(ctx); err != nil {
-		return fmt.Errorf("apply global resources: %w", err)
+	iface, err := net.InterfaceByName(cfg.HostIface)
+	if err != nil {
+		return fmt.Errorf("failed to get host interface: %w", err)
+	}
+
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return fmt.Errorf("failed to get addresses: %w", err)
+	}
+
+	ip, _, err := net.ParseCIDR(addrs[0].String())
+	if err != nil {
+		return fmt.Errorf("failed to parse ip: %w", err)
+	}
+
+	if err := bpf.AttachAndPinDNAT(iface); err != nil {
+		return fmt.Errorf("attach dnat bpf: %w", err)
+	}
+
+	if err := bpf.AddSNATTarget(0, ip, uint8(iface.Index)); err != nil {
+		return fmt.Errorf("add snat target: %w", err)
 	}
 
 	if err := bpf.AttachAndPinGetsockopt(cfg.GetsockoptCGroup); err != nil {
 		return fmt.Errorf("attach getsockopt: %w", err)
 	}
 
+	if err := proxySvc.ApplyGlobalResources(ctx); err != nil {
+		return fmt.Errorf("apply global resources: %w", err)
+	}
+
 	// before we start our grpc services make sure our system workloads are running
-	if err := wlSvc.EnsureWorkload(ctx, workload.RunOptions{
+	if err := wlSvc.EnsureWorkload(ctx, workload.Workload{
+		ID:                   uuid.New().String(),
 		Name:                 "envoy",
 		Image:                cfg.EnvoyImage,
 		Namespace:            "system",
@@ -110,7 +139,8 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("ensure envoy: %w", err)
 	}
 
-	if err := wlSvc.EnsureWorkload(ctx, workload.RunOptions{
+	if err := wlSvc.EnsureWorkload(ctx, workload.Workload{
+		ID:                   uuid.New().String(),
 		Name:                 "coredns",
 		Image:                "docker.io/coredns/coredns",
 		Namespace:            "system",

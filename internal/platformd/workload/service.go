@@ -4,29 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"slices"
 
-	"github.com/google/uuid"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
 type Workload struct {
-	ID                   string
-	Name                 string
-	Image                string
-	Namespace            string
-	Hostname             string
-	Labels               map[string]string
-	NetworkNamespaceMode int32
-}
-
-type Mount struct {
-	ContainerPath string
-	HostPath      string
-}
-
-type RunOptions struct {
+	ID        string
 	Name      string
 	Image     string
 	Namespace string
@@ -39,17 +23,22 @@ type RunOptions struct {
 	// which would be the case if we were defining enum values for each
 	// [runtimev1.NamespaceMode] value.
 	NetworkNamespaceMode int32
+	Port                 uint16
 
-	Mounts    []Mount
-	Args      []string
-	DNSServer string
+	Mounts []Mount
+	Args   []string
+}
+
+type Mount struct {
+	ContainerPath string
+	HostPath      string
 }
 
 const PodLogDir = "/var/log/platformd/pods"
 
 type Service interface {
-	RunWorkload(ctx context.Context, opts RunOptions) (Workload, error)
-	EnsureWorkload(ctx context.Context, opts RunOptions, labelSelector map[string]string) error
+	RunWorkload(ctx context.Context, w Workload) error
+	EnsureWorkload(ctx context.Context, w Workload, labelSelector map[string]string) error
 }
 
 type criService struct {
@@ -74,7 +63,7 @@ func NewService(
 // if ListPodSandbox returns 0 items, a pod with the passed configuration is created.
 // Currently, this function is designed for a single item returned by the label selector.
 // If multiple items are returned the first one will be picked.
-func (s *criService) EnsureWorkload(ctx context.Context, opts RunOptions, labelSelector map[string]string) error {
+func (s *criService) EnsureWorkload(ctx context.Context, w Workload, labelSelector map[string]string) error {
 	resp, err := s.rtClient.ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
 		Filter: &runtimev1.PodSandboxFilter{
 			LabelSelector: labelSelector,
@@ -92,58 +81,43 @@ func (s *criService) EnsureWorkload(ctx context.Context, opts RunOptions, labelS
 
 	s.logger.InfoContext(ctx,
 		"no matching workload found, creating pod",
-		"pod_name", opts.Name,
-		"namespace", opts.Namespace,
+		"pod_name", w.Name,
+		"namespace", w.Namespace,
 		"label_selector", labelSelector,
 	)
 
-	if _, err := s.RunWorkload(ctx, opts); err != nil {
+	if err := s.RunWorkload(ctx, w); err != nil {
 		return fmt.Errorf("create pod: %w", err)
 	}
 	return nil
 }
 
 // RunWorkload calls the CRI to create a new pod defined by [RunOptions].
-// returns the generated uuidv7 ID of the workload. this id is also used in the
-// pods metadata uid field.
-func (s *criService) RunWorkload(ctx context.Context, opts RunOptions) (Workload, error) {
-	id, err := uuid.NewV7()
-	if err != nil {
-		return Workload{}, fmt.Errorf("new uuid: %w", err)
-	}
+func (s *criService) RunWorkload(ctx context.Context, w Workload) error {
+	logger := s.logger.With("workload_id", w.ID, "pod_name", w.Name, "namespace", w.Namespace)
 
-	// testify/mockery does not support ignoring certain fields
-	// when comparing. this is a problem for fields that have random
-	// values like the id we generate. so, in order to get predictable
-	// outcomes introduce this way of setting an id when in tests.
-	if os.Getenv("TEST_WORKLOAD_ID") != "" {
-		id = uuid.MustParse(os.Getenv("TEST_WORKLOAD_ID"))
-	}
-
-	logger := s.logger.With("workload_id", id.String(), "pod_name", opts.Name, "namespace", opts.Namespace)
-
-	if err := s.pullImageIfNotPresent(ctx, logger, opts.Image); err != nil {
-		return Workload{}, fmt.Errorf("pull image if not present: %w", err)
+	if err := s.pullImageIfNotPresent(ctx, logger, w.Image); err != nil {
+		return fmt.Errorf("pull image if not present: %w", err)
 	}
 
 	sboxCfg := &runtimev1.PodSandboxConfig{
 		Metadata: &runtimev1.PodSandboxMetadata{
-			Name:      opts.Name,
-			Uid:       id.String(),
-			Namespace: opts.Namespace,
+			Name:      w.Name,
+			Uid:       w.ID,
+			Namespace: w.Namespace,
 		},
-		Hostname:     opts.Hostname, // TODO: explore if we can use the id as the hostname
+		Hostname:     w.Hostname, // TODO: explore if we can use the id as the hostname
 		LogDirectory: PodLogDir,
-		Labels:       opts.Labels,
+		Labels:       w.Labels,
 		DnsConfig: &runtimev1.DNSConfig{
-			Servers:  []string{opts.DNSServer},
+			Servers:  []string{"10.0.0.53"}, // TODO: make configurable
 			Options:  []string{"edns0", "trust-ad"},
 			Searches: []string{"."},
 		},
 		Linux: &runtimev1.LinuxPodSandboxConfig{
 			SecurityContext: &runtimev1.LinuxSandboxSecurityContext{
 				NamespaceOptions: &runtimev1.NamespaceOption{
-					Network: runtimev1.NamespaceMode(opts.NetworkNamespaceMode),
+					Network: runtimev1.NamespaceMode(w.NetworkNamespaceMode),
 				},
 			},
 		},
@@ -153,7 +127,7 @@ func (s *criService) RunWorkload(ctx context.Context, opts RunOptions) (Workload
 		Config: sboxCfg,
 	})
 	if err != nil {
-		return Workload{}, fmt.Errorf("create pod: %w", err)
+		return fmt.Errorf("create pod: %w", err)
 	}
 
 	logger = logger.With("pod_id", sboxResp.PodSandboxId)
@@ -163,22 +137,22 @@ func (s *criService) RunWorkload(ctx context.Context, opts RunOptions) (Workload
 		PodSandboxId: sboxResp.PodSandboxId,
 		Config: &runtimev1.ContainerConfig{
 			Metadata: &runtimev1.ContainerMetadata{
-				Name:    opts.Name,
+				Name:    w.Name,
 				Attempt: 0,
 			},
 			Image: &runtimev1.ImageSpec{
-				UserSpecifiedImage: opts.Image,
-				Image:              opts.Image,
+				UserSpecifiedImage: w.Image,
+				Image:              w.Image,
 			},
-			Labels:  opts.Labels,
-			LogPath: fmt.Sprintf("%s_%s", opts.Namespace, opts.Name),
-			Args:    opts.Args,
+			Labels:  w.Labels,
+			LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
+			Args:    w.Args,
 		},
 		SandboxConfig: sboxCfg,
 	}
 
-	mnts := make([]*runtimev1.Mount, 0, len(opts.Mounts))
-	for _, m := range opts.Mounts {
+	mnts := make([]*runtimev1.Mount, 0, len(w.Mounts))
+	for _, m := range w.Mounts {
 		mnts = append(mnts, &runtimev1.Mount{
 			ContainerPath: m.ContainerPath,
 			HostPath:      m.HostPath,
@@ -189,25 +163,17 @@ func (s *criService) RunWorkload(ctx context.Context, opts RunOptions) (Workload
 
 	ctrResp, err := s.rtClient.CreateContainer(ctx, req)
 	if err != nil {
-		return Workload{}, fmt.Errorf("create container: %w", err)
+		return fmt.Errorf("create container: %w", err)
 	}
 
 	if _, err := s.rtClient.StartContainer(ctx, &runtimev1.StartContainerRequest{
 		ContainerId: ctrResp.ContainerId,
 	}); err != nil {
-		return Workload{}, fmt.Errorf("start container: %w", err)
+		return fmt.Errorf("start container: %w", err)
 	}
 
 	logger.InfoContext(ctx, "started container", "container_id", ctrResp.ContainerId)
-	return Workload{
-		ID:                   id.String(),
-		Name:                 opts.Name,
-		Image:                opts.Image,
-		Namespace:            opts.Namespace,
-		Hostname:             opts.Hostname,
-		Labels:               opts.Labels,
-		NetworkNamespaceMode: opts.NetworkNamespaceMode,
-	}, nil
+	return nil
 }
 
 // pullImageIfNotPresent first calls ListImages then checks if the image is contained in the response.

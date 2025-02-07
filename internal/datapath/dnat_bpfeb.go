@@ -19,6 +19,23 @@ type dnatDnatTarget struct {
 	_        [1]byte
 }
 
+type dnatNetData struct {
+	PodPeer struct {
+		IfIndex uint32
+		IfAddr  uint32
+		MacAddr [6]uint8
+		_       [2]byte
+	}
+	HostPeer struct {
+		IfIndex uint32
+		IfAddr  uint32
+		MacAddr [6]uint8
+		_       [2]byte
+	}
+	HostPort uint16
+	_        [2]byte
+}
+
 // loadDnat returns the embedded CollectionSpec for dnat.
 func loadDnat() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_DnatBytes)
@@ -67,6 +84,7 @@ type dnatProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type dnatMapSpecs struct {
+	NetDataMap     *ebpf.MapSpec `ebpf:"net_data_map"`
 	PtpDnatTargets *ebpf.MapSpec `ebpf:"ptp_dnat_targets"`
 }
 
@@ -89,11 +107,13 @@ func (o *dnatObjects) Close() error {
 //
 // It can be passed to loadDnatObjects or ebpf.CollectionSpec.LoadAndAssign.
 type dnatMaps struct {
+	NetDataMap     *ebpf.Map `ebpf:"net_data_map"`
 	PtpDnatTargets *ebpf.Map `ebpf:"ptp_dnat_targets"`
 }
 
 func (m *dnatMaps) Close() error {
 	return _DnatClose(
+		m.NetDataMap,
 		m.PtpDnatTargets,
 	)
 }

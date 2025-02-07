@@ -32,6 +32,17 @@ import (
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
+func Workload() workloadv1alpha1.Workload {
+	return workloadv1alpha1.Workload{
+		Name:                 "my-chunk",
+		Image:                "my-image",
+		Namespace:            "chunk-ns",
+		Hostname:             "my-chunk",
+		Labels:               map[string]string{"k": "v"},
+		NetworkNamespaceMode: 2,
+	}
+}
+
 func RunWorkloadAPIFixtures(t *testing.T) {
 	var (
 		logger  = slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -52,7 +63,10 @@ func RunWorkloadAPIFixtures(t *testing.T) {
 		workload.NewService(
 			logger,
 			runtimev1.NewRuntimeServiceClient(conn),
-			runtimev1.NewImageServiceClient(conn)),
+			runtimev1.NewImageServiceClient(conn),
+		),
+		workload.NewPortAllocator(20, 50),
+		workload.NewStore(),
 	)
 
 	workloadv1alpha1.RegisterWorkloadServiceServer(criServ, wlServ)

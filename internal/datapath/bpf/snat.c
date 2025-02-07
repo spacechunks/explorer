@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "linux/if_ether.h"
 #include "vmlinux.h"
 #include "lib/net_helpers.h"
+#include "lib/net_data.h"
 
 #define IP_SRC_OFF (ETH_HLEN + offsetof(struct iphdr, saddr))
 
@@ -74,6 +75,13 @@ int snat(struct __sk_buff *ctx)
         return TC_ACT_OK;
     }
 
+    __u32 k = bpf_ntohl(iph->saddr);
+    struct net_data *nd = bpf_map_lookup_elem(&net_data_map, &k);
+    if (nd == NULL) {
+        bpf_printk("no netdata entry found for pod peer address: %d", iph->saddr);
+        return TC_ACT_OK;
+    }
+
     __be32 src = bpf_htonl(entry->ip_addr);
     __be32 prev_src;
 
@@ -81,6 +89,8 @@ int snat(struct __sk_buff *ctx)
     bpf_skb_store_bytes(ctx, IP_SRC_OFF, &src, sizeof(src), 0);
     bpf_l3_csum_replace(ctx, IP_CSUM_OFF, prev_src, src, sizeof(src));
     bpf_l4_csum_replace(ctx, TCP_CSUM_OFF, prev_src, src,  BPF_F_PSEUDO_HDR | sizeof(src));
+
+    rewrite_port(&ctx, bpf_htons(nd->host_port), TCP_SPORT_OFF, IPPROTO_TCP);
 
     /* this fills in the l2 address for us */
     return bpf_redirect_neigh(entry->iface_idx, NULL, 0, 0);

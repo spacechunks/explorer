@@ -22,9 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "linux/if_ether.h"
 #include "vmlinux.h"
 #include "lib/net_helpers.h"
-
-#define TCP_DPORT_OFF (ETH_HLEN + sizeof(struct iphdr) + offsetof(struct tcphdr, dest))
-#define IP_DST_OFF (ETH_HLEN + offsetof(struct iphdr, daddr))
+#include "lib/net_data.h"
 
 struct dnat_target {
     __u32 ip_addr;
@@ -74,6 +72,8 @@ int dnat(struct __sk_buff *ctx)
     bpf_skb_store_bytes(ctx, IP_DST_OFF, &dst, sizeof(dst), 0);
     bpf_l3_csum_replace(ctx, IP_CSUM_OFF, prev_dst, dst, sizeof(dst));
     bpf_l4_csum_replace(ctx, TCP_CSUM_OFF, prev_dst, dst,  BPF_F_PSEUDO_HDR | sizeof(dst));
+
+    rewrite_port(&ctx, bpf_htons(MC_SERVER_PORT), TCP_DPORT_OFF, IPPROTO_TCP);
 
     return bpf_redirect_peer(tgt->iface_idx, 0);
 }

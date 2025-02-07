@@ -6,4 +6,5 @@ type Config struct {
 	EnvoyImage                 string
 	GetsockoptCGroup           string
 	DNSServer                  string
+	HostIface                  string
 }

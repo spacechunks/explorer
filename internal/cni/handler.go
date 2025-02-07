@@ -43,13 +43,16 @@ type Handler interface {
 	AttachCtrVethBPF(veth datapath.VethPair, netNS string) error
 	AllocIPs(plugin string, stdinData []byte) ([]net.IPNet, error)
 	DeallocIPs(plugin string, stdinData []byte) error
-	AttachDNATBPF(veth datapath.VethPair) error
-	ConfigureSNAT(ip net.IP, ifaceIndex uint8) error
 	AddDefaultRoute(veth datapath.VethPair, nsPath string) error
 
 	// AddFullMatchRoute will create a rule in the root ns, which routes packets
 	// with the fully matching ip address (/32 CIDR) to the given interface.
 	AddFullMatchRoute(veth datapath.VethPair) error
+
+	// AddDNATTarget maps the passed port to the veth pairs pod peer.
+	AddDNATTarget(veth datapath.VethPair, port uint16) error
+
+	AddNetData(data datapath.NetData) error
 }
 
 type cniHandler struct {
@@ -187,20 +190,6 @@ func (h *cniHandler) DeallocIPs(plugin string, stdinData []byte) error {
 	return ipam.ExecDel(plugin, stdinData)
 }
 
-func (h *cniHandler) AttachDNATBPF(veth datapath.VethPair) error {
-	if err := h.bpf.AttachAndPinDNAT(veth.HostPeer.Iface); err != nil {
-		return fmt.Errorf("attach dnat bpf: %w", err)
-	}
-	return nil
-}
-
-func (h *cniHandler) ConfigureSNAT(ip net.IP, ifaceIndex uint8) error {
-	if err := h.bpf.AddSNATTarget(0, ip, ifaceIndex); err != nil {
-		return fmt.Errorf("add snat target: %w", err)
-	}
-	return nil
-}
-
 func (h *cniHandler) AddDefaultRoute(veth datapath.VethPair, nsPath string) error {
 	if err := ns.WithNetNSPath(nsPath, func(_ ns.NetNS) error {
 		// for default gateway we can leave destination empty.
@@ -234,6 +223,22 @@ func (h *cniHandler) AddFullMatchRoute(veth datapath.VethPair) error {
 		return err
 	}
 	return nil
+}
+
+func (h *cniHandler) AddDNATTarget(veth datapath.VethPair, port uint16) error {
+	return h.bpf.AddDNATTarget(
+		port,
+		veth.PodPeer.Addr.IP,
+		// use host peer index, because bpf_redirect_peer
+		// redirects packets to ifaces peer device. in this
+		// case the pod peer.
+		uint8(veth.HostPeer.Iface.Index),
+		veth.PodPeer.Iface.HardwareAddr,
+	)
+}
+
+func (h *cniHandler) AddNetData(data datapath.NetData) error {
+	return h.bpf.AddNetData(data)
 }
 
 func configureCTRPeer(ctrNS ns.NetNS, ip net.IPNet, ifaceName string) error {

@@ -26,6 +26,7 @@ import (
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
+	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
 	"github.com/spacechunks/platform/internal/cni"
 	"github.com/spacechunks/platform/internal/datapath"
 	"github.com/spacechunks/platform/internal/mock"
@@ -36,7 +37,12 @@ import (
 func TestExecAdd(t *testing.T) {
 	tests := []struct {
 		name string
-		prep func(*mock.MockCniHandler, *mock.MockV1alpha1ProxyServiceClient, *skel.CmdArgs)
+		prep func(
+			*mock.MockCniHandler,
+			*skel.CmdArgs,
+			*mock.MockV1alpha1ProxyServiceClient,
+			*mock.MockV1alpha1WorkloadServiceClient,
+		)
 		args *skel.CmdArgs
 		conf cni.Conf
 		err  error
@@ -56,33 +62,42 @@ func TestExecAdd(t *testing.T) {
 				Args:        "K8S_POD_UID=uuidv7",
 				Netns:       "/path/to/netns",
 			},
-			prep: func(h *mock.MockCniHandler, psc *mock.MockV1alpha1ProxyServiceClient, args *skel.CmdArgs) {
-				ips := []net.IPNet{
-					{
-						IP:   net.ParseIP("10.10.0.0"),
-						Mask: net.CIDRMask(24, 24),
-					},
-					{
-						IP:   net.ParseIP("10.20.0.0"),
-						Mask: net.CIDRMask(24, 24),
-					},
-				}
-				veth := datapath.VethPair{
-					HostPeer: datapath.VethPeer{
-						Iface: &net.Interface{
-							Name: "host",
-						},
-						Addr: net.IPNet{
+			prep: func(
+				h *mock.MockCniHandler,
+				args *skel.CmdArgs,
+				psc *mock.MockV1alpha1ProxyServiceClient,
+				wlc *mock.MockV1alpha1WorkloadServiceClient,
+			) {
+				var (
+					ips = []net.IPNet{
+						{
 							IP:   net.ParseIP("10.10.0.0"),
 							Mask: net.CIDRMask(24, 24),
 						},
-					},
-					PodPeer: datapath.VethPeer{
-						Iface: &net.Interface{
-							Name: "pod",
+						{
+							IP:   net.ParseIP("10.20.0.0"),
+							Mask: net.CIDRMask(24, 24),
 						},
-					},
-				}
+					}
+					veth = datapath.VethPair{
+						HostPeer: datapath.VethPeer{
+							Iface: &net.Interface{
+								Name: "host",
+							},
+							Addr: net.IPNet{
+								IP:   net.ParseIP("10.10.0.0"),
+								Mask: net.CIDRMask(24, 24),
+							},
+						},
+						PodPeer: datapath.VethPeer{
+							Iface: &net.Interface{
+								Name: "pod",
+							},
+						},
+					}
+					port uint32 = 1337
+				)
+
 				h.EXPECT().
 					AllocIPs("host-local", args.StdinData).
 					Return(ips, nil)
@@ -101,6 +116,28 @@ func TestExecAdd(t *testing.T) {
 				h.EXPECT().
 					AddFullMatchRoute(veth).
 					Return(nil)
+
+				wlc.EXPECT().
+					WorkloadStatus(mocky.Anything, &workloadv1alpha1.WorkloadStatusRequest{
+						Id: "uuidv7",
+					}).
+					Return(&workloadv1alpha1.WorkloadStatusResponse{
+						Status: &workloadv1alpha1.WorkloadStatus{
+							Port: port,
+						},
+					}, nil)
+
+				h.EXPECT().
+					AddDNATTarget(veth, uint16(1337)).
+					Return(nil)
+
+				h.EXPECT().
+					AddNetData(datapath.NetData{
+						Veth:     veth,
+						HostPort: uint16(port),
+					}).
+					Return(nil)
+
 				psc.EXPECT().
 					CreateListeners(mocky.Anything, &v1alpha1.CreateListenersRequest{
 						WorkloadID: "uuidv7",
@@ -123,7 +160,12 @@ func TestExecAdd(t *testing.T) {
 				Args: "K8S_POD_UID=uuidv7",
 			},
 			err: fmt.Errorf("configure veth pair: some error"),
-			prep: func(h *mock.MockCniHandler, _ *mock.MockV1alpha1ProxyServiceClient, args *skel.CmdArgs) {
+			prep: func(
+				h *mock.MockCniHandler,
+				args *skel.CmdArgs,
+				_ *mock.MockV1alpha1ProxyServiceClient,
+				_ *mock.MockV1alpha1WorkloadServiceClient,
+			) {
 				h.EXPECT().
 					AllocIPs("host-local", args.StdinData).
 					Return([]net.IPNet{{}, {}}, nil)
@@ -143,8 +185,14 @@ func TestExecAdd(t *testing.T) {
 			args: &skel.CmdArgs{
 				Args: "K8S_POD_UID=uuidv7",
 			},
-			err:  cni.ErrIPAMConfigNotSet,
-			prep: func(h *mock.MockCniHandler, _ *mock.MockV1alpha1ProxyServiceClient, args *skel.CmdArgs) {},
+			err: cni.ErrIPAMConfigNotSet,
+			prep: func(
+				_ *mock.MockCniHandler,
+				_ *skel.CmdArgs,
+				_ *mock.MockV1alpha1ProxyServiceClient,
+				_ *mock.MockV1alpha1WorkloadServiceClient,
+			) {
+			},
 		},
 		{
 			name: "fail if platformd listen sock is not set",
@@ -152,8 +200,14 @@ func TestExecAdd(t *testing.T) {
 			args: &skel.CmdArgs{
 				Args: "K8S_POD_UID=uuidv7",
 			},
-			err:  cni.ErrPlatformdListenSockNotSet,
-			prep: func(h *mock.MockCniHandler, _ *mock.MockV1alpha1ProxyServiceClient, args *skel.CmdArgs) {},
+			err: cni.ErrPlatformdListenSockNotSet,
+			prep: func(
+				_ *mock.MockCniHandler,
+				_ *skel.CmdArgs,
+				_ *mock.MockV1alpha1ProxyServiceClient,
+				_ *mock.MockV1alpha1WorkloadServiceClient,
+			) {
+			},
 		},
 		{
 			name: "fail K8S_POD_UID in CNI_ARGS is not set",
@@ -168,8 +222,14 @@ func TestExecAdd(t *testing.T) {
 			args: &skel.CmdArgs{
 				Args: "K8S_POD_NAMESPACE=abc",
 			},
-			err:  cni.ErrPodUIDMissing,
-			prep: func(h *mock.MockCniHandler, _ *mock.MockV1alpha1ProxyServiceClient, args *skel.CmdArgs) {},
+			err: cni.ErrPodUIDMissing,
+			prep: func(
+				_ *mock.MockCniHandler,
+				_ *skel.CmdArgs,
+				_ *mock.MockV1alpha1ProxyServiceClient,
+				_ *mock.MockV1alpha1WorkloadServiceClient,
+			) {
+			},
 		},
 		{
 			name: "fail if in CNI_ARGS is malformed",
@@ -184,8 +244,14 @@ func TestExecAdd(t *testing.T) {
 			args: &skel.CmdArgs{
 				Args: "K8S_POD_NAMESPACE=abc,K8S_POD_NAME=",
 			},
-			err:  fmt.Errorf("CNI_ARGS parse error: invalid CNI_ARGS pair \"K8S_POD_NAMESPACE=abc,K8S_POD_NAME=\""),
-			prep: func(h *mock.MockCniHandler, _ *mock.MockV1alpha1ProxyServiceClient, args *skel.CmdArgs) {},
+			err: fmt.Errorf("CNI_ARGS parse error: invalid CNI_ARGS pair \"K8S_POD_NAMESPACE=abc,K8S_POD_NAME=\""),
+			prep: func(
+				_ *mock.MockCniHandler,
+				_ *skel.CmdArgs,
+				_ *mock.MockV1alpha1ProxyServiceClient,
+				_ *mock.MockV1alpha1WorkloadServiceClient,
+			) {
+			},
 		},
 		{
 			name: "fail if we have less than two ip addresses",
@@ -201,7 +267,12 @@ func TestExecAdd(t *testing.T) {
 				Args: "K8S_POD_UID=uuidv7",
 			},
 			err: cni.ErrInsufficientAddresses,
-			prep: func(h *mock.MockCniHandler, _ *mock.MockV1alpha1ProxyServiceClient, args *skel.CmdArgs) {
+			prep: func(
+				h *mock.MockCniHandler,
+				args *skel.CmdArgs,
+				_ *mock.MockV1alpha1ProxyServiceClient,
+				_ *mock.MockV1alpha1WorkloadServiceClient,
+			) {
 				h.EXPECT().
 					AllocIPs("host-local", args.StdinData).
 					Return([]net.IPNet{{}}, nil)
@@ -216,10 +287,11 @@ func TestExecAdd(t *testing.T) {
 			var (
 				h   = mock.NewMockCniHandler(t)
 				psc = mock.NewMockV1alpha1ProxyServiceClient(t)
+				wlc = mock.NewMockV1alpha1WorkloadServiceClient(t)
 				c   = cni.NewCNI(h)
 			)
-			tt.prep(h, psc, tt.args)
-			err := c.ExecAdd(tt.args, tt.conf, psc)
+			tt.prep(h, tt.args, psc, wlc)
+			err := c.ExecAdd(tt.args, tt.conf, psc, wlc)
 			if err != nil && tt.err != nil {
 				assert.EqualError(t, err, tt.err.Error())
 				return

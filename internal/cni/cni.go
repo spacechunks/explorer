@@ -30,6 +30,8 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	current "github.com/containernetworking/cni/pkg/types/100"
 	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
+	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
+	"github.com/spacechunks/platform/internal/datapath"
 )
 
 var (
@@ -61,7 +63,12 @@ func NewCNI(h Handler) *CNI {
 // * configure ip address on container iface and bring it up.
 // * configure ip address on host iface and bring it up.
 // * attach snat bpf program to host-side veth peer (tc ingress)
-func (c *CNI) ExecAdd(args *skel.CmdArgs, conf Conf, client proxyv1alpha1.ProxyServiceClient) (err error) {
+func (c *CNI) ExecAdd(
+	args *skel.CmdArgs,
+	conf Conf,
+	proxyClient proxyv1alpha1.ProxyServiceClient,
+	wlClient workloadv1alpha1.WorkloadServiceClient,
+) (err error) {
 	ctx := context.Background()
 
 	cniArgs, err := parseArgs(args.Args)
@@ -118,11 +125,6 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs, conf Conf, client proxyv1alpha1.ProxyS
 		return fmt.Errorf("attach ctr peer: %w", err)
 	}
 
-	// TODO: move to plarformd
-	//if err := c.handler.ConfigureSNAT(conf.HostIface); err != nil {
-	//	return fmt.Errorf("configure snat: %w", err)
-	//}
-
 	if err := c.handler.AddDefaultRoute(veth, args.Netns); err != nil {
 		return fmt.Errorf("add default route: %w", err)
 	}
@@ -131,7 +133,27 @@ func (c *CNI) ExecAdd(args *skel.CmdArgs, conf Conf, client proxyv1alpha1.ProxyS
 		return fmt.Errorf("add full match route: %w", err)
 	}
 
-	if _, err := client.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
+	resp, err := wlClient.WorkloadStatus(ctx, &workloadv1alpha1.WorkloadStatusRequest{
+		Id: wlID,
+	})
+	if err != nil {
+		return fmt.Errorf("get workload status: %w", err)
+	}
+
+	port := uint16(resp.Status.Port)
+
+	if err := c.handler.AddDNATTarget(veth, port); err != nil {
+		return fmt.Errorf("add dnat target: %w", err)
+	}
+
+	if err := c.handler.AddNetData(datapath.NetData{
+		Veth:     veth,
+		HostPort: port,
+	}); err != nil {
+		return fmt.Errorf("add net data: %w", err)
+	}
+
+	if _, err := proxyClient.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: wlID,
 		Ip:         veth.HostPeer.Addr.IP.String(),
 	}); err != nil {

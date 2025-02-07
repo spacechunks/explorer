@@ -25,6 +25,7 @@ func main() {
 		envoyImage             = fs.String("envoy-image", "", "container image to use for envoy")                                                               //nolint:lll
 		getsockoptCgroup       = fs.String("getsockopt-cgroup", "", "container image to use for coredns")                                                       //nolint:lll
 		dnsServer              = fs.String("dns-server", "", "dns server used by the containers")                                                               //nolint:lll
+		hostIface              = fs.String("host-iface", "", "internet-facing network interface for ingress and egress traffic")                                //nolint:lll
 		_                      = fs.String("config", "/etc/platformd/config.json", "path to the config file")                                                   //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
@@ -42,6 +43,7 @@ func main() {
 			EnvoyImage:                 *envoyImage,
 			GetsockoptCGroup:           *getsockoptCgroup,
 			DNSServer:                  *dnsServer,
+			HostIface:                  *hostIface,
 		}
 		ctx    = context.Background()
 		server = platformd.NewServer(logger)

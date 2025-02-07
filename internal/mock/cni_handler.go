@@ -22,6 +22,53 @@ func (_m *MockCniHandler) EXPECT() *MockCniHandler_Expecter {
 	return &MockCniHandler_Expecter{mock: &_m.Mock}
 }
 
+// AddDNATTarget provides a mock function with given fields: veth, port
+func (_m *MockCniHandler) AddDNATTarget(veth datapath.VethPair, port uint16) error {
+	ret := _m.Called(veth, port)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddDNATTarget")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(datapath.VethPair, uint16) error); ok {
+		r0 = rf(veth, port)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCniHandler_AddDNATTarget_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddDNATTarget'
+type MockCniHandler_AddDNATTarget_Call struct {
+	*mock.Call
+}
+
+// AddDNATTarget is a helper method to define mock.On call
+//   - veth datapath.VethPair
+//   - port uint16
+func (_e *MockCniHandler_Expecter) AddDNATTarget(veth interface{}, port interface{}) *MockCniHandler_AddDNATTarget_Call {
+	return &MockCniHandler_AddDNATTarget_Call{Call: _e.mock.On("AddDNATTarget", veth, port)}
+}
+
+func (_c *MockCniHandler_AddDNATTarget_Call) Run(run func(veth datapath.VethPair, port uint16)) *MockCniHandler_AddDNATTarget_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(datapath.VethPair), args[1].(uint16))
+	})
+	return _c
+}
+
+func (_c *MockCniHandler_AddDNATTarget_Call) Return(_a0 error) *MockCniHandler_AddDNATTarget_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCniHandler_AddDNATTarget_Call) RunAndReturn(run func(datapath.VethPair, uint16) error) *MockCniHandler_AddDNATTarget_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AddDefaultRoute provides a mock function with given fields: veth, nsPath
 func (_m *MockCniHandler) AddDefaultRoute(veth datapath.VethPair, nsPath string) error {
 	ret := _m.Called(veth, nsPath)
@@ -111,6 +158,52 @@ func (_c *MockCniHandler_AddFullMatchRoute_Call) Return(_a0 error) *MockCniHandl
 }
 
 func (_c *MockCniHandler_AddFullMatchRoute_Call) RunAndReturn(run func(datapath.VethPair) error) *MockCniHandler_AddFullMatchRoute_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AddNetData provides a mock function with given fields: data
+func (_m *MockCniHandler) AddNetData(data datapath.NetData) error {
+	ret := _m.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddNetData")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(datapath.NetData) error); ok {
+		r0 = rf(data)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCniHandler_AddNetData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddNetData'
+type MockCniHandler_AddNetData_Call struct {
+	*mock.Call
+}
+
+// AddNetData is a helper method to define mock.On call
+//   - data datapath.NetData
+func (_e *MockCniHandler_Expecter) AddNetData(data interface{}) *MockCniHandler_AddNetData_Call {
+	return &MockCniHandler_AddNetData_Call{Call: _e.mock.On("AddNetData", data)}
+}
+
+func (_c *MockCniHandler_AddNetData_Call) Run(run func(data datapath.NetData)) *MockCniHandler_AddNetData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(datapath.NetData))
+	})
+	return _c
+}
+
+func (_c *MockCniHandler_AddNetData_Call) Return(_a0 error) *MockCniHandler_AddNetData_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCniHandler_AddNetData_Call) RunAndReturn(run func(datapath.NetData) error) *MockCniHandler_AddNetData_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -279,52 +372,6 @@ func (_c *MockCniHandler_AttachCtrVethBPF_Call) RunAndReturn(run func(datapath.V
 	return _c
 }
 
-// AttachDNATBPF provides a mock function with given fields: veth
-func (_m *MockCniHandler) AttachDNATBPF(veth datapath.VethPair) error {
-	ret := _m.Called(veth)
-
-	if len(ret) == 0 {
-		panic("no return value specified for AttachDNATBPF")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(datapath.VethPair) error); ok {
-		r0 = rf(veth)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockCniHandler_AttachDNATBPF_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AttachDNATBPF'
-type MockCniHandler_AttachDNATBPF_Call struct {
-	*mock.Call
-}
-
-// AttachDNATBPF is a helper method to define mock.On call
-//   - veth datapath.VethPair
-func (_e *MockCniHandler_Expecter) AttachDNATBPF(veth interface{}) *MockCniHandler_AttachDNATBPF_Call {
-	return &MockCniHandler_AttachDNATBPF_Call{Call: _e.mock.On("AttachDNATBPF", veth)}
-}
-
-func (_c *MockCniHandler_AttachDNATBPF_Call) Run(run func(veth datapath.VethPair)) *MockCniHandler_AttachDNATBPF_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(datapath.VethPair))
-	})
-	return _c
-}
-
-func (_c *MockCniHandler_AttachDNATBPF_Call) Return(_a0 error) *MockCniHandler_AttachDNATBPF_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockCniHandler_AttachDNATBPF_Call) RunAndReturn(run func(datapath.VethPair) error) *MockCniHandler_AttachDNATBPF_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // AttachHostVethBPF provides a mock function with given fields: veth
 func (_m *MockCniHandler) AttachHostVethBPF(veth datapath.VethPair) error {
 	ret := _m.Called(veth)
@@ -367,53 +414,6 @@ func (_c *MockCniHandler_AttachHostVethBPF_Call) Return(_a0 error) *MockCniHandl
 }
 
 func (_c *MockCniHandler_AttachHostVethBPF_Call) RunAndReturn(run func(datapath.VethPair) error) *MockCniHandler_AttachHostVethBPF_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ConfigureSNAT provides a mock function with given fields: ip, ifaceIndex
-func (_m *MockCniHandler) ConfigureSNAT(ip net.IP, ifaceIndex uint8) error {
-	ret := _m.Called(ip, ifaceIndex)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ConfigureSNAT")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(net.IP, uint8) error); ok {
-		r0 = rf(ip, ifaceIndex)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockCniHandler_ConfigureSNAT_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfigureSNAT'
-type MockCniHandler_ConfigureSNAT_Call struct {
-	*mock.Call
-}
-
-// ConfigureSNAT is a helper method to define mock.On call
-//   - ip net.IP
-//   - ifaceIndex uint8
-func (_e *MockCniHandler_Expecter) ConfigureSNAT(ip interface{}, ifaceIndex interface{}) *MockCniHandler_ConfigureSNAT_Call {
-	return &MockCniHandler_ConfigureSNAT_Call{Call: _e.mock.On("ConfigureSNAT", ip, ifaceIndex)}
-}
-
-func (_c *MockCniHandler_ConfigureSNAT_Call) Run(run func(ip net.IP, ifaceIndex uint8)) *MockCniHandler_ConfigureSNAT_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(net.IP), args[1].(uint8))
-	})
-	return _c
-}
-
-func (_c *MockCniHandler_ConfigureSNAT_Call) Return(_a0 error) *MockCniHandler_ConfigureSNAT_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockCniHandler_ConfigureSNAT_Call) RunAndReturn(run func(net.IP, uint8) error) *MockCniHandler_ConfigureSNAT_Call {
 	_c.Call.Return(run)
 	return _c
 }
