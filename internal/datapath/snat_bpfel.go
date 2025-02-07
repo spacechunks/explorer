@@ -12,6 +12,23 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type snatNetData struct {
+	PodPeer struct {
+		IfIndex uint32
+		IfAddr  uint32
+		MacAddr [6]uint8
+		_       [2]byte
+	}
+	HostPeer struct {
+		IfIndex uint32
+		IfAddr  uint32
+		MacAddr [6]uint8
+		_       [2]byte
+	}
+	HostPort uint16
+	_        [2]byte
+}
+
 type snatPtpSnatEntry struct {
 	IpAddr   uint32
 	IfaceIdx uint8
@@ -66,6 +83,7 @@ type snatProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type snatMapSpecs struct {
+	NetDataMap    *ebpf.MapSpec `ebpf:"net_data_map"`
 	PtpSnatConfig *ebpf.MapSpec `ebpf:"ptp_snat_config"`
 }
 
@@ -88,11 +106,13 @@ func (o *snatObjects) Close() error {
 //
 // It can be passed to loadSnatObjects or ebpf.CollectionSpec.LoadAndAssign.
 type snatMaps struct {
+	NetDataMap    *ebpf.Map `ebpf:"net_data_map"`
 	PtpSnatConfig *ebpf.Map `ebpf:"ptp_snat_config"`
 }
 
 func (m *snatMaps) Close() error {
 	return _SnatClose(
+		m.NetDataMap,
 		m.PtpSnatConfig,
 	)
 }
