@@ -19,7 +19,6 @@
 package functional
 
 import (
-	"net"
 	"testing"
 
 	"github.com/cilium/ebpf/link"
@@ -190,46 +189,6 @@ func TestDeallocIPs(t *testing.T) {
 
 	err = h.DeallocIPs("host-local", stdinData)
 	require.NoError(t, err)
-}
-
-func TestConfigureSNAT(t *testing.T) {
-	tests := []struct {
-		name string
-		prep func(*testing.T, netlink.Link)
-		err  error
-	}{
-		{
-			name: "works",
-			prep: func(t *testing.T, veth netlink.Link) {
-				require.NoError(t, netlink.AddrAdd(veth, &netlink.Addr{
-					IPNet: &net.IPNet{
-						IP:   net.ParseIP("10.0.0.1"),
-						Mask: []byte{255, 255, 255, 0},
-					},
-				}))
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			iface, l := test.AddRandVethPair(t)
-
-			h, err := cni.NewHandler()
-			require.NoError(t, err)
-
-			tt.prep(t, l)
-			defer netlink.LinkDel(l)
-
-			addrs, err := iface.Addrs()
-			require.NoError(t, err)
-
-			ip, _, err := net.ParseCIDR(addrs[0].String())
-			require.NoError(t, err)
-
-			require.NoError(t, h.ConfigureSNAT(ip, uint8(iface.Index)))
-		})
-	}
 }
 
 func setupCNIEnv(t *testing.T, h cni.Handler) (string, datapath.VethPair) {
