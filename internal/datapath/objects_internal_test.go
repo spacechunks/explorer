@@ -22,20 +22,79 @@ package datapath
 
 import (
 	"net"
-	"net/netip"
 	"testing"
 
 	"github.com/cilium/ebpf"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestAddNetData ensures that every required combination of keys exist
+// in all required netdata maps.
+func TestAddNetData(t *testing.T) {
+	objs, err := LoadBPF()
+	require.NoError(t, err)
+
+	var (
+		_, cidr, _ = net.ParseCIDR("198.51.100.1/24")
+		data       = NetData{
+			Veth: VethPair{
+				HostPeer: VethPeer{
+					Iface: &net.Interface{
+						Index:        1,
+						HardwareAddr: []byte{1, 2, 3, 4, 5, 6},
+					},
+					Addr: *cidr,
+				},
+				PodPeer: VethPeer{
+					Iface: &net.Interface{
+						Index:        2,
+						HardwareAddr: []byte{1, 2, 3, 4, 5, 6},
+					},
+					Addr: *cidr,
+				},
+			},
+			HostPort: 1337,
+		}
+		expectedMapValue = netDataToMapValue(data)
+	)
+
+	err = objs.AddNetData(data)
+	require.NoError(t, err)
+
+	var dnatMaps dnatMaps
+	err = loadDnatObjects(&dnatMaps, &ebpf.CollectionOptions{
+		Maps: ebpf.MapOptions{
+			PinPath: mapPinPath,
+		},
+	})
+	require.NoError(t, err)
+
+	var snatMaps snatMaps
+	err = loadSnatObjects(&snatMaps, &ebpf.CollectionOptions{
+		Maps: ebpf.MapOptions{
+			PinPath: mapPinPath,
+		},
+	})
+	require.NoError(t, err)
+
+	for _, m := range []*ebpf.Map{dnatMaps.NetDataMap, snatMaps.NetDataMap} {
+		var value dnatNetData
+		err = m.Lookup(uint32(data.HostPort), &value)
+		require.NoError(t, err)
+		require.Equal(t, expectedMapValue, value)
+
+		err = m.Lookup(expectedMapValue.PodPeer.IfAddr, &value)
+		require.NoError(t, err)
+		require.Equal(t, expectedMapValue, value)
+	}
+}
 
 func TestAddSNATTarget(t *testing.T) {
 	objs, err := LoadBPF()
 	require.NoError(t, err)
 
 	var (
-		ip       = netip.MustParseAddr("10.0.0.1")
+		ip       = net.ParseIP("10.0.0.1")
 		ifaceIdx = uint8(3)
 		expected = snatPtpSnatEntry{
 			IpAddr:   uint32(167772161), // 10.0.0.1 in big endian decimal
@@ -48,7 +107,7 @@ func TestAddSNATTarget(t *testing.T) {
 	var maps snatMaps
 	err = loadSnatObjects(&maps, &ebpf.CollectionOptions{
 		Maps: ebpf.MapOptions{
-			PinPath: pinPath,
+			PinPath: mapPinPath,
 		},
 	})
 	require.NoError(t, err)
@@ -57,7 +116,7 @@ func TestAddSNATTarget(t *testing.T) {
 	err = maps.PtpSnatConfig.Lookup(uint8(0), &actual)
 	require.NoError(t, err)
 
-	assert.Equal(t, expected, actual)
+	require.Equal(t, expected, actual)
 }
 
 func TestAddDNATTarget(t *testing.T) {
@@ -65,7 +124,7 @@ func TestAddDNATTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	var (
-		ip       = netip.MustParseAddr("10.0.0.1")
+		ip       = net.ParseIP("10.0.0.1")
 		ifaceIdx = uint8(3)
 		hwAddr   = net.HardwareAddr{
 			0x7e, 0x90, 0xc4, 0xed, 0xdf, 0xd0,
@@ -84,7 +143,7 @@ func TestAddDNATTarget(t *testing.T) {
 	var maps dnatMaps
 	err = loadDnatObjects(&maps, &ebpf.CollectionOptions{
 		Maps: ebpf.MapOptions{
-			PinPath: pinPath,
+			PinPath: mapPinPath,
 		},
 	})
 	require.NoError(t, err)
@@ -93,5 +152,5 @@ func TestAddDNATTarget(t *testing.T) {
 	err = maps.PtpDnatTargets.Lookup(uint16(0), &actual)
 	require.NoError(t, err)
 
-	assert.Equal(t, expected, actual)
+	require.Equal(t, expected, actual)
 }

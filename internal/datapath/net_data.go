@@ -31,3 +31,8 @@ type VethPeer struct {
 	Iface *net.Interface
 	Addr  net.IPNet
 }
+
+type NetData struct {
+	Veth     VethPair
+	HostPort uint16
+}

@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/netip"
 	"os"
 
 	"github.com/cilium/ebpf"
@@ -39,12 +38,6 @@ const (
 	ProgPinPath = "/sys/fs/bpf/progs"
 	mapPinPath  = "/sys/fs/bpf/maps"
 )
-
-type Iface struct {
-	Name  string
-	Index int
-	Addr  netip.Prefix
-}
 
 type Objects struct {
 	snatObjs   snatObjects
@@ -213,10 +206,34 @@ func (o *Objects) AttachTProxyCtrEgress(ctrPeer *net.Interface) error {
 	return nil
 }
 
-func (o *Objects) AddDNATTarget(key uint16, ip netip.Addr, ifaceIdx uint8, mac net.HardwareAddr) error {
-	sl := ip.As4()
+func (o *Objects) AddNetData(data NetData) error {
+	var (
+		value       = netDataToMapValue(data)
+		podPeerAddr = value.PodPeer.IfAddr
+	)
+
+	if err := o.dnatObjs.NetDataMap.Put(uint32(data.HostPort), value); err != nil {
+		return fmt.Errorf("add dnat by port: %w", err)
+	}
+
+	if err := o.dnatObjs.NetDataMap.Put(podPeerAddr, value); err != nil {
+		return fmt.Errorf("add dnat by addr: %w", err)
+	}
+
+	if err := o.snatObjs.NetDataMap.Put(uint32(data.HostPort), value); err != nil {
+		return fmt.Errorf("add snat by port: %w", err)
+	}
+
+	if err := o.snatObjs.NetDataMap.Put(podPeerAddr, value); err != nil {
+		return fmt.Errorf("add snat by addr: %w", err)
+	}
+
+	return nil
+}
+
+func (o *Objects) AddDNATTarget(key uint16, ip net.IP, ifaceIdx uint8, mac net.HardwareAddr) error {
 	if err := o.dnatObjs.PtpDnatTargets.Put(key, dnatDnatTarget{
-		IpAddr:   binary.BigEndian.Uint32(sl[:]), // network byte order is big endian
+		IpAddr:   binary.BigEndian.Uint32(ip.To4()), // network byte order is big endian
 		IfaceIdx: ifaceIdx,
 		MacAddr:  [6]byte(mac),
 	}); err != nil {
@@ -227,9 +244,8 @@ func (o *Objects) AddDNATTarget(key uint16, ip netip.Addr, ifaceIdx uint8, mac n
 }
 
 func (o *Objects) AddSNATTarget(key uint8, ip net.IP, ifaceIdx uint8) error {
-	binary.BigEndian.Uint32(ip)
 	if err := o.snatObjs.PtpSnatConfig.Put(key, snatPtpSnatEntry{
-		IpAddr:   binary.BigEndian.Uint32(ip), // network byte order is big endian
+		IpAddr:   binary.BigEndian.Uint32(ip.To4()), // network byte order is big endian
 		IfaceIdx: ifaceIdx,
 	}); err != nil {
 		return err
@@ -241,17 +257,43 @@ func (o *Objects) AddSNATTarget(key uint8, ip net.IP, ifaceIdx uint8) error {
 func (o *Objects) AddVethPairEntry(hostIfaceIdx uint32, ctrIfaceIdx uint32, ip net.IP) error {
 	if err := o.tproxyObjs.VethPairMap.Put(hostIfaceIdx, tproxyVethPair{
 		HostIfIndex: hostIfaceIdx,
-		HostIfAddr:  binary.BigEndian.Uint32(ip),
+		HostIfAddr:  binary.BigEndian.Uint32(ip.To4()),
 	}); err != nil {
 		return fmt.Errorf("host: %w", err)
 	}
 
 	if err := o.tproxyObjs.VethPairMap.Put(ctrIfaceIdx, tproxyVethPair{
 		HostIfIndex: hostIfaceIdx,
-		HostIfAddr:  binary.BigEndian.Uint32(ip),
+		HostIfAddr:  binary.BigEndian.Uint32(ip.To4()),
 	}); err != nil {
 		return fmt.Errorf("ctr: %w", err)
 	}
 
 	return nil
+}
+
+func netDataToMapValue(data NetData) dnatNetData {
+	return dnatNetData{
+		PodPeer: struct {
+			IfIndex uint32
+			IfAddr  uint32
+			MacAddr [6]uint8
+			_       [2]byte
+		}{
+			IfIndex: uint32(data.Veth.PodPeer.Iface.Index),
+			IfAddr:  binary.BigEndian.Uint32(data.Veth.PodPeer.Addr.IP.To4()),
+			MacAddr: [6]byte(data.Veth.PodPeer.Iface.HardwareAddr[:]),
+		},
+		HostPeer: struct {
+			IfIndex uint32
+			IfAddr  uint32
+			MacAddr [6]uint8
+			_       [2]byte
+		}{
+			IfIndex: uint32(data.Veth.HostPeer.Iface.Index),
+			IfAddr:  binary.BigEndian.Uint32(data.Veth.HostPeer.Addr.IP.To4()),
+			MacAddr: [6]byte(data.Veth.HostPeer.Iface.HardwareAddr[:]),
+		},
+		HostPort: data.HostPort,
+	}
 }
