@@ -212,6 +212,28 @@ func TestGetVethPairFromPodPeer(t *testing.T) {
 	assertEqual(expected.HostPeer, actual.HostPeer)
 }
 
+func TestDelFullMatchRoute(t *testing.T) {
+	h, err := cni.NewHandler()
+	require.NoError(t, err)
+
+	_, veth := setupCNIEnv(t, h)
+
+	require.NoError(t, h.AddFullMatchRoute(veth))
+	require.NoError(t, h.DelFullMatchRoute(veth))
+
+	routes, err := netlink.RouteList(nil, unix.AF_INET)
+	require.NoError(t, err)
+
+	for _, r := range routes {
+		if r.Dst.String() == veth.PodPeer.Addr.IP.String()+"/32" &&
+			r.Scope == netlink.SCOPE_LINK &&
+			r.LinkIndex == veth.HostPeer.Iface.Index &&
+			r.Family == unix.AF_INET {
+			t.Fatal("route found")
+		}
+	}
+}
+
 func setupCNIEnv(t *testing.T, h cni.Handler) (string, datapath.VethPair) {
 	var (
 		handle, name = test.CreateNetns(t)

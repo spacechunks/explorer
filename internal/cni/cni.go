@@ -174,10 +174,12 @@ func (c *CNI) ExecAdd(
 
 func (c *CNI) ExecDel(args *skel.CmdArgs) error {
 	log.Println("del")
-	// TODO: dealloc ips
-	// TODO: remove veth pairs
-	// TODO: remove ebpf map entries
-	// TODO: delete proxy listeners
+	// TODO: remove resources in this order:
+	//  - remove host route
+	//  - remove proxy listeners
+	//  - remove veth pairs
+	//  - remove ebpf map entries
+	//  - dealloc ips
 	return nil
 }
 

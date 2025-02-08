@@ -465,6 +465,52 @@ func (_c *MockCniHandler_DeallocIPs_Call) RunAndReturn(run func(string, []byte) 
 	return _c
 }
 
+// DelFullMatchRoute provides a mock function with given fields: veth
+func (_m *MockCniHandler) DelFullMatchRoute(veth datapath.VethPair) error {
+	ret := _m.Called(veth)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DelFullMatchRoute")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(datapath.VethPair) error); ok {
+		r0 = rf(veth)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCniHandler_DelFullMatchRoute_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DelFullMatchRoute'
+type MockCniHandler_DelFullMatchRoute_Call struct {
+	*mock.Call
+}
+
+// DelFullMatchRoute is a helper method to define mock.On call
+//   - veth datapath.VethPair
+func (_e *MockCniHandler_Expecter) DelFullMatchRoute(veth interface{}) *MockCniHandler_DelFullMatchRoute_Call {
+	return &MockCniHandler_DelFullMatchRoute_Call{Call: _e.mock.On("DelFullMatchRoute", veth)}
+}
+
+func (_c *MockCniHandler_DelFullMatchRoute_Call) Run(run func(veth datapath.VethPair)) *MockCniHandler_DelFullMatchRoute_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(datapath.VethPair))
+	})
+	return _c
+}
+
+func (_c *MockCniHandler_DelFullMatchRoute_Call) Return(_a0 error) *MockCniHandler_DelFullMatchRoute_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCniHandler_DelFullMatchRoute_Call) RunAndReturn(run func(datapath.VethPair) error) *MockCniHandler_DelFullMatchRoute_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetVethPair provides a mock function with given fields: podIfaceName, nsPath
 func (_m *MockCniHandler) GetVethPair(podIfaceName string, nsPath string) (datapath.VethPair, error) {
 	ret := _m.Called(podIfaceName, nsPath)
