@@ -191,6 +191,27 @@ func TestDeallocIPs(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestGetVethPairFromPodPeer(t *testing.T) {
+	h, err := cni.NewHandler()
+	require.NoError(t, err)
+
+	nsPath, expected := setupCNIEnv(t, h)
+
+	actual, err := h.GetVethPair(expected.PodPeer.Iface.Name, nsPath)
+	require.NoError(t, err)
+
+	// we only care explicitly about these fields, ignore the remaining fields of net.Interface
+	assertEqual := func(expectedPeer, actualPeer datapath.VethPeer) {
+		assert.Equal(t, expectedPeer.Addr, actualPeer.Addr)
+		assert.Equal(t, expectedPeer.Iface.Name, actualPeer.Iface.Name)
+		assert.Equal(t, expectedPeer.Iface.Index, actualPeer.Iface.Index)
+		assert.Equal(t, expectedPeer.Iface.HardwareAddr, actualPeer.Iface.HardwareAddr)
+	}
+
+	assertEqual(expected.PodPeer, actual.PodPeer)
+	assertEqual(expected.HostPeer, actual.HostPeer)
+}
+
 func setupCNIEnv(t *testing.T, h cni.Handler) (string, datapath.VethPair) {
 	var (
 		handle, name = test.CreateNetns(t)

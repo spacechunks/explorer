@@ -19,6 +19,7 @@
 package datapath
 
 import (
+	"fmt"
 	"net"
 )
 
@@ -35,4 +36,28 @@ type VethPeer struct {
 type NetData struct {
 	Veth     VethPair
 	HostPort uint16
+}
+
+func ToVethPeer(iface *net.Interface) (VethPeer, error) {
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return VethPeer{}, fmt.Errorf("get addrs: %v", err)
+	}
+
+	if len(addrs) == 0 {
+		return VethPeer{}, fmt.Errorf("no addresses")
+	}
+
+	ip, cidr, err := net.ParseCIDR(addrs[0].String())
+	if err != nil {
+		return VethPeer{}, fmt.Errorf("parse ip: %w", err)
+	}
+
+	return VethPeer{
+		Iface: iface,
+		Addr: net.IPNet{
+			IP:   ip,
+			Mask: cidr.Mask,
+		},
+	}, nil
 }

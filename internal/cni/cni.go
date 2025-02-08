@@ -90,11 +90,6 @@ func (c *CNI) ExecAdd(
 		return ErrIPAMConfigNotSet
 	}
 
-	// TODO: move to platformd
-	//if err := c.handler.AttachDNATBPF(conf.HostIface); err != nil {
-	//	return fmt.Errorf("failed to attach dnat bpf to %s: %w", conf.HostIface, err)
-	//}
-
 	defer func() {
 		if err != nil {
 			if err := c.handler.DeallocIPs(conf.IPAM.Type, args.StdinData); err != nil {
@@ -179,7 +174,10 @@ func (c *CNI) ExecAdd(
 
 func (c *CNI) ExecDel(args *skel.CmdArgs) error {
 	log.Println("del")
+	// TODO: dealloc ips
 	// TODO: remove veth pairs
+	// TODO: remove ebpf map entries
+	// TODO: delete proxy listeners
 	return nil
 }
 

@@ -53,6 +53,7 @@ type Handler interface {
 	AddDNATTarget(veth datapath.VethPair, port uint16) error
 
 	AddNetData(data datapath.NetData) error
+	GetVethPair(podIfaceName, nsPath string) (datapath.VethPair, error)
 }
 
 type cniHandler struct {
@@ -239,6 +240,56 @@ func (h *cniHandler) AddDNATTarget(veth datapath.VethPair, port uint16) error {
 
 func (h *cniHandler) AddNetData(data datapath.NetData) error {
 	return h.bpf.AddNetData(data)
+}
+
+func (h *cniHandler) GetVethPair(podIfaceName, nsPath string) (datapath.VethPair, error) {
+	var (
+		podPeer     datapath.VethPeer
+		hostIfIndex = 0
+	)
+
+	if err := ns.WithNetNSPath(nsPath, func(_ ns.NetNS) error {
+		l, err := netlink.LinkByName(podIfaceName)
+		if err != nil {
+			return fmt.Errorf("pod peer link: %w", err)
+		}
+
+		hostIfIndex, err = netlink.VethPeerIndex(&netlink.Veth{
+			LinkAttrs: *l.Attrs(),
+		})
+		if err != nil {
+			return fmt.Errorf("host peer index: %w", err)
+		}
+
+		podPeerIface, err := net.InterfaceByName(podIfaceName)
+		if err != nil {
+			return fmt.Errorf("pod peer iface: %w", err)
+		}
+
+		podPeer, err = datapath.ToVethPeer(podPeerIface)
+		if err != nil {
+			return fmt.Errorf("pod iface to veth peer: %w", err)
+		}
+
+		return nil
+	}); err != nil {
+		return datapath.VethPair{}, err
+	}
+
+	hostPeerIface, err := net.InterfaceByIndex(hostIfIndex)
+	if err != nil {
+		return datapath.VethPair{}, fmt.Errorf("host peer iface: %w", err)
+	}
+
+	hostPeer, err := datapath.ToVethPeer(hostPeerIface)
+	if err != nil {
+		return datapath.VethPair{}, fmt.Errorf("host iface to veth peer: %w", err)
+	}
+
+	return datapath.VethPair{
+		HostPeer: hostPeer,
+		PodPeer:  podPeer,
+	}, nil
 }
 
 func configureCTRPeer(ctrNS ns.NetNS, ip net.IPNet, ifaceName string) error {
