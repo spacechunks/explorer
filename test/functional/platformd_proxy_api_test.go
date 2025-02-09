@@ -42,7 +42,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-func TestPlatformdProxyAPICreateListener(t *testing.T) {
+func TestCreateListener(t *testing.T) {
 	var (
 		ctx  = context.Background()
 		wlID = "abc"
@@ -63,16 +63,6 @@ func TestPlatformdProxyAPICreateListener(t *testing.T) {
 	//                proxy package, that blocks until envoy has connected.
 	time.Sleep(10 * time.Second)
 
-	resp, err := http.Get(
-		fmt.Sprintf("http://%s/config_dump?include_eds&resource=dynamic_listeners", fixture.EnvoyAdminAddr),
-	)
-	require.NoError(t, err)
-
-	defer resp.Body.Close()
-
-	data, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
 	dnsRG, err := proxy.DNSListenerResourceGroup(
 		proxy.DNSClusterName,
 		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.DNSPort)),
@@ -88,7 +78,7 @@ func TestPlatformdProxyAPICreateListener(t *testing.T) {
 	require.NoError(t, err)
 
 	var (
-		actual   = parseListener(t, data)
+		actual   = readListener(t)
 		expected = append(dnsRG.Listeners, wlRG.Listeners...)
 	)
 
@@ -109,16 +99,60 @@ func TestPlatformdProxyAPICreateListener(t *testing.T) {
 	}
 }
 
-func parseListener(t *testing.T, data []byte) []*listenerv3.Listener {
+func TestDeleteListener(t *testing.T) {
+	var (
+		ctx  = context.Background()
+		wlID = "abc"
+		ip   = "127.0.0.1"
+	)
+
+	fixture.RunProxyAPIFixtures(ctx, t)
+
+	c := proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
+
+	_, err := c.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
+		WorkloadID: wlID,
+		Ip:         ip,
+	})
+	require.NoError(t, err)
+
+	_, err = c.DeleteListeners(ctx, &proxyv1alpha1.DeleteListenersRequest{
+		WorkloadID: wlID,
+	})
+	require.NoError(t, err)
+
+	// FIXME(yannic): implement some sort of WaitReady function into
+	//                proxy package, that blocks until envoy has connected.
+	time.Sleep(10 * time.Second)
+
+	actual := readListener(t)
+
+	d := cmp.Diff([]*listenerv3.Listener{}, actual, protocmp.Transform())
+	if d != "" {
+		t.Fatal(d)
+	}
+}
+
+func readListener(t *testing.T) []*listenerv3.Listener {
+	resp, err := http.Get(
+		fmt.Sprintf("http://%s/config_dump?include_eds&resource=dynamic_listeners", fixture.EnvoyAdminAddr),
+	)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
 	payload := struct {
 		// configs is a list of listenerv3.Listener
 		Configs []json.RawMessage `json:"configs"`
 	}{}
 
-	err := json.Unmarshal(data, &payload)
+	err = json.Unmarshal(data, &payload)
 	require.NoError(t, err)
 
-	var ret []*listenerv3.Listener
+	ret := make([]*listenerv3.Listener, 0)
 
 	unmarshal := protojson.UnmarshalOptions{
 		DiscardUnknown: true,
@@ -127,6 +161,13 @@ func parseListener(t *testing.T, data []byte) []*listenerv3.Listener {
 	for _, cfg := range payload.Configs {
 		dyn := adminv3.ListenersConfigDump_DynamicListener{}
 		require.NoError(t, unmarshal.Unmarshal(cfg, &dyn))
+
+		// handle scenario where an empty config ListenersConfigDump_DynamicListener
+		// is returned. this is the case for TestDeleteListener. the returned JSON
+		// by config_dump endpoint is then [{}] i.e a list with a single empty object.
+		if dyn.ActiveState == nil {
+			continue
+		}
 
 		lis := listenerv3.Listener{}
 		err = anypb.UnmarshalTo(dyn.ActiveState.Listener, &lis, proto.UnmarshalOptions{

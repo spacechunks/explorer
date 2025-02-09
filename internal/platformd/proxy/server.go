@@ -36,3 +36,16 @@ func (s *Server) CreateListeners(
 
 	return &proxyv1alpha1.CreateListenersResponse{}, nil
 }
+
+func (s *Server) DeleteListeners(
+	ctx context.Context,
+	req *proxyv1alpha1.DeleteListenersRequest,
+) (*proxyv1alpha1.DeleteListenersResponse, error) {
+	// TODO: if workload does not exist return err
+
+	if err := s.svc.DeleteListeners(ctx, req.WorkloadID); err != nil {
+		return nil, fmt.Errorf("create listener: %w", err)
+	}
+
+	return &proxyv1alpha1.DeleteListenersResponse{}, nil
+}

@@ -16,7 +16,8 @@ import (
 // must be safe for concurrent use.
 type Map interface {
 	Get(key string) ResourceGroup
-	Apply(ctx context.Context, key string, rg ResourceGroup) (*cache.Snapshot, error)
+	Put(ctx context.Context, key string, rg ResourceGroup) (*cache.Snapshot, error)
+	Del(ctx context.Context, key string) (*cache.Snapshot, error)
 }
 
 type inmemMap struct {
@@ -41,14 +42,24 @@ func (m *inmemMap) Get(key string) ResourceGroup {
 	return m.resources[key]
 }
 
-// Apply saves the passed resource group in the map under the provided
+// Put saves the passed resource group in the map under the provided
 // key, creates a new snapshot and applies it to all known envoy nodes at the time.
 // Returns the applied snapshot.
-func (m *inmemMap) Apply(ctx context.Context, key string, rg ResourceGroup) (*cache.Snapshot, error) {
+func (m *inmemMap) Put(ctx context.Context, key string, rg ResourceGroup) (*cache.Snapshot, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
 	m.resources[key] = rg
+	return m.updateCache(ctx)
+}
+
+func (m *inmemMap) Del(ctx context.Context, key string) (*cache.Snapshot, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.resources, key)
+	return m.updateCache(ctx)
+}
+
+func (m *inmemMap) updateCache(ctx context.Context) (*cache.Snapshot, error) {
 	typeToRes := make(map[resource.Type][]types.Resource)
 
 	// merge all resources from all resource groups to
