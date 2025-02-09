@@ -279,11 +279,11 @@ func (o *Objects) AddVethPairEntry(veth VethPair) error {
 		HostIfAddr:  binary.BigEndian.Uint32(veth.HostPeer.Addr.IP.To4()),
 	}
 
-	if err := o.tproxyObjs.VethPairMap.Put(veth.HostPeer.Iface.Index, mapValue); err != nil {
+	if err := o.tproxyObjs.VethPairMap.Put(uint32(veth.HostPeer.Iface.Index), mapValue); err != nil {
 		return fmt.Errorf("host: %w", err)
 	}
 
-	if err := o.tproxyObjs.VethPairMap.Put(veth.PodPeer.Iface.Index, mapValue); err != nil {
+	if err := o.tproxyObjs.VethPairMap.Put(uint32(veth.PodPeer.Iface.Index), mapValue); err != nil {
 		return fmt.Errorf("pod: %w", err)
 	}
 

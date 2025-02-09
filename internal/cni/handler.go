@@ -55,6 +55,8 @@ type Handler interface {
 	AddNetData(data datapath.NetData) error
 	GetVethPair(podIfaceName, nsPath string) (datapath.VethPair, error)
 	DelFullMatchRoute(veth datapath.VethPair) error
+	DelMapEntries(veth datapath.VethPair, hostPort uint16) error
+	DeallocVethPair(veth datapath.VethPair) error
 }
 
 type cniHandler struct {
@@ -148,15 +150,7 @@ func (h *cniHandler) AllocVethPair(netNS string, hostAddr, podAddr net.IPNet) (d
 		return datapath.VethPair{}, err
 	}
 
-	if err := h.bpf.AddVethPairEntry(
-		uint32(hostPeer.Index),
-		uint32(podPeer.Index),
-		hostAddr.IP,
-	); err != nil {
-		return datapath.VethPair{}, fmt.Errorf("put veth pairs: %w", err)
-	}
-
-	return datapath.VethPair{
+	veth := datapath.VethPair{
 		HostPeer: datapath.VethPeer{
 			Iface: hostPeer,
 			Addr:  hostAddr,
@@ -165,7 +159,26 @@ func (h *cniHandler) AllocVethPair(netNS string, hostAddr, podAddr net.IPNet) (d
 			Iface: podPeer,
 			Addr:  podAddr,
 		},
-	}, nil
+	}
+
+	if err := h.bpf.AddVethPairEntry(veth); err != nil {
+		return datapath.VethPair{}, fmt.Errorf("put veth pairs: %w", err)
+	}
+
+	return veth, nil
+}
+
+func (h *cniHandler) DeallocVethPair(veth datapath.VethPair) error {
+	l, err := netlink.LinkByIndex(veth.HostPeer.Iface.Index)
+	if err != nil {
+		return fmt.Errorf("get link: %w", err)
+	}
+
+	if err := netlink.LinkDel(l); err != nil {
+		return fmt.Errorf("delete link: %w", err)
+	}
+
+	return nil
 }
 
 func (h *cniHandler) AllocIPs(plugin string, stdinData []byte) ([]net.IPNet, error) {
@@ -289,6 +302,28 @@ func (h *cniHandler) GetVethPair(podIfaceName, nsPath string) (datapath.VethPair
 		HostPeer: hostPeer,
 		PodPeer:  podPeer,
 	}, nil
+}
+
+func (h *cniHandler) DelMapEntries(veth datapath.VethPair, hostPort uint16) error {
+	// TODO: pass netdata struct instead of separate VethPair and hostPort.
+	//       in turn of this refactoring adjust GetVethPair function to read
+	//       from netdata map instead of checking interfaces.
+	if err := h.bpf.DelNetData(datapath.NetData{
+		Veth:     veth,
+		HostPort: hostPort,
+	}); err != nil {
+		return fmt.Errorf("delete net data: %w", err)
+	}
+
+	if err := h.bpf.DelDNATTarget(hostPort); err != nil {
+		return fmt.Errorf("delete dnat: %w", err)
+	}
+
+	if err := h.bpf.DelVethPairEntry(veth); err != nil {
+		return fmt.Errorf("delete veth pair: %w", err)
+	}
+
+	return nil
 }
 
 func fullMatchRoute(veth datapath.VethPair) *netlink.Route {

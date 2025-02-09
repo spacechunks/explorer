@@ -234,6 +234,25 @@ func TestDelFullMatchRoute(t *testing.T) {
 	}
 }
 
+func TestDeallocVethPair(t *testing.T) {
+	h, err := cni.NewHandler()
+	require.NoError(t, err)
+
+	nsPath, veth := setupCNIEnv(t, h)
+
+	require.NoError(t, h.DeallocVethPair(veth))
+
+	_, err = netlink.LinkByIndex(veth.HostPeer.Iface.Index)
+	require.ErrorAs(t, err, &netlink.LinkNotFoundError{})
+
+	err = ns.WithNetNSPath(nsPath, func(_ ns.NetNS) error {
+		_, err := netlink.LinkByIndex(veth.PodPeer.Iface.Index)
+		require.ErrorAs(t, err, &netlink.LinkNotFoundError{})
+		return nil
+	})
+	require.NoError(t, err)
+}
+
 func setupCNIEnv(t *testing.T, h cni.Handler) (string, datapath.VethPair) {
 	var (
 		handle, name = test.CreateNetns(t)

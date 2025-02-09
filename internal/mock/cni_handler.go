@@ -465,6 +465,52 @@ func (_c *MockCniHandler_DeallocIPs_Call) RunAndReturn(run func(string, []byte) 
 	return _c
 }
 
+// DeallocVethPair provides a mock function with given fields: veth
+func (_m *MockCniHandler) DeallocVethPair(veth datapath.VethPair) error {
+	ret := _m.Called(veth)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeallocVethPair")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(datapath.VethPair) error); ok {
+		r0 = rf(veth)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCniHandler_DeallocVethPair_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeallocVethPair'
+type MockCniHandler_DeallocVethPair_Call struct {
+	*mock.Call
+}
+
+// DeallocVethPair is a helper method to define mock.On call
+//   - veth datapath.VethPair
+func (_e *MockCniHandler_Expecter) DeallocVethPair(veth interface{}) *MockCniHandler_DeallocVethPair_Call {
+	return &MockCniHandler_DeallocVethPair_Call{Call: _e.mock.On("DeallocVethPair", veth)}
+}
+
+func (_c *MockCniHandler_DeallocVethPair_Call) Run(run func(veth datapath.VethPair)) *MockCniHandler_DeallocVethPair_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(datapath.VethPair))
+	})
+	return _c
+}
+
+func (_c *MockCniHandler_DeallocVethPair_Call) Return(_a0 error) *MockCniHandler_DeallocVethPair_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCniHandler_DeallocVethPair_Call) RunAndReturn(run func(datapath.VethPair) error) *MockCniHandler_DeallocVethPair_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DelFullMatchRoute provides a mock function with given fields: veth
 func (_m *MockCniHandler) DelFullMatchRoute(veth datapath.VethPair) error {
 	ret := _m.Called(veth)
@@ -507,6 +553,53 @@ func (_c *MockCniHandler_DelFullMatchRoute_Call) Return(_a0 error) *MockCniHandl
 }
 
 func (_c *MockCniHandler_DelFullMatchRoute_Call) RunAndReturn(run func(datapath.VethPair) error) *MockCniHandler_DelFullMatchRoute_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DelMapEntries provides a mock function with given fields: veth, hostPort
+func (_m *MockCniHandler) DelMapEntries(veth datapath.VethPair, hostPort uint16) error {
+	ret := _m.Called(veth, hostPort)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DelMapEntries")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(datapath.VethPair, uint16) error); ok {
+		r0 = rf(veth, hostPort)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCniHandler_DelMapEntries_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DelMapEntries'
+type MockCniHandler_DelMapEntries_Call struct {
+	*mock.Call
+}
+
+// DelMapEntries is a helper method to define mock.On call
+//   - veth datapath.VethPair
+//   - hostPort uint16
+func (_e *MockCniHandler_Expecter) DelMapEntries(veth interface{}, hostPort interface{}) *MockCniHandler_DelMapEntries_Call {
+	return &MockCniHandler_DelMapEntries_Call{Call: _e.mock.On("DelMapEntries", veth, hostPort)}
+}
+
+func (_c *MockCniHandler_DelMapEntries_Call) Run(run func(veth datapath.VethPair, hostPort uint16)) *MockCniHandler_DelMapEntries_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(datapath.VethPair), args[1].(uint16))
+	})
+	return _c
+}
+
+func (_c *MockCniHandler_DelMapEntries_Call) Return(_a0 error) *MockCniHandler_DelMapEntries_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCniHandler_DelMapEntries_Call) RunAndReturn(run func(datapath.VethPair, uint16) error) *MockCniHandler_DelMapEntries_Call {
 	_c.Call.Return(run)
 	return _c
 }
