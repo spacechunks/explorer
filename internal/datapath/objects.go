@@ -212,6 +212,9 @@ func (o *Objects) AddNetData(data NetData) error {
 		podPeerAddr = value.PodPeer.IfAddr
 	)
 
+	// snat and dnat use the same underlying map, so it is sufficient
+	// to only use dnatObjs.
+
 	if err := o.dnatObjs.NetDataMap.Put(uint32(data.HostPort), value); err != nil {
 		return fmt.Errorf("add dnat by port: %w", err)
 	}
@@ -220,12 +223,20 @@ func (o *Objects) AddNetData(data NetData) error {
 		return fmt.Errorf("add dnat by addr: %w", err)
 	}
 
-	if err := o.snatObjs.NetDataMap.Put(uint32(data.HostPort), value); err != nil {
-		return fmt.Errorf("add snat by port: %w", err)
+	return nil
+}
+
+func (o *Objects) DelNetData(data NetData) error {
+	podPeerAddr := binary.BigEndian.Uint32(data.Veth.PodPeer.Addr.IP.To4())
+
+	// see comment in AddNetData
+
+	if err := o.dnatObjs.NetDataMap.Delete(uint32(data.HostPort)); err != nil {
+		return fmt.Errorf("remove dnat by port: %w", err)
 	}
 
-	if err := o.snatObjs.NetDataMap.Put(podPeerAddr, value); err != nil {
-		return fmt.Errorf("add snat by addr: %w", err)
+	if err := o.dnatObjs.NetDataMap.Delete(podPeerAddr); err != nil {
+		return fmt.Errorf("remove dnat by addr: %w", err)
 	}
 
 	return nil
@@ -243,6 +254,10 @@ func (o *Objects) AddDNATTarget(key uint16, ip net.IP, ifaceIdx uint8, mac net.H
 	return nil
 }
 
+func (o *Objects) DelDNATTarget(port uint16) error {
+	return o.dnatObjs.PtpDnatTargets.Delete(port)
+}
+
 func (o *Objects) AddSNATTarget(key uint8, ip net.IP, ifaceIdx uint8) error {
 	if err := o.snatObjs.PtpSnatConfig.Put(key, snatPtpSnatEntry{
 		IpAddr:   binary.BigEndian.Uint32(ip.To4()), // network byte order is big endian
@@ -254,19 +269,34 @@ func (o *Objects) AddSNATTarget(key uint8, ip net.IP, ifaceIdx uint8) error {
 	return nil
 }
 
-func (o *Objects) AddVethPairEntry(hostIfaceIdx uint32, ctrIfaceIdx uint32, ip net.IP) error {
-	if err := o.tproxyObjs.VethPairMap.Put(hostIfaceIdx, tproxyVethPair{
-		HostIfIndex: hostIfaceIdx,
-		HostIfAddr:  binary.BigEndian.Uint32(ip.To4()),
-	}); err != nil {
+func (o *Objects) DelSNATTarget(key uint8) error {
+	return o.snatObjs.PtpSnatConfig.Delete(key)
+}
+
+func (o *Objects) AddVethPairEntry(veth VethPair) error {
+	mapValue := tproxyVethPair{
+		HostIfIndex: uint32(veth.HostPeer.Iface.Index),
+		HostIfAddr:  binary.BigEndian.Uint32(veth.HostPeer.Addr.IP.To4()),
+	}
+
+	if err := o.tproxyObjs.VethPairMap.Put(veth.HostPeer.Iface.Index, mapValue); err != nil {
 		return fmt.Errorf("host: %w", err)
 	}
 
-	if err := o.tproxyObjs.VethPairMap.Put(ctrIfaceIdx, tproxyVethPair{
-		HostIfIndex: hostIfaceIdx,
-		HostIfAddr:  binary.BigEndian.Uint32(ip.To4()),
-	}); err != nil {
-		return fmt.Errorf("ctr: %w", err)
+	if err := o.tproxyObjs.VethPairMap.Put(veth.PodPeer.Iface.Index, mapValue); err != nil {
+		return fmt.Errorf("pod: %w", err)
+	}
+
+	return nil
+}
+
+func (o *Objects) DelVethPairEntry(veth VethPair) error {
+	if err := o.tproxyObjs.VethPairMap.Delete(veth.HostPeer.Iface.Index); err != nil {
+		return fmt.Errorf("delete using host peer index: %w", err)
+	}
+
+	if err := o.tproxyObjs.VethPairMap.Delete(veth.PodPeer.Iface.Index); err != nil {
+		return fmt.Errorf("delete using pod peer index: %w", err)
 	}
 
 	return nil
