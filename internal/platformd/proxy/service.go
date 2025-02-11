@@ -83,6 +83,7 @@ func (s *proxyService) CreateListeners(ctx context.Context, workloadID string, a
 }
 
 func (s *proxyService) DeleteListeners(ctx context.Context, workloadID string) error {
+	s.logger.InfoContext(ctx, "deleting listeners", "workload_id", workloadID)
 	if _, err := s.resourceMap.Del(ctx, workloadID); err != nil {
 		return fmt.Errorf("delete workload resources: %w", err)
 	}
