@@ -604,9 +604,9 @@ func (_c *MockCniHandler_DelMapEntries_Call) RunAndReturn(run func(datapath.Veth
 	return _c
 }
 
-// GetVethPair provides a mock function with given fields: podIfaceName, nsPath
-func (_m *MockCniHandler) GetVethPair(podIfaceName string, nsPath string) (datapath.VethPair, error) {
-	ret := _m.Called(podIfaceName, nsPath)
+// GetVethPair provides a mock function with given fields: hostPort
+func (_m *MockCniHandler) GetVethPair(hostPort uint16) (datapath.VethPair, error) {
+	ret := _m.Called(hostPort)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetVethPair")
@@ -614,17 +614,17 @@ func (_m *MockCniHandler) GetVethPair(podIfaceName string, nsPath string) (datap
 
 	var r0 datapath.VethPair
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string) (datapath.VethPair, error)); ok {
-		return rf(podIfaceName, nsPath)
+	if rf, ok := ret.Get(0).(func(uint16) (datapath.VethPair, error)); ok {
+		return rf(hostPort)
 	}
-	if rf, ok := ret.Get(0).(func(string, string) datapath.VethPair); ok {
-		r0 = rf(podIfaceName, nsPath)
+	if rf, ok := ret.Get(0).(func(uint16) datapath.VethPair); ok {
+		r0 = rf(hostPort)
 	} else {
 		r0 = ret.Get(0).(datapath.VethPair)
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = rf(podIfaceName, nsPath)
+	if rf, ok := ret.Get(1).(func(uint16) error); ok {
+		r1 = rf(hostPort)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -638,15 +638,14 @@ type MockCniHandler_GetVethPair_Call struct {
 }
 
 // GetVethPair is a helper method to define mock.On call
-//   - podIfaceName string
-//   - nsPath string
-func (_e *MockCniHandler_Expecter) GetVethPair(podIfaceName interface{}, nsPath interface{}) *MockCniHandler_GetVethPair_Call {
-	return &MockCniHandler_GetVethPair_Call{Call: _e.mock.On("GetVethPair", podIfaceName, nsPath)}
+//   - hostPort uint16
+func (_e *MockCniHandler_Expecter) GetVethPair(hostPort interface{}) *MockCniHandler_GetVethPair_Call {
+	return &MockCniHandler_GetVethPair_Call{Call: _e.mock.On("GetVethPair", hostPort)}
 }
 
-func (_c *MockCniHandler_GetVethPair_Call) Run(run func(podIfaceName string, nsPath string)) *MockCniHandler_GetVethPair_Call {
+func (_c *MockCniHandler_GetVethPair_Call) Run(run func(hostPort uint16)) *MockCniHandler_GetVethPair_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
+		run(args[0].(uint16))
 	})
 	return _c
 }
@@ -656,7 +655,7 @@ func (_c *MockCniHandler_GetVethPair_Call) Return(_a0 datapath.VethPair, _a1 err
 	return _c
 }
 
-func (_c *MockCniHandler_GetVethPair_Call) RunAndReturn(run func(string, string) (datapath.VethPair, error)) *MockCniHandler_GetVethPair_Call {
+func (_c *MockCniHandler_GetVethPair_Call) RunAndReturn(run func(uint16) (datapath.VethPair, error)) *MockCniHandler_GetVethPair_Call {
 	_c.Call.Return(run)
 	return _c
 }

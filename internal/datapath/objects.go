@@ -226,17 +226,44 @@ func (o *Objects) AddNetData(data NetData) error {
 	return nil
 }
 
+func (o *Objects) GetNetData(port uint16) (NetData, error) {
+	var value dnatNetData
+	if err := o.dnatObjs.NetDataMap.Lookup(uint32(port), &value); err != nil {
+		return NetData{}, fmt.Errorf("get by port: %w", err)
+	}
+
+	return NetData{
+		Veth: VethPair{
+			HostPeer: VethPeer{
+				Iface: &net.Interface{
+					Index:        int(value.HostPeer.IfIndex),
+					HardwareAddr: value.HostPeer.MacAddr[:],
+				},
+				Addr: intToIP(value.HostPeer.IfAddr),
+			},
+			PodPeer: VethPeer{
+				Iface: &net.Interface{
+					Index:        int(value.PodPeer.IfIndex),
+					HardwareAddr: value.PodPeer.MacAddr[:],
+				},
+				Addr: intToIP(value.PodPeer.IfAddr),
+			},
+		},
+		HostPort: value.HostPort,
+	}, nil
+}
+
 func (o *Objects) DelNetData(data NetData) error {
-	podPeerAddr := binary.BigEndian.Uint32(data.Veth.PodPeer.Addr.IP.To4())
+	podPeerAddr := ipToInt(data.Veth.PodPeer.Addr)
 
 	// see comment in AddNetData
 
 	if err := o.dnatObjs.NetDataMap.Delete(uint32(data.HostPort)); err != nil {
-		return fmt.Errorf("remove dnat by port: %w", err)
+		return fmt.Errorf("remove by port: %w", err)
 	}
 
 	if err := o.dnatObjs.NetDataMap.Delete(podPeerAddr); err != nil {
-		return fmt.Errorf("remove dnat by addr: %w", err)
+		return fmt.Errorf("remove by addr: %w", err)
 	}
 
 	return nil
@@ -244,7 +271,7 @@ func (o *Objects) DelNetData(data NetData) error {
 
 func (o *Objects) AddDNATTarget(key uint16, ip net.IP, ifaceIdx uint8, mac net.HardwareAddr) error {
 	if err := o.dnatObjs.PtpDnatTargets.Put(key, dnatDnatTarget{
-		IpAddr:   binary.BigEndian.Uint32(ip.To4()), // network byte order is big endian
+		IpAddr:   ipToInt(ip),
 		IfaceIdx: ifaceIdx,
 		MacAddr:  [6]byte(mac),
 	}); err != nil {
@@ -260,7 +287,7 @@ func (o *Objects) DelDNATTarget(port uint16) error {
 
 func (o *Objects) AddSNATTarget(key uint8, ip net.IP, ifaceIdx uint8) error {
 	if err := o.snatObjs.PtpSnatConfig.Put(key, snatPtpSnatEntry{
-		IpAddr:   binary.BigEndian.Uint32(ip.To4()), // network byte order is big endian
+		IpAddr:   ipToInt(ip),
 		IfaceIdx: ifaceIdx,
 	}); err != nil {
 		return err
@@ -276,7 +303,7 @@ func (o *Objects) DelSNATTarget(key uint8) error {
 func (o *Objects) AddVethPairEntry(veth VethPair) error {
 	mapValue := tproxyVethPair{
 		HostIfIndex: uint32(veth.HostPeer.Iface.Index),
-		HostIfAddr:  binary.BigEndian.Uint32(veth.HostPeer.Addr.IP.To4()),
+		HostIfAddr:  ipToInt(veth.HostPeer.Addr),
 	}
 
 	if err := o.tproxyObjs.VethPairMap.Put(uint32(veth.HostPeer.Iface.Index), mapValue); err != nil {
@@ -291,11 +318,11 @@ func (o *Objects) AddVethPairEntry(veth VethPair) error {
 }
 
 func (o *Objects) DelVethPairEntry(veth VethPair) error {
-	if err := o.tproxyObjs.VethPairMap.Delete(veth.HostPeer.Iface.Index); err != nil {
+	if err := o.tproxyObjs.VethPairMap.Delete(uint32(veth.HostPeer.Iface.Index)); err != nil {
 		return fmt.Errorf("delete using host peer index: %w", err)
 	}
 
-	if err := o.tproxyObjs.VethPairMap.Delete(veth.PodPeer.Iface.Index); err != nil {
+	if err := o.tproxyObjs.VethPairMap.Delete(uint32(veth.PodPeer.Iface.Index)); err != nil {
 		return fmt.Errorf("delete using pod peer index: %w", err)
 	}
 
@@ -311,7 +338,7 @@ func netDataToMapValue(data NetData) dnatNetData {
 			_       [2]byte
 		}{
 			IfIndex: uint32(data.Veth.PodPeer.Iface.Index),
-			IfAddr:  binary.BigEndian.Uint32(data.Veth.PodPeer.Addr.IP.To4()),
+			IfAddr:  ipToInt(data.Veth.PodPeer.Addr),
 			MacAddr: [6]byte(data.Veth.PodPeer.Iface.HardwareAddr[:]),
 		},
 		HostPeer: struct {
@@ -321,9 +348,19 @@ func netDataToMapValue(data NetData) dnatNetData {
 			_       [2]byte
 		}{
 			IfIndex: uint32(data.Veth.HostPeer.Iface.Index),
-			IfAddr:  binary.BigEndian.Uint32(data.Veth.HostPeer.Addr.IP.To4()),
+			IfAddr:  ipToInt(data.Veth.HostPeer.Addr),
 			MacAddr: [6]byte(data.Veth.HostPeer.Iface.HardwareAddr[:]),
 		},
 		HostPort: data.HostPort,
 	}
+}
+
+func intToIP(val uint32) net.IP {
+	ip := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, val)
+	return ip
+}
+
+func ipToInt(ip net.IP) uint32 {
+	return binary.BigEndian.Uint32(ip.To4())
 }

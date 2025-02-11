@@ -30,7 +30,7 @@ type VethPair struct {
 
 type VethPeer struct {
 	Iface *net.Interface
-	Addr  net.IPNet
+	Addr  net.IP
 }
 
 type NetData struct {
@@ -48,16 +48,13 @@ func ToVethPeer(iface *net.Interface) (VethPeer, error) {
 		return VethPeer{}, fmt.Errorf("no addresses")
 	}
 
-	ip, cidr, err := net.ParseCIDR(addrs[0].String())
+	ip, _, err := net.ParseCIDR(addrs[0].String())
 	if err != nil {
 		return VethPeer{}, fmt.Errorf("parse ip: %w", err)
 	}
 
 	return VethPeer{
 		Iface: iface,
-		Addr: net.IPNet{
-			IP:   ip,
-			Mask: cidr.Mask,
-		},
+		Addr:  ip,
 	}, nil
 }

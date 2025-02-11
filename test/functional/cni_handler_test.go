@@ -140,7 +140,7 @@ func TestAddDefaultRoute(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, r := range routes {
-			if r.Gw.Equal(veth.PodPeer.Addr.IP) && r.Scope == netlink.SCOPE_LINK {
+			if r.Gw.Equal(veth.PodPeer.Addr) && r.Scope == netlink.SCOPE_LINK {
 				return nil
 			}
 		}
@@ -162,7 +162,7 @@ func TestAddFullMatchRoute(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, r := range routes {
-		if r.Dst.String() == veth.PodPeer.Addr.IP.String()+"/32" &&
+		if r.Dst.String() == veth.PodPeer.Addr.String()+"/32" &&
 			r.Scope == netlink.SCOPE_LINK &&
 			r.LinkIndex == veth.HostPeer.Iface.Index &&
 			r.Family == unix.AF_INET {
@@ -191,27 +191,6 @@ func TestDeallocIPs(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestGetVethPairFromPodPeer(t *testing.T) {
-	h, err := cni.NewHandler()
-	require.NoError(t, err)
-
-	nsPath, expected := setupCNIEnv(t, h)
-
-	actual, err := h.GetVethPair(expected.PodPeer.Iface.Name, nsPath)
-	require.NoError(t, err)
-
-	// we only care explicitly about these fields, ignore the remaining fields of net.Interface
-	assertEqual := func(expectedPeer, actualPeer datapath.VethPeer) {
-		assert.Equal(t, expectedPeer.Addr, actualPeer.Addr)
-		assert.Equal(t, expectedPeer.Iface.Name, actualPeer.Iface.Name)
-		assert.Equal(t, expectedPeer.Iface.Index, actualPeer.Iface.Index)
-		assert.Equal(t, expectedPeer.Iface.HardwareAddr, actualPeer.Iface.HardwareAddr)
-	}
-
-	assertEqual(expected.PodPeer, actual.PodPeer)
-	assertEqual(expected.HostPeer, actual.HostPeer)
-}
-
 func TestDelFullMatchRoute(t *testing.T) {
 	h, err := cni.NewHandler()
 	require.NoError(t, err)
@@ -225,7 +204,7 @@ func TestDelFullMatchRoute(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, r := range routes {
-		if r.Dst.String() == veth.PodPeer.Addr.IP.String()+"/32" &&
+		if r.Dst.String() == veth.PodPeer.Addr.String()+"/32" &&
 			r.Scope == netlink.SCOPE_LINK &&
 			r.LinkIndex == veth.HostPeer.Iface.Index &&
 			r.Family == unix.AF_INET {
