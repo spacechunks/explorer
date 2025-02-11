@@ -60,6 +60,26 @@ func main() {
 				workloadv1alpha1.NewWorkloadServiceClient(conn),
 			)
 		},
-		Del: c.ExecDel,
+		Del: func(args *skel.CmdArgs) error {
+			var conf cni.Conf
+			if err := json.Unmarshal(args.StdinData, &conf); err != nil {
+				return fmt.Errorf("parse config: %v", err)
+			}
+
+			conn, err := grpc.NewClient(
+				conf.PlatformdListenSock,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create proxy service grpc proxyCLient: %w", err)
+			}
+
+			return c.ExecDel(
+				args,
+				conf,
+				proxyv1alpha1.NewProxyServiceClient(conn),
+				workloadv1alpha1.NewWorkloadServiceClient(conn),
+			)
+		},
 	}, version.All, "netglue: provides networking for chunks")
 }

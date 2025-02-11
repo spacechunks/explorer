@@ -84,10 +84,7 @@ func TestExecAdd(t *testing.T) {
 							Iface: &net.Interface{
 								Name: "host",
 							},
-							Addr: net.IPNet{
-								IP:   net.ParseIP("10.10.0.0"),
-								Mask: net.CIDRMask(24, 24),
-							},
+							Addr: net.ParseIP("10.10.0.0"),
 						},
 						PodPeer: datapath.VethPeer{
 							Iface: &net.Interface{
@@ -141,7 +138,7 @@ func TestExecAdd(t *testing.T) {
 				psc.EXPECT().
 					CreateListeners(mocky.Anything, &v1alpha1.CreateListenersRequest{
 						WorkloadID: "uuidv7",
-						Ip:         veth.HostPeer.Addr.IP.String(),
+						Ip:         veth.HostPeer.Addr.String(),
 					}).
 					Return(nil, nil)
 			},

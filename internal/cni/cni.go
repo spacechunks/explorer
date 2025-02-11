@@ -29,6 +29,7 @@ import (
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	current "github.com/containernetworking/cni/pkg/types/100"
+	"github.com/hashicorp/go-multierror"
 	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
 	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
 	"github.com/spacechunks/platform/internal/datapath"
@@ -128,14 +129,10 @@ func (c *CNI) ExecAdd(
 		return fmt.Errorf("add full match route: %w", err)
 	}
 
-	resp, err := wlClient.WorkloadStatus(ctx, &workloadv1alpha1.WorkloadStatusRequest{
-		Id: wlID,
-	})
+	port, err := getHostPort(ctx, wlID, wlClient)
 	if err != nil {
-		return fmt.Errorf("get workload status: %w", err)
+		return fmt.Errorf("get host port: %w", err)
 	}
-
-	port := uint16(resp.Status.Port)
 
 	if err := c.handler.AddDNATTarget(veth, port); err != nil {
 		return fmt.Errorf("add dnat target: %w", err)
@@ -150,7 +147,7 @@ func (c *CNI) ExecAdd(
 
 	if _, err := proxyClient.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: wlID,
-		Ip:         veth.HostPeer.Addr.IP.String(),
+		Ip:         veth.HostPeer.Addr.String(),
 	}); err != nil {
 		return fmt.Errorf("create proxy listeners: %w", err)
 	}
@@ -172,15 +169,89 @@ func (c *CNI) ExecAdd(
 	return nil
 }
 
-func (c *CNI) ExecDel(args *skel.CmdArgs) error {
-	log.Println("del")
-	// TODO: remove resources in this order:
-	//  - remove host route
-	//  - remove proxy listeners
-	//  - remove veth pairs
-	//  - remove ebpf map entries
-	//  - dealloc ips
+func (c *CNI) ExecDel(
+	args *skel.CmdArgs,
+	conf Conf,
+	proxyClient proxyv1alpha1.ProxyServiceClient,
+	wlClient workloadv1alpha1.WorkloadServiceClient,
+) error {
+	// as per cni spec, do not fail if we encounter an error here. log the errors instead.
+	// see https://www.cni.dev/docs/spec/#del-remove-container-from-network-or-un-apply-modifications
+
+	cniArgs, err := parseArgs(args.Args)
+	if err != nil {
+		printErrs(fmt.Errorf("CNI_ARGS parse error: %w", err))
+		return nil
+	}
+
+	// workload service sets the pod uid to the workloads ID
+	wlID, ok := cniArgs["K8S_POD_UID"]
+	if !ok {
+		printErrs(ErrPodUIDMissing)
+		return nil
+	}
+
+	var (
+		errs = make([]error, 0)
+		ctx  = context.Background()
+	)
+
+	port, err := getHostPort(ctx, wlID, wlClient)
+	if err != nil {
+		printErrs(fmt.Errorf("get host port: %w", err))
+		return nil
+	}
+
+	veth, err := c.handler.GetVethPair(port)
+	if err != nil {
+		printErrs(fmt.Errorf("get veth pair: %w", err))
+		return nil
+	}
+
+	if err := c.handler.DelFullMatchRoute(veth); err != nil {
+		errs = append(errs, fmt.Errorf("delete full match route: %w", err))
+	}
+
+	if _, err := proxyClient.DeleteListeners(ctx, &proxyv1alpha1.DeleteListenersRequest{
+		WorkloadID: wlID,
+	}); err != nil {
+		errs = append(errs, fmt.Errorf("delete listeners: %w", err))
+	}
+
+	if err := c.handler.DelMapEntries(veth, port); err != nil {
+		errs = append(errs, fmt.Errorf("delete map entries: %w", err))
+	}
+
+	if err := c.handler.DeallocVethPair(veth); err != nil {
+		errs = append(errs, fmt.Errorf("deallocate veth pair: %w", err))
+	}
+
+	if err := c.handler.DeallocIPs(conf.IPAM.Type, args.StdinData); err != nil {
+		errs = append(errs, fmt.Errorf("deallocate ips: %w", err))
+	}
+
+	printErrs(errs...)
 	return nil
+}
+
+func printErrs(errs ...error) {
+	multi := multierror.Append(nil, errs...)
+	log.Printf("errors calling netglue delete: %s", multi.Error())
+}
+
+func getHostPort(
+	ctx context.Context,
+	workloadID string,
+	wlClient workloadv1alpha1.WorkloadServiceClient,
+) (uint16, error) {
+	resp, err := wlClient.WorkloadStatus(ctx, &workloadv1alpha1.WorkloadStatusRequest{
+		Id: workloadID,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("get workload status: %w", err)
+	}
+
+	return uint16(resp.Status.Port), nil
 }
 
 func parseArgs(args string) (map[string]string, error) {
