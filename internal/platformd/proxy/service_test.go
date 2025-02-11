@@ -46,7 +46,7 @@ func TestApplyGlobalResources(t *testing.T) {
 		svc     = proxy.NewService(logger, proxy.Config{}, mockMap)
 	)
 
-	mockMap.EXPECT().Apply(mocky.Anything, "global", rg).Return(nil, nil)
+	mockMap.EXPECT().Put(mocky.Anything, "global", rg).Return(nil, nil)
 	require.NoError(t, svc.ApplyGlobalResources(context.Background()))
 }
 
@@ -86,6 +86,20 @@ func TestCreateListeners(t *testing.T) {
 		}, mockMap)
 	)
 
-	mockMap.EXPECT().Apply(mocky.Anything, wlID, merged).Return(nil, nil)
+	mockMap.EXPECT().Put(mocky.Anything, wlID, merged).Return(nil, nil)
 	require.NoError(t, svc.CreateListeners(ctx, wlID, addr))
+}
+
+func TestDeleteListeners(t *testing.T) {
+	var (
+		ctx     = context.Background()
+		mockMap = mock.NewMockXdsMap(t)
+		logger  = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		svc     = proxy.NewService(logger, proxy.Config{
+			DNSUpstream: netip.MustParseAddrPort("127.0.0.1:53"),
+		}, mockMap)
+		wlID = "abc"
+	)
+	mockMap.EXPECT().Del(mocky.Anything, wlID).Return(nil, nil)
+	require.NoError(t, svc.DeleteListeners(ctx, wlID))
 }

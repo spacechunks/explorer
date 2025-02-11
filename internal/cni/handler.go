@@ -53,6 +53,10 @@ type Handler interface {
 	AddDNATTarget(veth datapath.VethPair, port uint16) error
 
 	AddNetData(data datapath.NetData) error
+	GetVethPair(hostPort uint16) (datapath.VethPair, error)
+	DelFullMatchRoute(veth datapath.VethPair) error
+	DelMapEntries(veth datapath.VethPair, hostPort uint16) error
+	DeallocVethPair(veth datapath.VethPair) error
 }
 
 type cniHandler struct {
@@ -146,24 +150,35 @@ func (h *cniHandler) AllocVethPair(netNS string, hostAddr, podAddr net.IPNet) (d
 		return datapath.VethPair{}, err
 	}
 
-	if err := h.bpf.AddVethPairEntry(
-		uint32(hostPeer.Index),
-		uint32(podPeer.Index),
-		hostAddr.IP,
-	); err != nil {
-		return datapath.VethPair{}, fmt.Errorf("put veth pairs: %w", err)
-	}
-
-	return datapath.VethPair{
+	veth := datapath.VethPair{
 		HostPeer: datapath.VethPeer{
 			Iface: hostPeer,
-			Addr:  hostAddr,
+			Addr:  hostAddr.IP,
 		},
 		PodPeer: datapath.VethPeer{
 			Iface: podPeer,
-			Addr:  podAddr,
+			Addr:  podAddr.IP,
 		},
-	}, nil
+	}
+
+	if err := h.bpf.AddVethPairEntry(veth); err != nil {
+		return datapath.VethPair{}, fmt.Errorf("put veth pairs: %w", err)
+	}
+
+	return veth, nil
+}
+
+func (h *cniHandler) DeallocVethPair(veth datapath.VethPair) error {
+	l, err := netlink.LinkByIndex(veth.HostPeer.Iface.Index)
+	if err != nil {
+		return fmt.Errorf("get link: %w", err)
+	}
+
+	if err := netlink.LinkDel(l); err != nil {
+		return fmt.Errorf("delete link: %w", err)
+	}
+
+	return nil
 }
 
 func (h *cniHandler) AllocIPs(plugin string, stdinData []byte) ([]net.IPNet, error) {
@@ -196,7 +211,7 @@ func (h *cniHandler) AddDefaultRoute(veth datapath.VethPair, nsPath string) erro
 		// we also do not need to specify the device, the kernel
 		// will figure this out for us.
 		if err := netlink.RouteAdd(&netlink.Route{
-			Gw:     veth.PodPeer.Addr.IP,
+			Gw:     veth.PodPeer.Addr,
 			Family: unix.AF_INET,
 			Scope:  netlink.SCOPE_LINK,
 		}); err != nil {
@@ -210,16 +225,7 @@ func (h *cniHandler) AddDefaultRoute(veth datapath.VethPair, nsPath string) erro
 }
 
 func (h *cniHandler) AddFullMatchRoute(veth datapath.VethPair) error {
-	s := &net.IPNet{
-		IP:   veth.PodPeer.Addr.IP,
-		Mask: net.IPv4Mask(255, 255, 255, 255), // /32
-	}
-	if err := netlink.RouteAdd(&netlink.Route{
-		LinkIndex: veth.HostPeer.Iface.Index,
-		Scope:     netlink.SCOPE_LINK,
-		Dst:       s,
-		Family:    unix.AF_INET,
-	}); err != nil {
+	if err := netlink.RouteAdd(fullMatchRoute(veth)); err != nil {
 		return err
 	}
 	return nil
@@ -228,7 +234,7 @@ func (h *cniHandler) AddFullMatchRoute(veth datapath.VethPair) error {
 func (h *cniHandler) AddDNATTarget(veth datapath.VethPair, port uint16) error {
 	return h.bpf.AddDNATTarget(
 		port,
-		veth.PodPeer.Addr.IP,
+		veth.PodPeer.Addr,
 		// use host peer index, because bpf_redirect_peer
 		// redirects packets to ifaces peer device. in this
 		// case the pod peer.
@@ -239,6 +245,56 @@ func (h *cniHandler) AddDNATTarget(veth datapath.VethPair, port uint16) error {
 
 func (h *cniHandler) AddNetData(data datapath.NetData) error {
 	return h.bpf.AddNetData(data)
+}
+
+func (h *cniHandler) DelFullMatchRoute(veth datapath.VethPair) error {
+	if err := netlink.RouteDel(fullMatchRoute(veth)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *cniHandler) GetVethPair(hostPort uint16) (datapath.VethPair, error) {
+	data, err := h.bpf.GetNetData(hostPort)
+	if err != nil {
+		return datapath.VethPair{}, err
+	}
+	return data.Veth, nil
+}
+
+func (h *cniHandler) DelMapEntries(veth datapath.VethPair, hostPort uint16) error {
+	// TODO: pass netdata struct instead of separate VethPair and hostPort.
+	//       in turn of this refactoring adjust GetVethPair function to read
+	//       from netdata map instead of checking interfaces.
+	if err := h.bpf.DelNetData(datapath.NetData{
+		Veth:     veth,
+		HostPort: hostPort,
+	}); err != nil {
+		return fmt.Errorf("delete net data: %w", err)
+	}
+
+	if err := h.bpf.DelDNATTarget(hostPort); err != nil {
+		return fmt.Errorf("delete dnat: %w", err)
+	}
+
+	if err := h.bpf.DelVethPairEntry(veth); err != nil {
+		return fmt.Errorf("delete veth pair: %w", err)
+	}
+
+	return nil
+}
+
+func fullMatchRoute(veth datapath.VethPair) *netlink.Route {
+	cidr := &net.IPNet{
+		IP:   veth.PodPeer.Addr,
+		Mask: net.IPv4Mask(255, 255, 255, 255), // /32
+	}
+	return &netlink.Route{
+		LinkIndex: veth.HostPeer.Iface.Index,
+		Scope:     netlink.SCOPE_LINK,
+		Dst:       cidr,
+		Family:    unix.AF_INET,
+	}
 }
 
 func configureCTRPeer(ctrNS ns.NetNS, ip net.IPNet, ifaceName string) error {

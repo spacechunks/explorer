@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package datapath
 
 import (
+	"encoding/binary"
 	"net"
 	"testing"
 
@@ -28,67 +29,122 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAddNetData ensures that every required combination of keys exist
-// in all required netdata maps.
-func TestAddNetData(t *testing.T) {
+// TestNetData ensures that every required combination of keys
+// is added, removed and retrieved correctly from the map.
+func TestNetData(t *testing.T) {
 	objs, err := LoadBPF()
 	require.NoError(t, err)
 
-	var (
-		_, cidr, _ = net.ParseCIDR("198.51.100.1/24")
-		data       = NetData{
+	netDataFixture := func(ipStr string, hostPort uint16) NetData {
+		return NetData{
 			Veth: VethPair{
 				HostPeer: VethPeer{
 					Iface: &net.Interface{
 						Index:        1,
 						HardwareAddr: []byte{1, 2, 3, 4, 5, 6},
 					},
-					Addr: *cidr,
+					// for some reason the slice returned by net.ParseIP is 16 bytes long,
+					// but intToIP, which populates this field in all cases, returns the
+					// correct 4 bytes long slice and this leads to a mismatch when calling
+					// require.Equal. to mitigate this, call To4()
+					Addr: net.ParseIP(ipStr).To4(),
 				},
 				PodPeer: VethPeer{
 					Iface: &net.Interface{
 						Index:        2,
 						HardwareAddr: []byte{1, 2, 3, 4, 5, 6},
 					},
-					Addr: *cidr,
+					Addr: net.ParseIP(ipStr).To4(),
 				},
 			},
-			HostPort: 1337,
+			HostPort: hostPort,
 		}
-		expectedMapValue = netDataToMapValue(data)
-	)
+	}
 
-	err = objs.AddNetData(data)
-	require.NoError(t, err)
-
-	var dnatMaps dnatMaps
-	err = loadDnatObjects(&dnatMaps, &ebpf.CollectionOptions{
-		Maps: ebpf.MapOptions{
-			PinPath: mapPinPath,
-		},
-	})
-	require.NoError(t, err)
-
-	var snatMaps snatMaps
-	err = loadSnatObjects(&snatMaps, &ebpf.CollectionOptions{
-		Maps: ebpf.MapOptions{
-			PinPath: mapPinPath,
-		},
-	})
-	require.NoError(t, err)
-
-	for _, m := range []*ebpf.Map{dnatMaps.NetDataMap, snatMaps.NetDataMap} {
-		var value dnatNetData
-		err = m.Lookup(uint32(data.HostPort), &value)
+	loadMap := func() *ebpf.Map {
+		var dnatMaps dnatMaps
+		err = loadDnatObjects(&dnatMaps, &ebpf.CollectionOptions{
+			Maps: ebpf.MapOptions{
+				PinPath: mapPinPath,
+			},
+		})
 		require.NoError(t, err)
-		require.Equal(t, expectedMapValue, value)
+		return dnatMaps.NetDataMap
+	}
 
-		err = m.Lookup(expectedMapValue.PodPeer.IfAddr, &value)
-		require.NoError(t, err)
-		require.Equal(t, expectedMapValue, value)
+	tests := []struct {
+		name  string
+		data  NetData
+		check func(*testing.T, NetData)
+	}{
+		{
+			name: "add netdata",
+			// use different values here, so we don't have run into conflicts,
+			// because the underlying map will not be cleared
+			data: netDataFixture("198.51.100.1", 1337),
+			check: func(t *testing.T, fixture NetData) {
+				err = objs.AddNetData(fixture)
+				require.NoError(t, err)
+
+				expectedMapValue := netDataToMapValue(fixture)
+				m := loadMap()
+
+				var value dnatNetData
+				err = m.Lookup(uint32(fixture.HostPort), &value)
+				require.NoError(t, err)
+				require.Equal(t, expectedMapValue, value)
+
+				err = m.Lookup(expectedMapValue.PodPeer.IfAddr, &value)
+				require.NoError(t, err)
+				require.Equal(t, expectedMapValue, value)
+			},
+		},
+		{
+			name: "delete netdata",
+			data: netDataFixture("198.51.100.2", 420),
+			check: func(t *testing.T, fixture NetData) {
+				err = objs.AddNetData(fixture)
+				require.NoError(t, err)
+
+				err = objs.DelNetData(fixture)
+				require.NoError(t, err)
+
+				m := loadMap()
+
+				var value dnatNetData
+				err = m.Lookup(uint32(fixture.HostPort), &value)
+				require.ErrorIs(t, err, ebpf.ErrKeyNotExist)
+
+				err = m.Lookup(binary.BigEndian.Uint32(fixture.Veth.PodPeer.Addr.To4()), &value)
+				require.ErrorIs(t, err, ebpf.ErrKeyNotExist)
+			},
+		},
+		{
+			name: "get netdata",
+			data: netDataFixture("198.51.100.3", 69),
+			check: func(t *testing.T, fixture NetData) {
+				err = objs.AddNetData(fixture)
+				require.NoError(t, err)
+
+				actual, err := objs.GetNetData(69)
+				require.NoError(t, err)
+
+				require.Equal(t, fixture, actual)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.check(t, tt.data)
+		})
 	}
 }
 
+// TestAddSNATTarget ensures that a target is added with the correct values to the map.
+// this is important, because the ip address needs to be correctly converted to an uint32.
+// testing DelSNATTarget is not needed, since there is no special functionality, that
+// requires a dedicated test.
 func TestAddSNATTarget(t *testing.T) {
 	objs, err := LoadBPF()
 	require.NoError(t, err)
@@ -119,6 +175,10 @@ func TestAddSNATTarget(t *testing.T) {
 	require.Equal(t, expected, actual)
 }
 
+// TestAddDNATTarget ensures that a target is added with the correct values to the map.
+// this is important, because the ip address needs to be correctly converted to an uint32.
+// testing DelDNATTarget is not needed, since there is no special functionality, that
+// requires a dedicated test.
 func TestAddDNATTarget(t *testing.T) {
 	objs, err := LoadBPF()
 	require.NoError(t, err)

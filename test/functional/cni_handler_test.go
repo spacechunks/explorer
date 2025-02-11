@@ -67,12 +67,12 @@ func TestAllocAndConfigureVethPair(t *testing.T) {
 	require.Equal(t, cni.VethMTU, podVeth.Attrs().MTU)
 
 	err = ns.WithNetNSPath(nsPath, func(netNS ns.NetNS) error {
-		test.RequireAddrConfigured(t, podVethName, veth.PodPeer.Addr.String())
+		test.RequireAddrConfigured(t, podVethName, veth.PodPeer.Addr.String()+"/24")
 		return nil
 	})
 	require.NoError(t, err)
 
-	test.RequireAddrConfigured(t, hostVethName, veth.HostPeer.Addr.String())
+	test.RequireAddrConfigured(t, hostVethName, veth.HostPeer.Addr.String()+"/24")
 	require.Equal(t, cni.HostVethMAC.String(), hostVeth.Attrs().HardwareAddr.String())
 }
 
@@ -140,7 +140,7 @@ func TestAddDefaultRoute(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, r := range routes {
-			if r.Gw.Equal(veth.PodPeer.Addr.IP) && r.Scope == netlink.SCOPE_LINK {
+			if r.Gw.Equal(veth.PodPeer.Addr) && r.Scope == netlink.SCOPE_LINK {
 				return nil
 			}
 		}
@@ -162,7 +162,7 @@ func TestAddFullMatchRoute(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, r := range routes {
-		if r.Dst.String() == veth.PodPeer.Addr.IP.String()+"/32" &&
+		if r.Dst.String() == veth.PodPeer.Addr.String()+"/32" &&
 			r.Scope == netlink.SCOPE_LINK &&
 			r.LinkIndex == veth.HostPeer.Iface.Index &&
 			r.Family == unix.AF_INET {
@@ -188,6 +188,47 @@ func TestDeallocIPs(t *testing.T) {
 	require.NoError(t, err)
 
 	err = h.DeallocIPs("host-local", stdinData)
+	require.NoError(t, err)
+}
+
+func TestDelFullMatchRoute(t *testing.T) {
+	h, err := cni.NewHandler()
+	require.NoError(t, err)
+
+	_, veth := setupCNIEnv(t, h)
+
+	require.NoError(t, h.AddFullMatchRoute(veth))
+	require.NoError(t, h.DelFullMatchRoute(veth))
+
+	routes, err := netlink.RouteList(nil, unix.AF_INET)
+	require.NoError(t, err)
+
+	for _, r := range routes {
+		if r.Dst.String() == veth.PodPeer.Addr.String()+"/32" &&
+			r.Scope == netlink.SCOPE_LINK &&
+			r.LinkIndex == veth.HostPeer.Iface.Index &&
+			r.Family == unix.AF_INET {
+			t.Fatal("route found")
+		}
+	}
+}
+
+func TestDeallocVethPair(t *testing.T) {
+	h, err := cni.NewHandler()
+	require.NoError(t, err)
+
+	nsPath, veth := setupCNIEnv(t, h)
+
+	require.NoError(t, h.DeallocVethPair(veth))
+
+	_, err = netlink.LinkByIndex(veth.HostPeer.Iface.Index)
+	require.ErrorAs(t, err, &netlink.LinkNotFoundError{})
+
+	err = ns.WithNetNSPath(nsPath, func(_ ns.NetNS) error {
+		_, err := netlink.LinkByIndex(veth.PodPeer.Iface.Index)
+		require.ErrorAs(t, err, &netlink.LinkNotFoundError{})
+		return nil
+	})
 	require.NoError(t, err)
 }
 

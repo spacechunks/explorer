@@ -13,6 +13,7 @@ import (
 type Service interface {
 	CreateListeners(ctx context.Context, workloadID string, addr netip.Addr) error
 	ApplyGlobalResources(ctx context.Context) error
+	DeleteListeners(ctx context.Context, workloadID string) error
 }
 
 type proxyService struct {
@@ -43,7 +44,7 @@ func (s *proxyService) ApplyGlobalResources(ctx context.Context) error {
 			OriginalDstClusterResource(),
 		},
 	}
-	if _, err := s.resourceMap.Apply(ctx, "global", rg); err != nil {
+	if _, err := s.resourceMap.Put(ctx, "global", rg); err != nil {
 		return fmt.Errorf("apply envoy config: %w", err)
 	}
 	return nil
@@ -74,9 +75,17 @@ func (s *proxyService) CreateListeners(ctx context.Context, workloadID string, a
 
 	s.logger.InfoContext(ctx, "applying workload resources", "workload_id", workloadID)
 
-	if _, err := s.resourceMap.Apply(ctx, workloadID, merged); err != nil {
+	if _, err := s.resourceMap.Put(ctx, workloadID, merged); err != nil {
 		return fmt.Errorf("apply envoy config: %w", err)
 	}
 
+	return nil
+}
+
+func (s *proxyService) DeleteListeners(ctx context.Context, workloadID string) error {
+	s.logger.InfoContext(ctx, "deleting listeners", "workload_id", workloadID)
+	if _, err := s.resourceMap.Del(ctx, workloadID); err != nil {
+		return fmt.Errorf("delete workload resources: %w", err)
+	}
 	return nil
 }

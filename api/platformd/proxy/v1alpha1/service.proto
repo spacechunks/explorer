@@ -6,6 +6,7 @@ option go_package = "github.com/spacechunks/explorer-platform/api/platformd/prox
 
 service ProxyService {
   rpc CreateListeners(CreateListenersRequest) returns (CreateListenersResponse);
+  rpc DeleteListeners(DeleteListenersRequest) returns (DeleteListenersResponse);
 }
 
 message CreateListenersRequest {
@@ -14,3 +15,9 @@ message CreateListenersRequest {
 }
 
 message CreateListenersResponse {}
+
+message DeleteListenersRequest {
+  string workloadID = 1;
+}
+
+message DeleteListenersResponse {}

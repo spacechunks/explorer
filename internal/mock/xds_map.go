@@ -25,29 +25,29 @@ func (_m *MockXdsMap) EXPECT() *MockXdsMap_Expecter {
 	return &MockXdsMap_Expecter{mock: &_m.Mock}
 }
 
-// Apply provides a mock function with given fields: ctx, key, rg
-func (_m *MockXdsMap) Apply(ctx context.Context, key string, rg xds.ResourceGroup) (*cache.Snapshot, error) {
-	ret := _m.Called(ctx, key, rg)
+// Del provides a mock function with given fields: ctx, key
+func (_m *MockXdsMap) Del(ctx context.Context, key string) (*cache.Snapshot, error) {
+	ret := _m.Called(ctx, key)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Apply")
+		panic("no return value specified for Del")
 	}
 
 	var r0 *cache.Snapshot
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, xds.ResourceGroup) (*cache.Snapshot, error)); ok {
-		return rf(ctx, key, rg)
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*cache.Snapshot, error)); ok {
+		return rf(ctx, key)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, xds.ResourceGroup) *cache.Snapshot); ok {
-		r0 = rf(ctx, key, rg)
+	if rf, ok := ret.Get(0).(func(context.Context, string) *cache.Snapshot); ok {
+		r0 = rf(ctx, key)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*cache.Snapshot)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, xds.ResourceGroup) error); ok {
-		r1 = rf(ctx, key, rg)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, key)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -55,32 +55,31 @@ func (_m *MockXdsMap) Apply(ctx context.Context, key string, rg xds.ResourceGrou
 	return r0, r1
 }
 
-// MockXdsMap_Apply_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Apply'
-type MockXdsMap_Apply_Call struct {
+// MockXdsMap_Del_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Del'
+type MockXdsMap_Del_Call struct {
 	*mock.Call
 }
 
-// Apply is a helper method to define mock.On call
+// Del is a helper method to define mock.On call
 //   - ctx context.Context
 //   - key string
-//   - rg xds.ResourceGroup
-func (_e *MockXdsMap_Expecter) Apply(ctx interface{}, key interface{}, rg interface{}) *MockXdsMap_Apply_Call {
-	return &MockXdsMap_Apply_Call{Call: _e.mock.On("Apply", ctx, key, rg)}
+func (_e *MockXdsMap_Expecter) Del(ctx interface{}, key interface{}) *MockXdsMap_Del_Call {
+	return &MockXdsMap_Del_Call{Call: _e.mock.On("Del", ctx, key)}
 }
 
-func (_c *MockXdsMap_Apply_Call) Run(run func(ctx context.Context, key string, rg xds.ResourceGroup)) *MockXdsMap_Apply_Call {
+func (_c *MockXdsMap_Del_Call) Run(run func(ctx context.Context, key string)) *MockXdsMap_Del_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(xds.ResourceGroup))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockXdsMap_Apply_Call) Return(_a0 *cache.Snapshot, _a1 error) *MockXdsMap_Apply_Call {
+func (_c *MockXdsMap_Del_Call) Return(_a0 *cache.Snapshot, _a1 error) *MockXdsMap_Del_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockXdsMap_Apply_Call) RunAndReturn(run func(context.Context, string, xds.ResourceGroup) (*cache.Snapshot, error)) *MockXdsMap_Apply_Call {
+func (_c *MockXdsMap_Del_Call) RunAndReturn(run func(context.Context, string) (*cache.Snapshot, error)) *MockXdsMap_Del_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -127,6 +126,66 @@ func (_c *MockXdsMap_Get_Call) Return(_a0 xds.ResourceGroup) *MockXdsMap_Get_Cal
 }
 
 func (_c *MockXdsMap_Get_Call) RunAndReturn(run func(string) xds.ResourceGroup) *MockXdsMap_Get_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Put provides a mock function with given fields: ctx, key, rg
+func (_m *MockXdsMap) Put(ctx context.Context, key string, rg xds.ResourceGroup) (*cache.Snapshot, error) {
+	ret := _m.Called(ctx, key, rg)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Put")
+	}
+
+	var r0 *cache.Snapshot
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, xds.ResourceGroup) (*cache.Snapshot, error)); ok {
+		return rf(ctx, key, rg)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, xds.ResourceGroup) *cache.Snapshot); ok {
+		r0 = rf(ctx, key, rg)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*cache.Snapshot)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, xds.ResourceGroup) error); ok {
+		r1 = rf(ctx, key, rg)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockXdsMap_Put_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Put'
+type MockXdsMap_Put_Call struct {
+	*mock.Call
+}
+
+// Put is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+//   - rg xds.ResourceGroup
+func (_e *MockXdsMap_Expecter) Put(ctx interface{}, key interface{}, rg interface{}) *MockXdsMap_Put_Call {
+	return &MockXdsMap_Put_Call{Call: _e.mock.On("Put", ctx, key, rg)}
+}
+
+func (_c *MockXdsMap_Put_Call) Run(run func(ctx context.Context, key string, rg xds.ResourceGroup)) *MockXdsMap_Put_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(xds.ResourceGroup))
+	})
+	return _c
+}
+
+func (_c *MockXdsMap_Put_Call) Return(_a0 *cache.Snapshot, _a1 error) *MockXdsMap_Put_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockXdsMap_Put_Call) RunAndReturn(run func(context.Context, string, xds.ResourceGroup) (*cache.Snapshot, error)) *MockXdsMap_Put_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -32,7 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #define SO_ORIGINAL_DST 80
 #define AF_INET         2
-
+/* TODO: replace with net data map */
 struct veth_pair {
     /* currently we only need host_if_index, host_if_addr */
     __u32 host_if_index;

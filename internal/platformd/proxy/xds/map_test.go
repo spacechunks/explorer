@@ -73,7 +73,7 @@ func TestMap(t *testing.T) {
 				require.NoError(t, err)
 				mockCache.EXPECT().SetSnapshot(mocky.Anything, mocky.Anything, snap).Return(nil)
 
-				_, err = m.Apply(context.Background(), "key", expectedRg)
+				_, err = m.Put(context.Background(), "key", expectedRg)
 				require.NoError(t, err)
 
 				require.Equal(t, expectedRg, m.Get("key"))
@@ -134,13 +134,43 @@ func TestMap(t *testing.T) {
 				mockCache.EXPECT().SetSnapshot(mocky.Anything, mocky.Anything, snap1).Return(nil)
 				mockCache.EXPECT().SetSnapshot(mocky.Anything, mocky.Anything, expectedMerged).Return(nil)
 
-				_, err = m.Apply(ctx, "key1", rg1)
+				_, err = m.Put(ctx, "key1", rg1)
 				require.NoError(t, err)
 
-				actualMerged, err := m.Apply(ctx, "key2", rg2)
+				actualMerged, err := m.Put(ctx, "key2", rg2)
 				require.NoError(t, err)
 
 				require.Equal(t, expectedMerged, actualMerged)
+			},
+		},
+		{
+			name: "check resource group is deleted",
+			check: func(m xds.Map, mockCache *mock.MockCacheSnapshotCache) {
+				var (
+					rg = xds.ResourceGroup{
+						Clusters: []*clusterv3.Cluster{
+							{
+								Name: "c1",
+							},
+						},
+					}
+					ctx = context.Background()
+					key = "key"
+				)
+
+				snap, err := cache.NewSnapshot("1", rg.ResourcesByType())
+				require.NoError(t, err)
+				mockCache.EXPECT().SetSnapshot(mocky.Anything, mocky.Anything, snap).Return(nil)
+
+				_, err = m.Put(ctx, key, rg)
+				require.NoError(t, err)
+
+				delSnap, err := cache.NewSnapshot("2", map[resource.Type][]types.Resource{})
+				require.NoError(t, err)
+				mockCache.EXPECT().SetSnapshot(mocky.Anything, mocky.Anything, delSnap).Return(nil)
+
+				_, err = m.Del(context.Background(), key)
+				require.NoError(t, err)
 			},
 		},
 	}
