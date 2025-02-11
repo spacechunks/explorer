@@ -67,12 +67,12 @@ func TestAllocAndConfigureVethPair(t *testing.T) {
 	require.Equal(t, cni.VethMTU, podVeth.Attrs().MTU)
 
 	err = ns.WithNetNSPath(nsPath, func(netNS ns.NetNS) error {
-		test.RequireAddrConfigured(t, podVethName, veth.PodPeer.Addr.String())
+		test.RequireAddrConfigured(t, podVethName, veth.PodPeer.Addr.String()+"/24")
 		return nil
 	})
 	require.NoError(t, err)
 
-	test.RequireAddrConfigured(t, hostVethName, veth.HostPeer.Addr.String())
+	test.RequireAddrConfigured(t, hostVethName, veth.HostPeer.Addr.String()+"/24")
 	require.Equal(t, cni.HostVethMAC.String(), hostVeth.Attrs().HardwareAddr.String())
 }
 
