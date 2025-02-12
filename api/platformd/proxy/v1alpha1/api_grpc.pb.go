@@ -2,13 +2,12 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: platformd/proxy/v1alpha1/service.proto
+// source: platformd/proxy/v1alpha1/api.proto
 
 package v1alpha1
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -156,5 +155,5 @@ var ProxyService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "platformd/proxy/v1alpha1/service.proto",
+	Metadata: "platformd/proxy/v1alpha1/api.proto",
 }

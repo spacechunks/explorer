@@ -2,13 +2,12 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: platformd/workload/v1alpha1/service.proto
+// source: platformd/workload/v1alpha1/api.proto
 
 package v1alpha1
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -28,6 +27,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkloadServiceClient interface {
+	// Deprecated: Do not use.
 	// RunWorkload runs a sandbox with the specified options.
 	//
 	// the created workload will be reachable from the public
@@ -46,6 +46,7 @@ func NewWorkloadServiceClient(cc grpc.ClientConnInterface) WorkloadServiceClient
 	return &workloadServiceClient{cc}
 }
 
+// Deprecated: Do not use.
 func (c *workloadServiceClient) RunWorkload(ctx context.Context, in *RunWorkloadRequest, opts ...grpc.CallOption) (*RunWorkloadResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RunWorkloadResponse)
@@ -70,6 +71,7 @@ func (c *workloadServiceClient) WorkloadStatus(ctx context.Context, in *Workload
 // All implementations must embed UnimplementedWorkloadServiceServer
 // for forward compatibility.
 type WorkloadServiceServer interface {
+	// Deprecated: Do not use.
 	// RunWorkload runs a sandbox with the specified options.
 	//
 	// the created workload will be reachable from the public
@@ -168,5 +170,5 @@ var WorkloadService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "platformd/workload/v1alpha1/service.proto",
+	Metadata: "platformd/workload/v1alpha1/api.proto",
 }

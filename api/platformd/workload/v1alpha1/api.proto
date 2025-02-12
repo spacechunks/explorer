@@ -11,7 +11,9 @@ service WorkloadService {
   // internet. programs running in the workload have access to
   // the external network, but cannot be reached from the outside
   // without the program initiating the connection first.
-  rpc RunWorkload(RunWorkloadRequest) returns (RunWorkloadResponse);
+  rpc RunWorkload(RunWorkloadRequest) returns (RunWorkloadResponse) {
+    option deprecated = true;
+  }
 
   rpc WorkloadStatus(WorkloadStatusRequest) returns (WorkloadStatusResponse);
 }
