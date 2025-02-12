@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package platformd.workload.v1alpha1;
 
-option go_package = "github.com/spacechunks/explorer-platform/api/platformd/workload/v1alpha1";
+option go_package = "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1";
 
 service WorkloadService {
   // RunWorkload runs a sandbox with the specified options.

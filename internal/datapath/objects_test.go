@@ -24,11 +24,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/spacechunks/platform/internal/datapath"
+	"github.com/spacechunks/explorer/internal/datapath"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	"github.com/spacechunks/platform/test"
+	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
 	"github.com/vishvananda/netlink"
 )

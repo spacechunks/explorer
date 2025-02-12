@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package platformd.proxy.v1alpha1;
 
-option go_package = "github.com/spacechunks/explorer-platform/api/platformd/proxy/v1alpha1";
+option go_package = "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1";
 
 service ProxyService {
   rpc CreateListeners(CreateListenersRequest) returns (CreateListenersResponse);

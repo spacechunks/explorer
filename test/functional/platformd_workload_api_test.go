@@ -22,8 +22,8 @@ import (
 	"context"
 	"testing"
 
-	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
-	"github.com/spacechunks/platform/test/functional/fixture"
+	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
+	"github.com/spacechunks/explorer/test/functional/fixture"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

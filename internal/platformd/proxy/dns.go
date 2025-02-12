@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/netip"
 
-	"github.com/spacechunks/platform/internal/platformd/proxy/xds"
+	"github.com/spacechunks/explorer/internal/platformd/proxy/xds"
 
 	xdscorev3 "github.com/cncf/xds/go/xds/core/v3"
 	xsdmatcherv3 "github.com/cncf/xds/go/xds/type/matcher/v3"

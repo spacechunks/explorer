@@ -23,7 +23,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
+	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
 )
 
 type Server struct {
