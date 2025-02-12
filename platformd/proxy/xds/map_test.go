@@ -11,13 +11,13 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
 	"github.com/spacechunks/explorer/internal/mock"
-	"github.com/spacechunks/explorer/internal/platformd/proxy/xds"
+	xds2 "github.com/spacechunks/explorer/platformd/proxy/xds"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestResourceGroupResourcesByType(t *testing.T) {
-	rg := xds.ResourceGroup{
+	rg := xds2.ResourceGroup{
 		Clusters: []*clusterv3.Cluster{
 			{
 				Name: "c1",
@@ -56,12 +56,12 @@ func TestResourceGroupResourcesByType(t *testing.T) {
 func TestMap(t *testing.T) {
 	tests := []struct {
 		name  string
-		check func(xds.Map, *mock.MockCacheSnapshotCache)
+		check func(xds2.Map, *mock.MockCacheSnapshotCache)
 	}{
 		{
 			name: "check resource group is saved",
-			check: func(m xds.Map, mockCache *mock.MockCacheSnapshotCache) {
-				expectedRg := xds.ResourceGroup{
+			check: func(m xds2.Map, mockCache *mock.MockCacheSnapshotCache) {
+				expectedRg := xds2.ResourceGroup{
 					Clusters: []*clusterv3.Cluster{
 						{
 							Name: "c1",
@@ -81,11 +81,11 @@ func TestMap(t *testing.T) {
 		},
 		{
 			name: "all resource groups are merged",
-			check: func(m xds.Map, mockCache *mock.MockCacheSnapshotCache) {
+			check: func(m xds2.Map, mockCache *mock.MockCacheSnapshotCache) {
 				var (
 					merged = make(map[resource.Type][]types.Resource)
 					ctx    = context.Background()
-					rg1    = xds.ResourceGroup{
+					rg1    = xds2.ResourceGroup{
 						Clusters: []*clusterv3.Cluster{
 							{
 								Name: "c1",
@@ -105,7 +105,7 @@ func TestMap(t *testing.T) {
 							},
 						},
 					}
-					rg2 = xds.ResourceGroup{
+					rg2 = xds2.ResourceGroup{
 						Clusters: []*clusterv3.Cluster{
 							{
 								Name: "c2",
@@ -119,7 +119,7 @@ func TestMap(t *testing.T) {
 					}
 				)
 
-				for _, rg := range []xds.ResourceGroup{rg1, rg2} {
+				for _, rg := range []xds2.ResourceGroup{rg1, rg2} {
 					for k, v := range rg.ResourcesByType() {
 						merged[k] = append(merged[k], v...)
 					}
@@ -145,9 +145,9 @@ func TestMap(t *testing.T) {
 		},
 		{
 			name: "check resource group is deleted",
-			check: func(m xds.Map, mockCache *mock.MockCacheSnapshotCache) {
+			check: func(m xds2.Map, mockCache *mock.MockCacheSnapshotCache) {
 				var (
-					rg = xds.ResourceGroup{
+					rg = xds2.ResourceGroup{
 						Clusters: []*clusterv3.Cluster{
 							{
 								Name: "c1",
@@ -179,7 +179,7 @@ func TestMap(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				mockCache = mock.NewMockCacheSnapshotCache(t)
-				m         = xds.NewMap("id", mockCache)
+				m         = xds2.NewMap("id", mockCache)
 			)
 			tt.check(m, mockCache)
 		})

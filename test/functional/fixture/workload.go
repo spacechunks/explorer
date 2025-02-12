@@ -25,7 +25,7 @@ import (
 	"testing"
 
 	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
-	"github.com/spacechunks/explorer/internal/platformd/workload"
+	workload2 "github.com/spacechunks/explorer/platformd/workload"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -59,14 +59,14 @@ func RunWorkloadAPIFixtures(t *testing.T) {
 
 	conn := PlatformdClientConn(t)
 
-	wlServ := workload.NewServer(
-		workload.NewService(
+	wlServ := workload2.NewServer(
+		workload2.NewService(
 			logger,
 			runtimev1.NewRuntimeServiceClient(conn),
 			runtimev1.NewImageServiceClient(conn),
 		),
-		workload.NewPortAllocator(20, 50),
-		workload.NewStore(),
+		workload2.NewPortAllocator(20, 50),
+		workload2.NewStore(),
 	)
 
 	workloadv1alpha1.RegisterWorkloadServiceServer(criServ, wlServ)

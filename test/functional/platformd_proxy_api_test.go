@@ -33,7 +33,7 @@ import (
 	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	"github.com/google/go-cmp/cmp"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
-	"github.com/spacechunks/explorer/internal/platformd/proxy"
+	proxy2 "github.com/spacechunks/explorer/platformd/proxy"
 	"github.com/spacechunks/explorer/test/functional/fixture"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -63,17 +63,17 @@ func TestCreateListener(t *testing.T) {
 	//                proxy package, that blocks until envoy has connected.
 	time.Sleep(10 * time.Second)
 
-	dnsRG, err := proxy.DNSListenerResourceGroup(
-		proxy.DNSClusterName,
-		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.DNSPort)),
+	dnsRG, err := proxy2.DNSListenerResourceGroup(
+		proxy2.DNSClusterName,
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy2.DNSPort)),
 		fixture.DNSUpstream,
 	)
 	require.NoError(t, err)
 
-	wlRG, err := proxy.WorkloadResources(wlID,
-		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.HTTPPort)),
-		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.TCPPort)),
-		proxy.OriginalDstClusterName,
+	wlRG, err := proxy2.WorkloadResources(wlID,
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy2.HTTPPort)),
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy2.TCPPort)),
+		proxy2.OriginalDstClusterName,
 	)
 	require.NoError(t, err)
 

@@ -26,7 +26,7 @@ import (
 	"testing"
 
 	"github.com/spacechunks/explorer/internal/mock"
-	"github.com/spacechunks/explorer/internal/platformd/workload"
+	"github.com/spacechunks/explorer/platformd/workload"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"

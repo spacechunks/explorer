@@ -23,7 +23,7 @@ import (
 
 	"github.com/cilium/ebpf/link"
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/spacechunks/explorer/internal/cni"
+	cni2 "github.com/spacechunks/explorer/cni"
 	"github.com/spacechunks/explorer/internal/datapath"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/assert"
@@ -48,7 +48,7 @@ import (
 // TestAllocAndConfigureVethPair tests that ip address and mac address could be allocated
 // and configured on the veth-pairs.
 func TestAllocAndConfigureVethPair(t *testing.T) {
-	h, err := cni.NewHandler()
+	h, err := cni2.NewHandler()
 	require.NoError(t, err)
 
 	var (
@@ -64,7 +64,7 @@ func TestAllocAndConfigureVethPair(t *testing.T) {
 
 	require.NotNil(t, podVeth, "pod veth not found")
 	require.NotNil(t, hostVeth, "host veth not found")
-	require.Equal(t, cni.VethMTU, podVeth.Attrs().MTU)
+	require.Equal(t, cni2.VethMTU, podVeth.Attrs().MTU)
 
 	err = ns.WithNetNSPath(nsPath, func(netNS ns.NetNS) error {
 		test.RequireAddrConfigured(t, podVethName, veth.PodPeer.Addr.String()+"/24")
@@ -73,11 +73,11 @@ func TestAllocAndConfigureVethPair(t *testing.T) {
 	require.NoError(t, err)
 
 	test.RequireAddrConfigured(t, hostVethName, veth.HostPeer.Addr.String()+"/24")
-	require.Equal(t, cni.HostVethMAC.String(), hostVeth.Attrs().HardwareAddr.String())
+	require.Equal(t, cni2.HostVethMAC.String(), hostVeth.Attrs().HardwareAddr.String())
 }
 
 func TestAllHostPeerProgsAreAttached(t *testing.T) {
-	h, err := cni.NewHandler()
+	h, err := cni2.NewHandler()
 	require.NoError(t, err)
 
 	_, veth := setupCNIEnv(t, h)
@@ -102,7 +102,7 @@ func TestAllHostPeerProgsAreAttached(t *testing.T) {
 }
 
 func TestAllPodPeerProgsAreAttached(t *testing.T) {
-	h, err := cni.NewHandler()
+	h, err := cni2.NewHandler()
 	require.NoError(t, err)
 
 	nsPath, veth := setupCNIEnv(t, h)
@@ -129,7 +129,7 @@ func TestAllPodPeerProgsAreAttached(t *testing.T) {
 }
 
 func TestAddDefaultRoute(t *testing.T) {
-	h, err := cni.NewHandler()
+	h, err := cni2.NewHandler()
 	require.NoError(t, err)
 
 	nsPath, veth := setupCNIEnv(t, h)
@@ -152,7 +152,7 @@ func TestAddDefaultRoute(t *testing.T) {
 }
 
 func TestAddFullMatchRoute(t *testing.T) {
-	h, err := cni.NewHandler()
+	h, err := cni2.NewHandler()
 	require.NoError(t, err)
 
 	_, veth := setupCNIEnv(t, h)
@@ -174,7 +174,7 @@ func TestAddFullMatchRoute(t *testing.T) {
 }
 
 func TestDeallocIPs(t *testing.T) {
-	h, err := cni.NewHandler()
+	h, err := cni2.NewHandler()
 	require.NoError(t, err)
 
 	stdinData := []byte(
@@ -192,7 +192,7 @@ func TestDeallocIPs(t *testing.T) {
 }
 
 func TestDelFullMatchRoute(t *testing.T) {
-	h, err := cni.NewHandler()
+	h, err := cni2.NewHandler()
 	require.NoError(t, err)
 
 	_, veth := setupCNIEnv(t, h)
@@ -214,7 +214,7 @@ func TestDelFullMatchRoute(t *testing.T) {
 }
 
 func TestDeallocVethPair(t *testing.T) {
-	h, err := cni.NewHandler()
+	h, err := cni2.NewHandler()
 	require.NoError(t, err)
 
 	nsPath, veth := setupCNIEnv(t, h)
@@ -232,7 +232,7 @@ func TestDeallocVethPair(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func setupCNIEnv(t *testing.T, h cni.Handler) (string, datapath.VethPair) {
+func setupCNIEnv(t *testing.T, h cni2.Handler) (string, datapath.VethPair) {
 	var (
 		handle, name = test.CreateNetns(t)
 		ctrID        = "ABC"

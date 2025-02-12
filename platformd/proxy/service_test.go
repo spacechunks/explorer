@@ -27,8 +27,8 @@ import (
 
 	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	"github.com/spacechunks/explorer/internal/mock"
-	"github.com/spacechunks/explorer/internal/platformd/proxy"
-	"github.com/spacechunks/explorer/internal/platformd/proxy/xds"
+	proxy2 "github.com/spacechunks/explorer/platformd/proxy"
+	"github.com/spacechunks/explorer/platformd/proxy/xds"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -38,12 +38,12 @@ func TestApplyGlobalResources(t *testing.T) {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		rg     = xds.ResourceGroup{
 			Clusters: []*clusterv3.Cluster{
-				proxy.DNSClusterResource(),
-				proxy.OriginalDstClusterResource(),
+				proxy2.DNSClusterResource(),
+				proxy2.OriginalDstClusterResource(),
 			},
 		}
 		mockMap = mock.NewMockXdsMap(t)
-		svc     = proxy.NewService(logger, proxy.Config{}, mockMap)
+		svc     = proxy2.NewService(logger, proxy2.Config{}, mockMap)
 	)
 
 	mockMap.EXPECT().Put(mocky.Anything, "global", rg).Return(nil, nil)
@@ -57,17 +57,17 @@ func TestCreateListeners(t *testing.T) {
 		dnsUpstream = netip.MustParseAddrPort("127.0.0.1:53")
 	)
 
-	wrg, err := proxy.WorkloadResources(
+	wrg, err := proxy2.WorkloadResources(
 		wlID,
-		netip.AddrPortFrom(addr, proxy.HTTPPort),
-		netip.AddrPortFrom(addr, proxy.TCPPort),
-		proxy.OriginalDstClusterName,
+		netip.AddrPortFrom(addr, proxy2.HTTPPort),
+		netip.AddrPortFrom(addr, proxy2.TCPPort),
+		proxy2.OriginalDstClusterName,
 	)
 	require.NoError(t, err)
 
-	drg, err := proxy.DNSListenerResourceGroup(
-		proxy.DNSClusterName,
-		netip.AddrPortFrom(addr, proxy.DNSPort),
+	drg, err := proxy2.DNSListenerResourceGroup(
+		proxy2.DNSClusterName,
+		netip.AddrPortFrom(addr, proxy2.DNSPort),
 		dnsUpstream,
 	)
 	require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestCreateListeners(t *testing.T) {
 		ctx     = context.Background()
 		mockMap = mock.NewMockXdsMap(t)
 		logger  = slog.New(slog.NewTextHandler(os.Stdout, nil))
-		svc     = proxy.NewService(logger, proxy.Config{
+		svc     = proxy2.NewService(logger, proxy2.Config{
 			DNSUpstream: dnsUpstream,
 		}, mockMap)
 	)
@@ -95,7 +95,7 @@ func TestDeleteListeners(t *testing.T) {
 		ctx     = context.Background()
 		mockMap = mock.NewMockXdsMap(t)
 		logger  = slog.New(slog.NewTextHandler(os.Stdout, nil))
-		svc     = proxy.NewService(logger, proxy.Config{
+		svc     = proxy2.NewService(logger, proxy2.Config{
 			DNSUpstream: netip.MustParseAddrPort("127.0.0.1:53"),
 		}, mockMap)
 		wlID = "abc"
