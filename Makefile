@@ -37,8 +37,8 @@ nodedev:
 
 .PHONY: unittests
 unittests: $(REPACK_IMG) $(UNPACK_IMG)
-	$(RUN) go test $$(go list ./... | grep -v github.com/spacechunks/platform/test/e2e \
-                                    | grep -v github.com/spacechunks/platform/test/functional)
+	$(RUN) go test $$(go list ./... | grep -v github.com/spacechunks/explorer/test/e2e \
+                                    | grep -v github.com/spacechunks/explorer/test/functional)
 
 .PHONY: e2etests
 e2etests:
