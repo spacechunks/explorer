@@ -1,0 +1,44 @@
+edition = "2023";
+
+package discovery.v1alpha1;
+
+import "platformd/workload/v1alpha1/api.proto";
+
+option go_package = "github.com/spacechunks/explorer/api/discovery/v1alpha1";
+
+service DiscoveryService {
+  // DiscoverWorkloads returns all workloads that have been scheduled to a node.
+  // Platformd identifies itself using its unique node key.
+  rpc DiscoverWorkloads(DiscoverWorkloadRequest) returns (DiscoverWorkloadResponse);
+
+  // ReportWorkloadState is intended to be called by platformd in order to provide
+  // status updates back to the control plane.
+  rpc ReportWorkloadState(ReportWorkloadStateRequest) returns (ReportWorkloadStateResponse);
+}
+
+/*
+ * DiscoverWorkloads
+ */
+
+message DiscoverWorkloadRequest {
+  string node_key = 1;
+}
+
+message DiscoverWorkloadResponse {
+  repeated platformd.workload.v1alpha1.Workload workloads = 1;
+}
+
+/*
+ * ReportWorkloadState
+ */
+
+message StatusReport {
+  string workload_id = 1;
+  platformd.workload.v1alpha1.WorkloadStatus status = 2;
+}
+
+message ReportWorkloadStateRequest {
+  repeated StatusReport reports = 1;
+}
+
+message ReportWorkloadStateResponse {}
