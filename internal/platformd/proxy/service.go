@@ -7,7 +7,7 @@ import (
 	"net/netip"
 
 	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	"github.com/spacechunks/platform/internal/platformd/proxy/xds"
+	"github.com/spacechunks/explorer/internal/platformd/proxy/xds"
 )
 
 type Service interface {

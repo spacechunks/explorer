@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package platformd.workload.v1alpha1;
 
-option go_package = "github.com/spacechunks/explorer-platform/api/platformd/workload/v1alpha1";
+option go_package = "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1";
 
 service WorkloadService {
   // RunWorkload runs a sandbox with the specified options.
@@ -11,9 +11,7 @@ service WorkloadService {
   // internet. programs running in the workload have access to
   // the external network, but cannot be reached from the outside
   // without the program initiating the connection first.
-  rpc RunWorkload(RunWorkloadRequest) returns (RunWorkloadResponse) {
-    option deprecated = true;
-  }
+  rpc RunWorkload(RunWorkloadRequest) returns (RunWorkloadResponse);
 
   rpc WorkloadStatus(WorkloadStatusRequest) returns (WorkloadStatusResponse);
 }

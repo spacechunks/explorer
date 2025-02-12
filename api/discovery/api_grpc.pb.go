@@ -8,7 +8,6 @@ package v1alpha1
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -28,7 +27,11 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DiscoveryServiceClient interface {
+	// DiscoverWorkloads returns all workloads that have been scheduled to a node.
+	// Platformd identifies itself using its unique node key.
 	DiscoverWorkloads(ctx context.Context, in *DiscoverWorkloadRequest, opts ...grpc.CallOption) (*DiscoverWorkloadResponse, error)
+	// ReportWorkloadState is intended to be called by platformd in order to provide
+	// status updates back to the control plane.
 	ReportWorkloadState(ctx context.Context, in *ReportWorkloadStateRequest, opts ...grpc.CallOption) (*ReportWorkloadStateResponse, error)
 }
 
@@ -64,7 +67,11 @@ func (c *discoveryServiceClient) ReportWorkloadState(ctx context.Context, in *Re
 // All implementations must embed UnimplementedDiscoveryServiceServer
 // for forward compatibility.
 type DiscoveryServiceServer interface {
+	// DiscoverWorkloads returns all workloads that have been scheduled to a node.
+	// Platformd identifies itself using its unique node key.
 	DiscoverWorkloads(context.Context, *DiscoverWorkloadRequest) (*DiscoverWorkloadResponse, error)
+	// ReportWorkloadState is intended to be called by platformd in order to provide
+	// status updates back to the control plane.
 	ReportWorkloadState(context.Context, *ReportWorkloadStateRequest) (*ReportWorkloadStateResponse, error)
 	mustEmbedUnimplementedDiscoveryServiceServer()
 }

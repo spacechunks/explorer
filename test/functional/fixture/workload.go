@@ -24,8 +24,8 @@ import (
 	"os"
 	"testing"
 
-	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
-	"github.com/spacechunks/platform/internal/platformd/workload"
+	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
+	"github.com/spacechunks/explorer/internal/platformd/workload"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

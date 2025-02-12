@@ -25,9 +25,9 @@ import (
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/version"
-	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
-	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
-	"github.com/spacechunks/platform/internal/cni"
+	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
+	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
+	"github.com/spacechunks/explorer/internal/cni"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

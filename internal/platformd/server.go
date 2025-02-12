@@ -8,16 +8,16 @@ import (
 	"net/netip"
 
 	"github.com/google/uuid"
-	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
-	"github.com/spacechunks/platform/internal/datapath"
+	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
+	"github.com/spacechunks/explorer/internal/datapath"
 
-	"github.com/spacechunks/platform/internal/platformd/proxy/xds"
+	"github.com/spacechunks/explorer/internal/platformd/proxy/xds"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/hashicorp/go-multierror"
-	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
-	"github.com/spacechunks/platform/internal/platformd/proxy"
-	"github.com/spacechunks/platform/internal/platformd/workload"
+	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
+	"github.com/spacechunks/explorer/internal/platformd/proxy"
+	"github.com/spacechunks/explorer/internal/platformd/workload"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/netip"
 
-	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
+	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
 )
 
 type Server struct {
