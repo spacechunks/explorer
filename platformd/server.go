@@ -10,14 +10,13 @@ import (
 	"github.com/google/uuid"
 	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
 	"github.com/spacechunks/explorer/internal/datapath"
-
-	"github.com/spacechunks/explorer/internal/platformd/proxy/xds"
+	proxy2 "github.com/spacechunks/explorer/platformd/proxy"
+	xds2 "github.com/spacechunks/explorer/platformd/proxy/xds"
+	workload2 "github.com/spacechunks/explorer/platformd/workload"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/hashicorp/go-multierror"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
-	"github.com/spacechunks/explorer/internal/platformd/proxy"
-	"github.com/spacechunks/explorer/internal/platformd/workload"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
@@ -58,31 +57,31 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 
 	var (
 		xdsCfg = cache.NewSnapshotCache(true, cache.IDHash{}, nil)
-		wlSvc  = workload.NewService(
+		wlSvc  = workload2.NewService(
 			s.logger,
 			runtimev1.NewRuntimeServiceClient(criConn),
 			runtimev1.NewImageServiceClient(criConn),
 		)
-		proxySvc = proxy.NewService(
+		proxySvc = proxy2.NewService(
 			s.logger,
-			proxy.Config{
+			proxy2.Config{
 				DNSUpstream: dnsUpstream,
 			},
-			xds.NewMap(proxyNodeID, xdsCfg),
+			xds2.NewMap(proxyNodeID, xdsCfg),
 		)
 
 		mgmtServer  = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
-		proxyServer = proxy.NewServer(proxySvc)
-		wlServer    = workload.NewServer(
+		proxyServer = proxy2.NewServer(proxySvc)
+		wlServer    = workload2.NewServer(
 			wlSvc,
-			workload.NewPortAllocator(30000, 40000),
-			workload.NewStore(),
+			workload2.NewPortAllocator(30000, 40000),
+			workload2.NewStore(),
 		)
 	)
 
 	proxyv1alpha1.RegisterProxyServiceServer(mgmtServer, proxyServer)
 	workloadv1alpha1.RegisterWorkloadServiceServer(mgmtServer, wlServer)
-	xds.CreateAndRegisterServer(ctx, s.logger, mgmtServer, xdsCfg)
+	xds2.CreateAndRegisterServer(ctx, s.logger, mgmtServer, xdsCfg)
 
 	bpf, err := datapath.LoadBPF()
 	if err != nil {
@@ -121,39 +120,39 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	}
 
 	// before we start our grpc services make sure our system workloads are running
-	if err := wlSvc.EnsureWorkload(ctx, workload.Workload{
+	if err := wlSvc.EnsureWorkload(ctx, workload2.Workload{
 		ID:                   uuid.New().String(),
 		Name:                 "envoy",
 		Image:                cfg.EnvoyImage,
 		Namespace:            "system",
 		NetworkNamespaceMode: int32(runtimev1.NamespaceMode_NODE),
-		Labels:               workload.SystemWorkloadLabels("envoy"),
+		Labels:               workload2.SystemWorkloadLabels("envoy"),
 		Args:                 []string{"-c /etc/envoy/config.yaml", "-l debug"},
-		Mounts: []workload.Mount{
+		Mounts: []workload2.Mount{
 			{
 				HostPath:      "/etc/platformd/proxy.conf",
 				ContainerPath: "/etc/envoy/config.yaml",
 			},
 		},
-	}, workload.SystemWorkloadLabels("envoy")); err != nil {
+	}, workload2.SystemWorkloadLabels("envoy")); err != nil {
 		return fmt.Errorf("ensure envoy: %w", err)
 	}
 
-	if err := wlSvc.EnsureWorkload(ctx, workload.Workload{
+	if err := wlSvc.EnsureWorkload(ctx, workload2.Workload{
 		ID:                   uuid.New().String(),
 		Name:                 "coredns",
 		Image:                "docker.io/coredns/coredns",
 		Namespace:            "system",
 		NetworkNamespaceMode: int32(runtimev1.NamespaceMode_NODE),
-		Labels:               workload.SystemWorkloadLabels("coredns"),
+		Labels:               workload2.SystemWorkloadLabels("coredns"),
 		Args:                 []string{"-conf", "/etc/coredns/Corefile"},
-		Mounts: []workload.Mount{
+		Mounts: []workload2.Mount{
 			{
 				HostPath:      "/etc/platformd/dns.conf",
 				ContainerPath: "/etc/coredns/Corefile",
 			},
 		},
-	}, workload.SystemWorkloadLabels("coredns")); err != nil {
+	}, workload2.SystemWorkloadLabels("coredns")); err != nil {
 		return fmt.Errorf("ensure coredns: %w", err)
 	}
 

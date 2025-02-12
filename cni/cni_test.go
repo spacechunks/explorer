@@ -27,7 +27,7 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
 	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
-	"github.com/spacechunks/explorer/internal/cni"
+	"github.com/spacechunks/explorer/cni"
 	"github.com/spacechunks/explorer/internal/datapath"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/stretchr/testify/assert"

@@ -12,7 +12,7 @@ import (
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	routerv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
 	httpconnmgr "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
-	"github.com/spacechunks/explorer/internal/platformd/proxy/xds"
+	xds2 "github.com/spacechunks/explorer/platformd/proxy/xds"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -35,18 +35,18 @@ func WorkloadResources(
 	httpListenerAddr netip.AddrPort,
 	tcpListenerAddr netip.AddrPort,
 	originalDstClusterName string,
-) (xds.ResourceGroup, error) {
+) (xds2.ResourceGroup, error) {
 	httpLis, err := httpListener(workloadID, httpListenerAddr, originalDstClusterName)
 	if err != nil {
-		return xds.ResourceGroup{}, fmt.Errorf("create http listener: %w", err)
+		return xds2.ResourceGroup{}, fmt.Errorf("create http listener: %w", err)
 	}
 
 	tcpLis, err := tcpListener(workloadID, tcpListenerAddr, originalDstClusterName)
 	if err != nil {
-		return xds.ResourceGroup{}, fmt.Errorf("create tcp listener: %w", err)
+		return xds2.ResourceGroup{}, fmt.Errorf("create tcp listener: %w", err)
 	}
 
-	return xds.ResourceGroup{
+	return xds2.ResourceGroup{
 		Listeners: []*listenerv3.Listener{
 			tcpLis,
 			httpLis,
@@ -55,11 +55,11 @@ func WorkloadResources(
 }
 
 func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*listenerv3.Listener, error) {
-	tcpLis, err := xds.TCPProxyListener(xds.ListenerConfig{
+	tcpLis, err := xds2.TCPProxyListener(xds2.ListenerConfig{
 		ListenerName: "tcp-" + workloadID,
 		Addr:         addr,
 		Proto:        corev3.SocketAddress_TCP,
-	}, xds.TCPProxyConfig{
+	}, xds2.TCPProxyConfig{
 		StatPrefix:  workloadID,
 		ClusterName: clusterName,
 	})
@@ -67,7 +67,7 @@ func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*l
 		return nil, fmt.Errorf("create listener: %w", err)
 	}
 
-	dst, err := xds.OriginalDstListenerFilter()
+	dst, err := xds2.OriginalDstListenerFilter()
 	if err != nil {
 		return nil, fmt.Errorf("original dst filter: %v", err)
 	}
@@ -77,7 +77,7 @@ func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*l
 }
 
 func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*listenerv3.Listener, error) {
-	httpLis := xds.CreateListener(xds.ListenerConfig{
+	httpLis := xds2.CreateListener(xds2.ListenerConfig{
 		ListenerName: "http-" + workloadID,
 		StatPrefix:   workloadID,
 		Addr:         addr,
@@ -107,7 +107,7 @@ func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*
 		},
 	}
 
-	dst, err := xds.OriginalDstListenerFilter()
+	dst, err := xds2.OriginalDstListenerFilter()
 	if err != nil {
 		return nil, fmt.Errorf("original dst filter: %v", err)
 	}
@@ -117,7 +117,7 @@ func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*
 }
 
 func httpConnenctionManager(workloadID string, clusterName string) (*httpconnmgr.HttpConnectionManager, error) {
-	alog, err := xds.JSONStdoutAccessLog(nil)
+	alog, err := xds2.JSONStdoutAccessLog(nil)
 	if err != nil {
 		return nil, fmt.Errorf("create access log: %w", err)
 	}

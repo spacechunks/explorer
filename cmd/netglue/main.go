@@ -27,20 +27,20 @@ import (
 	"github.com/containernetworking/cni/pkg/version"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
 	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
-	"github.com/spacechunks/explorer/internal/cni"
+	cni2 "github.com/spacechunks/explorer/cni"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-	handler, err := cni.NewHandler()
+	handler, err := cni2.NewHandler()
 	if err != nil {
 		log.Fatalf("failed to create handler: %v", err)
 	}
-	c := cni.NewCNI(handler)
+	c := cni2.NewCNI(handler)
 	skel.PluginMainFuncs(skel.CNIFuncs{
 		Add: func(args *skel.CmdArgs) error {
-			var conf cni.Conf
+			var conf cni2.Conf
 			if err := json.Unmarshal(args.StdinData, &conf); err != nil {
 				return fmt.Errorf("parse config: %v", err)
 			}
@@ -61,7 +61,7 @@ func main() {
 			)
 		},
 		Del: func(args *skel.CmdArgs) error {
-			var conf cni.Conf
+			var conf cni2.Conf
 			if err := json.Unmarshal(args.StdinData, &conf); err != nil {
 				return fmt.Errorf("parse config: %v", err)
 			}

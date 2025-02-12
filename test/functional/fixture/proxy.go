@@ -32,8 +32,8 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
-	"github.com/spacechunks/explorer/internal/platformd/proxy"
-	"github.com/spacechunks/explorer/internal/platformd/proxy/xds"
+	proxy2 "github.com/spacechunks/explorer/platformd/proxy"
+	xds2 "github.com/spacechunks/explorer/platformd/proxy/xds"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -51,13 +51,13 @@ func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
 		logger   = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		grpcServ = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 		ca       = cache.NewSnapshotCache(true, cache.IDHash{}, nil)
-		svc      = proxy.NewService(
+		svc      = proxy2.NewService(
 			logger,
-			proxy.Config{
+			proxy2.Config{
 				DNSUpstream: DNSUpstream,
-			}, xds.NewMap("proxy-0", ca),
+			}, xds2.NewMap("proxy-0", ca),
 		)
-		proxyServ  = proxy.NewServer(svc)
+		proxyServ  = proxy2.NewServer(svc)
 		envoyImage = os.Getenv("FUNCTESTS_ENVOY_IMAGE")
 		envoyCfg   = os.Getenv("FUNCTESTS_ENVOY_CONFIG")
 	)
@@ -92,7 +92,7 @@ func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
 	test.WaitServerReady(t, "tcp", EnvoyAdminAddr, 20*time.Second)
 
 	proxyv1alpha1.RegisterProxyServiceServer(grpcServ, proxyServ)
-	xds.CreateAndRegisterServer(context.Background(), logger, grpcServ, ca)
+	xds2.CreateAndRegisterServer(context.Background(), logger, grpcServ, ca)
 
 	require.NoError(t, svc.ApplyGlobalResources(ctx))
 

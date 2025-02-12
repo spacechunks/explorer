@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/peterbourgon/ff/v3"
-	"github.com/spacechunks/explorer/internal/platformd"
+	platformd2 "github.com/spacechunks/explorer/platformd"
 )
 
 func main() {
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	var (
-		cfg = platformd.Config{
+		cfg = platformd2.Config{
 			ManagementServerListenSock: *proxyServiceListenSock,
 			CRIListenSock:              *criListenSock,
 			EnvoyImage:                 *envoyImage,
@@ -46,7 +46,7 @@ func main() {
 			HostIface:                  *hostIface,
 		}
 		ctx    = context.Background()
-		server = platformd.NewServer(logger)
+		server = platformd2.NewServer(logger)
 	)
 
 	ctx, cancel := context.WithCancel(ctx)
