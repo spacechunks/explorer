@@ -25,11 +25,11 @@ import (
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
-	"github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
-	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
-	"github.com/spacechunks/platform/internal/cni"
-	"github.com/spacechunks/platform/internal/datapath"
-	"github.com/spacechunks/platform/internal/mock"
+	"github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
+	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
+	"github.com/spacechunks/explorer/internal/cni"
+	"github.com/spacechunks/explorer/internal/datapath"
+	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/stretchr/testify/assert"
 	mocky "github.com/stretchr/testify/mock"
 )

@@ -32,8 +32,8 @@ import (
 	"github.com/bramvdbogaerde/go-scp/auth"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/spacechunks/platform/nodedev"
-	"github.com/spacechunks/platform/test"
+	"github.com/spacechunks/explorer/nodedev"
+	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
 )
 

@@ -24,8 +24,8 @@ import (
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/spacechunks/platform/internal/image"
-	"github.com/spacechunks/platform/internal/image/testdata"
+	"github.com/spacechunks/explorer/internal/image"
+	"github.com/spacechunks/explorer/internal/image/testdata"
 	"github.com/stretchr/testify/assert"
 )
 

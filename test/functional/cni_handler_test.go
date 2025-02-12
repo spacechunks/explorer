@@ -23,9 +23,9 @@ import (
 
 	"github.com/cilium/ebpf/link"
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/spacechunks/platform/internal/cni"
-	"github.com/spacechunks/platform/internal/datapath"
-	"github.com/spacechunks/platform/test"
+	"github.com/spacechunks/explorer/internal/cni"
+	"github.com/spacechunks/explorer/internal/datapath"
+	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vishvananda/netlink"

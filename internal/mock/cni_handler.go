@@ -3,7 +3,7 @@
 package mock
 
 import (
-	datapath "github.com/spacechunks/platform/internal/datapath"
+	datapath "github.com/spacechunks/explorer/internal/datapath"
 	mock "github.com/stretchr/testify/mock"
 
 	net "net"

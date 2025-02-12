@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/peterbourgon/ff/v3"
-	"github.com/spacechunks/platform/internal/platformd"
+	"github.com/spacechunks/explorer/internal/platformd"
 )
 
 func main() {

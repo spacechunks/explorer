@@ -30,9 +30,9 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	current "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/hashicorp/go-multierror"
-	proxyv1alpha1 "github.com/spacechunks/platform/api/platformd/proxy/v1alpha1"
-	workloadv1alpha1 "github.com/spacechunks/platform/api/platformd/workload/v1alpha1"
-	"github.com/spacechunks/platform/internal/datapath"
+	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
+	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
+	"github.com/spacechunks/explorer/internal/datapath"
 )
 
 var (

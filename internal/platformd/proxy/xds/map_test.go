@@ -10,8 +10,8 @@ import (
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/resource/v3"
-	"github.com/spacechunks/platform/internal/mock"
-	"github.com/spacechunks/platform/internal/platformd/proxy/xds"
+	"github.com/spacechunks/explorer/internal/mock"
+	"github.com/spacechunks/explorer/internal/platformd/proxy/xds"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )

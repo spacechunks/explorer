@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/spacechunks/platform/internal/datapath"
+	"github.com/spacechunks/explorer/internal/datapath"
 
 	current "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/containernetworking/plugins/pkg/ipam"
