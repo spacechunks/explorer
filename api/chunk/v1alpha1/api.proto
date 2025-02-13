@@ -31,7 +31,7 @@ message RunChunkRequest {
 }
 
 message RunChunkResponse {
-  chunk.v1alpha1.Instance instance = 2;
+  chunk.v1alpha1.Instance instance = 1;
 }
 
 message GetInstanceRequest {
