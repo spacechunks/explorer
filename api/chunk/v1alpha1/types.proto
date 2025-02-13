@@ -1,0 +1,51 @@
+edition = "2023";
+
+package chunk.v1alpha1;
+
+option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
+
+import "google/protobuf/timestamp.proto";
+
+enum State {
+  PENDING = 0;
+  STARTING = 1;
+  RUNNING = 2;
+  DELETING = 3;
+  DELETED = 4;
+}
+
+// Instance defines a running replica of a specific chunk.
+message Instance {
+  string id = 1;
+
+  Chunk chunk = 2;
+
+  // Address contains IP and port in the format of
+  // <ip>:port
+  string address = 3;
+
+  State state = 4;
+}
+
+// Chunk defines the configuration and metadata
+// of user-generated content. This can be anything
+// from a minigame to a freebuild server.
+message Chunk {
+  string id = 1;
+
+  string name = 2;
+
+  // Description briefly describes what the user can
+  // expect when running the Chunk.
+  string description = 3;
+
+  // Tags categorize the chunk. Possible values could
+  // be: pvp, adventure, single-player
+  repeated string tags = 4;
+
+  // User owner = 5;
+
+  google.protobuf.Timestamp created_at = 6;
+
+  google.protobuf.Timestamp updated_at = 7;
+}

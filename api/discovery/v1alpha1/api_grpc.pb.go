@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: platformd/discovery/api.proto
+// source: discovery/v1alpha1/api.proto
 
 package v1alpha1
 
@@ -163,5 +163,5 @@ var DiscoveryService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "platformd/discovery/api.proto",
+	Metadata: "discovery/v1alpha1/api.proto",
 }
