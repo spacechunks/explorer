@@ -12,12 +12,23 @@ else
 	RUN := $(shell)
 endif
 
+dbschema: export DATABASE_URL := postgres://postgres:test@localhost:5432/postgres?sslmode=disable
 
 .PHONY: setup
 setup:
 	$(RUN) $(SUDO) apt update
 	$(RUN) $(SUDO) apt install -y linux-tools-common libbpf-dev
 	$(RUN) $(SUDO) mount bpffs /sys/fs/bpf -t bpf
+
+.PHONY: sqlc
+sqlc:
+	@sqlc generate
+
+.PHONY: dbschema
+dbschema:
+	@docker run --name dbschema --rm -d -p 5432:5432 -e POSTGRES_PASSWORD=test postgres:17.2
+	@cd backend && dbmate --wait migrate || docker stop dbschema
+	@docker stop dbschema
 
 .PHONY: vmlinux
 vmlinux:
