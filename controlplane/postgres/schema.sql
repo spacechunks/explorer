@@ -23,8 +23,8 @@ CREATE TABLE public.chunks (
     name character(25) NOT NULL,
     description character(50) NOT NULL,
     tags character(25)[] NOT NULL,
-    created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 

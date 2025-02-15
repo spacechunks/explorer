@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS chunks (
     description CHAR(50)         NOT NULL,
     tags        CHAR(25)[]       NOT NULL,
 --  owner       UUID             NOT NULL,
-    created_at  TIMESTAMP        NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMP        NOT NULL DEFAULT now()
+    created_at  TIMESTAMPTZ      NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ      NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS workloads (
