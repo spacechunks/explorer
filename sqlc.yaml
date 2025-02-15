@@ -1,10 +1,14 @@
 version: '2'
 sql:
   - engine: postgresql
-    queries: backend/db/query.sql
-    schema: backend/db/schema.sql
+    queries: controlplane/postgres/query.sql
+    schema: controlplane/postgres/schema.sql
     gen:
       go:
-        package: db
-        out: backend/db
+        package: query
+        out: controlplane/postgres/query
         sql_package: pgx/v5
+        overrides:
+          - db_type: uuid
+            go_type:
+              type: string

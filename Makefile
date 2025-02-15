@@ -27,7 +27,7 @@ sqlc:
 .PHONY: dbschema
 dbschema:
 	@docker run --name dbschema --rm -d -p 5432:5432 -e POSTGRES_PASSWORD=test postgres:17.2
-	@cd backend && dbmate --wait migrate || docker stop dbschema
+	@cd controlplane && dbmate --wait migrate || docker stop dbschema
 	@docker stop dbschema
 
 .PHONY: vmlinux
