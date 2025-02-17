@@ -96,7 +96,7 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 	if err := db.do(ctx, func(q *query.Queries) error {
 		c, err := q.GetChunkByID(ctx, id)
 		if err != nil {
-			return fmt.Errorf("get chunk by id: %w", err)
+			return err
 		}
 		ret = rowToChunk(c)
 		return nil

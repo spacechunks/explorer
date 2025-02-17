@@ -18,7 +18,10 @@
 
 package chunk
 
-import "time"
+import (
+	"net/netip"
+	"time"
+)
 
 type Chunk struct {
 	ID          string
@@ -30,8 +33,12 @@ type Chunk struct {
 }
 
 type Instance struct {
-	ID      string
-	Chunk   Chunk
-	Address string
-	State   string
+	ID        string
+	Chunk     Chunk
+	Image     string
+	NodeID    string
+	Address   netip.Addr
+	State     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

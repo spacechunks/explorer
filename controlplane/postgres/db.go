@@ -20,13 +20,16 @@ package postgres
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
 type DB struct {
-	pool *pgxpool.Pool
+	logger slog.Logger
+	pool   *pgxpool.Pool
 }
 
 func (db *DB) do(ctx context.Context, fn func(q *query.Queries) error) error {
@@ -35,5 +38,29 @@ func (db *DB) do(ctx context.Context, fn func(q *query.Queries) error) error {
 	}); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (db *DB) doTX(ctx context.Context, fn func(q *query.Queries) error) error {
+	if err := db.pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) error {
+		tx, err := conn.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("begin tx: %w", err)
+		}
+
+		if err := fn(query.New(tx)); err != nil {
+			if txErr := tx.Rollback(ctx); txErr != nil {
+				// only log rollback related error, because we want to
+				// pass the actual error that caused the rollback back to the caller
+				db.logger.ErrorContext(ctx, "failed to rollback tx", "err", txErr)
+			}
+			return err
+		}
+
+		return tx.Commit(ctx)
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
