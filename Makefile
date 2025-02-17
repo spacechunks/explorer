@@ -4,6 +4,7 @@ IMG_TESTDATA_DIR := internal/image/testdata
 REPACK_IMG := internal/image/testdata/repack-img.tar.gz
 UNPACK_IMG := internal/image/testdata/unpack-img.tar.gz
 SUDO := sudo --preserve-env=PATH env
+DATABASE_URL := postgres://postgres:test@localhost:5432/postgres?sslmode=disable
 OS := $(shell uname)
 
 ifeq ($(OS), Darwin)
@@ -12,7 +13,17 @@ else
 	RUN := $(shell)
 endif
 
-dbschema: export DATABASE_URL := postgres://postgres:test@localhost:5432/postgres?sslmode=disable
+define start_db
+	@docker run --name testdb --rm -d -p 5432:5432 -e POSTGRES_PASSWORD=test postgres:17.2
+	@cd controlplane && dbmate \
+		--migrations-dir ./postgres/migrations \
+		--schema-file ./postgres/schema.sql \
+		--wait migrate \
+		|| docker stop testdb
+endef
+
+dbschema: export DATABASE_URL := $(DATABASE_URL)
+testdb: export DATABASE_URL := $(DATABASE_URL)
 
 .PHONY: setup
 setup:
@@ -26,13 +37,16 @@ sqlc:
 
 .PHONY: dbschema
 dbschema:
-	@docker run --name dbschema --rm -d -p 5432:5432 -e POSTGRES_PASSWORD=test postgres:17.2
-	@cd controlplane && dbmate \
-		--migrations-dir ./postgres/migrations \
-		--schema-file ./postgres/schema.sql \
-		--wait migrate \
-		|| docker stop dbschema
-	@docker stop dbschema
+	$(call start_db)
+	@docker stop testdb
+
+.PHONY: testdb
+testdb:
+	$(call start_db)
+
+.PHONY: testdb-rm
+testdb-rm:
+	@docker stop testdb
 
 .PHONY: vmlinux
 vmlinux:
