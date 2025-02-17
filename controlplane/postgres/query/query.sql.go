@@ -7,6 +7,9 @@ package query
 
 import (
 	"context"
+	"net/netip"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createChunk = `-- name: CreateChunk :one
@@ -61,6 +64,30 @@ func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) (Chunk
 	return i, err
 }
 
+const createInstance = `-- name: CreateInstance :exec
+INSERT INTO instances
+    (id, chunk_id, image, node_id)
+VALUES
+    ($1, $2, $3, $4)
+`
+
+type CreateInstanceParams struct {
+	ID      string
+	ChunkID string
+	Image   string
+	NodeID  string
+}
+
+func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) error {
+	_, err := q.db.Exec(ctx, createInstance,
+		arg.ID,
+		arg.ChunkID,
+		arg.Image,
+		arg.NodeID,
+	)
+	return err
+}
+
 const getChunkByID = `-- name: GetChunkByID :one
 SELECT id, name, description, tags, created_at, updated_at FROM chunks WHERE id = $1
 `
@@ -75,6 +102,56 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) (Chunk, error) {
 		&i.Tags,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getInstance = `-- name: GetInstance :one
+SELECT i.id, chunk_id, image, node_id, state, i.created_at, i.updated_at, c.id, name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
+    JOIN chunks c ON i.chunk_id = c.id
+    JOIN nodes n ON i.node_id = n.id
+WHERE i.id = $1
+`
+
+type GetInstanceRow struct {
+	ID          string
+	ChunkID     string
+	Image       string
+	NodeID      string
+	State       InstanceState
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	ID_2        string
+	Name        string
+	Description string
+	Tags        []string
+	CreatedAt_2 pgtype.Timestamptz
+	UpdatedAt_2 pgtype.Timestamptz
+	ID_3        string
+	Address     netip.Addr
+	CreatedAt_3 pgtype.Timestamptz
+}
+
+func (q *Queries) GetInstance(ctx context.Context, id string) (GetInstanceRow, error) {
+	row := q.db.QueryRow(ctx, getInstance, id)
+	var i GetInstanceRow
+	err := row.Scan(
+		&i.ID,
+		&i.ChunkID,
+		&i.Image,
+		&i.NodeID,
+		&i.State,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ID_2,
+		&i.Name,
+		&i.Description,
+		&i.Tags,
+		&i.CreatedAt_2,
+		&i.UpdatedAt_2,
+		&i.ID_3,
+		&i.Address,
+		&i.CreatedAt_3,
 	)
 	return i, err
 }

@@ -35,3 +35,15 @@ SET
     updated_at = now()
 WHERE id = $4
 RETURNING *;
+
+-- name: CreateInstance :exec
+INSERT INTO instances
+    (id, chunk_id, image, node_id)
+VALUES
+    ($1, $2, $3, $4);
+
+-- name: GetInstance :one
+SELECT * FROM instances i
+    JOIN chunks c ON i.chunk_id = c.id
+    JOIN nodes n ON i.node_id = n.id
+WHERE i.id = $1;

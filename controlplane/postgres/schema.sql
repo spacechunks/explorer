@@ -10,6 +10,19 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: instance_state; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.instance_state AS ENUM (
+    'PENDING',
+    'STARTING',
+    'RUNNING',
+    'DELETING',
+    'DELETED'
+);
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -29,22 +42,37 @@ CREATE TABLE public.chunks (
 
 
 --
+-- Name: instances; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.instances (
+    id uuid NOT NULL,
+    chunk_id uuid NOT NULL,
+    image text NOT NULL,
+    node_id uuid NOT NULL,
+    state public.instance_state DEFAULT 'PENDING'::public.instance_state NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: nodes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.nodes (
+    id uuid NOT NULL,
+    address inet NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.schema_migrations (
     version character varying(128) NOT NULL
-);
-
-
---
--- Name: workloads; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.workloads (
-    id uuid NOT NULL,
-    created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
@@ -57,6 +85,22 @@ ALTER TABLE ONLY public.chunks
 
 
 --
+-- Name: instances instances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instances
+    ADD CONSTRAINT instances_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: nodes nodes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.nodes
+    ADD CONSTRAINT nodes_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -65,11 +109,19 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
--- Name: workloads workloads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: instances instances_chunk_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.workloads
-    ADD CONSTRAINT workloads_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.instances
+    ADD CONSTRAINT instances_chunk_id_fkey FOREIGN KEY (chunk_id) REFERENCES public.chunks(id);
+
+
+--
+-- Name: instances instances_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instances
+    ADD CONSTRAINT instances_node_id_fkey FOREIGN KEY (node_id) REFERENCES public.nodes(id);
 
 
 --
