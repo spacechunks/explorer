@@ -28,7 +28,7 @@ VALUES
 
 -- name: GetInstance :one
 SELECT * FROM instances i
-    JOIN flavors f ON i.flavor_id = f.id
     JOIN chunks c ON f.chunk_id = c.id
+    JOIN flavors f ON i.flavor_id = f.id
     JOIN nodes n ON i.node_id = n.id
 WHERE i.id = $1;

@@ -94,11 +94,35 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 
 	var ret chunk.Chunk
 	if err := db.do(ctx, func(q *query.Queries) error {
-		c, err := q.GetChunkByID(ctx, id)
+		rows, err := q.GetChunkByID(ctx, id)
 		if err != nil {
 			return err
 		}
-		ret = rowToChunk(c)
+
+		var (
+			row     = rows[0]
+			flavors = make([]chunk.Flavor, 0, len(rows))
+			c       = chunk.Chunk{
+				ID:          row.ID,
+				Name:        row.Name,
+				Description: row.Description,
+				Tags:        row.Tags,
+				CreatedAt:   row.CreatedAt.Time,
+				UpdatedAt:   row.UpdatedAt.Time,
+			}
+		)
+
+		for _, r := range rows {
+			flavors = append(flavors, chunk.Flavor{
+				ID:                 r.ID_2,
+				Name:               r.Name_2,
+				BaseImageURL:       r.BaseImageUrl,
+				CheckpointImageURL: r.CheckpointImageUrl,
+			})
+		}
+
+		c.Flavors = flavors
+		ret = c
 		return nil
 	}); err != nil {
 		return chunk.Chunk{}, err

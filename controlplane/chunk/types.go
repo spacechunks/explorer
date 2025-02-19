@@ -23,22 +23,32 @@ import (
 	"time"
 )
 
+type Flavor struct {
+	ID                 string
+	Name               string
+	BaseImageURL       string
+	CheckpointImageURL string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
 type Chunk struct {
 	ID          string
 	Name        string
 	Description string
 	Tags        []string
+	Flavors     []Flavor
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
 type Instance struct {
-	ID        string
-	Chunk     Chunk
-	Image     string
-	NodeID    string
-	Address   netip.Addr
-	State     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID          string
+	Chunk       Chunk
+	ChunkFlavor Flavor
+	NodeID      string
+	Address     netip.Addr
+	State       string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

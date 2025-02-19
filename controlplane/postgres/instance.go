@@ -44,10 +44,9 @@ func createInstanceParams(instance chunk.Instance) (instanceParams, error) {
 
 	return instanceParams{
 		create: query.CreateInstanceParams{
-			ID:      instance.ID,
-			ChunkID: instance.Chunk.ID,
-			Image:   instance.Image,
-			NodeID:  instance.NodeID,
+			ID:       instance.ID,
+			FlavorID: instance.ChunkFlavor.ID,
+			NodeID:   instance.NodeID,
 		},
 	}, nil
 }
@@ -79,7 +78,14 @@ func (db *DB) CreateInstance(ctx context.Context, instance chunk.Instance) (chun
 				CreatedAt:   row.CreatedAt_2.Time,
 				UpdatedAt:   row.UpdatedAt_2.Time,
 			},
-			Image:     row.Image,
+			ChunkFlavor: chunk.Flavor{
+				ID:                 row.ID_3,
+				Name:               row.Name_2,
+				BaseImageURL:       row.BaseImageUrl,
+				CheckpointImageURL: row.CheckpointImageUrl,
+				CreatedAt:          row.CreatedAt_3.Time,
+				UpdatedAt:          row.UpdatedAt_3.Time,
+			},
 			NodeID:    row.NodeID,
 			Address:   row.Address,
 			State:     string(row.State),
