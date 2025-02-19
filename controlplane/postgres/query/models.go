@@ -66,10 +66,19 @@ type Chunk struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
+type Flavor struct {
+	ID                 string
+	ChunkID            string
+	Name               string
+	BaseImageUrl       string
+	CheckpointImageUrl string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+}
+
 type Instance struct {
 	ID        string
-	ChunkID   string
-	Image     string
+	FlavorID  string
 	NodeID    string
 	State     InstanceState
 	CreatedAt pgtype.Timestamptz

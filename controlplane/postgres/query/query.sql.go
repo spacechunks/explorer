@@ -13,24 +13,6 @@ import (
 )
 
 const createChunk = `-- name: CreateChunk :one
-/*
- * Explorer Platform, a platform for hosting and discovering Minecraft servers.
- * Copyright (C) 2024 Yannic Rieger <oss@76k.io>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 INSERT INTO chunks
     (id, name, description, tags)
 VALUES
@@ -66,70 +48,109 @@ func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) (Chunk
 
 const createInstance = `-- name: CreateInstance :exec
 INSERT INTO instances
-    (id, chunk_id, image, node_id)
+    (id, flavor_id, node_id)
 VALUES
-    ($1, $2, $3, $4)
+    ($1, $2, $3)
 `
 
 type CreateInstanceParams struct {
-	ID      string
-	ChunkID string
-	Image   string
-	NodeID  string
+	ID       string
+	FlavorID string
+	NodeID   string
 }
 
 func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) error {
-	_, err := q.db.Exec(ctx, createInstance,
-		arg.ID,
-		arg.ChunkID,
-		arg.Image,
-		arg.NodeID,
-	)
+	_, err := q.db.Exec(ctx, createInstance, arg.ID, arg.FlavorID, arg.NodeID)
 	return err
 }
 
-const getChunkByID = `-- name: GetChunkByID :one
-SELECT id, name, description, tags, created_at, updated_at FROM chunks WHERE id = $1
+const getChunkByID = `-- name: GetChunkByID :many
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, base_image_url, checkpoint_image_url, f.created_at, f.updated_at FROM chunks c
+    JOIN flavors f ON f.chunk_id = c.id
+WHERE c.id = $1
 `
 
-func (q *Queries) GetChunkByID(ctx context.Context, id string) (Chunk, error) {
-	row := q.db.QueryRow(ctx, getChunkByID, id)
-	var i Chunk
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.Tags,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+type GetChunkByIDRow struct {
+	ID                 string
+	Name               string
+	Description        string
+	Tags               []string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	ID_2               string
+	ChunkID            string
+	Name_2             string
+	BaseImageUrl       string
+	CheckpointImageUrl string
+	CreatedAt_2        pgtype.Timestamptz
+	UpdatedAt_2        pgtype.Timestamptz
+}
+
+func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRow, error) {
+	rows, err := q.db.Query(ctx, getChunkByID, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetChunkByIDRow
+	for rows.Next() {
+		var i GetChunkByIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Tags,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ID_2,
+			&i.ChunkID,
+			&i.Name_2,
+			&i.BaseImageUrl,
+			&i.CheckpointImageUrl,
+			&i.CreatedAt_2,
+			&i.UpdatedAt_2,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getInstance = `-- name: GetInstance :one
-SELECT i.id, chunk_id, image, node_id, state, i.created_at, i.updated_at, c.id, name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
-    JOIN chunks c ON i.chunk_id = c.id
+SELECT i.id, flavor_id, node_id, state, i.created_at, i.updated_at, f.id, chunk_id, f.name, base_image_url, checkpoint_image_url, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
+    JOIN flavors f ON i.flavor_id = f.id
+    JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
 WHERE i.id = $1
 `
 
 type GetInstanceRow struct {
-	ID          string
-	ChunkID     string
-	Image       string
-	NodeID      string
-	State       InstanceState
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-	ID_2        string
-	Name        string
-	Description string
-	Tags        []string
-	CreatedAt_2 pgtype.Timestamptz
-	UpdatedAt_2 pgtype.Timestamptz
-	ID_3        string
-	Address     netip.Addr
-	CreatedAt_3 pgtype.Timestamptz
+	ID                 string
+	FlavorID           string
+	NodeID             string
+	State              InstanceState
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	ID_2               string
+	ChunkID            string
+	Name               string
+	BaseImageUrl       string
+	CheckpointImageUrl string
+	CreatedAt_2        pgtype.Timestamptz
+	UpdatedAt_2        pgtype.Timestamptz
+	ID_3               string
+	Name_2             string
+	Description        string
+	Tags               []string
+	CreatedAt_3        pgtype.Timestamptz
+	UpdatedAt_3        pgtype.Timestamptz
+	ID_4               string
+	Address            netip.Addr
+	CreatedAt_4        pgtype.Timestamptz
 }
 
 func (q *Queries) GetInstance(ctx context.Context, id string) (GetInstanceRow, error) {
@@ -137,21 +158,27 @@ func (q *Queries) GetInstance(ctx context.Context, id string) (GetInstanceRow, e
 	var i GetInstanceRow
 	err := row.Scan(
 		&i.ID,
-		&i.ChunkID,
-		&i.Image,
+		&i.FlavorID,
 		&i.NodeID,
 		&i.State,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ID_2,
+		&i.ChunkID,
 		&i.Name,
-		&i.Description,
-		&i.Tags,
+		&i.BaseImageUrl,
+		&i.CheckpointImageUrl,
 		&i.CreatedAt_2,
 		&i.UpdatedAt_2,
 		&i.ID_3,
-		&i.Address,
+		&i.Name_2,
+		&i.Description,
+		&i.Tags,
 		&i.CreatedAt_3,
+		&i.UpdatedAt_3,
+		&i.ID_4,
+		&i.Address,
+		&i.CreatedAt_4,
 	)
 	return i, err
 }

@@ -42,13 +42,27 @@ CREATE TABLE public.chunks (
 
 
 --
+-- Name: flavors; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flavors (
+    id uuid NOT NULL,
+    chunk_id uuid NOT NULL,
+    name character(25) NOT NULL,
+    base_image_url text NOT NULL,
+    checkpoint_image_url text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: instances; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.instances (
     id uuid NOT NULL,
-    chunk_id uuid NOT NULL,
-    image text NOT NULL,
+    flavor_id uuid NOT NULL,
     node_id uuid NOT NULL,
     state public.instance_state DEFAULT 'PENDING'::public.instance_state NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -85,6 +99,14 @@ ALTER TABLE ONLY public.chunks
 
 
 --
+-- Name: flavors flavors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavors
+    ADD CONSTRAINT flavors_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: instances instances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -109,11 +131,19 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
--- Name: instances instances_chunk_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: flavors flavors_chunk_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavors
+    ADD CONSTRAINT flavors_chunk_id_fkey FOREIGN KEY (chunk_id) REFERENCES public.chunks(id);
+
+
+--
+-- Name: instances instances_flavor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.instances
-    ADD CONSTRAINT instances_chunk_id_fkey FOREIGN KEY (chunk_id) REFERENCES public.chunks(id);
+    ADD CONSTRAINT instances_flavor_id_fkey FOREIGN KEY (flavor_id) REFERENCES public.flavors(id);
 
 
 --
