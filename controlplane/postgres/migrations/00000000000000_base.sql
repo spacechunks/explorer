@@ -3,9 +3,9 @@ CREATE TYPE instance_state AS ENUM ('PENDING', 'STARTING', 'RUNNING', 'DELETING'
 
 CREATE TABLE IF NOT EXISTS chunks (
     id          UUID             NOT NULL PRIMARY KEY,
-    name        CHAR(25)         NOT NULL,
-    description CHAR(50)         NOT NULL,
-    tags        CHAR(25)[]       NOT NULL,
+    name        VARCHAR(25)      NOT NULL,
+    description VARCHAR(50)      NOT NULL,
+    tags        VARCHAR(25)[]    NOT NULL,
 --  owner       UUID             NOT NULL,
     created_at  TIMESTAMPTZ      NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ      NOT NULL DEFAULT now()
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS chunks (
 CREATE TABLE IF NOT EXISTS flavors (
     id                   UUID PRIMARY KEY NOT NULL,
     chunk_id             UUID             NOT NULL REFERENCES chunks(id),
-    name                 CHAR(25)         NOT NULL,
+    name                 VARCHAR(25)      NOT NULL,
     base_image_url       TEXT             NOT NULL,
     checkpoint_image_url TEXT             NOT NULL,
     created_at           TIMESTAMPTZ      NOT NULL DEFAULT now(),

@@ -19,11 +19,24 @@
 package fixture
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
+	"net/url"
+	"os"
 	"testing"
 
+	"github.com/amacneil/dbmate/v2/pkg/dbmate"
+	"github.com/docker/docker/api/types/container"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
 )
 
 // grpc client does not accept @ as abstract socket identifier,
@@ -38,4 +51,52 @@ func PlatformdClientConn(t *testing.T) *grpc.ClientConn {
 	)
 	require.NoError(t, err)
 	return conn
+}
+
+func RunDB(t *testing.T) *postgres.DB {
+	var (
+		ctx  = context.Background()
+		user = os.Getenv("FUNCTESTS_POSTGRES_USER")
+		pass = os.Getenv("FUNCTESTS_POSTGRES_PASS")
+		db   = os.Getenv("FUNCTESTS_POSTGRES_DB")
+	)
+
+	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Name:         "functests-db",
+			Image:        os.Getenv("FUNCTESTS_POSTGRES_IMAGE"),
+			ExposedPorts: []string{"5432/tcp"},
+			Env: map[string]string{
+				"POSTGRES_USER":     user,
+				"POSTGRES_PASSWORD": pass,
+				"POSTGRES_DB":       db,
+			},
+			HostConfigModifier: func(cfg *container.HostConfig) {
+				cfg.AutoRemove = true
+			},
+			WaitingFor: wait.ForExposedPort(),
+		},
+		Started: true,
+	})
+	require.NoError(t, err)
+
+	ip, err := ctr.Host(ctx)
+	require.NoError(t, err)
+
+	mapped, err := ctr.MappedPort(ctx, "5432")
+	require.NoError(t, err)
+
+	addr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, pass, ip, mapped.Port(), db)
+
+	u, err := url.Parse(addr)
+	require.NoError(t, err)
+
+	mate := dbmate.New(u)
+	mate.MigrationsDir = []string{"../../controlplane/postgres/migrations"}
+	require.NoError(t, mate.Migrate())
+
+	pool, err := pgxpool.New(ctx, addr)
+	require.NoError(t, err)
+
+	return postgres.NewDB(slog.New(slog.NewTextHandler(os.Stdout, nil)), pool)
 }

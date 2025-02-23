@@ -28,8 +28,15 @@ import (
 )
 
 type DB struct {
-	logger slog.Logger
+	logger *slog.Logger
 	pool   *pgxpool.Pool
+}
+
+func NewDB(logger *slog.Logger, pool *pgxpool.Pool) *DB {
+	return &DB{
+		logger: logger,
+		pool:   pool,
+	}
 }
 
 func (db *DB) do(ctx context.Context, fn func(q *query.Queries) error) error {

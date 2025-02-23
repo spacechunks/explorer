@@ -61,10 +61,12 @@ func createChunkParams(c chunk.Chunk) (chunkParams, error) {
 
 func rowToChunk(c query.Chunk) chunk.Chunk {
 	return chunk.Chunk{
-		ID:        c.ID,
-		Name:      c.Name,
-		CreatedAt: c.CreatedAt.Time,
-		UpdatedAt: c.UpdatedAt.Time,
+		ID:          c.ID,
+		Name:        c.Name,
+		Description: c.Description,
+		Tags:        c.Tags,
+		CreatedAt:   c.CreatedAt.Time,
+		UpdatedAt:   c.UpdatedAt.Time,
 	}
 }
 
