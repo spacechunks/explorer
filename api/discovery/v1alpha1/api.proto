@@ -2,7 +2,7 @@ edition = "2023";
 
 package discovery.v1alpha1;
 
-import "platformd/workload/v1alpha1/service.proto";
+import "platformd/workload/v1alpha2/types.proto";
 
 option go_package = "github.com/spacechunks/explorer/api/discovery/v1alpha1";
 
@@ -25,7 +25,7 @@ message DiscoverWorkloadRequest {
 }
 
 message DiscoverWorkloadResponse {
-  repeated platformd.workload.v1alpha1.Workload workloads = 1;
+  repeated platformd.workload.v1alpha2.Workload workloads = 1;
 }
 
 /*
@@ -34,7 +34,7 @@ message DiscoverWorkloadResponse {
 
 message StatusReport {
   string workload_id = 1;
-  platformd.workload.v1alpha1.WorkloadStatus status = 2;
+  platformd.workload.v1alpha2.WorkloadStatus status = 2;
 }
 
 message ReportWorkloadStateRequest {
