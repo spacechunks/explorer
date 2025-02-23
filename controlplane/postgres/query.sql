@@ -1,3 +1,7 @@
+/*
+ * CHUNKS
+ */
+
 -- name: CreateChunk :one
 INSERT INTO chunks
     (id, name, description, tags)
@@ -20,6 +24,21 @@ SET
 WHERE id = $4
 RETURNING *;
 
+/*
+ * FLAVORS
+ */
+
+-- name: CreateFlavor :one
+INSERT INTO flavors
+    (id, chunk_id, name, base_image_url, checkpoint_image_url)
+VALUES
+    ($1, $2, $3, $4, $5)
+RETURNING *;
+
+/*
+ * INSTANCES
+ */
+
 -- name: CreateInstance :exec
 INSERT INTO instances
     (id, flavor_id, node_id)
@@ -28,7 +47,7 @@ VALUES
 
 -- name: GetInstance :one
 SELECT * FROM instances i
-    JOIN chunks c ON f.chunk_id = c.id
     JOIN flavors f ON i.flavor_id = f.id
+    JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
 WHERE i.id = $1;

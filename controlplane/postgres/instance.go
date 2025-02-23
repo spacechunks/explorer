@@ -31,7 +31,7 @@ type instanceParams struct {
 	create query.CreateInstanceParams
 }
 
-func createInstanceParams(instance chunk.Instance) (instanceParams, error) {
+func createInstanceParams(nodeID string, instance chunk.Instance) (instanceParams, error) {
 	createdAt := pgtype.Timestamp{}
 	if err := createdAt.Scan(instance.CreatedAt); err != nil {
 		return instanceParams{}, fmt.Errorf("scan updated at: %w", err)
@@ -46,13 +46,13 @@ func createInstanceParams(instance chunk.Instance) (instanceParams, error) {
 		create: query.CreateInstanceParams{
 			ID:       instance.ID,
 			FlavorID: instance.ChunkFlavor.ID,
-			NodeID:   instance.NodeID,
+			NodeID:   nodeID,
 		},
 	}, nil
 }
 
-func (db *DB) CreateInstance(ctx context.Context, instance chunk.Instance) (chunk.Instance, error) {
-	params, err := createInstanceParams(instance)
+func (db *DB) CreateInstance(ctx context.Context, instance chunk.Instance, nodeID string) (chunk.Instance, error) {
+	params, err := createInstanceParams(nodeID, instance)
 	if err != nil {
 		return chunk.Instance{}, fmt.Errorf("instance params: %w", err)
 	}
@@ -71,24 +71,23 @@ func (db *DB) CreateInstance(ctx context.Context, instance chunk.Instance) (chun
 		ret = chunk.Instance{
 			ID: row.ID,
 			Chunk: chunk.Chunk{
-				ID:          row.ID_2,
-				Name:        row.Name,
+				ID:          row.ID_3,
+				Name:        row.Name_2,
 				Description: row.Description,
 				Tags:        row.Tags,
-				CreatedAt:   row.CreatedAt_2.Time,
-				UpdatedAt:   row.UpdatedAt_2.Time,
+				CreatedAt:   row.CreatedAt_3.Time,
+				UpdatedAt:   row.UpdatedAt_3.Time,
 			},
 			ChunkFlavor: chunk.Flavor{
-				ID:                 row.ID_3,
-				Name:               row.Name_2,
+				ID:                 row.ID_2,
+				Name:               row.Name,
 				BaseImageURL:       row.BaseImageUrl,
 				CheckpointImageURL: row.CheckpointImageUrl,
-				CreatedAt:          row.CreatedAt_3.Time,
-				UpdatedAt:          row.UpdatedAt_3.Time,
+				CreatedAt:          row.CreatedAt_2.Time,
+				UpdatedAt:          row.UpdatedAt_2.Time,
 			},
-			NodeID:    row.NodeID,
 			Address:   row.Address,
-			State:     string(row.State),
+			State:     chunk.InstanceState(row.State),
 			CreatedAt: row.CreatedAt.Time,
 			UpdatedAt: row.UpdatedAt.Time,
 		}

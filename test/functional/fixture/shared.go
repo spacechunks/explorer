@@ -30,6 +30,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spacechunks/explorer/controlplane/postgres"
+	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -53,7 +54,7 @@ func PlatformdClientConn(t *testing.T) *grpc.ClientConn {
 	return conn
 }
 
-func RunDB(t *testing.T) *postgres.DB {
+func RunDB(t *testing.T) (*pgxpool.Pool, *postgres.DB) {
 	var (
 		ctx  = context.Background()
 		user = os.Getenv("FUNCTESTS_POSTGRES_USER")
@@ -63,7 +64,7 @@ func RunDB(t *testing.T) *postgres.DB {
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Name:         "functests-db",
+			Name:         "functests-db-" + test.RandHexStr(t),
 			Image:        os.Getenv("FUNCTESTS_POSTGRES_IMAGE"),
 			ExposedPorts: []string{"5432/tcp"},
 			Env: map[string]string{
@@ -98,5 +99,5 @@ func RunDB(t *testing.T) *postgres.DB {
 	pool, err := pgxpool.New(ctx, addr)
 	require.NoError(t, err)
 
-	return postgres.NewDB(slog.New(slog.NewTextHandler(os.Stdout, nil)), pool)
+	return pool, postgres.NewDB(slog.New(slog.NewTextHandler(os.Stdout, nil)), pool)
 }

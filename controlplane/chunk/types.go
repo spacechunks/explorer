@@ -46,9 +46,18 @@ type Instance struct {
 	ID          string
 	Chunk       Chunk
 	ChunkFlavor Flavor
-	NodeID      string
 	Address     netip.Addr
-	State       string
+	State       InstanceState
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
+
+type InstanceState string
+
+const (
+	InstanceStatePending  InstanceState = "PENDING"
+	InstanceStateStarting InstanceState = "STARTING"
+	InstanceStateRunning  InstanceState = "RUNNING"
+	InstanceStateDeleting InstanceState = "DELETING"
+	InstanceStateDeleted  InstanceState = "DELETED"
+)

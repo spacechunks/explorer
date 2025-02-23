@@ -13,6 +13,10 @@ import (
 )
 
 const createChunk = `-- name: CreateChunk :one
+/*
+ * CHUNKS
+ */
+
 INSERT INTO chunks
     (id, name, description, tags)
 VALUES
@@ -46,7 +50,52 @@ func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) (Chunk
 	return i, err
 }
 
+const createFlavor = `-- name: CreateFlavor :one
+/*
+ * FLAVORS
+ */
+
+INSERT INTO flavors
+    (id, chunk_id, name, base_image_url, checkpoint_image_url)
+VALUES
+    ($1, $2, $3, $4, $5)
+RETURNING id, chunk_id, name, base_image_url, checkpoint_image_url, created_at, updated_at
+`
+
+type CreateFlavorParams struct {
+	ID                 string
+	ChunkID            string
+	Name               string
+	BaseImageUrl       string
+	CheckpointImageUrl string
+}
+
+func (q *Queries) CreateFlavor(ctx context.Context, arg CreateFlavorParams) (Flavor, error) {
+	row := q.db.QueryRow(ctx, createFlavor,
+		arg.ID,
+		arg.ChunkID,
+		arg.Name,
+		arg.BaseImageUrl,
+		arg.CheckpointImageUrl,
+	)
+	var i Flavor
+	err := row.Scan(
+		&i.ID,
+		&i.ChunkID,
+		&i.Name,
+		&i.BaseImageUrl,
+		&i.CheckpointImageUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createInstance = `-- name: CreateInstance :exec
+/*
+ * INSTANCES
+ */
+
 INSERT INTO instances
     (id, flavor_id, node_id)
 VALUES
@@ -121,9 +170,9 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 }
 
 const getInstance = `-- name: GetInstance :one
-SELECT i.id, flavor_id, node_id, state, i.created_at, i.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, base_image_url, checkpoint_image_url, f.created_at, f.updated_at, n.id, address, n.created_at FROM instances i
-    JOIN chunks c ON f.chunk_id = c.id
+SELECT i.id, flavor_id, node_id, state, i.created_at, i.updated_at, f.id, chunk_id, f.name, base_image_url, checkpoint_image_url, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
     JOIN flavors f ON i.flavor_id = f.id
+    JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
 WHERE i.id = $1
 `
@@ -136,16 +185,16 @@ type GetInstanceRow struct {
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
 	ID_2               string
+	ChunkID            string
 	Name               string
-	Description        string
-	Tags               []string
+	BaseImageUrl       string
+	CheckpointImageUrl string
 	CreatedAt_2        pgtype.Timestamptz
 	UpdatedAt_2        pgtype.Timestamptz
 	ID_3               string
-	ChunkID            string
 	Name_2             string
-	BaseImageUrl       string
-	CheckpointImageUrl string
+	Description        string
+	Tags               []string
 	CreatedAt_3        pgtype.Timestamptz
 	UpdatedAt_3        pgtype.Timestamptz
 	ID_4               string
@@ -164,16 +213,16 @@ func (q *Queries) GetInstance(ctx context.Context, id string) (GetInstanceRow, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ID_2,
+		&i.ChunkID,
 		&i.Name,
-		&i.Description,
-		&i.Tags,
+		&i.BaseImageUrl,
+		&i.CheckpointImageUrl,
 		&i.CreatedAt_2,
 		&i.UpdatedAt_2,
 		&i.ID_3,
-		&i.ChunkID,
 		&i.Name_2,
-		&i.BaseImageUrl,
-		&i.CheckpointImageUrl,
+		&i.Description,
+		&i.Tags,
 		&i.CreatedAt_3,
 		&i.UpdatedAt_3,
 		&i.ID_4,

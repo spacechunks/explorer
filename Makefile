@@ -24,6 +24,7 @@ endef
 
 dbschema: export DATABASE_URL := $(DATABASE_URL)
 testdb: export DATABASE_URL := $(DATABASE_URL)
+dbgen: dbschema sqlc
 
 .PHONY: setup
 setup:
@@ -78,6 +79,10 @@ e2etests:
 functests: $(CNI_PLUGINS)
 	$(RUN) $(SUDO) FUNCTESTS_ENVOY_IMAGE=docker.io/envoyproxy/envoy:v1.31.4 \
 				   FUNCTESTS_ENVOY_CONFIG=../../nodedev/platformd/envoy-xds.yaml \
+				   FUNCTESTS_POSTGRES_IMAGE=postgres:17 \
+				   FUNCTESTS_POSTGRES_USER=spc \
+				   FUNCTESTS_POSTGRES_PASS=test123 \
+				   FUNCTESTS_POSTGRES_DB=explorer \
 				   CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin \
 				   go test -v ./test/functional/...
 

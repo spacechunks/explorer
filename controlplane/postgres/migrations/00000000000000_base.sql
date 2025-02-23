@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS flavors (
 CREATE TABLE IF NOT EXISTS nodes (
     id         UUID        NOT NULL PRIMARY KEY,
     address    INET        NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS instances (

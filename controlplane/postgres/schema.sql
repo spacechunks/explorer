@@ -33,9 +33,9 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.chunks (
     id uuid NOT NULL,
-    name character(25) NOT NULL,
-    description character(50) NOT NULL,
-    tags character(25)[] NOT NULL,
+    name character varying(25) NOT NULL,
+    description character varying(50) NOT NULL,
+    tags character varying(25)[] NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -48,7 +48,7 @@ CREATE TABLE public.chunks (
 CREATE TABLE public.flavors (
     id uuid NOT NULL,
     chunk_id uuid NOT NULL,
-    name character(25) NOT NULL,
+    name character varying(25) NOT NULL,
     base_image_url text NOT NULL,
     checkpoint_image_url text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE public.instances (
 CREATE TABLE public.nodes (
     id uuid NOT NULL,
     address inet NOT NULL,
-    created_at timestamp with time zone NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
