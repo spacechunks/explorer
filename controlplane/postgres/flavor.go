@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
@@ -30,7 +31,17 @@ type flavorParams struct {
 	create query.CreateFlavorParams
 }
 
-func createFlavorParams(flavor chunk.Flavor, chunkID string) flavorParams {
+func createFlavorParams(flavor chunk.Flavor, chunkID string) (flavorParams, error) {
+	createdAt := pgtype.Timestamptz{}
+	if err := createdAt.Scan(flavor.CreatedAt); err != nil {
+		return flavorParams{}, fmt.Errorf("scan created at: %w", err)
+	}
+
+	updatedAt := pgtype.Timestamptz{}
+	if err := updatedAt.Scan(flavor.UpdatedAt); err != nil {
+		return flavorParams{}, fmt.Errorf("scan updated at: %w", err)
+	}
+
 	return flavorParams{
 		create: query.CreateFlavorParams{
 			ID:                 flavor.ID,
@@ -38,12 +49,17 @@ func createFlavorParams(flavor chunk.Flavor, chunkID string) flavorParams {
 			Name:               flavor.Name,
 			BaseImageUrl:       flavor.BaseImageURL,
 			CheckpointImageUrl: flavor.CheckpointImageURL,
+			CreatedAt:          createdAt,
+			UpdatedAt:          updatedAt,
 		},
-	}
+	}, nil
 }
 
 func (db *DB) CreateFlavor(ctx context.Context, flavor chunk.Flavor, chunkID string) (chunk.Flavor, error) {
-	params := createFlavorParams(flavor, chunkID)
+	params, err := createFlavorParams(flavor, chunkID)
+	if err != nil {
+		return chunk.Flavor{}, fmt.Errorf("flavor params: %w", err)
+	}
 
 	var ret chunk.Flavor
 	if err := db.do(ctx, func(q *query.Queries) error {

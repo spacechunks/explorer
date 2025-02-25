@@ -33,12 +33,12 @@ type chunkParams struct {
 }
 
 func createChunkParams(c chunk.Chunk) (chunkParams, error) {
-	createdAt := pgtype.Timestamp{}
+	createdAt := pgtype.Timestamptz{}
 	if err := createdAt.Scan(c.CreatedAt); err != nil {
 		return chunkParams{}, fmt.Errorf("scan updated at: %w", err)
 	}
 
-	updatedAt := pgtype.Timestamp{}
+	updatedAt := pgtype.Timestamptz{}
 	if err := updatedAt.Scan(c.UpdatedAt); err != nil {
 		return chunkParams{}, fmt.Errorf("scan updated at: %w", err)
 	}
@@ -49,6 +49,8 @@ func createChunkParams(c chunk.Chunk) (chunkParams, error) {
 			Name:        c.Name,
 			Description: c.Description,
 			Tags:        c.Tags,
+			CreatedAt:   createdAt,
+			UpdatedAt:   updatedAt,
 		},
 		update: query.UpdateChunkParams{
 			Name:        c.Name,
