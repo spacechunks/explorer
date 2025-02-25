@@ -267,6 +267,84 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 	return items, nil
 }
 
+const getInstancesByNodeID = `-- name: GetInstancesByNodeID :many
+SELECT i.id, i.chunk_id, flavor_id, node_id, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, base_image_url, checkpoint_image_url, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
+    JOIN flavors f ON i.flavor_id = f.id
+    JOIN chunks c ON f.chunk_id = c.id
+    JOIN nodes n ON i.node_id = n.id
+WHERE i.node_id = $1
+`
+
+type GetInstancesByNodeIDRow struct {
+	ID                 string
+	ChunkID            string
+	FlavorID           string
+	NodeID             string
+	State              InstanceState
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	ID_2               string
+	ChunkID_2          string
+	Name               string
+	BaseImageUrl       string
+	CheckpointImageUrl string
+	CreatedAt_2        pgtype.Timestamptz
+	UpdatedAt_2        pgtype.Timestamptz
+	ID_3               string
+	Name_2             string
+	Description        string
+	Tags               []string
+	CreatedAt_3        pgtype.Timestamptz
+	UpdatedAt_3        pgtype.Timestamptz
+	ID_4               string
+	Address            netip.Addr
+	CreatedAt_4        pgtype.Timestamptz
+}
+
+func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]GetInstancesByNodeIDRow, error) {
+	rows, err := q.db.Query(ctx, getInstancesByNodeID, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetInstancesByNodeIDRow
+	for rows.Next() {
+		var i GetInstancesByNodeIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ChunkID,
+			&i.FlavorID,
+			&i.NodeID,
+			&i.State,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ID_2,
+			&i.ChunkID_2,
+			&i.Name,
+			&i.BaseImageUrl,
+			&i.CheckpointImageUrl,
+			&i.CreatedAt_2,
+			&i.UpdatedAt_2,
+			&i.ID_3,
+			&i.Name_2,
+			&i.Description,
+			&i.Tags,
+			&i.CreatedAt_3,
+			&i.UpdatedAt_3,
+			&i.ID_4,
+			&i.Address,
+			&i.CreatedAt_4,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateChunk = `-- name: UpdateChunk :one
 UPDATE chunks
 SET

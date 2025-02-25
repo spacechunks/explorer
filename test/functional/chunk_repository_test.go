@@ -20,8 +20,12 @@ package functional
 
 import (
 	"context"
+	"net/netip"
+	"sort"
+	"strings"
 	"testing"
 
+	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/functional/fixture"
 	"github.com/stretchr/testify/assert"
@@ -79,4 +83,79 @@ func TestCreateInstance(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, expected, actual)
+}
+
+func TestGetInstancesByNodeID(t *testing.T) {
+	var (
+		ctx      = context.Background()
+		pool, db = fixture.RunDB(t)
+		nodeID   = test.NewUUIDv7(t)
+	)
+
+	_, err := pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
+	require.NoError(t, err)
+
+	chunks := []chunk.Chunk{
+		fixture.Chunk(func(c *chunk.Chunk) {
+			c.ID = "01953e54-8ac5-7c1a-b468-dffdc26d2087"
+			c.Name = "chunk1"
+			c.Flavors = []chunk.Flavor{
+				fixture.Flavor(func(f *chunk.Flavor) {
+					f.ID = test.NewUUIDv7(t)
+					f.Name = "flavor_" + test.RandHexStr(t)
+				}),
+			}
+		}),
+		fixture.Chunk(func(c *chunk.Chunk) {
+			c.ID = "01953e54-b686-764a-874f-dbc45b67152c"
+			c.Name = "chunk2"
+			c.Flavors = []chunk.Flavor{
+				fixture.Flavor(func(f *chunk.Flavor) {
+					f.ID = test.NewUUIDv7(t)
+					f.Name = "flavor_" + test.RandHexStr(t)
+				}),
+			}
+		}),
+	}
+
+	var expected []chunk.Instance
+
+	for _, c := range chunks {
+		_, err = db.CreateChunk(ctx, c)
+		require.NoError(t, err)
+
+		_, err = db.CreateFlavor(ctx, c.Flavors[0], c.ID)
+		require.NoError(t, err)
+
+		ins := chunk.Instance{
+			ID:          test.NewUUIDv7(t),
+			Chunk:       c,
+			ChunkFlavor: c.Flavors[0],
+			Address:     netip.MustParseAddr("198.51.100.1"),
+			State:       chunk.InstanceStatePending,
+			CreatedAt:   c.CreatedAt,
+			UpdatedAt:   c.UpdatedAt,
+		}
+
+		// see FIXME in GetInstancesByNodeID
+		ins.Chunk.Flavors = nil
+
+		_, err := db.CreateInstance(ctx, ins, nodeID)
+		require.NoError(t, err)
+
+		expected = append(expected, ins)
+	}
+
+	sort.Slice(expected, func(i, j int) bool {
+		return strings.Compare(expected[i].ID, expected[j].ID) < 0
+	})
+
+	acutalInstances, err := db.GetInstancesByNodeID(ctx, nodeID)
+	require.NoError(t, err)
+
+	sort.Slice(acutalInstances, func(i, j int) bool {
+		return strings.Compare(acutalInstances[i].ID, acutalInstances[j].ID) < 0
+	})
+
+	require.Equal(t, expected, acutalInstances)
 }

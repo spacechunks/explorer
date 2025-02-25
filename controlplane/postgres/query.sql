@@ -53,3 +53,10 @@ SELECT * FROM instances i
     JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
 WHERE i.id = $1;
+
+-- name: GetInstancesByNodeID :many
+SELECT * FROM instances i
+    JOIN flavors f ON i.flavor_id = f.id
+    JOIN chunks c ON f.chunk_id = c.id
+    JOIN nodes n ON i.node_id = n.id
+WHERE i.node_id = $1;

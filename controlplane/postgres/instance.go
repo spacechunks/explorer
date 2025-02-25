@@ -123,3 +123,49 @@ func (db *DB) CreateInstance(ctx context.Context, instance chunk.Instance, nodeI
 
 	return ret, nil
 }
+
+func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]chunk.Instance, error) {
+	ret := make([]chunk.Instance, 0)
+	if err := db.do(ctx, func(q *query.Queries) error {
+		rows, err := q.GetInstancesByNodeID(ctx, nodeID)
+		if err != nil {
+			return err
+		}
+
+		// FIXME: for now it is okay to not return the full chunk object
+		// with all flavors, because we don't need it atm. but for consistency
+		// purposes it should be considered.
+
+		for _, row := range rows {
+			ret = append(ret, chunk.Instance{
+				ID: row.ID,
+				Chunk: chunk.Chunk{
+					ID:          row.ID_3,
+					Name:        row.Name_2,
+					Description: row.Description,
+					Tags:        row.Tags,
+					CreatedAt:   row.CreatedAt_3.Time.UTC(),
+					UpdatedAt:   row.UpdatedAt_3.Time.UTC(),
+				},
+				ChunkFlavor: chunk.Flavor{
+					ID:                 row.ID_2,
+					Name:               row.Name,
+					BaseImageURL:       row.BaseImageUrl,
+					CheckpointImageURL: row.CheckpointImageUrl,
+					CreatedAt:          row.CreatedAt_2.Time.UTC(),
+					UpdatedAt:          row.UpdatedAt_2.Time.UTC(),
+				},
+				Address:   row.Address,
+				State:     chunk.InstanceState(row.State),
+				CreatedAt: row.CreatedAt.Time.UTC(),
+				UpdatedAt: row.UpdatedAt.Time.UTC(),
+			})
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
