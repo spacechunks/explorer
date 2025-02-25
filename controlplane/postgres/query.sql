@@ -4,11 +4,12 @@
 
 -- name: CreateChunk :one
 INSERT INTO chunks
-    (id, name, description, tags)
+    (id, name, description, tags, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4)
+    ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
+-- TODO: read multiple
 -- name: GetChunkByID :many
 SELECT * FROM chunks c
     JOIN flavors f ON f.chunk_id = c.id
@@ -28,11 +29,12 @@ RETURNING *;
  * FLAVORS
  */
 
+-- TODO: insert multiple (aka :batchmany)
 -- name: CreateFlavor :one
 INSERT INTO flavors
-    (id, chunk_id, name, base_image_url, checkpoint_image_url)
+    (id, chunk_id, name, base_image_url, checkpoint_image_url, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 /*
@@ -41,13 +43,13 @@ RETURNING *;
 
 -- name: CreateInstance :exec
 INSERT INTO instances
-    (id, flavor_id, node_id)
+    (id, chunk_id, flavor_id, node_id, created_at, updated_at)
 VALUES
-    ($1, $2, $3);
+    ($1, $2, $3, $4, $5, $6);
 
--- name: GetInstance :one
+-- name: GetInstance :many
 SELECT * FROM instances i
-    JOIN flavors f ON i.flavor_id = f.id
+    JOIN flavors f ON i.chunk_id = f.chunk_id
     JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
 WHERE i.id = $1;

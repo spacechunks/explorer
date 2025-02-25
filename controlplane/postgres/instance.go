@@ -32,21 +32,24 @@ type instanceParams struct {
 }
 
 func createInstanceParams(nodeID string, instance chunk.Instance) (instanceParams, error) {
-	createdAt := pgtype.Timestamp{}
+	createdAt := pgtype.Timestamptz{}
 	if err := createdAt.Scan(instance.CreatedAt); err != nil {
 		return instanceParams{}, fmt.Errorf("scan updated at: %w", err)
 	}
 
-	updatedAt := pgtype.Timestamp{}
+	updatedAt := pgtype.Timestamptz{}
 	if err := updatedAt.Scan(instance.UpdatedAt); err != nil {
 		return instanceParams{}, fmt.Errorf("scan updated at: %w", err)
 	}
 
 	return instanceParams{
 		create: query.CreateInstanceParams{
-			ID:       instance.ID,
-			FlavorID: instance.ChunkFlavor.ID,
-			NodeID:   nodeID,
+			ID:        instance.ID,
+			ChunkID:   instance.Chunk.ID,
+			FlavorID:  instance.ChunkFlavor.ID,
+			NodeID:    nodeID,
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
 		},
 	}, nil
 }
@@ -63,34 +66,55 @@ func (db *DB) CreateInstance(ctx context.Context, instance chunk.Instance, nodeI
 			return fmt.Errorf("create instance: %w", err)
 		}
 
-		row, err := q.GetInstance(ctx, params.create.ID)
+		rows, err := q.GetInstance(ctx, params.create.ID)
 		if err != nil {
 			return fmt.Errorf("get instance: %w", err)
 		}
 
+		// we retrieve multiple rows when we call GetInstance
+		// chunk data and instance data will stay the same, what
+		// will change is the flavor data. there will be one row
+		// for each flavor the chunk has.
+		//
+		// so it is safe that we use the first row here, because
+		// the data will stay the same.
+		row := rows[0]
+
 		ret = chunk.Instance{
-			ID: row.ID,
+			ID:        row.ID,
+			Address:   row.Address,
+			State:     chunk.InstanceState(row.State),
+			CreatedAt: row.CreatedAt.Time.UTC(),
+			UpdatedAt: row.UpdatedAt.Time.UTC(),
 			Chunk: chunk.Chunk{
 				ID:          row.ID_3,
 				Name:        row.Name_2,
 				Description: row.Description,
 				Tags:        row.Tags,
-				CreatedAt:   row.CreatedAt_3.Time,
-				UpdatedAt:   row.UpdatedAt_3.Time,
+				CreatedAt:   row.CreatedAt_3.Time.UTC(),
+				UpdatedAt:   row.UpdatedAt_3.Time.UTC(),
 			},
-			ChunkFlavor: chunk.Flavor{
-				ID:                 row.ID_2,
-				Name:               row.Name,
-				BaseImageURL:       row.BaseImageUrl,
-				CheckpointImageURL: row.CheckpointImageUrl,
-				CreatedAt:          row.CreatedAt_2.Time,
-				UpdatedAt:          row.UpdatedAt_2.Time,
-			},
-			Address:   row.Address,
-			State:     chunk.InstanceState(row.State),
-			CreatedAt: row.CreatedAt.Time,
-			UpdatedAt: row.UpdatedAt.Time,
 		}
+
+		flavors := make([]chunk.Flavor, 0, len(rows))
+		for _, instanceRow := range rows {
+			f := chunk.Flavor{
+				ID:                 instanceRow.ID_2,
+				Name:               instanceRow.Name,
+				BaseImageURL:       instanceRow.BaseImageUrl,
+				CheckpointImageURL: instanceRow.CheckpointImageUrl,
+				CreatedAt:          instanceRow.CreatedAt_2.Time.UTC(),
+				UpdatedAt:          instanceRow.UpdatedAt_2.Time.UTC(),
+			}
+
+			if instanceRow.FlavorID == f.ID {
+				ret.ChunkFlavor = f
+			}
+
+			flavors = append(flavors, f)
+		}
+
+		ret.Chunk.Flavors = flavors
 
 		return nil
 	}); err != nil {

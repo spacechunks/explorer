@@ -78,6 +78,7 @@ type Flavor struct {
 
 type Instance struct {
 	ID        string
+	ChunkID   string
 	FlavorID  string
 	NodeID    string
 	State     InstanceState

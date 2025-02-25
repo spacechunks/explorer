@@ -22,7 +22,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/functional/fixture"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,7 +34,7 @@ func TestCreateChunk(t *testing.T) {
 		_, db = fixture.RunDB(t)
 	)
 
-	expected := fixture.Chunk
+	expected := fixture.Chunk()
 
 	c, err := db.CreateChunk(ctx, expected)
 	require.NoError(t, err)
@@ -48,34 +48,35 @@ func TestCreateChunk(t *testing.T) {
 }
 
 func TestCreateInstance(t *testing.T) {
+	// TODO:
+	// * check that creating does not work if no flavor is present
+	// * check that creating does not work if no chunk is present
+	// * check that creating does not work if no node is present
+
 	var (
 		ctx      = context.Background()
 		pool, db = fixture.RunDB(t)
+		nodeID   = test.NewUUIDv7(t)
+		c        = fixture.Chunk()
 	)
 
-	nodeID, err := uuid.NewV7()
+	_, err := pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
 	require.NoError(t, err)
 
-	_, err = pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID.String(), "198.51.100.1")
+	_, err = db.CreateChunk(ctx, c)
 	require.NoError(t, err)
 
-	_, err = db.CreateChunk(ctx, fixture.Chunk)
-	require.NoError(t, err)
-
-	_, err = db.CreateFlavor(ctx, fixture.Flavor1, fixture.Chunk.ID)
-	require.NoError(t, err)
+	for _, f := range c.Flavors {
+		_, err = db.CreateFlavor(ctx, f, c.ID)
+		require.NoError(t, err)
+	}
 
 	// ^ above are prerequisites
 
 	expected := fixture.Instance
 
-	actual, err := db.CreateInstance(ctx, expected, nodeID.String())
+	actual, err := db.CreateInstance(ctx, expected, nodeID)
 	require.NoError(t, err)
 
-	assert.Equal(t, expected.ID, actual.ID)
-	assert.Equal(t, expected.State, actual.State)
-	assert.Equal(t, expected.Address, actual.Address)
-	assert.Equal(t, expected.ChunkFlavor.Name, actual.ChunkFlavor.Name)
-	assert.Equal(t, expected.ChunkFlavor.BaseImageURL, actual.ChunkFlavor.BaseImageURL)
-	assert.Equal(t, expected.ChunkFlavor.CheckpointImageURL, actual.ChunkFlavor.CheckpointImageURL)
+	assert.Equal(t, expected, actual)
 }

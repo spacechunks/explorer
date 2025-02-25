@@ -18,9 +18,9 @@ const createChunk = `-- name: CreateChunk :one
  */
 
 INSERT INTO chunks
-    (id, name, description, tags)
+    (id, name, description, tags, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4)
+    ($1, $2, $3, $4, $5, $6)
 RETURNING id, name, description, tags, created_at, updated_at
 `
 
@@ -29,6 +29,8 @@ type CreateChunkParams struct {
 	Name        string
 	Description string
 	Tags        []string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) (Chunk, error) {
@@ -37,6 +39,8 @@ func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) (Chunk
 		arg.Name,
 		arg.Description,
 		arg.Tags,
+		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 	var i Chunk
 	err := row.Scan(
@@ -56,9 +60,9 @@ const createFlavor = `-- name: CreateFlavor :one
  */
 
 INSERT INTO flavors
-    (id, chunk_id, name, base_image_url, checkpoint_image_url)
+    (id, chunk_id, name, base_image_url, checkpoint_image_url, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, chunk_id, name, base_image_url, checkpoint_image_url, created_at, updated_at
 `
 
@@ -68,8 +72,11 @@ type CreateFlavorParams struct {
 	Name               string
 	BaseImageUrl       string
 	CheckpointImageUrl string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
 }
 
+// TODO: insert multiple (aka :batchmany)
 func (q *Queries) CreateFlavor(ctx context.Context, arg CreateFlavorParams) (Flavor, error) {
 	row := q.db.QueryRow(ctx, createFlavor,
 		arg.ID,
@@ -77,6 +84,8 @@ func (q *Queries) CreateFlavor(ctx context.Context, arg CreateFlavorParams) (Fla
 		arg.Name,
 		arg.BaseImageUrl,
 		arg.CheckpointImageUrl,
+		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 	var i Flavor
 	err := row.Scan(
@@ -97,19 +106,29 @@ const createInstance = `-- name: CreateInstance :exec
  */
 
 INSERT INTO instances
-    (id, flavor_id, node_id)
+    (id, chunk_id, flavor_id, node_id, created_at, updated_at)
 VALUES
-    ($1, $2, $3)
+    ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateInstanceParams struct {
-	ID       string
-	FlavorID string
-	NodeID   string
+	ID        string
+	ChunkID   string
+	FlavorID  string
+	NodeID    string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }
 
 func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) error {
-	_, err := q.db.Exec(ctx, createInstance, arg.ID, arg.FlavorID, arg.NodeID)
+	_, err := q.db.Exec(ctx, createInstance,
+		arg.ID,
+		arg.ChunkID,
+		arg.FlavorID,
+		arg.NodeID,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
 	return err
 }
 
@@ -135,6 +154,7 @@ type GetChunkByIDRow struct {
 	UpdatedAt_2        pgtype.Timestamptz
 }
 
+// TODO: read multiple
 func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRow, error) {
 	rows, err := q.db.Query(ctx, getChunkByID, id)
 	if err != nil {
@@ -169,9 +189,9 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 	return items, nil
 }
 
-const getInstance = `-- name: GetInstance :one
-SELECT i.id, flavor_id, node_id, state, i.created_at, i.updated_at, f.id, chunk_id, f.name, base_image_url, checkpoint_image_url, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
-    JOIN flavors f ON i.flavor_id = f.id
+const getInstance = `-- name: GetInstance :many
+SELECT i.id, i.chunk_id, flavor_id, node_id, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, base_image_url, checkpoint_image_url, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
+    JOIN flavors f ON i.chunk_id = f.chunk_id
     JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
 WHERE i.id = $1
@@ -179,13 +199,14 @@ WHERE i.id = $1
 
 type GetInstanceRow struct {
 	ID                 string
+	ChunkID            string
 	FlavorID           string
 	NodeID             string
 	State              InstanceState
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
 	ID_2               string
-	ChunkID            string
+	ChunkID_2          string
 	Name               string
 	BaseImageUrl       string
 	CheckpointImageUrl string
@@ -202,34 +223,48 @@ type GetInstanceRow struct {
 	CreatedAt_4        pgtype.Timestamptz
 }
 
-func (q *Queries) GetInstance(ctx context.Context, id string) (GetInstanceRow, error) {
-	row := q.db.QueryRow(ctx, getInstance, id)
-	var i GetInstanceRow
-	err := row.Scan(
-		&i.ID,
-		&i.FlavorID,
-		&i.NodeID,
-		&i.State,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.ID_2,
-		&i.ChunkID,
-		&i.Name,
-		&i.BaseImageUrl,
-		&i.CheckpointImageUrl,
-		&i.CreatedAt_2,
-		&i.UpdatedAt_2,
-		&i.ID_3,
-		&i.Name_2,
-		&i.Description,
-		&i.Tags,
-		&i.CreatedAt_3,
-		&i.UpdatedAt_3,
-		&i.ID_4,
-		&i.Address,
-		&i.CreatedAt_4,
-	)
-	return i, err
+func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow, error) {
+	rows, err := q.db.Query(ctx, getInstance, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetInstanceRow
+	for rows.Next() {
+		var i GetInstanceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ChunkID,
+			&i.FlavorID,
+			&i.NodeID,
+			&i.State,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ID_2,
+			&i.ChunkID_2,
+			&i.Name,
+			&i.BaseImageUrl,
+			&i.CheckpointImageUrl,
+			&i.CreatedAt_2,
+			&i.UpdatedAt_2,
+			&i.ID_3,
+			&i.Name_2,
+			&i.Description,
+			&i.Tags,
+			&i.CreatedAt_3,
+			&i.UpdatedAt_3,
+			&i.ID_4,
+			&i.Address,
+			&i.CreatedAt_4,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateChunk = `-- name: UpdateChunk :one

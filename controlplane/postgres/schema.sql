@@ -62,6 +62,7 @@ CREATE TABLE public.flavors (
 
 CREATE TABLE public.instances (
     id uuid NOT NULL,
+    chunk_id uuid NOT NULL,
     flavor_id uuid NOT NULL,
     node_id uuid NOT NULL,
     state public.instance_state DEFAULT 'PENDING'::public.instance_state NOT NULL,
@@ -136,6 +137,14 @@ ALTER TABLE ONLY public.schema_migrations
 
 ALTER TABLE ONLY public.flavors
     ADD CONSTRAINT flavors_chunk_id_fkey FOREIGN KEY (chunk_id) REFERENCES public.chunks(id);
+
+
+--
+-- Name: instances instances_chunk_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instances
+    ADD CONSTRAINT instances_chunk_id_fkey FOREIGN KEY (chunk_id) REFERENCES public.chunks(id);
 
 
 --

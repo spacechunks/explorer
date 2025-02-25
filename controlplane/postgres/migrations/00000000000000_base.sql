@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS nodes (
 
 CREATE TABLE IF NOT EXISTS instances (
     id             UUID           NOT NULL PRIMARY KEY,
+    chunk_id       UUID           NOT NULL REFERENCES chunks(id),
     flavor_id      UUID           NOT NULL REFERENCES flavors(id),
     node_id        UUID           NOT NULL REFERENCES nodes(id),
     state          instance_state NOT NULL DEFAULT 'PENDING',
