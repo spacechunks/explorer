@@ -73,8 +73,8 @@ func (db *DB) CreateFlavor(ctx context.Context, flavor chunk.Flavor, chunkID str
 			Name:               f.Name,
 			BaseImageURL:       f.BaseImageUrl,
 			CheckpointImageURL: f.CheckpointImageUrl,
-			CreatedAt:          f.CreatedAt.Time,
-			UpdatedAt:          f.UpdatedAt.Time,
+			CreatedAt:          f.CreatedAt.Time.UTC(),
+			UpdatedAt:          f.UpdatedAt.Time.UTC(),
 		}
 		return nil
 	}); err != nil {

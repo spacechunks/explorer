@@ -67,8 +67,8 @@ func rowToChunk(c query.Chunk) chunk.Chunk {
 		Name:        c.Name,
 		Description: c.Description,
 		Tags:        c.Tags,
-		CreatedAt:   c.CreatedAt.Time,
-		UpdatedAt:   c.UpdatedAt.Time,
+		CreatedAt:   c.CreatedAt.Time.UTC(),
+		UpdatedAt:   c.UpdatedAt.Time.UTC(),
 	}
 }
 
@@ -111,8 +111,8 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 				Name:        row.Name,
 				Description: row.Description,
 				Tags:        row.Tags,
-				CreatedAt:   row.CreatedAt.Time,
-				UpdatedAt:   row.UpdatedAt.Time,
+				CreatedAt:   row.CreatedAt.Time.UTC(),
+				UpdatedAt:   row.UpdatedAt.Time.UTC(),
 			}
 		)
 
@@ -122,6 +122,8 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 				Name:               r.Name_2,
 				BaseImageURL:       r.BaseImageUrl,
 				CheckpointImageURL: r.CheckpointImageUrl,
+				CreatedAt:          r.CreatedAt_2.Time.UTC(),
+				UpdatedAt:          r.UpdatedAt_2.Time.UTC(),
 			})
 		}
 
