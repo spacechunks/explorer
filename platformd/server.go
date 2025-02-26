@@ -8,7 +8,6 @@ import (
 	"net/netip"
 
 	"github.com/google/uuid"
-	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
 	"github.com/spacechunks/explorer/internal/datapath"
 	proxy2 "github.com/spacechunks/explorer/platformd/proxy"
 	xds2 "github.com/spacechunks/explorer/platformd/proxy/xds"
@@ -72,15 +71,15 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 
 		mgmtServer  = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 		proxyServer = proxy2.NewServer(proxySvc)
-		wlServer    = workload2.NewServer(
+		/*wlServer    = workload2.NewServer(
 			wlSvc,
 			workload2.NewPortAllocator(30000, 40000),
 			workload2.NewStore(),
-		)
+		)*/
 	)
 
 	proxyv1alpha1.RegisterProxyServiceServer(mgmtServer, proxyServer)
-	workloadv1alpha1.RegisterWorkloadServiceServer(mgmtServer, wlServer)
+	//workloadv1alpha1.RegisterWorkloadServiceServer(mgmtServer, wlServer)
 	xds2.CreateAndRegisterServer(ctx, s.logger, mgmtServer, xdsCfg)
 
 	bpf, err := datapath.LoadBPF()

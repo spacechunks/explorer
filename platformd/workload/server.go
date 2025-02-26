@@ -18,6 +18,7 @@
 
 package workload
 
+/*
 import (
 	"context"
 	"fmt"
@@ -109,4 +110,4 @@ func (s *Server) WorkloadStatus(
 			Port:  uint32(w.Port),
 		},
 	}, nil
-}
+}*/

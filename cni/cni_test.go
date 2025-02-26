@@ -26,10 +26,11 @@ import (
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
-	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 	"github.com/spacechunks/explorer/cni"
 	"github.com/spacechunks/explorer/internal/datapath"
 	"github.com/spacechunks/explorer/internal/mock"
+	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/stretchr/testify/assert"
 	mocky "github.com/stretchr/testify/mock"
 )
@@ -41,7 +42,7 @@ func TestExecAdd(t *testing.T) {
 			*mock.MockCniHandler,
 			*skel.CmdArgs,
 			*mock.MockV1alpha1ProxyServiceClient,
-			*mock.MockV1alpha1WorkloadServiceClient,
+			*mock.MockV1alpha2WorkloadServiceClient,
 		)
 		args *skel.CmdArgs
 		conf cni.Conf
@@ -66,7 +67,7 @@ func TestExecAdd(t *testing.T) {
 				h *mock.MockCniHandler,
 				args *skel.CmdArgs,
 				psc *mock.MockV1alpha1ProxyServiceClient,
-				wlc *mock.MockV1alpha1WorkloadServiceClient,
+				wlc *mock.MockV1alpha2WorkloadServiceClient,
 			) {
 				var (
 					ips = []net.IPNet{
@@ -115,12 +116,12 @@ func TestExecAdd(t *testing.T) {
 					Return(nil)
 
 				wlc.EXPECT().
-					WorkloadStatus(mocky.Anything, &workloadv1alpha1.WorkloadStatusRequest{
-						Id: "uuidv7",
+					WorkloadStatus(mocky.Anything, &workloadv1alpha2.WorkloadStatusRequest{
+						Id: ptr.String("uuidv7"),
 					}).
-					Return(&workloadv1alpha1.WorkloadStatusResponse{
-						Status: &workloadv1alpha1.WorkloadStatus{
-							Port: port,
+					Return(&workloadv1alpha2.WorkloadStatusResponse{
+						Status: &workloadv1alpha2.WorkloadStatus{
+							Port: ptr.UInt32(port),
 						},
 					}, nil)
 
@@ -161,7 +162,7 @@ func TestExecAdd(t *testing.T) {
 				h *mock.MockCniHandler,
 				args *skel.CmdArgs,
 				_ *mock.MockV1alpha1ProxyServiceClient,
-				_ *mock.MockV1alpha1WorkloadServiceClient,
+				_ *mock.MockV1alpha2WorkloadServiceClient,
 			) {
 				h.EXPECT().
 					AllocIPs("host-local", args.StdinData).
@@ -187,7 +188,7 @@ func TestExecAdd(t *testing.T) {
 				_ *mock.MockCniHandler,
 				_ *skel.CmdArgs,
 				_ *mock.MockV1alpha1ProxyServiceClient,
-				_ *mock.MockV1alpha1WorkloadServiceClient,
+				_ *mock.MockV1alpha2WorkloadServiceClient,
 			) {
 			},
 		},
@@ -202,7 +203,7 @@ func TestExecAdd(t *testing.T) {
 				_ *mock.MockCniHandler,
 				_ *skel.CmdArgs,
 				_ *mock.MockV1alpha1ProxyServiceClient,
-				_ *mock.MockV1alpha1WorkloadServiceClient,
+				_ *mock.MockV1alpha2WorkloadServiceClient,
 			) {
 			},
 		},
@@ -224,7 +225,7 @@ func TestExecAdd(t *testing.T) {
 				_ *mock.MockCniHandler,
 				_ *skel.CmdArgs,
 				_ *mock.MockV1alpha1ProxyServiceClient,
-				_ *mock.MockV1alpha1WorkloadServiceClient,
+				_ *mock.MockV1alpha2WorkloadServiceClient,
 			) {
 			},
 		},
@@ -246,7 +247,7 @@ func TestExecAdd(t *testing.T) {
 				_ *mock.MockCniHandler,
 				_ *skel.CmdArgs,
 				_ *mock.MockV1alpha1ProxyServiceClient,
-				_ *mock.MockV1alpha1WorkloadServiceClient,
+				_ *mock.MockV1alpha2WorkloadServiceClient,
 			) {
 			},
 		},
@@ -268,7 +269,7 @@ func TestExecAdd(t *testing.T) {
 				h *mock.MockCniHandler,
 				args *skel.CmdArgs,
 				_ *mock.MockV1alpha1ProxyServiceClient,
-				_ *mock.MockV1alpha1WorkloadServiceClient,
+				_ *mock.MockV1alpha2WorkloadServiceClient,
 			) {
 				h.EXPECT().
 					AllocIPs("host-local", args.StdinData).
@@ -284,7 +285,7 @@ func TestExecAdd(t *testing.T) {
 			var (
 				h   = mock.NewMockCniHandler(t)
 				psc = mock.NewMockV1alpha1ProxyServiceClient(t)
-				wlc = mock.NewMockV1alpha1WorkloadServiceClient(t)
+				wlc = mock.NewMockV1alpha2WorkloadServiceClient(t)
 				c   = cni.NewCNI(h)
 			)
 			tt.prep(h, tt.args, psc, wlc)

@@ -25,6 +25,9 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
 )
 
 func RandHexStr(t *testing.T) string {
@@ -55,4 +58,10 @@ func WaitServerReady(t *testing.T, network, addr string, timeout time.Duration) 
 			continue
 		}
 	}
+}
+
+func NewUUIDv7(t *testing.T) string {
+	id, err := uuid.NewV7()
+	require.NoError(t, err)
+	return id.String()
 }
