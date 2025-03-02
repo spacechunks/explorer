@@ -67,13 +67,11 @@ type Chunk struct {
 }
 
 type Flavor struct {
-	ID                 string
-	ChunkID            string
-	Name               string
-	BaseImageUrl       string
-	CheckpointImageUrl string
-	CreatedAt          pgtype.Timestamptz
-	UpdatedAt          pgtype.Timestamptz
+	ID        string
+	ChunkID   string
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }
 
 type Instance struct {

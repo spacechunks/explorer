@@ -21,12 +21,10 @@ package chunk
 import "time"
 
 type Flavor struct {
-	ID                 string
-	Name               string
-	BaseImageURL       string
-	CheckpointImageURL string
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	ID        string
+	Name      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Chunk struct {

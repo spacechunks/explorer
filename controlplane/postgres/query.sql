@@ -32,9 +32,9 @@ RETURNING *;
 -- TODO: insert multiple (aka :batchmany)
 -- name: CreateFlavor :one
 INSERT INTO flavors
-    (id, chunk_id, name, base_image_url, checkpoint_image_url, created_at, updated_at)
+    (id, chunk_id, name, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+    ($1, $2, $3, $4, $5)
 RETURNING *;
 
 /*

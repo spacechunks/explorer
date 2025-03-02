@@ -44,13 +44,11 @@ func createFlavorParams(flavor chunk.Flavor, chunkID string) (flavorParams, erro
 
 	return flavorParams{
 		create: query.CreateFlavorParams{
-			ID:                 flavor.ID,
-			ChunkID:            chunkID,
-			Name:               flavor.Name,
-			BaseImageUrl:       flavor.BaseImageURL,
-			CheckpointImageUrl: flavor.CheckpointImageURL,
-			CreatedAt:          createdAt,
-			UpdatedAt:          updatedAt,
+			ID:        flavor.ID,
+			ChunkID:   chunkID,
+			Name:      flavor.Name,
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
 		},
 	}, nil
 }
@@ -69,12 +67,10 @@ func (db *DB) CreateFlavor(ctx context.Context, flavor chunk.Flavor, chunkID str
 		}
 
 		ret = chunk.Flavor{
-			ID:                 f.ID,
-			Name:               f.Name,
-			BaseImageURL:       f.BaseImageUrl,
-			CheckpointImageURL: f.CheckpointImageUrl,
-			CreatedAt:          f.CreatedAt.Time.UTC(),
-			UpdatedAt:          f.UpdatedAt.Time.UTC(),
+			ID:        f.ID,
+			Name:      f.Name,
+			CreatedAt: f.CreatedAt.Time.UTC(),
+			UpdatedAt: f.UpdatedAt.Time.UTC(),
 		}
 		return nil
 	}); err != nil {

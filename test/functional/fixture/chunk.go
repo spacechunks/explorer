@@ -55,12 +55,10 @@ func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
 
 func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 	flavor := chunk.Flavor{
-		ID:                 "019532bb-5582-7608-9a08-bb742a8174aa",
-		Name:               "flavorABC",
-		BaseImageURL:       "https://some/url/to/base/img",
-		CheckpointImageURL: "https://some/url/to/checkpoint/img",
-		CreatedAt:          time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
-		UpdatedAt:          time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
+		ID:        "019532bb-5582-7608-9a08-bb742a8174aa",
+		Name:      "flavorABC",
+		CreatedAt: time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
+		UpdatedAt: time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
 	}
 
 	for _, fn := range mod {

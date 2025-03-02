@@ -101,12 +101,10 @@ func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID 
 		flavors := make([]chunk.Flavor, 0, len(rows))
 		for _, instanceRow := range rows {
 			f := chunk.Flavor{
-				ID:                 instanceRow.ID_2,
-				Name:               instanceRow.Name,
-				BaseImageURL:       instanceRow.BaseImageUrl,
-				CheckpointImageURL: instanceRow.CheckpointImageUrl,
-				CreatedAt:          instanceRow.CreatedAt_2.Time.UTC(),
-				UpdatedAt:          instanceRow.UpdatedAt_2.Time.UTC(),
+				ID:        instanceRow.ID_2,
+				Name:      instanceRow.Name,
+				CreatedAt: instanceRow.CreatedAt_2.Time.UTC(),
+				UpdatedAt: instanceRow.UpdatedAt_2.Time.UTC(),
 			}
 
 			if instanceRow.FlavorID == f.ID {
@@ -150,12 +148,10 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 					UpdatedAt:   row.UpdatedAt_3.Time.UTC(),
 				},
 				ChunkFlavor: chunk.Flavor{
-					ID:                 row.ID_2,
-					Name:               row.Name,
-					BaseImageURL:       row.BaseImageUrl,
-					CheckpointImageURL: row.CheckpointImageUrl,
-					CreatedAt:          row.CreatedAt_2.Time.UTC(),
-					UpdatedAt:          row.UpdatedAt_2.Time.UTC(),
+					ID:        row.ID_2,
+					Name:      row.Name,
+					CreatedAt: row.CreatedAt_2.Time.UTC(),
+					UpdatedAt: row.UpdatedAt_2.Time.UTC(),
 				},
 				Address:   row.Address,
 				State:     instance.State(row.State),

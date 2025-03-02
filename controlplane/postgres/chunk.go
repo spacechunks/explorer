@@ -118,12 +118,10 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 
 		for _, r := range rows {
 			flavors = append(flavors, chunk.Flavor{
-				ID:                 r.ID_2,
-				Name:               r.Name_2,
-				BaseImageURL:       r.BaseImageUrl,
-				CheckpointImageURL: r.CheckpointImageUrl,
-				CreatedAt:          r.CreatedAt_2.Time.UTC(),
-				UpdatedAt:          r.UpdatedAt_2.Time.UTC(),
+				ID:        r.ID_2,
+				Name:      r.Name_2,
+				CreatedAt: r.CreatedAt_2.Time.UTC(),
+				UpdatedAt: r.UpdatedAt_2.Time.UTC(),
 			})
 		}
 

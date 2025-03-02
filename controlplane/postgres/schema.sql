@@ -49,8 +49,6 @@ CREATE TABLE public.flavors (
     id uuid NOT NULL,
     chunk_id uuid NOT NULL,
     name character varying(25) NOT NULL,
-    base_image_url text NOT NULL,
-    checkpoint_image_url text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
