@@ -1,0 +1,14 @@
+version: '2'
+sql:
+  - engine: postgresql
+    queries: controlplane/postgres/query.sql
+    schema: controlplane/postgres/schema.sql
+    gen:
+      go:
+        package: query
+        out: controlplane/postgres/query
+        sql_package: pgx/v5
+        overrides:
+          - db_type: uuid
+            go_type:
+              type: string

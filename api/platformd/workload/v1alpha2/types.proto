@@ -1,0 +1,54 @@
+edition = "2023";
+
+package platformd.workload.v1alpha2;
+
+option go_package = "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2";
+
+message Workload {
+  // id is a universally unique value identifying the workload.
+  // currently this is in UUIDv7 format.
+  string id = 1;
+
+  // name of the workload.
+  string name = 2;
+
+  // base_image_url points to the image that was used to create the checkpoint
+  // provided by checkpoint_image_url.
+  string base_image_url = 3;
+
+  // checkpoint_image_url points to a checkpoint living in an oci compatible
+  // registry.
+  string checkpoint_image_url = 4;
+
+  // namespace the workload is be created in.
+  string namespace = 5;
+
+  // hostname of the pod.
+  string hostname = 6;
+
+  // labels applied to the pod.
+  map<string, string> labels = 7;
+
+  // the network namespace' mode as per [runtimev1.NamespaceMode].
+  int32 network_namespace_mode = 8;
+
+  // status
+  WorkloadState state = 9;
+}
+
+enum WorkloadState {
+  UNKNOWN = 0;
+  STARTING = 1;
+  RUNNING = 2;
+  DELETING = 3;
+  DELETED = 4;
+}
+
+message WorkloadStatus {
+  string id = 1;
+  WorkloadState state = 2;
+
+  // port allocated for the workload. programs binding
+  // to this port will be reachable from the internet.
+  uint32 port = 3;
+}

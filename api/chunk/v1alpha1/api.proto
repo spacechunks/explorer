@@ -1,3 +1,21 @@
+/*
+ Explorer Platform, a platform for hosting and discovering Minecraft servers.
+ Copyright (C) 2024 Yannic Rieger <oss@76k.io>
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Affero General Public License for more details.
+
+ You should have received a copy of the GNU Affero General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 edition = "2023";
 
 package chunk.v1alpha1;
@@ -5,7 +23,6 @@ package chunk.v1alpha1;
 option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
 
 import "chunk/v1alpha1/types.proto";
-import "google/protobuf/timestamp.proto";
 
 // ChunkService provides the public api for interacting with Chunks
 // and Instances of Chunks.
@@ -17,27 +34,6 @@ import "google/protobuf/timestamp.proto";
 // a running replica of a particular Chunk. This means that there can
 // be multiple replicas of a chunk by different users.
 service ChunkService {
-  rpc RunChunk(RunChunkRequest) returns (RunChunkResponse);
+  // create chunk
   // list chunks
-
-
-  rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse);
-  // stop instance
-  // list instances
-}
-
-message RunChunkRequest {
-  string id = 1;
-}
-
-message RunChunkResponse {
-  chunk.v1alpha1.Instance instance = 1;
-}
-
-message GetInstanceRequest {
-  string id = 1;
-}
-
-message GetInstanceResponse {
-  chunk.v1alpha1.Instance instance = 1;
 }

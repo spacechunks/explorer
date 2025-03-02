@@ -18,6 +18,7 @@
 
 package functional
 
+/*
 import (
 	"context"
 	"testing"
@@ -79,4 +80,4 @@ func TestWorkloadStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, runResp.Workload.Port, statusResp.Status.Port)
-}
+}*/

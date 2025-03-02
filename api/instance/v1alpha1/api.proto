@@ -1,0 +1,81 @@
+/*
+ Explorer Platform, a platform for hosting and discovering Minecraft servers.
+ Copyright (C) 2024 Yannic Rieger <oss@76k.io>
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Affero General Public License for more details.
+
+ You should have received a copy of the GNU Affero General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+edition = "2023";
+
+package instance.v1alpha1;
+
+option go_package = "github.com/spacechunks/explorer/api/instance/v1alpha1";
+
+import "platformd/workload/v1alpha2/types.proto";
+import "instance/v1alpha1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+
+service InstanceService {
+
+  // RunChunk creates an instance for a specific flavor of a chunk
+  // and schedules it to be run on a node. The connection information
+  // of the returned instance will only be partially set, because the
+  // port will not be allocated at this point. However, the IP address
+  // is set.
+  rpc RunChunk(RunChunkRequest) returns (RunChunkResponse);
+
+  // DiscoverInstances returns all workloads that have been scheduled to a node for
+  // creation or removal. Platformd identifies itself using its unique node key.
+  rpc DiscoverInstances(DiscoverInstanceRequest) returns (DiscoverInstanceResponse);
+
+  // ReceiveWorkloadStatusReports is intended to be called by platformd in order to report
+  // status updates back to the control plane.
+  rpc ReceiveWorkloadStatusReports(ReceiveWorkloadStatusReportsRequest) returns (ReceiveWorkloadStatusReportResponse);
+
+  // GetInstance
+  // stop instance
+  // list instances
+}
+
+message RunChunkRequest {
+  string chunk_id = 1;
+  string flavor_id = 2;
+}
+
+message RunChunkResponse {
+  Instance instance = 1;
+}
+
+message GetInstanceRequest {
+  string id = 1;
+}
+
+message GetInstanceResponse {
+  Instance instance = 1;
+}
+
+message DiscoverInstanceRequest {
+  string node_key = 1;
+}
+
+message DiscoverInstanceResponse {
+  repeated Instance instances = 1;
+}
+
+message ReceiveWorkloadStatusReportsRequest {
+  repeated platformd.workload.v1alpha2.WorkloadStatus items = 1;
+}
+
+message ReceiveWorkloadStatusReportResponse {}

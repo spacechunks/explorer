@@ -1,0 +1,19 @@
+edition = "2023";
+
+package platformd.workload.v1alpha2;
+
+import "platformd/workload/v1alpha2/types.proto";
+
+option go_package = "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2";
+
+service WorkloadService {
+  rpc WorkloadStatus(WorkloadStatusRequest) returns (WorkloadStatusResponse);
+}
+
+message WorkloadStatusRequest {
+  string id = 1;
+}
+
+message WorkloadStatusResponse {
+  platformd.workload.v1alpha2.WorkloadStatus status = 1;
+}

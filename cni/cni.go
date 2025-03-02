@@ -31,7 +31,7 @@ import (
 	current "github.com/containernetworking/cni/pkg/types/100"
 	"github.com/hashicorp/go-multierror"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
-	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 	"github.com/spacechunks/explorer/internal/datapath"
 )
 
@@ -68,7 +68,7 @@ func (c *CNI) ExecAdd(
 	args *skel.CmdArgs,
 	conf Conf,
 	proxyClient proxyv1alpha1.ProxyServiceClient,
-	wlClient workloadv1alpha1.WorkloadServiceClient,
+	wlClient workloadv1alpha2.WorkloadServiceClient,
 ) (err error) {
 	ctx := context.Background()
 
@@ -173,7 +173,7 @@ func (c *CNI) ExecDel(
 	args *skel.CmdArgs,
 	conf Conf,
 	proxyClient proxyv1alpha1.ProxyServiceClient,
-	wlClient workloadv1alpha1.WorkloadServiceClient,
+	wlClient workloadv1alpha2.WorkloadServiceClient,
 ) error {
 	// as per cni spec, do not fail if we encounter an error here. log the errors instead.
 	// see https://www.cni.dev/docs/spec/#del-remove-container-from-network-or-un-apply-modifications
@@ -242,16 +242,16 @@ func printErrs(errs ...error) {
 func getHostPort(
 	ctx context.Context,
 	workloadID string,
-	wlClient workloadv1alpha1.WorkloadServiceClient,
+	wlClient workloadv1alpha2.WorkloadServiceClient,
 ) (uint16, error) {
-	resp, err := wlClient.WorkloadStatus(ctx, &workloadv1alpha1.WorkloadStatusRequest{
-		Id: workloadID,
+	resp, err := wlClient.WorkloadStatus(ctx, &workloadv1alpha2.WorkloadStatusRequest{
+		Id: &workloadID,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("get workload status: %w", err)
 	}
 
-	return uint16(resp.Status.Port), nil
+	return uint16(resp.Status.GetPort()), nil
 }
 
 func parseArgs(args string) (map[string]string, error) {

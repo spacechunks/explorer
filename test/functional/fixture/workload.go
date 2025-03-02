@@ -19,33 +19,30 @@
 package fixture
 
 import (
-	"log/slog"
 	"net"
-	"os"
 	"testing"
 
-	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
-	workload2 "github.com/spacechunks/explorer/platformd/workload"
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
-func Workload() workloadv1alpha1.Workload {
-	return workloadv1alpha1.Workload{
-		Name:                 "my-chunk",
-		Image:                "my-image",
-		Namespace:            "chunk-ns",
-		Hostname:             "my-chunk",
+func Workload() workloadv1alpha2.Workload {
+	return workloadv1alpha2.Workload{
+		Name:                 ptr.Pointer("my-chunk"),
+		BaseImageUrl:         ptr.Pointer("my-image"),
+		Namespace:            ptr.Pointer("chunk-ns"),
+		Hostname:             ptr.Pointer("my-chunk"),
 		Labels:               map[string]string{"k": "v"},
-		NetworkNamespaceMode: 2,
+		NetworkNamespaceMode: ptr.Pointer(int32(2)),
 	}
 }
 
 func RunWorkloadAPIFixtures(t *testing.T) {
 	var (
-		logger  = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		criServ = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 	)
 
@@ -57,19 +54,7 @@ func RunWorkloadAPIFixtures(t *testing.T) {
 	runtimev1.RegisterRuntimeServiceServer(criServ, cri)
 	runtimev1.RegisterImageServiceServer(criServ, cri)
 
-	conn := PlatformdClientConn(t)
-
-	wlServ := workload2.NewServer(
-		workload2.NewService(
-			logger,
-			runtimev1.NewRuntimeServiceClient(conn),
-			runtimev1.NewImageServiceClient(conn),
-		),
-		workload2.NewPortAllocator(20, 50),
-		workload2.NewStore(),
-	)
-
-	workloadv1alpha1.RegisterWorkloadServiceServer(criServ, wlServ)
+	//workloadv1alpha2.RegisterWorkloadServiceServer(criServ, wlServ)
 
 	t.Cleanup(func() {
 		criServ.Stop()

@@ -5,16 +5,16 @@ outpkg: mock
 filename: "{{ .PackageName }}_{{ .InterfaceName | snakecase }}.go"
 mockname: "Mock{{ .PackageName | camelcase }}{{ .InterfaceName }}"
 packages:
-  github.com/spacechunks/platform/internal/platformd/proxy/xds:
+  github.com/spacechunks/explorer/platformd/proxy/xds:
     interfaces:
       Map:
-  github.com/spacechunks/platform/internal/cni:
+  github.com/spacechunks/explorer/cni:
     interfaces:
       Handler:
-  github.com/spacechunks/platform/api/platformd/proxy/v1alpha1:
+  github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1:
     interfaces:
       ProxyServiceClient:
-  github.com/spacechunks/platform/api/platformd/workload/v1alpha1:
+  github.com/spacechunks/explorer/api/platformd/workload/v1alpha2:
     interfaces:
       WorkloadServiceClient:
   k8s.io/cri-api/pkg/apis/runtime/v1:

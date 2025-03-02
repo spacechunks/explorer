@@ -4,6 +4,7 @@ IMG_TESTDATA_DIR := internal/image/testdata
 REPACK_IMG := internal/image/testdata/repack-img.tar.gz
 UNPACK_IMG := internal/image/testdata/unpack-img.tar.gz
 SUDO := sudo --preserve-env=PATH env
+DATABASE_URL := postgres://postgres:test@localhost:5432/postgres?sslmode=disable
 OS := $(shell uname)
 
 ifeq ($(OS), Darwin)
@@ -12,12 +13,42 @@ else
 	RUN := $(shell)
 endif
 
+define start_db
+	@docker run --name testdb --rm -d -p 5432:5432 -e POSTGRES_PASSWORD=test postgres:17.2
+	@cd controlplane && dbmate \
+		--migrations-dir ./postgres/migrations \
+		--schema-file ./postgres/schema.sql \
+		--wait migrate \
+		|| docker stop testdb
+endef
+
+functests: ARGS ?= ./test/functional/...
+dbschema: export DATABASE_URL := $(DATABASE_URL)
+testdb: export DATABASE_URL := $(DATABASE_URL)
+dbgen: dbschema sqlc
 
 .PHONY: setup
 setup:
 	$(RUN) $(SUDO) apt update
 	$(RUN) $(SUDO) apt install -y linux-tools-common libbpf-dev
 	$(RUN) $(SUDO) mount bpffs /sys/fs/bpf -t bpf
+
+.PHONY: sqlc
+sqlc:
+	@sqlc generate
+
+.PHONY: dbschema
+dbschema:
+	$(call start_db)
+	@docker stop testdb
+
+.PHONY: testdb
+testdb:
+	$(call start_db)
+
+.PHONY: testdb-rm
+testdb-rm:
+	@docker stop testdb
 
 .PHONY: vmlinux
 vmlinux:
@@ -49,8 +80,12 @@ e2etests:
 functests: $(CNI_PLUGINS)
 	$(RUN) $(SUDO) FUNCTESTS_ENVOY_IMAGE=docker.io/envoyproxy/envoy:v1.31.4 \
 				   FUNCTESTS_ENVOY_CONFIG=../../nodedev/platformd/envoy-xds.yaml \
+				   FUNCTESTS_POSTGRES_IMAGE=postgres:17 \
+				   FUNCTESTS_POSTGRES_USER=spc \
+				   FUNCTESTS_POSTGRES_PASS=test123 \
+				   FUNCTESTS_POSTGRES_DB=explorer \
 				   CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin \
-				   go test -v ./test/functional/...
+				   go test -v $(ARGS)
 
 $(REPACK_IMG):
 	@docker build -t repack-img -f $(IMG_TESTDATA_DIR)/Dockerfile.repack $(IMG_TESTDATA_DIR)
