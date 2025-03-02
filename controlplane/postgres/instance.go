@@ -24,6 +24,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
@@ -31,7 +32,7 @@ type instanceParams struct {
 	create query.CreateInstanceParams
 }
 
-func createInstanceParams(nodeID string, instance chunk.Instance) (instanceParams, error) {
+func createInstanceParams(nodeID string, instance instance.Instance) (instanceParams, error) {
 	createdAt := pgtype.Timestamptz{}
 	if err := createdAt.Scan(instance.CreatedAt); err != nil {
 		return instanceParams{}, fmt.Errorf("scan updated at: %w", err)
@@ -48,19 +49,20 @@ func createInstanceParams(nodeID string, instance chunk.Instance) (instanceParam
 			ChunkID:   instance.Chunk.ID,
 			FlavorID:  instance.ChunkFlavor.ID,
 			NodeID:    nodeID,
+			State:     query.InstanceState(instance.State),
 			CreatedAt: createdAt,
 			UpdatedAt: updatedAt,
 		},
 	}, nil
 }
 
-func (db *DB) CreateInstance(ctx context.Context, instance chunk.Instance, nodeID string) (chunk.Instance, error) {
-	params, err := createInstanceParams(nodeID, instance)
+func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID string) (instance.Instance, error) {
+	params, err := createInstanceParams(nodeID, ins)
 	if err != nil {
-		return chunk.Instance{}, fmt.Errorf("instance params: %w", err)
+		return instance.Instance{}, fmt.Errorf("instance params: %w", err)
 	}
 
-	var ret chunk.Instance
+	var ret instance.Instance
 	if err := db.doTX(ctx, func(q *query.Queries) error {
 		if err := q.CreateInstance(ctx, params.create); err != nil {
 			return fmt.Errorf("create instance: %w", err)
@@ -80,10 +82,10 @@ func (db *DB) CreateInstance(ctx context.Context, instance chunk.Instance, nodeI
 		// the data will stay the same.
 		row := rows[0]
 
-		ret = chunk.Instance{
+		ret = instance.Instance{
 			ID:        row.ID,
 			Address:   row.Address,
-			State:     chunk.InstanceState(row.State),
+			State:     instance.State(row.State),
 			CreatedAt: row.CreatedAt.Time.UTC(),
 			UpdatedAt: row.UpdatedAt.Time.UTC(),
 			Chunk: chunk.Chunk{
@@ -118,14 +120,14 @@ func (db *DB) CreateInstance(ctx context.Context, instance chunk.Instance, nodeI
 
 		return nil
 	}); err != nil {
-		return chunk.Instance{}, err
+		return instance.Instance{}, err
 	}
 
 	return ret, nil
 }
 
-func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]chunk.Instance, error) {
-	ret := make([]chunk.Instance, 0)
+func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instance.Instance, error) {
+	ret := make([]instance.Instance, 0)
 	if err := db.do(ctx, func(q *query.Queries) error {
 		rows, err := q.GetInstancesByNodeID(ctx, nodeID)
 		if err != nil {
@@ -137,7 +139,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]chunk.
 		// purposes it should be considered.
 
 		for _, row := range rows {
-			ret = append(ret, chunk.Instance{
+			ret = append(ret, instance.Instance{
 				ID: row.ID,
 				Chunk: chunk.Chunk{
 					ID:          row.ID_3,
@@ -156,7 +158,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]chunk.
 					UpdatedAt:          row.UpdatedAt_2.Time.UTC(),
 				},
 				Address:   row.Address,
-				State:     chunk.InstanceState(row.State),
+				State:     instance.State(row.State),
 				CreatedAt: row.CreatedAt.Time.UTC(),
 				UpdatedAt: row.UpdatedAt.Time.UTC(),
 			})

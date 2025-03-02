@@ -19,25 +19,38 @@
 package fixture
 
 import (
+	"context"
+	"log/slog"
+	"os"
 	"testing"
+	"time"
 
+	"github.com/spacechunks/explorer/controlplane"
+	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
-	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
 )
 
-// grpc client does not accept @ as abstract socket identifier,
-// so do not include it in the address string.
+const ControlPlaneAddr = "localhost:9012"
 
-const platformdAddr = "/run/platformd/platformd.sock"
+func RunControlPlane(t *testing.T, pg *Postgres) {
+	ctx, cancel := context.WithCancel(context.Background())
+	pg.Run(t, ctx)
 
-func PlatformdClientConn(t *testing.T) *grpc.ClientConn {
-	conn, err := grpc.NewClient(
-		"unix-abstract:"+platformdAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	var (
+		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		server = controlplane.NewServer(logger, controlplane.Config{
+			ListenAddr:   ControlPlaneAddr,
+			DBConnString: pg.ConnString,
+		})
 	)
-	require.NoError(t, err)
-	return conn
+
+	t.Cleanup(func() {
+		cancel()
+	})
+
+	go func() {
+		require.NoError(t, server.Run(ctx))
+	}()
+
+	test.WaitServerReady(t, "tcp", ControlPlaneAddr, 20*time.Second)
 }

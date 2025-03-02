@@ -23,18 +23,7 @@ import (
 	"time"
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
-)
-
-var (
-	Instance = chunk.Instance{
-		ID:          "019533f6-a770-7903-8f99-88ae6b271663",
-		Chunk:       Chunk(),
-		ChunkFlavor: Chunk().Flavors[0],
-		Address:     netip.MustParseAddr("198.51.100.1"),
-		State:       chunk.InstanceStatePending,
-		CreatedAt:   time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
-		UpdatedAt:   time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
-	}
+	"github.com/spacechunks/explorer/controlplane/instance"
 )
 
 func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
@@ -79,4 +68,22 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 	}
 
 	return flavor
+}
+
+func Instance(mod ...func(i *instance.Instance)) instance.Instance {
+	ins := instance.Instance{
+		ID:          "019533f6-a770-7903-8f99-88ae6b271663",
+		Chunk:       Chunk(),
+		ChunkFlavor: Chunk().Flavors[0],
+		Address:     netip.MustParseAddr("198.51.100.1"),
+		State:       instance.StatePending,
+		CreatedAt:   time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
+		UpdatedAt:   time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
+	}
+
+	for _, fn := range mod {
+		fn(&ins)
+	}
+
+	return ins
 }

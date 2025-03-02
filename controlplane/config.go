@@ -16,28 +16,9 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package fixture
+package controlplane
 
-import (
-	"testing"
-
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
-	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
-)
-
-// grpc client does not accept @ as abstract socket identifier,
-// so do not include it in the address string.
-
-const platformdAddr = "/run/platformd/platformd.sock"
-
-func PlatformdClientConn(t *testing.T) *grpc.ClientConn {
-	conn, err := grpc.NewClient(
-		"unix-abstract:"+platformdAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	require.NoError(t, err)
-	return conn
+type Config struct {
+	ListenAddr   string
+	DBConnString string
 }

@@ -106,9 +106,9 @@ const createInstance = `-- name: CreateInstance :exec
  */
 
 INSERT INTO instances
-    (id, chunk_id, flavor_id, node_id, created_at, updated_at)
+    (id, chunk_id, flavor_id, node_id, state, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6)
+    ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateInstanceParams struct {
@@ -116,6 +116,7 @@ type CreateInstanceParams struct {
 	ChunkID   string
 	FlavorID  string
 	NodeID    string
+	State     InstanceState
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }
@@ -126,6 +127,7 @@ func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) 
 		arg.ChunkID,
 		arg.FlavorID,
 		arg.NodeID,
+		arg.State,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
