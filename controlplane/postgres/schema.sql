@@ -1,0 +1,174 @@
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: instance_state; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.instance_state AS ENUM (
+    'PENDING',
+    'STARTING',
+    'RUNNING',
+    'DELETING',
+    'DELETED'
+);
+
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: chunks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chunks (
+    id uuid NOT NULL,
+    name character varying(25) NOT NULL,
+    description character varying(50) NOT NULL,
+    tags character varying(25)[] NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: flavors; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flavors (
+    id uuid NOT NULL,
+    chunk_id uuid NOT NULL,
+    name character varying(25) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: instances; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.instances (
+    id uuid NOT NULL,
+    chunk_id uuid NOT NULL,
+    flavor_id uuid NOT NULL,
+    node_id uuid NOT NULL,
+    state public.instance_state DEFAULT 'PENDING'::public.instance_state NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: nodes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.nodes (
+    id uuid NOT NULL,
+    address inet NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.schema_migrations (
+    version character varying(128) NOT NULL
+);
+
+
+--
+-- Name: chunks chunks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chunks
+    ADD CONSTRAINT chunks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: flavors flavors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavors
+    ADD CONSTRAINT flavors_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: instances instances_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instances
+    ADD CONSTRAINT instances_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: nodes nodes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.nodes
+    ADD CONSTRAINT nodes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.schema_migrations
+    ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: flavors flavors_chunk_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavors
+    ADD CONSTRAINT flavors_chunk_id_fkey FOREIGN KEY (chunk_id) REFERENCES public.chunks(id);
+
+
+--
+-- Name: instances instances_chunk_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instances
+    ADD CONSTRAINT instances_chunk_id_fkey FOREIGN KEY (chunk_id) REFERENCES public.chunks(id);
+
+
+--
+-- Name: instances instances_flavor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instances
+    ADD CONSTRAINT instances_flavor_id_fkey FOREIGN KEY (flavor_id) REFERENCES public.flavors(id);
+
+
+--
+-- Name: instances instances_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instances
+    ADD CONSTRAINT instances_node_id_fkey FOREIGN KEY (node_id) REFERENCES public.nodes(id);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+
+--
+-- Dbmate schema migrations
+--
+
+INSERT INTO public.schema_migrations (version) VALUES
+    ('00000000000000');

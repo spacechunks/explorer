@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
 )
 
 // grpc client does not accept @ as abstract socket identifier,

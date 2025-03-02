@@ -26,21 +26,21 @@ import (
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/version"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
-	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
-	cni2 "github.com/spacechunks/explorer/cni"
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/cni"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-	handler, err := cni2.NewHandler()
+	handler, err := cni.NewHandler()
 	if err != nil {
 		log.Fatalf("failed to create handler: %v", err)
 	}
-	c := cni2.NewCNI(handler)
+	c := cni.NewCNI(handler)
 	skel.PluginMainFuncs(skel.CNIFuncs{
 		Add: func(args *skel.CmdArgs) error {
-			var conf cni2.Conf
+			var conf cni.Conf
 			if err := json.Unmarshal(args.StdinData, &conf); err != nil {
 				return fmt.Errorf("parse config: %v", err)
 			}
@@ -57,11 +57,11 @@ func main() {
 				args,
 				conf,
 				proxyv1alpha1.NewProxyServiceClient(conn),
-				workloadv1alpha1.NewWorkloadServiceClient(conn),
+				workloadv1alpha2.NewWorkloadServiceClient(conn),
 			)
 		},
 		Del: func(args *skel.CmdArgs) error {
-			var conf cni2.Conf
+			var conf cni.Conf
 			if err := json.Unmarshal(args.StdinData, &conf); err != nil {
 				return fmt.Errorf("parse config: %v", err)
 			}
@@ -78,7 +78,7 @@ func main() {
 				args,
 				conf,
 				proxyv1alpha1.NewProxyServiceClient(conn),
-				workloadv1alpha1.NewWorkloadServiceClient(conn),
+				workloadv1alpha2.NewWorkloadServiceClient(conn),
 			)
 		},
 	}, version.All, "netglue: provides networking for chunks")

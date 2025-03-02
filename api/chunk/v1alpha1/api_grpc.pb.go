@@ -7,21 +7,13 @@
 package v1alpha1
 
 import (
-	context "context"
 	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
 )
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 // Requires gRPC-Go v1.64.0 or later.
 const _ = grpc.SupportPackageIsVersion9
-
-const (
-	ChunkService_RunChunk_FullMethodName    = "/chunk.v1alpha1.ChunkService/RunChunk"
-	ChunkService_GetInstance_FullMethodName = "/chunk.v1alpha1.ChunkService/GetInstance"
-)
 
 // ChunkServiceClient is the client API for ChunkService service.
 //
@@ -37,8 +29,6 @@ const (
 // a running replica of a particular Chunk. This means that there can
 // be multiple replicas of a chunk by different users.
 type ChunkServiceClient interface {
-	RunChunk(ctx context.Context, in *RunChunkRequest, opts ...grpc.CallOption) (*RunChunkResponse, error)
-	GetInstance(ctx context.Context, in *GetInstanceRequest, opts ...grpc.CallOption) (*GetInstanceResponse, error)
 }
 
 type chunkServiceClient struct {
@@ -47,26 +37,6 @@ type chunkServiceClient struct {
 
 func NewChunkServiceClient(cc grpc.ClientConnInterface) ChunkServiceClient {
 	return &chunkServiceClient{cc}
-}
-
-func (c *chunkServiceClient) RunChunk(ctx context.Context, in *RunChunkRequest, opts ...grpc.CallOption) (*RunChunkResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RunChunkResponse)
-	err := c.cc.Invoke(ctx, ChunkService_RunChunk_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *chunkServiceClient) GetInstance(ctx context.Context, in *GetInstanceRequest, opts ...grpc.CallOption) (*GetInstanceResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetInstanceResponse)
-	err := c.cc.Invoke(ctx, ChunkService_GetInstance_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 // ChunkServiceServer is the server API for ChunkService service.
@@ -83,8 +53,6 @@ func (c *chunkServiceClient) GetInstance(ctx context.Context, in *GetInstanceReq
 // a running replica of a particular Chunk. This means that there can
 // be multiple replicas of a chunk by different users.
 type ChunkServiceServer interface {
-	RunChunk(context.Context, *RunChunkRequest) (*RunChunkResponse, error)
-	GetInstance(context.Context, *GetInstanceRequest) (*GetInstanceResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
 
@@ -95,12 +63,6 @@ type ChunkServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedChunkServiceServer struct{}
 
-func (UnimplementedChunkServiceServer) RunChunk(context.Context, *RunChunkRequest) (*RunChunkResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RunChunk not implemented")
-}
-func (UnimplementedChunkServiceServer) GetInstance(context.Context, *GetInstanceRequest) (*GetInstanceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetInstance not implemented")
-}
 func (UnimplementedChunkServiceServer) mustEmbedUnimplementedChunkServiceServer() {}
 func (UnimplementedChunkServiceServer) testEmbeddedByValue()                      {}
 
@@ -122,58 +84,13 @@ func RegisterChunkServiceServer(s grpc.ServiceRegistrar, srv ChunkServiceServer)
 	s.RegisterService(&ChunkService_ServiceDesc, srv)
 }
 
-func _ChunkService_RunChunk_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RunChunkRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChunkServiceServer).RunChunk(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ChunkService_RunChunk_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChunkServiceServer).RunChunk(ctx, req.(*RunChunkRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ChunkService_GetInstance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetInstanceRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChunkServiceServer).GetInstance(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ChunkService_GetInstance_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChunkServiceServer).GetInstance(ctx, req.(*GetInstanceRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // ChunkService_ServiceDesc is the grpc.ServiceDesc for ChunkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ChunkService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "chunk.v1alpha1.ChunkService",
 	HandlerType: (*ChunkServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "RunChunk",
-			Handler:    _ChunkService_RunChunk_Handler,
-		},
-		{
-			MethodName: "GetInstance",
-			Handler:    _ChunkService_GetInstance_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "chunk/v1alpha1/api.proto",
+	Methods:     []grpc.MethodDesc{},
+	Streams:     []grpc.StreamDesc{},
+	Metadata:    "chunk/v1alpha1/api.proto",
 }
