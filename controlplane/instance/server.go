@@ -20,28 +20,45 @@ package discovery
 
 import (
 	"context"
+	"fmt"
 
 	discoveryv1alpha1 "github.com/spacechunks/explorer/api/discovery/v1alpha1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type Server struct {
 	discoveryv1alpha1.UnimplementedDiscoveryServiceServer
+	svc Service
 }
 
-func NewServer() *Server {
-	return &Server{}
+func NewServer(service Service) *Server {
+	return &Server{
+		svc: service,
+	}
 }
 
 func (s *Server) DiscoverWorkloads(
-	context.Context,
-	*discoveryv1alpha1.DiscoverWorkloadRequest,
+	ctx context.Context,
+	req *discoveryv1alpha1.DiscoverWorkloadRequest,
 ) (*discoveryv1alpha1.DiscoverWorkloadResponse, error) {
-	return &discoveryv1alpha1.DiscoverWorkloadResponse{}, nil
+	if req.GetNodeKey() == "" {
+		return nil, status.Error(codes.InvalidArgument, "node key is required")
+	}
+
+	wls, err := s.svc.DiscoverWorkloads(ctx, req.GetNodeKey())
+	if err != nil {
+		return nil, fmt.Errorf("discovering workloads: %w", err)
+	}
+
+	return &discoveryv1alpha1.DiscoverWorkloadResponse{
+		Workloads: wls,
+	}, nil
 }
 
-func (s *Server) ReportWorkloadState(
+func (s *Server) ReceiveWorkloadStatusReports(
 	context.Context,
-	*discoveryv1alpha1.ReportWorkloadStateRequest,
-) (*discoveryv1alpha1.ReportWorkloadStateResponse, error) {
-	return &discoveryv1alpha1.ReportWorkloadStateResponse{}, nil
+	*discoveryv1alpha1.ReceiveWorkloadStatusReportsRequest,
+) (*discoveryv1alpha1.ReceiveWorkloadStatusReportResponse, error) {
+	return &discoveryv1alpha1.ReceiveWorkloadStatusReportResponse{}, nil
 }

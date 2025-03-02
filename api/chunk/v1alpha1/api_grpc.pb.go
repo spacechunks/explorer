@@ -19,8 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChunkService_RunChunk_FullMethodName    = "/chunk.v1alpha1.ChunkService/RunChunk"
-	ChunkService_GetInstance_FullMethodName = "/chunk.v1alpha1.ChunkService/GetInstance"
+	ChunkService_RunChunk_FullMethodName = "/chunk.v1alpha1.ChunkService/RunChunk"
 )
 
 // ChunkServiceClient is the client API for ChunkService service.
@@ -38,7 +37,6 @@ const (
 // be multiple replicas of a chunk by different users.
 type ChunkServiceClient interface {
 	RunChunk(ctx context.Context, in *RunChunkRequest, opts ...grpc.CallOption) (*RunChunkResponse, error)
-	GetInstance(ctx context.Context, in *GetInstanceRequest, opts ...grpc.CallOption) (*GetInstanceResponse, error)
 }
 
 type chunkServiceClient struct {
@@ -53,16 +51,6 @@ func (c *chunkServiceClient) RunChunk(ctx context.Context, in *RunChunkRequest, 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RunChunkResponse)
 	err := c.cc.Invoke(ctx, ChunkService_RunChunk_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *chunkServiceClient) GetInstance(ctx context.Context, in *GetInstanceRequest, opts ...grpc.CallOption) (*GetInstanceResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetInstanceResponse)
-	err := c.cc.Invoke(ctx, ChunkService_GetInstance_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +72,6 @@ func (c *chunkServiceClient) GetInstance(ctx context.Context, in *GetInstanceReq
 // be multiple replicas of a chunk by different users.
 type ChunkServiceServer interface {
 	RunChunk(context.Context, *RunChunkRequest) (*RunChunkResponse, error)
-	GetInstance(context.Context, *GetInstanceRequest) (*GetInstanceResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
 
@@ -97,9 +84,6 @@ type UnimplementedChunkServiceServer struct{}
 
 func (UnimplementedChunkServiceServer) RunChunk(context.Context, *RunChunkRequest) (*RunChunkResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunChunk not implemented")
-}
-func (UnimplementedChunkServiceServer) GetInstance(context.Context, *GetInstanceRequest) (*GetInstanceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetInstance not implemented")
 }
 func (UnimplementedChunkServiceServer) mustEmbedUnimplementedChunkServiceServer() {}
 func (UnimplementedChunkServiceServer) testEmbeddedByValue()                      {}
@@ -140,24 +124,6 @@ func _ChunkService_RunChunk_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChunkService_GetInstance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetInstanceRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChunkServiceServer).GetInstance(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ChunkService_GetInstance_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChunkServiceServer).GetInstance(ctx, req.(*GetInstanceRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // ChunkService_ServiceDesc is the grpc.ServiceDesc for ChunkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -169,9 +135,191 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "RunChunk",
 			Handler:    _ChunkService_RunChunk_Handler,
 		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "chunk/v1alpha1/api.proto",
+}
+
+const (
+	InstanceService_GetInstance_FullMethodName                  = "/chunk.v1alpha1.InstanceService/GetInstance"
+	InstanceService_DiscoverInstances_FullMethodName            = "/chunk.v1alpha1.InstanceService/DiscoverInstances"
+	InstanceService_ReceiveWorkloadStatusReports_FullMethodName = "/chunk.v1alpha1.InstanceService/ReceiveWorkloadStatusReports"
+)
+
+// InstanceServiceClient is the client API for InstanceService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type InstanceServiceClient interface {
+	GetInstance(ctx context.Context, in *GetInstanceRequest, opts ...grpc.CallOption) (*GetInstanceResponse, error)
+	// DiscoverWorkloads returns all workloads that have been scheduled to a node for
+	// creation or removal. Platformd identifies itself using its unique node key.
+	DiscoverInstances(ctx context.Context, in *DiscoverInstanceRequest, opts ...grpc.CallOption) (*DiscoverInstanceResponse, error)
+	// ReceiveWorkloadStatusReports is intended to be called by platformd in order to report
+	// status updates back to the control plane.
+	ReceiveWorkloadStatusReports(ctx context.Context, in *ReceiveWorkloadStatusReportsRequest, opts ...grpc.CallOption) (*ReceiveWorkloadStatusReportResponse, error)
+}
+
+type instanceServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewInstanceServiceClient(cc grpc.ClientConnInterface) InstanceServiceClient {
+	return &instanceServiceClient{cc}
+}
+
+func (c *instanceServiceClient) GetInstance(ctx context.Context, in *GetInstanceRequest, opts ...grpc.CallOption) (*GetInstanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetInstanceResponse)
+	err := c.cc.Invoke(ctx, InstanceService_GetInstance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *instanceServiceClient) DiscoverInstances(ctx context.Context, in *DiscoverInstanceRequest, opts ...grpc.CallOption) (*DiscoverInstanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DiscoverInstanceResponse)
+	err := c.cc.Invoke(ctx, InstanceService_DiscoverInstances_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *instanceServiceClient) ReceiveWorkloadStatusReports(ctx context.Context, in *ReceiveWorkloadStatusReportsRequest, opts ...grpc.CallOption) (*ReceiveWorkloadStatusReportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReceiveWorkloadStatusReportResponse)
+	err := c.cc.Invoke(ctx, InstanceService_ReceiveWorkloadStatusReports_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// InstanceServiceServer is the server API for InstanceService service.
+// All implementations must embed UnimplementedInstanceServiceServer
+// for forward compatibility.
+type InstanceServiceServer interface {
+	GetInstance(context.Context, *GetInstanceRequest) (*GetInstanceResponse, error)
+	// DiscoverWorkloads returns all workloads that have been scheduled to a node for
+	// creation or removal. Platformd identifies itself using its unique node key.
+	DiscoverInstances(context.Context, *DiscoverInstanceRequest) (*DiscoverInstanceResponse, error)
+	// ReceiveWorkloadStatusReports is intended to be called by platformd in order to report
+	// status updates back to the control plane.
+	ReceiveWorkloadStatusReports(context.Context, *ReceiveWorkloadStatusReportsRequest) (*ReceiveWorkloadStatusReportResponse, error)
+	mustEmbedUnimplementedInstanceServiceServer()
+}
+
+// UnimplementedInstanceServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedInstanceServiceServer struct{}
+
+func (UnimplementedInstanceServiceServer) GetInstance(context.Context, *GetInstanceRequest) (*GetInstanceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetInstance not implemented")
+}
+func (UnimplementedInstanceServiceServer) DiscoverInstances(context.Context, *DiscoverInstanceRequest) (*DiscoverInstanceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DiscoverInstances not implemented")
+}
+func (UnimplementedInstanceServiceServer) ReceiveWorkloadStatusReports(context.Context, *ReceiveWorkloadStatusReportsRequest) (*ReceiveWorkloadStatusReportResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReceiveWorkloadStatusReports not implemented")
+}
+func (UnimplementedInstanceServiceServer) mustEmbedUnimplementedInstanceServiceServer() {}
+func (UnimplementedInstanceServiceServer) testEmbeddedByValue()                         {}
+
+// UnsafeInstanceServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to InstanceServiceServer will
+// result in compilation errors.
+type UnsafeInstanceServiceServer interface {
+	mustEmbedUnimplementedInstanceServiceServer()
+}
+
+func RegisterInstanceServiceServer(s grpc.ServiceRegistrar, srv InstanceServiceServer) {
+	// If the following call pancis, it indicates UnimplementedInstanceServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&InstanceService_ServiceDesc, srv)
+}
+
+func _InstanceService_GetInstance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInstanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).GetInstance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_GetInstance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).GetInstance(ctx, req.(*GetInstanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InstanceService_DiscoverInstances_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DiscoverInstanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).DiscoverInstances(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_DiscoverInstances_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).DiscoverInstances(ctx, req.(*DiscoverInstanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InstanceService_ReceiveWorkloadStatusReports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReceiveWorkloadStatusReportsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).ReceiveWorkloadStatusReports(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_ReceiveWorkloadStatusReports_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).ReceiveWorkloadStatusReports(ctx, req.(*ReceiveWorkloadStatusReportsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// InstanceService_ServiceDesc is the grpc.ServiceDesc for InstanceService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var InstanceService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "chunk.v1alpha1.InstanceService",
+	HandlerType: (*InstanceServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "GetInstance",
-			Handler:    _ChunkService_GetInstance_Handler,
+			Handler:    _InstanceService_GetInstance_Handler,
+		},
+		{
+			MethodName: "DiscoverInstances",
+			Handler:    _InstanceService_DiscoverInstances_Handler,
+		},
+		{
+			MethodName: "ReceiveWorkloadStatusReports",
+			Handler:    _InstanceService_ReceiveWorkloadStatusReports_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -5,6 +5,7 @@ package chunk.v1alpha1;
 option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
 
 import "chunk/v1alpha1/types.proto";
+import "platformd/workload/v1alpha2/types.proto";
 import "google/protobuf/timestamp.proto";
 
 // ChunkService provides the public api for interacting with Chunks
@@ -19,11 +20,6 @@ import "google/protobuf/timestamp.proto";
 service ChunkService {
   rpc RunChunk(RunChunkRequest) returns (RunChunkResponse);
   // list chunks
-
-
-  rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse);
-  // stop instance
-  // list instances
 }
 
 message RunChunkRequest {
@@ -31,7 +27,23 @@ message RunChunkRequest {
 }
 
 message RunChunkResponse {
-  chunk.v1alpha1.Instance instance = 1;
+  Instance instance = 1;
+}
+
+/*
+ * Instances
+ */
+
+service InstanceService {
+  rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse);
+
+  // DiscoverWorkloads returns all workloads that have been scheduled to a node for
+  // creation or removal. Platformd identifies itself using its unique node key.
+  rpc DiscoverInstances(DiscoverInstanceRequest) returns (DiscoverInstanceResponse);
+
+  // ReceiveWorkloadStatusReports is intended to be called by platformd in order to report
+  // status updates back to the control plane.
+  rpc ReceiveWorkloadStatusReports(ReceiveWorkloadStatusReportsRequest) returns (ReceiveWorkloadStatusReportResponse);
 }
 
 message GetInstanceRequest {
@@ -39,5 +51,19 @@ message GetInstanceRequest {
 }
 
 message GetInstanceResponse {
-  chunk.v1alpha1.Instance instance = 1;
+  Instance instance = 1;
 }
+
+message DiscoverInstanceRequest {
+  string node_key = 1;
+}
+
+message DiscoverInstanceResponse {
+  repeated Instance instances = 1;
+}
+
+message ReceiveWorkloadStatusReportsRequest {
+  repeated platformd.workload.v1alpha2.WorkloadStatus items = 1;
+}
+
+message ReceiveWorkloadStatusReportResponse {}

@@ -32,9 +32,8 @@ message Workload {
   // the network namespace' mode as per [runtimev1.NamespaceMode].
   int32 network_namespace_mode = 8;
 
-  // port allocated to the workload. workload can be accessed from the
-  // internet using this port.
-  uint32 port = 9;
+  // status
+  WorkloadState state = 9;
 }
 
 enum WorkloadState {
@@ -46,9 +45,10 @@ enum WorkloadState {
 }
 
 message WorkloadStatus {
-  WorkloadState state = 1;
+  string id = 1;
+  WorkloadState state = 2;
 
   // port allocated for the workload. programs binding
   // to this port will be reachable from the internet.
-  uint32 port = 2;
+  uint32 port = 3;
 }

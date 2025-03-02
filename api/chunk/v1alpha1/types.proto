@@ -1,3 +1,21 @@
+/*
+ Explorer Platform, a platform for hosting and discovering Minecraft servers.
+ Copyright (C) 2024 Yannic Rieger <oss@76k.io>
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Affero General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Affero General Public License for more details.
+
+ You should have received a copy of the GNU Affero General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 edition = "2023";
 
 package chunk.v1alpha1;
@@ -6,25 +24,12 @@ option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
 
 import "google/protobuf/timestamp.proto";
 
-enum State {
+enum InstanceState {
   PENDING = 0;
   STARTING = 1;
   RUNNING = 2;
   DELETING = 3;
   DELETED = 4;
-}
-
-// Instance defines a running replica of a specific chunk.
-message Instance {
-  string id = 1;
-
-  Chunk chunk = 2;
-
-  // Address contains IP and port in the format of
-  // <ip>:port
-  string address = 3;
-
-  State state = 4;
 }
 
 // Chunk defines the configuration and metadata
@@ -48,4 +53,21 @@ message Chunk {
   google.protobuf.Timestamp created_at = 6;
 
   google.protobuf.Timestamp updated_at = 7;
+}
+
+// Instance defines a running replica of a specific chunk.
+message Instance {
+  string id = 1;
+
+  chunk.v1alpha1.Chunk chunk = 2;
+
+  // Address contains IP and port in the format of
+  // <ip>:port
+  string address = 3;
+
+  InstanceState state = 4;
+
+
+  // stop instance
+  // list instances
 }
