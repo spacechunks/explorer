@@ -20,52 +20,72 @@ package instance
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sort"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/controlplane/chunk"
 )
 
 type Service interface {
-	RunChunk(ctx context.Context, id string) (Instance, error)
+	RunChunk(ctx context.Context, chunkID string, flavorID string) (Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]Instance, error)
 }
 
 type svc struct {
-	logger *slog.Logger
-	repo   Repository
+	logger       *slog.Logger
+	repo         Repository
+	chunkService chunk.Service
 }
 
-func NewService(logger *slog.Logger, repo Repository) Service {
+func NewService(logger *slog.Logger, repo Repository, chunkService chunk.Service) Service {
 	return &svc{
-		logger: logger,
-		repo:   repo,
+		logger:       logger,
+		repo:         repo,
+		chunkService: chunkService,
 	}
 }
 
-func (s *svc) RunChunk(ctx context.Context, id string) (Instance, error) {
-	/*
-		c, err := s.repo.GetChunkByID(ctx, id)
-		if err != nil {
-			return resource.Instance{}, fmt.Errorf("chunk by id: %w", err)
+func (s *svc) RunChunk(ctx context.Context, chunkID string, flavorID string) (Instance, error) {
+	// FIXME: hardcoded for now, determine node to schedule instance to later
+	const nodeID = "01955772-c4c5-75db-babd-dca81f6e164e"
+
+	c, err := s.chunkService.GetChunk(ctx, chunkID)
+	if err != nil {
+		return Instance{}, fmt.Errorf("chunk by id: %w", err)
+	}
+
+	var flavor chunk.Flavor
+	for _, f := range c.Flavors {
+		if f.ID == flavorID {
+			flavor = f
+			break
 		}
+	}
 
-		// TODO: determine node to schedule instance to
+	if flavor == (chunk.Flavor{}) {
+		return Instance{}, fmt.Errorf("flavor not found")
+	}
 
-		instanceID, err := uuid.NewV7()
-		if err != nil {
-			return resource.Instance{}, fmt.Errorf("instance id: %w", err)
-		}
+	instanceID, err := uuid.NewV7()
+	if err != nil {
+		return Instance{}, fmt.Errorf("instance id: %w", err)
+	}
 
-		ins, err := s.repo.CreateInstance(ctx, resource.Instance{
-			ID:    instanceID.String(),
-			Chunk: c,
-		}, "")
-		if err != nil {
-			return Instance{}, fmt.Errorf("create instance: %w", err)
-		}*/
-	return Instance{}, nil
+	ins, err := s.repo.CreateInstance(ctx, Instance{
+		ID:          instanceID.String(),
+		Chunk:       c,
+		ChunkFlavor: flavor,
+		State:       StatePending,
+	}, nodeID)
+	if err != nil {
+		return Instance{}, fmt.Errorf("create instance: %w", err)
+	}
+
+	return ins, nil
 }
 
 func (s *svc) DiscoverInstances(ctx context.Context, nodeID string) ([]Instance, error) {
@@ -92,3 +112,5 @@ func (s *svc) ReceiveWorkloadStateReports(status []v1alpha2.WorkloadStatus) erro
 
 	return nil
 }
+
+// TODO: tests

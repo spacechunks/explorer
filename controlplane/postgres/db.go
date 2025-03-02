@@ -20,12 +20,15 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
+
+var ErrNotFound = errors.New("not found")
 
 type DB struct {
 	logger *slog.Logger

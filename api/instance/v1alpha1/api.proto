@@ -28,9 +28,15 @@ import "google/protobuf/timestamp.proto";
 
 
 service InstanceService {
+
+  // RunChunk creates an instance for a specific flavor of a chunk
+  // and schedules it to be run on a node. The connection information
+  // of the returned instance will only be partially set, because the
+  // port will not be allocated at this point. However, the IP address
+  // is set.
   rpc RunChunk(RunChunkRequest) returns (RunChunkResponse);
 
-  // DiscoverWorkloads returns all workloads that have been scheduled to a node for
+  // DiscoverInstances returns all workloads that have been scheduled to a node for
   // creation or removal. Platformd identifies itself using its unique node key.
   rpc DiscoverInstances(DiscoverInstanceRequest) returns (DiscoverInstanceResponse);
 
@@ -44,7 +50,8 @@ service InstanceService {
 }
 
 message RunChunkRequest {
-  string id = 1;
+  string chunk_id = 1;
+  string flavor_id = 2;
 }
 
 message RunChunkResponse {

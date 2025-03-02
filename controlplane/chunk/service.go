@@ -25,6 +25,7 @@ import (
 
 type Service interface {
 	CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
+	GetChunk(ctx context.Context, id string) (Chunk, error)
 }
 
 type svc struct {
@@ -43,4 +44,12 @@ func (s *svc) CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error) {
 		return Chunk{}, fmt.Errorf("create chunk: %w", err)
 	}
 	return ret, nil
+}
+
+func (s *svc) GetChunk(ctx context.Context, id string) (Chunk, error) {
+	c, err := s.repo.GetChunkByID(ctx, id)
+	if err != nil {
+		return Chunk{}, err
+	}
+	return c, nil
 }

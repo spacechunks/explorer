@@ -28,8 +28,13 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type InstanceServiceClient interface {
+	// RunChunk creates an instance for a specific flavor of a chunk
+	// and schedules it to be run on a node. The connection information
+	// of the returned instance will only be partially set, because the
+	// port will not be allocated at this point. However, the IP address
+	// is set.
 	RunChunk(ctx context.Context, in *RunChunkRequest, opts ...grpc.CallOption) (*RunChunkResponse, error)
-	// DiscoverWorkloads returns all workloads that have been scheduled to a node for
+	// DiscoverInstances returns all workloads that have been scheduled to a node for
 	// creation or removal. Platformd identifies itself using its unique node key.
 	DiscoverInstances(ctx context.Context, in *DiscoverInstanceRequest, opts ...grpc.CallOption) (*DiscoverInstanceResponse, error)
 	// ReceiveWorkloadStatusReports is intended to be called by platformd in order to report
@@ -79,8 +84,13 @@ func (c *instanceServiceClient) ReceiveWorkloadStatusReports(ctx context.Context
 // All implementations must embed UnimplementedInstanceServiceServer
 // for forward compatibility.
 type InstanceServiceServer interface {
+	// RunChunk creates an instance for a specific flavor of a chunk
+	// and schedules it to be run on a node. The connection information
+	// of the returned instance will only be partially set, because the
+	// port will not be allocated at this point. However, the IP address
+	// is set.
 	RunChunk(context.Context, *RunChunkRequest) (*RunChunkResponse, error)
-	// DiscoverWorkloads returns all workloads that have been scheduled to a node for
+	// DiscoverInstances returns all workloads that have been scheduled to a node for
 	// creation or removal. Platformd identifies itself using its unique node key.
 	DiscoverInstances(context.Context, *DiscoverInstanceRequest) (*DiscoverInstanceResponse, error)
 	// ReceiveWorkloadStatusReports is intended to be called by platformd in order to report

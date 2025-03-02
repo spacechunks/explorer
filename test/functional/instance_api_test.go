@@ -20,14 +20,18 @@ package functional
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
+	"github.com/spacechunks/explorer/controlplane/postgres"
+	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/functional/fixture"
 	"github.com/stretchr/testify/require"
@@ -36,7 +40,97 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func TestRunChunk(t *testing.T) {
+	tests := []struct {
+		name     string
+		chunkID  string
+		flavorID string
+		expected *instancev1alpha1.Instance
+		err      error
+	}{
+		{
+			name:     "can run chunk",
+			chunkID:  fixture.Chunk().ID,
+			flavorID: fixture.Chunk().Flavors[0].ID,
+			expected: &instancev1alpha1.Instance{
+				Id: nil,
+				Chunk: &chunkv1alpha1.Chunk{
+					Id:          ptr.Pointer(fixture.Chunk().ID),
+					Name:        ptr.Pointer(fixture.Chunk().Name),
+					Description: ptr.Pointer(fixture.Chunk().Description),
+					Tags:        fixture.Chunk().Tags,
+					CreatedAt:   timestamppb.New(fixture.Chunk().CreatedAt),
+					UpdatedAt:   timestamppb.New(fixture.Chunk().UpdatedAt),
+				},
+				Flavor: &chunkv1alpha1.Flavor{
+					Id:        ptr.Pointer(fixture.Chunk().Flavors[0].ID),
+					Name:      ptr.Pointer(fixture.Chunk().Flavors[0].Name),
+					CreatedAt: timestamppb.New(fixture.Chunk().Flavors[0].CreatedAt),
+					UpdatedAt: timestamppb.New(fixture.Chunk().Flavors[0].UpdatedAt),
+				},
+				Ip:    ptr.Pointer("198.51.100.1"),
+				State: ptr.Pointer(instancev1alpha1.InstanceState_PENDING),
+			},
+		},
+		{
+			name:    "chunk not found",
+			chunkID: "93a3ee8a-4a6d-4f4f-b282-dcce199033c8",
+			err:     postgres.ErrNotFound,
+		},
+		{
+			name: "flavor not found",
+			err:  errors.New("flavor not found"), // FIXME: better error handling
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx    = context.Background()
+				pg     = fixture.NewPostgres()
+				nodeID = "01955772-c4c5-75db-babd-dca81f6e164e"
+			)
+
+			fixture.RunControlPlane(t, pg)
+
+			// FIXME: find better way to seed nodes
+			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
+			require.NoError(t, err)
+
+			_, err = pg.DB.CreateChunk(ctx, fixture.Chunk())
+			require.NoError(t, err)
+
+			_, err = pg.DB.CreateFlavor(ctx, fixture.Chunk().Flavors[0], fixture.Chunk().ID)
+			require.NoError(t, err)
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := instancev1alpha1.NewInstanceServiceClient(conn)
+
+			resp, err := client.RunChunk(ctx, &instancev1alpha1.RunChunkRequest{
+				ChunkId:  &tt.chunkID,
+				FlavorId: &tt.flavorID,
+			})
+
+			if tt.err == nil {
+				require.NoError(t, err)
+				tt.expected.Id = resp.GetInstance().Id
+				if d := cmp.Diff(tt.expected, resp.GetInstance(), protocmp.Transform()); d != "" {
+					t.Fatalf("diff (-want +got):\n%s", d)
+				}
+				return
+			}
+
+			require.ErrorAs(t, err, &tt.err)
+		})
+	}
+}
 
 func TestDiscoverInstances(t *testing.T) {
 	nodeID := test.NewUUIDv7(t)

@@ -38,7 +38,15 @@ func FromDomain(ins Instance) *instancev1alpha1.Instance {
 			CreatedAt:   timestamppb.New(ins.Chunk.CreatedAt),
 			UpdatedAt:   timestamppb.New(ins.Chunk.UpdatedAt),
 		},
-		Address: ptr.String(ins.Address.String()),
-		State:   &state,
+		Flavor: &chunkv1alpha1.Flavor{
+			Id:        &ins.ChunkFlavor.ID,
+			Name:      &ins.ChunkFlavor.Name,
+			CreatedAt: timestamppb.New(ins.ChunkFlavor.CreatedAt),
+			UpdatedAt: timestamppb.New(ins.ChunkFlavor.UpdatedAt),
+		},
+		Ip:    ptr.Pointer(ins.Address.String()),
+		State: &state,
 	}
 }
+
+// TODO: tests

@@ -29,13 +29,27 @@ import (
 
 type Server struct {
 	instancev1alpha1.UnimplementedInstanceServiceServer
-	svc Service
+	insService Service
 }
 
-func NewServer(service Service) *Server {
+func NewServer(insService Service) *Server {
 	return &Server{
-		svc: service,
+		insService: insService,
 	}
+}
+
+func (s *Server) RunChunk(
+	ctx context.Context,
+	req *instancev1alpha1.RunChunkRequest,
+) (*instancev1alpha1.RunChunkResponse, error) {
+	ins, err := s.insService.RunChunk(ctx, req.GetChunkId(), req.GetFlavorId())
+	if err != nil {
+		return nil, fmt.Errorf("run chunk: %w", err)
+	}
+
+	return &instancev1alpha1.RunChunkResponse{
+		Instance: FromDomain(ins),
+	}, nil
 }
 
 func (s *Server) DiscoverInstances(
@@ -46,7 +60,7 @@ func (s *Server) DiscoverInstances(
 		return nil, status.Error(codes.InvalidArgument, "node key is required")
 	}
 
-	instances, err := s.svc.DiscoverInstances(ctx, req.GetNodeKey())
+	instances, err := s.insService.DiscoverInstances(ctx, req.GetNodeKey())
 	if err != nil {
 		return nil, fmt.Errorf("discovering instances: %w", err)
 	}
@@ -60,3 +74,5 @@ func (s *Server) DiscoverInstances(
 		Instances: ret,
 	}, nil
 }
+
+// TODO: tests

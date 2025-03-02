@@ -39,9 +39,11 @@ message Instance {
 
   chunk.v1alpha1.Chunk chunk = 2;
 
-  // Address contains IP and port in the format of
-  // <ip>:port
-  string address = 3;
+  chunk.v1alpha1.Flavor flavor = 3;
 
-  InstanceState state = 4;
+  string ip = 4;
+
+  uint32 port = 5;
+
+  InstanceState state = 6;
 }

@@ -103,6 +103,10 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 			return err
 		}
 
+		if len(rows) == 0 {
+			return ErrNotFound
+		}
+
 		var (
 			row     = rows[0]
 			flavors = make([]chunk.Flavor, 0, len(rows))

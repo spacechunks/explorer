@@ -56,10 +56,10 @@ func (s *Server) Run(ctx context.Context) error {
 	var (
 		db           = postgres.NewDB(s.logger, pool)
 		grpcServer   = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
-		insService   = instance.NewService(s.logger, db)
-		insServer    = instance.NewServer(insService)
 		chunkService = chunk.NewService(db)
 		chunkServer  = chunk.NewServer(chunkService)
+		insService   = instance.NewService(s.logger, db, chunkService)
+		insServer    = instance.NewServer(insService)
 	)
 
 	instancev1alpha1.RegisterInstanceServiceServer(grpcServer, insServer)
