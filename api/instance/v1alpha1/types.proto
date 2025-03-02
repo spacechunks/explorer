@@ -18,22 +18,30 @@
 
 edition = "2023";
 
-package chunk.v1alpha1;
+package instance.v1alpha1;
 
-option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
+option go_package = "github.com/spacechunks/explorer/api/instance/v1alpha1";
 
 import "chunk/v1alpha1/types.proto";
+import "google/protobuf/timestamp.proto";
 
-// ChunkService provides the public api for interacting with Chunks
-// and Instances of Chunks.
-//
-// We differentiate between Chunks and Instances. Chunks define the
-// configuration and provide metadata, like a name, description tags
-// and so on, that describe the experience the user can expect when
-// attempting to run the chunk. Instances on the other hand, describe
-// a running replica of a particular Chunk. This means that there can
-// be multiple replicas of a chunk by different users.
-service ChunkService {
-  // create chunk
-  // list chunks
+enum InstanceState {
+  PENDING = 0;
+  STARTING = 1;
+  RUNNING = 2;
+  DELETING = 3;
+  DELETED = 4;
+}
+
+// Instance defines a running replica of a specific chunk.
+message Instance {
+  string id = 1;
+
+  chunk.v1alpha1.Chunk chunk = 2;
+
+  // Address contains IP and port in the format of
+  // <ip>:port
+  string address = 3;
+
+  InstanceState state = 4;
 }

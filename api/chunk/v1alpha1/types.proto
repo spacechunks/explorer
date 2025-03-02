@@ -24,14 +24,6 @@ option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
 
 import "google/protobuf/timestamp.proto";
 
-enum InstanceState {
-  PENDING = 0;
-  STARTING = 1;
-  RUNNING = 2;
-  DELETING = 3;
-  DELETED = 4;
-}
-
 // Chunk defines the configuration and metadata
 // of user-generated content. This can be anything
 // from a minigame to a freebuild server.
@@ -53,21 +45,4 @@ message Chunk {
   google.protobuf.Timestamp created_at = 6;
 
   google.protobuf.Timestamp updated_at = 7;
-}
-
-// Instance defines a running replica of a specific chunk.
-message Instance {
-  string id = 1;
-
-  chunk.v1alpha1.Chunk chunk = 2;
-
-  // Address contains IP and port in the format of
-  // <ip>:port
-  string address = 3;
-
-  InstanceState state = 4;
-
-
-  // stop instance
-  // list instances
 }
