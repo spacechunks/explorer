@@ -22,6 +22,7 @@ define start_db
 		|| docker stop testdb
 endef
 
+functests: ARGS ?= ./test/functional/...
 dbschema: export DATABASE_URL := $(DATABASE_URL)
 testdb: export DATABASE_URL := $(DATABASE_URL)
 dbgen: dbschema sqlc
@@ -84,7 +85,7 @@ functests: $(CNI_PLUGINS)
 				   FUNCTESTS_POSTGRES_PASS=test123 \
 				   FUNCTESTS_POSTGRES_DB=explorer \
 				   CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin \
-				   go test -v ./test/functional/...
+				   go test -v $(ARGS)
 
 $(REPACK_IMG):
 	@docker build -t repack-img -f $(IMG_TESTDATA_DIR)/Dockerfile.repack $(IMG_TESTDATA_DIR)
