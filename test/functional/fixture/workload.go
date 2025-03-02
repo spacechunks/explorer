@@ -32,12 +32,12 @@ import (
 
 func Workload() workloadv1alpha2.Workload {
 	return workloadv1alpha2.Workload{
-		Name:                 ptr.String("my-chunk"),
-		BaseImageUrl:         ptr.String("my-image"),
-		Namespace:            ptr.String("chunk-ns"),
-		Hostname:             ptr.String("my-chunk"),
+		Name:                 ptr.Pointer("my-chunk"),
+		BaseImageUrl:         ptr.Pointer("my-image"),
+		Namespace:            ptr.Pointer("chunk-ns"),
+		Hostname:             ptr.Pointer("my-chunk"),
 		Labels:               map[string]string{"k": "v"},
-		NetworkNamespaceMode: ptr.Int32(2),
+		NetworkNamespaceMode: ptr.Pointer(int32(2)),
 	}
 }
 

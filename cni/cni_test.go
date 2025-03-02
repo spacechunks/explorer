@@ -117,11 +117,11 @@ func TestExecAdd(t *testing.T) {
 
 				wlc.EXPECT().
 					WorkloadStatus(mocky.Anything, &workloadv1alpha2.WorkloadStatusRequest{
-						Id: ptr.String("uuidv7"),
+						Id: ptr.Pointer("uuidv7"),
 					}).
 					Return(&workloadv1alpha2.WorkloadStatusResponse{
 						Status: &workloadv1alpha2.WorkloadStatus{
-							Port: ptr.UInt32(port),
+							Port: ptr.Pointer(port),
 						},
 					}, nil)
 
