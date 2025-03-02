@@ -16,19 +16,19 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package discovery
+package instance
 
 import (
 	"context"
 	"fmt"
 
-	discoveryv1alpha1 "github.com/spacechunks/explorer/api/discovery/v1alpha1"
+	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type Server struct {
-	discoveryv1alpha1.UnimplementedDiscoveryServiceServer
+	instancev1alpha1.UnimplementedInstanceServiceServer
 	svc Service
 }
 
@@ -38,27 +38,25 @@ func NewServer(service Service) *Server {
 	}
 }
 
-func (s *Server) DiscoverWorkloads(
+func (s *Server) DiscoverInstances(
 	ctx context.Context,
-	req *discoveryv1alpha1.DiscoverWorkloadRequest,
-) (*discoveryv1alpha1.DiscoverWorkloadResponse, error) {
+	req *instancev1alpha1.DiscoverInstanceRequest,
+) (*instancev1alpha1.DiscoverInstanceResponse, error) {
 	if req.GetNodeKey() == "" {
 		return nil, status.Error(codes.InvalidArgument, "node key is required")
 	}
 
-	wls, err := s.svc.DiscoverWorkloads(ctx, req.GetNodeKey())
+	instances, err := s.svc.DiscoverInstances(ctx, req.GetNodeKey())
 	if err != nil {
-		return nil, fmt.Errorf("discovering workloads: %w", err)
+		return nil, fmt.Errorf("discovering instances: %w", err)
 	}
 
-	return &discoveryv1alpha1.DiscoverWorkloadResponse{
-		Workloads: wls,
-	}, nil
-}
+	ret := make([]*instancev1alpha1.Instance, 0, len(instances))
+	for _, ins := range instances {
+		ret = append(ret, FromDomain(ins))
+	}
 
-func (s *Server) ReceiveWorkloadStatusReports(
-	context.Context,
-	*discoveryv1alpha1.ReceiveWorkloadStatusReportsRequest,
-) (*discoveryv1alpha1.ReceiveWorkloadStatusReportResponse, error) {
-	return &discoveryv1alpha1.ReceiveWorkloadStatusReportResponse{}, nil
+	return &instancev1alpha1.DiscoverInstanceResponse{
+		Instances: ret,
+	}, nil
 }

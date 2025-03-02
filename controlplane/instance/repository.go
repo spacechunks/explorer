@@ -16,19 +16,11 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package chunk
+package instance
 
-import (
-	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
-)
+import "context"
 
-type Server struct {
-	chunkv1alpha1.UnimplementedChunkServiceServer
-	service Service
-}
-
-func NewServer(service Service) *Server {
-	return &Server{
-		service: service,
-	}
+type Repository interface {
+	CreateInstance(ctx context.Context, instance Instance, nodeID string) (Instance, error)
+	GetInstancesByNodeID(ctx context.Context, id string) ([]Instance, error)
 }

@@ -16,19 +16,29 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package chunk
+package instance
 
 import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	"github.com/spacechunks/explorer/internal/ptr"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type Server struct {
-	chunkv1alpha1.UnimplementedChunkServiceServer
-	service Service
-}
-
-func NewServer(service Service) *Server {
-	return &Server{
-		service: service,
+// FromDomain converts the domain object to a transport layer object
+func FromDomain(ins Instance) *instancev1alpha1.Instance {
+	state := instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(ins.State)])
+	return &instancev1alpha1.Instance{
+		Id: &ins.ID,
+		Chunk: &chunkv1alpha1.Chunk{
+			Id:          &ins.Chunk.ID,
+			Name:        &ins.Chunk.Name,
+			Description: &ins.Chunk.Description,
+			Tags:        ins.Chunk.Tags,
+			CreatedAt:   timestamppb.New(ins.Chunk.CreatedAt),
+			UpdatedAt:   timestamppb.New(ins.Chunk.UpdatedAt),
+		},
+		Address: ptr.String(ins.Address.String()),
+		State:   &state,
 	}
 }

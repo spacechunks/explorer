@@ -18,10 +18,13 @@
 
 package chunk
 
-import "context"
+import (
+	"context"
+)
 
 type Repository interface {
 	CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
 	GetChunkByID(ctx context.Context, id string) (Chunk, error)
 	UpdateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
+	CreateFlavor(ctx context.Context, flavor Flavor, chunkID string) (Flavor, error)
 }

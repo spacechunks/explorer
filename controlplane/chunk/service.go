@@ -24,7 +24,6 @@ import (
 )
 
 type Service interface {
-	RunChunk(ctx context.Context, id string) (Instance, error)
 	CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
 }
 
@@ -36,16 +35,6 @@ func NewService(repo Repository) Service {
 	return &svc{
 		repo: repo,
 	}
-}
-
-func (s *svc) RunChunk(ctx context.Context, id string) (Instance, error) {
-	_, err := s.repo.GetChunkByID(ctx, id)
-	if err != nil {
-		return Instance{}, fmt.Errorf("chunk by id: %w", err)
-	}
-	// TODO: create workload
-	// TODO: return instance
-	return Instance{}, nil
 }
 
 func (s *svc) CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error) {

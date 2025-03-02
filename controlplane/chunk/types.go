@@ -18,10 +18,7 @@
 
 package chunk
 
-import (
-	"net/netip"
-	"time"
-)
+import "time"
 
 type Flavor struct {
 	ID                 string
@@ -41,23 +38,3 @@ type Chunk struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
-
-type Instance struct {
-	ID          string
-	Chunk       Chunk
-	ChunkFlavor Flavor
-	Address     netip.Addr
-	State       InstanceState
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-}
-
-type InstanceState string
-
-const (
-	InstanceStatePending  InstanceState = "PENDING"
-	InstanceStateStarting InstanceState = "STARTING"
-	InstanceStateRunning  InstanceState = "RUNNING"
-	InstanceStateDeleting InstanceState = "DELETING"
-	InstanceStateDeleted  InstanceState = "DELETED"
-)

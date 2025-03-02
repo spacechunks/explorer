@@ -16,19 +16,31 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package chunk
+package instance
 
 import (
-	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	"net/netip"
+	"time"
+
+	"github.com/spacechunks/explorer/controlplane/chunk"
 )
 
-type Server struct {
-	chunkv1alpha1.UnimplementedChunkServiceServer
-	service Service
+type Instance struct {
+	ID          string
+	Chunk       chunk.Chunk
+	ChunkFlavor chunk.Flavor
+	Address     netip.Addr
+	State       State
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
-func NewServer(service Service) *Server {
-	return &Server{
-		service: service,
-	}
-}
+type State string
+
+const (
+	StatePending  State = "PENDING"
+	StateStarting State = "STARTING"
+	StateRunning  State = "RUNNING"
+	StateDeleting State = "DELETING"
+	StateDeleted  State = "DELETED"
+)
