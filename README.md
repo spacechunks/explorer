@@ -10,7 +10,9 @@ on limited hardware like small cloud VMs.
 ## What is the current state of the project?
 
 We are approaching an early alpha phase with big steps! This is what is still missing for a working alpha:
-* Implementing a basic control plane ([#41](https://github.com/spacechunks/explorer/pull/41))
+* Implementing a basic control plane
+* Platformd discovering instances that it should run
+* Basic implementation of CRUD endpoints for Chunks and Flavors
 
 What's missing for a working beta:
 * Fully working CRUD gRPC endpoints for creaing Chunks and Flavors
