@@ -9,6 +9,14 @@ import (
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
+type State string
+
+var (
+	StateRunning        State = "RUNNING"
+	StateDeleted        State = "STOPPED"
+	StateCreationFailed State = "CREATION_FAILED"
+)
+
 type Workload struct {
 	ID        string
 	Name      string
@@ -16,6 +24,7 @@ type Workload struct {
 	Namespace string
 	Hostname  string
 	Labels    map[string]string
+	State     State
 
 	// NetworkNamespaceMode as per [runtimev1.NamespaceMode].
 	// keeping this value an int32 is intentional, so the workload
