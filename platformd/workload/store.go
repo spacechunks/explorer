@@ -20,33 +20,46 @@ package workload
 
 import "sync"
 
-type Store interface {
-	SaveWorkload(workload Workload)
-	GetWorkload(id string) *Workload
+type StatusStore interface {
+	Update(id string, status Status)
+	Get(id string) *Status
 }
 
-func NewStore() Store {
+func NewStore() StatusStore {
 	return &inmemStore{
-		data: make(map[string]Workload),
+		data: make(map[string]Status),
 	}
 }
 
 type inmemStore struct {
-	data map[string]Workload
+	data map[string]Status
 	mu   sync.Mutex
 }
 
-func (s *inmemStore) SaveWorkload(workload Workload) {
+func (s *inmemStore) Update(id string, new Status) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.data[workload.ID] = workload
+
+	curr, ok := s.data[id]
+	if !ok {
+		s.data[id] = new
+		return
+	}
+
+	if curr.State != "" {
+		curr.State = new.State
+	}
+
+	if curr.Port != 0 {
+		curr.Port = new.Port
+	}
 }
 
-func (s *inmemStore) GetWorkload(id string) *Workload {
+func (s *inmemStore) Get(id string) *Status {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if w, ok := s.data[id]; ok {
-		return &w
+	if status, ok := s.data[id]; ok {
+		return &status
 	}
 	return nil
 }
