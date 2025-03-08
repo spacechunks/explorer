@@ -124,11 +124,13 @@ func TestEnsureWorkload(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-			mockRtClient := mock.NewMockV1RuntimeServiceClient(t)
-			mockImgClient := mock.NewMockV1ImageServiceClient(t)
-			svc := workload.NewService(logger, mockRtClient, mockImgClient)
+			var (
+				ctx           = context.Background()
+				logger        = slog.New(slog.NewTextHandler(os.Stdout, nil))
+				mockRtClient  = mock.NewMockV1RuntimeServiceClient(t)
+				mockImgClient = mock.NewMockV1ImageServiceClient(t)
+				svc           = workload.NewService(logger, mockRtClient, mockImgClient)
+			)
 
 			tt.prep(mockRtClient, mockImgClient, tt.opts, tt.labelSelector)
 
@@ -222,6 +224,143 @@ func TestRunWorkload(t *testing.T) {
 			tt.prep(mockRtClient, mockImgClient, tt.w)
 
 			err := svc.RunWorkload(ctx, tt.w)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestRemoveWorkload(t *testing.T) {
+	var (
+		ctx           = context.Background()
+		logger        = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		mockRtClient  = mock.NewMockV1RuntimeServiceClient(t)
+		mockImgClient = mock.NewMockV1ImageServiceClient(t)
+		svc           = workload.NewService(logger, mockRtClient, mockImgClient)
+	)
+
+	mockRtClient.EXPECT().StopPodSandbox(ctx, &runtimev1.StopPodSandboxRequest{
+		PodSandboxId: testWorkloadID,
+	}).Return(&runtimev1.StopPodSandboxResponse{}, nil)
+
+	require.NoError(t, svc.RemoveWorkload(ctx, testWorkloadID))
+}
+
+func TestGetWorkload(t *testing.T) {
+	tests := []struct {
+		name string
+		prep func(*mock.MockV1RuntimeServiceClient, workload.Workload)
+		err  error
+	}{
+		{
+			name: "everything works",
+			prep: func(rtMock *mock.MockV1RuntimeServiceClient, w workload.Workload) {
+				rtMock.EXPECT().ListPodSandbox(mocky.Anything, &runtimev1.ListPodSandboxRequest{
+					Filter: &runtimev1.PodSandboxFilter{
+						LabelSelector: map[string]string{
+							workload.LabelWorkloadID: testWorkloadID,
+						},
+					},
+				}).Return(&runtimev1.ListPodSandboxResponse{
+					Items: []*runtimev1.PodSandbox{
+						{
+							Id: testWorkloadID,
+							Metadata: &runtimev1.PodSandboxMetadata{
+								Name:      w.Name,
+								Namespace: w.Namespace,
+							},
+							Labels: w.Labels,
+						},
+					},
+				}, nil)
+
+				rtMock.EXPECT().ListContainers(mocky.Anything, &runtimev1.ListContainersRequest{
+					Filter: &runtimev1.ContainerFilter{
+						PodSandboxId: testWorkloadID,
+					},
+				}).Return(&runtimev1.ListContainersResponse{
+					Containers: []*runtimev1.Container{
+						{
+							Image: &runtimev1.ImageSpec{
+								Image: w.Image,
+							},
+						},
+					},
+				}, nil)
+			},
+		},
+		{
+			name: "pod not found",
+			prep: func(rtMock *mock.MockV1RuntimeServiceClient, w workload.Workload) {
+				rtMock.EXPECT().ListPodSandbox(mocky.Anything, &runtimev1.ListPodSandboxRequest{
+					Filter: &runtimev1.PodSandboxFilter{
+						LabelSelector: map[string]string{
+							workload.LabelWorkloadID: testWorkloadID,
+						},
+					},
+				}).Return(&runtimev1.ListPodSandboxResponse{}, nil)
+			},
+			err: workload.ErrWorkloadNotFound,
+		},
+		{
+			name: "container not found",
+			prep: func(rtMock *mock.MockV1RuntimeServiceClient, w workload.Workload) {
+				rtMock.EXPECT().ListPodSandbox(mocky.Anything, &runtimev1.ListPodSandboxRequest{
+					Filter: &runtimev1.PodSandboxFilter{
+						LabelSelector: map[string]string{
+							workload.LabelWorkloadID: testWorkloadID,
+						},
+					},
+				}).Return(&runtimev1.ListPodSandboxResponse{
+					Items: []*runtimev1.PodSandbox{
+						{
+							Id: testWorkloadID,
+							Metadata: &runtimev1.PodSandboxMetadata{
+								Name:      w.Name,
+								Namespace: w.Namespace,
+							},
+							Labels: w.Labels,
+						},
+					},
+				}, nil)
+
+				rtMock.EXPECT().ListContainers(mocky.Anything, &runtimev1.ListContainersRequest{
+					Filter: &runtimev1.ContainerFilter{
+						PodSandboxId: testWorkloadID,
+					},
+				}).Return(&runtimev1.ListContainersResponse{}, nil)
+			},
+			err: workload.ErrContainerNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx           = context.Background()
+				logger        = slog.New(slog.NewTextHandler(os.Stdout, nil))
+				mockRtClient  = mock.NewMockV1RuntimeServiceClient(t)
+				mockImgClient = mock.NewMockV1ImageServiceClient(t)
+				svc           = workload.NewService(logger, mockRtClient, mockImgClient)
+				w             = workload.Workload{
+					ID:                   testWorkloadID,
+					Status:               workload.Status{},
+					Name:                 "test-name",
+					Image:                "test-image",
+					Namespace:            "test-ns",
+					Hostname:             testWorkloadID,
+					Labels:               map[string]string{"k": "v"},
+					NetworkNamespaceMode: int32(runtimev1.NamespaceMode_NODE),
+				}
+			)
+			tt.prep(mockRtClient, w)
+
+			_, err := svc.GetWorkload(ctx, w.ID)
+
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				return
+			}
+
 			require.NoError(t, err)
 		})
 	}
