@@ -11,6 +11,13 @@ packages:
   github.com/spacechunks/explorer/cni:
     interfaces:
       Handler:
+  github.com/spacechunks/explorer/platformd/workload:
+    interfaces:
+      Service:
+      StatusStore:
+  github.com/spacechunks/explorer/api/instance/v1alpha1:
+    interfaces:
+      InstanceServiceClient:
   github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1:
     interfaces:
       ProxyServiceClient:

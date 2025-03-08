@@ -57,7 +57,7 @@ func (a *portAllocator) Allocate() (uint16, error) {
 			return 0, ErrMaxPortTriesReached
 		}
 
-		port := rand.IntN(a.portMax-a.portMin) + a.portMin
+		port := rand.IntN(a.portMax+1-a.portMin) + a.portMin
 		if _, ok := a.allocated[port]; ok {
 			try++
 			continue
