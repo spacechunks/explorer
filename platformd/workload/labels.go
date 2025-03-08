@@ -1,15 +1,34 @@
 package workload
 
+import instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+
 const (
-	LabelID   = "platform.chunks.cloud/workload-id"
-	LabelName = "platform.chunks.cloud/workload-name"
-	LabelType = "platform.chunks.cloud/workload-type"
+	LabelWorkloadID   = "explorer.chunks.cloud/workload-id"
+	LabelWorkloadName = "explorer.chunks.cloud/workload-name"
+	LabelWorkloadType = "explorer.chunks.cloud/workload-type"
+
+	LabelChunkID   = "explorer.chunks.cloud/chunk-id"
+	LabelChunkName = "explorer.chunks.cloud/chunk-name"
+
+	LabelFlavorID   = "explorer.chunks.cloud/flavor-id"
+	LabelFlavorName = "explorer.chunks.cloud/flavor-name"
 )
 
 // SystemWorkloadLabels returns the labels used by system workloads
 func SystemWorkloadLabels(name string) map[string]string {
 	return map[string]string{
-		LabelName: name,
-		LabelType: "system",
+		LabelWorkloadName: name,
+		LabelWorkloadType: "system",
+	}
+}
+
+func InstanceLabels(instance *instancev1alpha1.Instance) map[string]string {
+	return map[string]string{
+		LabelWorkloadID:   instance.GetId(),
+		LabelWorkloadType: "instance",
+		LabelChunkID:      instance.GetChunk().GetId(),
+		LabelChunkName:    instance.GetChunk().GetName(),
+		LabelFlavorID:     instance.GetFlavor().GetId(),
+		LabelFlavorName:   instance.GetFlavor().GetName(),
 	}
 }
