@@ -70,23 +70,23 @@ func (_c *MockWorkloadService_EnsureWorkload_Call) RunAndReturn(run func(context
 	return _c
 }
 
-// GetWorkload provides a mock function with given fields: ctx, id
-func (_m *MockWorkloadService) GetWorkload(ctx context.Context, id string) (workload.Workload, error) {
+// GetWorkloadHealth provides a mock function with given fields: ctx, id
+func (_m *MockWorkloadService) GetWorkloadHealth(ctx context.Context, id string) (workload.HealthStatus, error) {
 	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetWorkload")
+		panic("no return value specified for GetWorkloadHealth")
 	}
 
-	var r0 workload.Workload
+	var r0 workload.HealthStatus
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (workload.Workload, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) (workload.HealthStatus, error)); ok {
 		return rf(ctx, id)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) workload.Workload); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string) workload.HealthStatus); ok {
 		r0 = rf(ctx, id)
 	} else {
-		r0 = ret.Get(0).(workload.Workload)
+		r0 = ret.Get(0).(workload.HealthStatus)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
@@ -98,31 +98,31 @@ func (_m *MockWorkloadService) GetWorkload(ctx context.Context, id string) (work
 	return r0, r1
 }
 
-// MockWorkloadService_GetWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorkload'
-type MockWorkloadService_GetWorkload_Call struct {
+// MockWorkloadService_GetWorkloadHealth_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorkloadHealth'
+type MockWorkloadService_GetWorkloadHealth_Call struct {
 	*mock.Call
 }
 
-// GetWorkload is a helper method to define mock.On call
+// GetWorkloadHealth is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-func (_e *MockWorkloadService_Expecter) GetWorkload(ctx interface{}, id interface{}) *MockWorkloadService_GetWorkload_Call {
-	return &MockWorkloadService_GetWorkload_Call{Call: _e.mock.On("GetWorkload", ctx, id)}
+func (_e *MockWorkloadService_Expecter) GetWorkloadHealth(ctx interface{}, id interface{}) *MockWorkloadService_GetWorkloadHealth_Call {
+	return &MockWorkloadService_GetWorkloadHealth_Call{Call: _e.mock.On("GetWorkloadHealth", ctx, id)}
 }
 
-func (_c *MockWorkloadService_GetWorkload_Call) Run(run func(ctx context.Context, id string)) *MockWorkloadService_GetWorkload_Call {
+func (_c *MockWorkloadService_GetWorkloadHealth_Call) Run(run func(ctx context.Context, id string)) *MockWorkloadService_GetWorkloadHealth_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockWorkloadService_GetWorkload_Call) Return(_a0 workload.Workload, _a1 error) *MockWorkloadService_GetWorkload_Call {
+func (_c *MockWorkloadService_GetWorkloadHealth_Call) Return(_a0 workload.HealthStatus, _a1 error) *MockWorkloadService_GetWorkloadHealth_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockWorkloadService_GetWorkload_Call) RunAndReturn(run func(context.Context, string) (workload.Workload, error)) *MockWorkloadService_GetWorkload_Call {
+func (_c *MockWorkloadService_GetWorkloadHealth_Call) RunAndReturn(run func(context.Context, string) (workload.HealthStatus, error)) *MockWorkloadService_GetWorkloadHealth_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -174,17 +174,17 @@ func (_c *MockWorkloadService_RemoveWorkload_Call) RunAndReturn(run func(context
 	return _c
 }
 
-// RunWorkload provides a mock function with given fields: ctx, w
-func (_m *MockWorkloadService) RunWorkload(ctx context.Context, w workload.Workload) error {
-	ret := _m.Called(ctx, w)
+// RunWorkload provides a mock function with given fields: ctx, w, attempt
+func (_m *MockWorkloadService) RunWorkload(ctx context.Context, w workload.Workload, attempt int) error {
+	ret := _m.Called(ctx, w, attempt)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RunWorkload")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, workload.Workload) error); ok {
-		r0 = rf(ctx, w)
+	if rf, ok := ret.Get(0).(func(context.Context, workload.Workload, int) error); ok {
+		r0 = rf(ctx, w, attempt)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -200,13 +200,14 @@ type MockWorkloadService_RunWorkload_Call struct {
 // RunWorkload is a helper method to define mock.On call
 //   - ctx context.Context
 //   - w workload.Workload
-func (_e *MockWorkloadService_Expecter) RunWorkload(ctx interface{}, w interface{}) *MockWorkloadService_RunWorkload_Call {
-	return &MockWorkloadService_RunWorkload_Call{Call: _e.mock.On("RunWorkload", ctx, w)}
+//   - attempt int
+func (_e *MockWorkloadService_Expecter) RunWorkload(ctx interface{}, w interface{}, attempt interface{}) *MockWorkloadService_RunWorkload_Call {
+	return &MockWorkloadService_RunWorkload_Call{Call: _e.mock.On("RunWorkload", ctx, w, attempt)}
 }
 
-func (_c *MockWorkloadService_RunWorkload_Call) Run(run func(ctx context.Context, w workload.Workload)) *MockWorkloadService_RunWorkload_Call {
+func (_c *MockWorkloadService_RunWorkload_Call) Run(run func(ctx context.Context, w workload.Workload, attempt int)) *MockWorkloadService_RunWorkload_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(workload.Workload))
+		run(args[0].(context.Context), args[1].(workload.Workload), args[2].(int))
 	})
 	return _c
 }
@@ -216,7 +217,7 @@ func (_c *MockWorkloadService_RunWorkload_Call) Return(_a0 error) *MockWorkloadS
 	return _c
 }
 
-func (_c *MockWorkloadService_RunWorkload_Call) RunAndReturn(run func(context.Context, workload.Workload) error) *MockWorkloadService_RunWorkload_Call {
+func (_c *MockWorkloadService_RunWorkload_Call) RunAndReturn(run func(context.Context, workload.Workload, int) error) *MockWorkloadService_RunWorkload_Call {
 	_c.Call.Return(run)
 	return _c
 }

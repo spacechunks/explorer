@@ -27,6 +27,13 @@ var (
 	StateCreationFailed State = "CREATION_FAILED"
 )
 
+type HealthStatus string
+
+var (
+	Healthy   HealthStatus = "HEALTY"
+	Unhealthy HealthStatus = "UNHEALTY"
+)
+
 type Status struct {
 	State State
 	Port  uint16
