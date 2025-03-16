@@ -225,7 +225,7 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 		ID:   id,
 		Name: instance.GetChunk().GetName() + "_" + instance.GetFlavor().GetName(),
 		Image: fmt.Sprintf(
-			"%r/%r/%r",
+			"%s/%s/%s",
 			r.cfg.RegistryEndpoint,
 			instance.GetChunk().GetName(),
 			instance.GetFlavor().GetName(),
