@@ -18,11 +18,16 @@
 
 package workload
 
-import "sync"
+import (
+	"maps"
+	"sync"
+)
 
 type StatusStore interface {
 	Update(id string, status Status)
 	Get(id string) *Status
+	Del(id string)
+	View() map[string]Status
 }
 
 func NewStore() StatusStore {
@@ -62,4 +67,21 @@ func (s *inmemStore) Get(id string) *Status {
 		return &status
 	}
 	return nil
+}
+
+func (s *inmemStore) Del(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.data, id)
+}
+
+// View returns a copy of the current state of the underlying map
+func (s *inmemStore) View() map[string]Status {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cpy := make(map[string]Status, len(s.data))
+	maps.Copy(cpy, s.data)
+
+	return cpy
 }

@@ -23,8 +23,15 @@ type State string
 var (
 	StateCreating       State = "CREATING"
 	StateRunning        State = "RUNNING"
-	StateDeleted        State = "STOPPED"
+	StateDeleted        State = "DELETED"
 	StateCreationFailed State = "CREATION_FAILED"
+)
+
+type HealthStatus string
+
+var (
+	HealthStatusHealthy   HealthStatus = "HEALTY"
+	HealthStatusUnhealthy HealthStatus = "UNHEALTY"
 )
 
 type Status struct {

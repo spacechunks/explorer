@@ -12,6 +12,8 @@ const (
 
 	LabelFlavorID   = "explorer.chunks.cloud/flavor-id"
 	LabelFlavorName = "explorer.chunks.cloud/flavor-name"
+
+	LabelWorkloadPort = "explorer.chunks.cloud/workload-port"
 )
 
 // SystemWorkloadLabels returns the labels used by system workloads

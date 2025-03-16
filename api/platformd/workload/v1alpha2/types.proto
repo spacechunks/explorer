@@ -42,6 +42,7 @@ enum WorkloadState {
   RUNNING = 2;
   DELETING = 3;
   DELETED = 4;
+  CREATION_FAILED = 5;
 }
 
 message WorkloadStatus {

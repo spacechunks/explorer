@@ -16,35 +16,14 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-edition = "2023";
+package workload
 
-package instance.v1alpha1;
+import workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 
-option go_package = "github.com/spacechunks/explorer/api/instance/v1alpha1";
-
-import "chunk/v1alpha1/types.proto";
-import "google/protobuf/timestamp.proto";
-
-enum InstanceState {
-  PENDING = 0;
-  STARTING = 1;
-  RUNNING = 2;
-  DELETING = 3;
-  DELETED = 4;
-  CREATION_FAILED = 5;
-}
-
-// Instance defines a running replica of a specific chunk.
-message Instance {
-  string id = 1;
-
-  chunk.v1alpha1.Chunk chunk = 2;
-
-  chunk.v1alpha1.Flavor flavor = 3;
-
-  string ip = 4;
-
-  uint32 port = 5;
-
-  InstanceState state = 6;
+func StateToTransport(state State) workloadv1alpha2.WorkloadState {
+	num, ok := workloadv1alpha2.WorkloadState_value[string(state)]
+	if !ok {
+		return workloadv1alpha2.WorkloadState_UNKNOWN
+	}
+	return workloadv1alpha2.WorkloadState(num)
 }
