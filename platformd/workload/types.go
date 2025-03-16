@@ -23,7 +23,7 @@ type State string
 var (
 	StateCreating       State = "CREATING"
 	StateRunning        State = "RUNNING"
-	StateDeleted        State = "STOPPED"
+	StateDeleted        State = "DELETED"
 	StateCreationFailed State = "CREATION_FAILED"
 )
 

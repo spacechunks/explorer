@@ -28,6 +28,8 @@ import (
 	"time"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -65,7 +67,7 @@ var errMaxAttemptsReached = errors.New("reconciler: max attempts reached")
 type reconciler struct {
 	logger *slog.Logger
 
-	cfg syncerConfig
+	cfg reconcilerConfig
 
 	insClient instancev1alpha1.InstanceServiceClient
 	wlService workload.Service
@@ -77,7 +79,7 @@ type reconciler struct {
 	stop     chan bool
 }
 
-type syncerConfig struct {
+type reconcilerConfig struct {
 	MaxAttempts       int
 	SyncInterval      time.Duration
 	NodeID            string
@@ -87,9 +89,9 @@ type syncerConfig struct {
 	RegistryEndpoint  string
 }
 
-func newSyncer(
+func newReconciler(
 	logger *slog.Logger,
-	cfg syncerConfig,
+	cfg reconcilerConfig,
 	insClient instancev1alpha1.InstanceServiceClient,
 	wlService workload.Service,
 	store workload.StatusStore,
@@ -142,11 +144,20 @@ func (r *reconciler) tick(ctx context.Context) {
 		case instancev1alpha1.InstanceState_PENDING:
 			if err := r.handleInstancePending(ctx, ins); err != nil {
 				if errors.Is(err, errMaxAttemptsReached) {
-					r.logger.WarnContext(ctx, "max attempts reached", "instance_id", id, "attempt", r.attempts[id])
+					r.logger.WarnContext(ctx,
+						"max attempts reached",
+						"instance_id", id,
+						"attempt", r.attempts[id],
+					)
 					continue
 				}
 				r.attempts[id] = r.attempts[id] + 1
-				r.logger.ErrorContext(ctx, "failed to run workload", "instance_id", id, "attempt", r.attempts[id], "err", err)
+				r.logger.ErrorContext(ctx,
+					"failed to run workload",
+					"instance_id", id,
+					"attempt", r.attempts[id],
+					"err", err,
+				)
 			}
 			continue
 		// DELETING is set by the control plane once an instance
@@ -158,7 +169,11 @@ func (r *reconciler) tick(ctx context.Context) {
 			continue
 		case instancev1alpha1.InstanceState_RUNNING:
 			if err := r.handleInstanceRunning(ctx, ins); err != nil {
-				r.logger.ErrorContext(ctx, "handling a running instance failed", "instance_id", id, "err", err)
+				r.logger.ErrorContext(ctx,
+					"handling a running instance failed",
+					"instance_id", id,
+					"err", err,
+				)
 			}
 			continue
 		default:
@@ -167,8 +182,32 @@ func (r *reconciler) tick(ctx context.Context) {
 		}
 	}
 
-	// TODO: report state back to control plane
-	// once reported remove DELETED and CREATION_FAILED entries from store
+	var (
+		statuses = r.store.View()
+		items    = make([]*workloadv1alpha2.WorkloadStatus, 0, len(statuses))
+	)
+
+	for k, v := range statuses {
+		items = append(items, &workloadv1alpha2.WorkloadStatus{
+			Id:    &k,
+			State: ptr.Pointer(workload.StateToTransport(v.State)),
+			Port:  ptr.Pointer(uint32(v.Port)),
+		})
+	}
+
+	if _, err := r.insClient.ReceiveWorkloadStatusReports(ctx, &instancev1alpha1.ReceiveWorkloadStatusReportsRequest{
+		Items: items,
+	}); err != nil {
+		slog.ErrorContext(ctx, "sending workload status reports failed", "err", err)
+		r.ticker.Reset(3 * time.Second)
+		return
+	}
+
+	for k, v := range statuses {
+		if v.State == workload.StateDeleted || v.State == workload.StateCreationFailed {
+			r.store.Del(k)
+		}
+	}
 
 	// set the sync interval again, in case we errored before
 	r.ticker.Reset(r.cfg.SyncInterval)

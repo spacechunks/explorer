@@ -158,7 +158,7 @@ func (s *criService) RemoveWorkload(ctx context.Context, id string) error {
 }
 
 // GetWorkloadHealth checks whether a container can be found for the given workload.
-// if it cannot be found, or the status is CREATED, EXITED or UNKOWN, the workload
+// if it cannot be found, or the status is CREATED, EXITED or UNKNOWN, the workload
 // is considered unhealthy.
 func (s *criService) GetWorkloadHealth(ctx context.Context, id string) (HealthStatus, error) {
 	resp, err := s.rtClient.ListContainers(ctx, &runtimev1.ListContainersRequest{

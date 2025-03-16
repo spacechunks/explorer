@@ -29,6 +29,7 @@ import (
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/workload"
@@ -46,6 +47,25 @@ func TestSyncer(t *testing.T) {
 		maxAttempts      = 5
 	)
 
+	expectedWorkload := func(ins *instancev1alpha1.Instance) workload.Workload {
+		labels := workload.InstanceLabels(ins)
+		labels[workload.LabelWorkloadPort] = "1"
+
+		return workload.Workload{
+			ID:   ins.GetId(),
+			Name: ins.GetChunk().GetName() + "_" + ins.GetFlavor().GetName(),
+			Image: fmt.Sprintf(
+				"%s/%s/%s",
+				registryEndpoint,
+				ins.GetChunk().GetName(),
+				ins.GetFlavor().GetName(),
+			),
+			Namespace: namespace,
+			Hostname:  ins.GetId(),
+			Labels:    labels,
+		}
+	}
+
 	tests := []struct {
 		name string
 		prep func(*mock.MockWorkloadService, *mock.MockV1alpha1InstanceServiceClient, *mock.MockWorkloadStatusStore)
@@ -57,17 +77,7 @@ func TestSyncer(t *testing.T) {
 				insClient *mock.MockV1alpha1InstanceServiceClient,
 				store *mock.MockWorkloadStatusStore,
 			) {
-				ins := instanceFixture(t, instancev1alpha1.InstanceState_PENDING)
-
-				insClient.EXPECT().
-					DiscoverInstances(mocky.Anything, &instancev1alpha1.DiscoverInstanceRequest{
-						NodeKey: &nodeKey,
-					}).
-					Return(&instancev1alpha1.DiscoverInstanceResponse{
-						Instances: []*instancev1alpha1.Instance{
-							ins,
-						},
-					}, nil)
+				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_PENDING)
 
 				// this makes sure that the FIRST call of store.Get does not return anything,
 				// but calls after the first Get return that the workload is already running.
@@ -83,32 +93,13 @@ func TestSyncer(t *testing.T) {
 					}).
 					NotBefore(veryFirstGetCall)
 
-				labels := workload.InstanceLabels(ins)
-				labels[workload.LabelWorkloadPort] = "1"
-
 				store.EXPECT().
 					Update(ins.GetId(), workload.Status{
 						State: workload.StateCreating,
 					})
 
 				wlSvc.EXPECT().
-					RunWorkload(
-						mocky.Anything,
-						workload.Workload{
-							ID:   ins.GetId(),
-							Name: ins.GetChunk().GetName() + "_" + ins.GetFlavor().GetName(),
-							Image: fmt.Sprintf(
-								"%s/%s/%s",
-								registryEndpoint,
-								ins.GetChunk().GetName(),
-								ins.GetFlavor().GetName(),
-							),
-							Namespace: namespace,
-							Hostname:  ins.GetId(),
-							Labels:    labels,
-						},
-						1,
-					).
+					RunWorkload(mocky.Anything, expectedWorkload(ins), 1).
 					Return(nil)
 
 				store.EXPECT().
@@ -116,6 +107,15 @@ func TestSyncer(t *testing.T) {
 						State: workload.StateRunning,
 						Port:  1,
 					})
+
+				store.EXPECT().View().Return(map[string]workload.Status{
+					ins.GetId(): {
+						State: workload.StateRunning,
+						Port:  1,
+					},
+				})
+
+				expectReportedStatus(insClient, ins.GetId(), workloadv1alpha2.WorkloadState_RUNNING, 1)
 			},
 		},
 		{
@@ -130,17 +130,7 @@ func TestSyncer(t *testing.T) {
 				insClient *mock.MockV1alpha1InstanceServiceClient,
 				store *mock.MockWorkloadStatusStore,
 			) {
-				ins := instanceFixture(t, instancev1alpha1.InstanceState_PENDING)
-
-				insClient.EXPECT().
-					DiscoverInstances(mocky.Anything, &instancev1alpha1.DiscoverInstanceRequest{
-						NodeKey: &nodeKey,
-					}).
-					Return(&instancev1alpha1.DiscoverInstanceResponse{
-						Instances: []*instancev1alpha1.Instance{
-							ins,
-						},
-					}, nil)
+				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_PENDING)
 
 				store.EXPECT().
 					Get(ins.GetId()).
@@ -160,28 +150,9 @@ func TestSyncer(t *testing.T) {
 					}).
 					NotBefore(attemptCalls)
 
-				labels := workload.InstanceLabels(ins)
-				labels[workload.LabelWorkloadPort] = "1"
-
 				for i := 0; i < maxAttempts; i++ {
 					wlSvc.EXPECT().
-						RunWorkload(
-							mocky.Anything,
-							workload.Workload{
-								ID:   ins.GetId(),
-								Name: ins.GetChunk().GetName() + "_" + ins.GetFlavor().GetName(),
-								Image: fmt.Sprintf(
-									"%s/%s/%s",
-									registryEndpoint,
-									ins.GetChunk().GetName(),
-									ins.GetFlavor().GetName(),
-								),
-								Namespace: namespace,
-								Hostname:  ins.GetId(),
-								Labels:    labels,
-							},
-							i+1,
-						).
+						RunWorkload(mocky.Anything, expectedWorkload(ins), i+1).
 						Return(errors.New("some error"))
 				}
 
@@ -189,6 +160,16 @@ func TestSyncer(t *testing.T) {
 					RemoveWorkload(mocky.Anything, ins.GetId()).
 					Return(nil).
 					Times(maxAttempts)
+
+				store.EXPECT().View().Return(map[string]workload.Status{
+					ins.GetId(): {
+						State: workload.StateCreationFailed,
+					},
+				})
+
+				expectReportedStatus(insClient, ins.GetId(), workloadv1alpha2.WorkloadState_CREATION_FAILED, 0)
+
+				store.EXPECT().Del(ins.GetId())
 			},
 		},
 		{
@@ -198,17 +179,7 @@ func TestSyncer(t *testing.T) {
 				insClient *mock.MockV1alpha1InstanceServiceClient,
 				store *mock.MockWorkloadStatusStore,
 			) {
-				ins := instanceFixture(t, instancev1alpha1.InstanceState_DELETING)
-
-				insClient.EXPECT().
-					DiscoverInstances(mocky.Anything, &instancev1alpha1.DiscoverInstanceRequest{
-						NodeKey: &nodeKey,
-					}).
-					Return(&instancev1alpha1.DiscoverInstanceResponse{
-						Instances: []*instancev1alpha1.Instance{
-							ins,
-						},
-					}, nil)
+				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_DELETING)
 
 				wlSvc.EXPECT().
 					RemoveWorkload(mocky.Anything, ins.GetId()).
@@ -218,6 +189,16 @@ func TestSyncer(t *testing.T) {
 					Update(ins.GetId(), workload.Status{
 						State: workload.StateDeleted,
 					})
+
+				store.EXPECT().View().Return(map[string]workload.Status{
+					ins.GetId(): {
+						State: workload.StateDeleted,
+					},
+				})
+
+				expectReportedStatus(insClient, ins.GetId(), workloadv1alpha2.WorkloadState_DELETED, 0)
+
+				store.EXPECT().Del(ins.GetId())
 			},
 		},
 		{
@@ -227,16 +208,7 @@ func TestSyncer(t *testing.T) {
 				insClient *mock.MockV1alpha1InstanceServiceClient,
 				store *mock.MockWorkloadStatusStore,
 			) {
-				ins := instanceFixture(t, instancev1alpha1.InstanceState_DELETING)
-				insClient.EXPECT().
-					DiscoverInstances(mocky.Anything, &instancev1alpha1.DiscoverInstanceRequest{
-						NodeKey: &nodeKey,
-					}).
-					Return(&instancev1alpha1.DiscoverInstanceResponse{
-						Instances: []*instancev1alpha1.Instance{
-							ins,
-						},
-					}, nil)
+				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_DELETING)
 
 				wlSvc.EXPECT().
 					RemoveWorkload(mocky.Anything, ins.GetId()).
@@ -246,6 +218,16 @@ func TestSyncer(t *testing.T) {
 					Update(ins.GetId(), workload.Status{
 						State: workload.StateDeleted,
 					})
+
+				store.EXPECT().View().Return(map[string]workload.Status{
+					ins.GetId(): {
+						State: workload.StateDeleted,
+					},
+				})
+
+				expectReportedStatus(insClient, ins.GetId(), workloadv1alpha2.WorkloadState_DELETED, 0)
+
+				store.EXPECT().Del(ins.GetId())
 			},
 		},
 		{
@@ -255,43 +237,89 @@ func TestSyncer(t *testing.T) {
 				insClient *mock.MockV1alpha1InstanceServiceClient,
 				store *mock.MockWorkloadStatusStore,
 			) {
-				ins := instanceFixture(t, instancev1alpha1.InstanceState_RUNNING)
-				insClient.EXPECT().
-					DiscoverInstances(mocky.Anything, &instancev1alpha1.DiscoverInstanceRequest{
-						NodeKey: &nodeKey,
-					}).
-					Return(&instancev1alpha1.DiscoverInstanceResponse{
-						Instances: []*instancev1alpha1.Instance{
-							ins,
-						},
-					}, nil)
-
+				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_RUNNING)
 				wlSvc.EXPECT().
 					GetWorkloadHealth(mocky.Anything, ins.GetId()).
 					Return(workload.HealthStatusHealthy, nil)
+
+				store.EXPECT().View().Return(map[string]workload.Status{})
+				insClient.EXPECT().ReceiveWorkloadStatusReports(
+					mocky.Anything, &instancev1alpha1.ReceiveWorkloadStatusReportsRequest{
+						Items: []*workloadv1alpha2.WorkloadStatus{},
+					}).
+					Return(nil, nil)
 			},
 		},
 		{
-			name: "instance RUNNING: remove unhealthy workload",
+			name: "instance RUNNING: remove UNHEALTHY workload",
 			prep: func(
 				wlSvc *mock.MockWorkloadService,
 				insClient *mock.MockV1alpha1InstanceServiceClient,
 				store *mock.MockWorkloadStatusStore,
 			) {
-				ins := instanceFixture(t, instancev1alpha1.InstanceState_RUNNING)
-				insClient.EXPECT().
-					DiscoverInstances(mocky.Anything, &instancev1alpha1.DiscoverInstanceRequest{
-						NodeKey: &nodeKey,
-					}).
-					Return(&instancev1alpha1.DiscoverInstanceResponse{
-						Instances: []*instancev1alpha1.Instance{
-							ins,
-						},
-					}, nil)
-
+				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_RUNNING)
 				wlSvc.EXPECT().
 					GetWorkloadHealth(mocky.Anything, ins.GetId()).
-					Return(workload.HealthStatusHealthy, nil)
+					Return(workload.HealthStatusUnhealthy, nil)
+
+				wlSvc.EXPECT().
+					RemoveWorkload(mocky.Anything, ins.GetId()).
+					Return(nil)
+
+				store.EXPECT().
+					Update(ins.GetId(), workload.Status{
+						State: workload.StateDeleted,
+					})
+
+				store.EXPECT().View().Return(map[string]workload.Status{
+					ins.GetId(): {
+						State: workload.StateDeleted,
+					},
+				})
+
+				expectReportedStatus(insClient, ins.GetId(), workloadv1alpha2.WorkloadState_DELETED, 0)
+
+				store.EXPECT().Del(ins.GetId())
+			},
+		},
+		{
+			name: "DELETED and CREATION_FAILED workloads are not deleted from the store when reporting fails",
+			prep: func(
+				wlSvc *mock.MockWorkloadService,
+				insClient *mock.MockV1alpha1InstanceServiceClient,
+				store *mock.MockWorkloadStatusStore,
+			) {
+				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_RUNNING)
+				wlSvc.EXPECT().
+					GetWorkloadHealth(mocky.Anything, ins.GetId()).
+					Return(workload.HealthStatusUnhealthy, nil)
+
+				wlSvc.EXPECT().
+					RemoveWorkload(mocky.Anything, ins.GetId()).
+					Return(nil)
+
+				store.EXPECT().
+					Update(ins.GetId(), workload.Status{
+						State: workload.StateDeleted,
+					})
+
+				store.EXPECT().View().Return(map[string]workload.Status{
+					ins.GetId(): {
+						State: workload.StateDeleted,
+					},
+				})
+
+				insClient.EXPECT().ReceiveWorkloadStatusReports(
+					mocky.Anything, &instancev1alpha1.ReceiveWorkloadStatusReportsRequest{
+						Items: []*workloadv1alpha2.WorkloadStatus{
+							{
+								Id:    ptr.Pointer(ins.GetId()),
+								State: ptr.Pointer(workloadv1alpha2.WorkloadState_DELETED),
+								Port:  ptr.Pointer(uint32(0)),
+							},
+						},
+					}).
+					Return(nil, errors.New("some error"))
 			},
 		},
 	}
@@ -304,9 +332,9 @@ func TestSyncer(t *testing.T) {
 				mockStore  = mock.NewMockWorkloadStatusStore(t)
 				mockWlSvc  = mock.NewMockWorkloadService(t)
 				mockInsSvc = mock.NewMockV1alpha1InstanceServiceClient(t)
-				syncer     = newSyncer(
+				syncer     = newReconciler(
 					logger,
-					syncerConfig{
+					reconcilerConfig{
 						MaxAttempts:       maxAttempts,
 						SyncInterval:      100 * time.Millisecond,
 						NodeID:            nodeKey,
@@ -332,8 +360,13 @@ func TestSyncer(t *testing.T) {
 	}
 }
 
-func instanceFixture(t *testing.T, state instancev1alpha1.InstanceState) *instancev1alpha1.Instance {
-	return &instancev1alpha1.Instance{
+func discoverInstance(
+	t *testing.T,
+	insClient *mock.MockV1alpha1InstanceServiceClient,
+	nodeKey string,
+	state instancev1alpha1.InstanceState,
+) *instancev1alpha1.Instance {
+	ins := &instancev1alpha1.Instance{
 		Id: ptr.Pointer(test.NewUUIDv7(t)),
 		Chunk: &chunkv1alpha1.Chunk{
 			Name: ptr.Pointer("test-chunk"),
@@ -343,4 +376,35 @@ func instanceFixture(t *testing.T, state instancev1alpha1.InstanceState) *instan
 		},
 		State: ptr.Pointer(state),
 	}
+
+	insClient.EXPECT().
+		DiscoverInstances(mocky.Anything, &instancev1alpha1.DiscoverInstanceRequest{
+			NodeKey: &nodeKey,
+		}).
+		Return(&instancev1alpha1.DiscoverInstanceResponse{
+			Instances: []*instancev1alpha1.Instance{
+				ins,
+			},
+		}, nil)
+
+	return ins
+}
+
+func expectReportedStatus(
+	insClient *mock.MockV1alpha1InstanceServiceClient,
+	id string,
+	state workloadv1alpha2.WorkloadState,
+	port uint32,
+) {
+	insClient.EXPECT().ReceiveWorkloadStatusReports(
+		mocky.Anything, &instancev1alpha1.ReceiveWorkloadStatusReportsRequest{
+			Items: []*workloadv1alpha2.WorkloadStatus{
+				{
+					Id:    ptr.Pointer(id),
+					State: ptr.Pointer(state),
+					Port:  ptr.Pointer(port),
+				},
+			},
+		}).
+		Return(nil, nil)
 }

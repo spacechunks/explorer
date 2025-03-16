@@ -20,6 +20,39 @@ func (_m *MockWorkloadStatusStore) EXPECT() *MockWorkloadStatusStore_Expecter {
 	return &MockWorkloadStatusStore_Expecter{mock: &_m.Mock}
 }
 
+// Del provides a mock function with given fields: id
+func (_m *MockWorkloadStatusStore) Del(id string) {
+	_m.Called(id)
+}
+
+// MockWorkloadStatusStore_Del_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Del'
+type MockWorkloadStatusStore_Del_Call struct {
+	*mock.Call
+}
+
+// Del is a helper method to define mock.On call
+//   - id string
+func (_e *MockWorkloadStatusStore_Expecter) Del(id interface{}) *MockWorkloadStatusStore_Del_Call {
+	return &MockWorkloadStatusStore_Del_Call{Call: _e.mock.On("Del", id)}
+}
+
+func (_c *MockWorkloadStatusStore_Del_Call) Run(run func(id string)) *MockWorkloadStatusStore_Del_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockWorkloadStatusStore_Del_Call) Return() *MockWorkloadStatusStore_Del_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockWorkloadStatusStore_Del_Call) RunAndReturn(run func(string)) *MockWorkloadStatusStore_Del_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function with given fields: id
 func (_m *MockWorkloadStatusStore) Get(id string) *workload.Status {
 	ret := _m.Called(id)
