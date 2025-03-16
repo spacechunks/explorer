@@ -33,9 +33,9 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var errMaxAttemptsReached = errors.New("syncer: max attempts reached")
+var errMaxAttemptsReached = errors.New("reconciler: max attempts reached")
 
-// syncer is responsible for syncing the state found in the control plane
+// reconciler is responsible for syncing the state found in the control plane
 // with what is currently running on the CRI side. basically, it does the
 // following:
 //
@@ -62,7 +62,7 @@ var errMaxAttemptsReached = errors.New("syncer: max attempts reached")
 //     -> if workload is already gone, set status [workload.StateDeleted]
 //
 //     -> if workload container has status exited or unknown, remove it
-type syncer struct {
+type reconciler struct {
 	logger *slog.Logger
 
 	cfg syncerConfig
@@ -93,9 +93,9 @@ func newSyncer(
 	insClient instancev1alpha1.InstanceServiceClient,
 	wlService workload.Service,
 	store workload.StatusStore,
-) syncer {
-	return syncer{
-		logger:    logger.With("component", "syncer"),
+) reconciler {
+	return reconciler{
+		logger:    logger.With("component", "reconciler"),
 		cfg:       cfg,
 		insClient: insClient,
 		wlService: wlService,
@@ -107,32 +107,32 @@ func newSyncer(
 	}
 }
 
-func (s *syncer) Start(ctx context.Context) {
+func (r *reconciler) Start(ctx context.Context) {
 	for {
 		select {
-		case <-s.ticker.C:
-			s.tick(ctx)
-		case <-s.stop:
+		case <-r.ticker.C:
+			r.tick(ctx)
+		case <-r.stop:
 			return
 		}
 	}
 }
 
-func (s *syncer) Stop() {
-	s.ticker.Stop()
-	s.stop <- true
+func (r *reconciler) Stop() {
+	r.ticker.Stop()
+	r.stop <- true
 }
 
-func (s *syncer) tick(ctx context.Context) {
-	discResp, err := s.insClient.DiscoverInstances(ctx, &instancev1alpha1.DiscoverInstanceRequest{
-		NodeKey: &s.cfg.NodeID,
+func (r *reconciler) tick(ctx context.Context) {
+	discResp, err := r.insClient.DiscoverInstances(ctx, &instancev1alpha1.DiscoverInstanceRequest{
+		NodeKey: &r.cfg.NodeID,
 	})
 	if err != nil {
-		slog.ErrorContext(ctx, "discover instances failed", "node_id", s.cfg.NodeID, "err", err)
+		slog.ErrorContext(ctx, "discover instances failed", "node_id", r.cfg.NodeID, "err", err)
 		// if we encounter an error backoff for a longer period than the sync interval,
 		// because we don't want to spam the control plane if things are not working.
 		// FIXME: use exponential backoff
-		s.ticker.Reset(3 * time.Second)
+		r.ticker.Reset(3 * time.Second)
 		return
 	}
 
@@ -140,29 +140,29 @@ func (s *syncer) tick(ctx context.Context) {
 		id := ins.GetId()
 		switch ins.GetState() {
 		case instancev1alpha1.InstanceState_PENDING:
-			if err := s.handleInstancePending(ctx, ins); err != nil {
+			if err := r.handleInstancePending(ctx, ins); err != nil {
 				if errors.Is(err, errMaxAttemptsReached) {
-					s.logger.WarnContext(ctx, "max attempts reached", "instance_id", id, "attempt", s.attempts[id])
+					r.logger.WarnContext(ctx, "max attempts reached", "instance_id", id, "attempt", r.attempts[id])
 					continue
 				}
-				s.attempts[id] = s.attempts[id] + 1
-				s.logger.ErrorContext(ctx, "failed to run workload", "instance_id", id, "attempt", s.attempts[id], "err", err)
+				r.attempts[id] = r.attempts[id] + 1
+				r.logger.ErrorContext(ctx, "failed to run workload", "instance_id", id, "attempt", r.attempts[id], "err", err)
 			}
 			continue
 		// DELETING is set by the control plane once an instance
 		// should be stopped and removed
 		case instancev1alpha1.InstanceState_DELETING:
-			if err := s.handleInstanceDeleting(ctx, ins); err != nil {
-				s.logger.ErrorContext(ctx, "failed to delete instance", "instance_id", id)
+			if err := r.handleInstanceDeleting(ctx, ins); err != nil {
+				r.logger.ErrorContext(ctx, "failed to delete instance", "instance_id", id)
 			}
 			continue
 		case instancev1alpha1.InstanceState_RUNNING:
-			if err := s.handleInstanceRunning(ctx, ins); err != nil {
-				s.logger.ErrorContext(ctx, "handling a running instance failed", "instance_id", id, "err", err)
+			if err := r.handleInstanceRunning(ctx, ins); err != nil {
+				r.logger.ErrorContext(ctx, "handling a running instance failed", "instance_id", id, "err", err)
 			}
 			continue
 		default:
-			s.logger.DebugContext(ctx, "skipping instance", "state", ins.GetState())
+			r.logger.DebugContext(ctx, "skipping instance", "state", ins.GetState())
 			continue
 		}
 	}
@@ -171,13 +171,13 @@ func (s *syncer) tick(ctx context.Context) {
 	// once reported remove DELETED and CREATION_FAILED entries from store
 
 	// set the sync interval again, in case we errored before
-	s.ticker.Reset(s.cfg.SyncInterval)
+	r.ticker.Reset(r.cfg.SyncInterval)
 }
 
-func (s *syncer) handleInstancePending(ctx context.Context, instance *instancev1alpha1.Instance) error {
+func (r *reconciler) handleInstancePending(ctx context.Context, instance *instancev1alpha1.Instance) error {
 	var (
 		id      = instance.GetId()
-		attempt = s.attempts[id]
+		attempt = r.attempts[id]
 	)
 
 	// if the instance is not in state CREATING, skip it.
@@ -187,12 +187,12 @@ func (s *syncer) handleInstancePending(ctx context.Context, instance *instancev1
 	// successfully, because the state update did not reach
 	// the control plane yet or a bug in the control plane does
 	// not update states correctly.
-	if stat := s.store.Get(id); stat != nil && stat.State != workload.StateCreating {
+	if stat := r.store.Get(id); stat != nil && stat.State != workload.StateCreating {
 		return nil
 	}
 
-	if attempt >= s.cfg.MaxAttempts {
-		s.store.Update(id, workload.Status{
+	if attempt >= r.cfg.MaxAttempts {
+		r.store.Update(id, workload.Status{
 			State: workload.StateCreationFailed,
 		})
 		return errMaxAttemptsReached
@@ -200,11 +200,11 @@ func (s *syncer) handleInstancePending(ctx context.Context, instance *instancev1
 
 	attempt++
 
-	s.store.Update(id, workload.Status{
+	r.store.Update(id, workload.Status{
 		State: workload.StateCreating,
 	})
 
-	port, err := s.portAlloc.Allocate()
+	port, err := r.portAlloc.Allocate()
 	if err != nil {
 		return fmt.Errorf("failed to allocate port: %w", err)
 	}
@@ -225,21 +225,21 @@ func (s *syncer) handleInstancePending(ctx context.Context, instance *instancev1
 		ID:   id,
 		Name: instance.GetChunk().GetName() + "_" + instance.GetFlavor().GetName(),
 		Image: fmt.Sprintf(
-			"%s/%s/%s",
-			s.cfg.RegistryEndpoint,
+			"%r/%r/%r",
+			r.cfg.RegistryEndpoint,
 			instance.GetChunk().GetName(),
 			instance.GetFlavor().GetName(),
 		),
-		Namespace: s.cfg.WorkloadNamespace,
+		Namespace: r.cfg.WorkloadNamespace,
 		Hostname:  id,
 		Labels:    labels,
 	}
 
-	if err := s.wlService.RunWorkload(ctx, w, attempt); err != nil {
+	if err := r.wlService.RunWorkload(ctx, w, attempt); err != nil {
 		// very important to free the allocated port here, because
 		// if we exceed the maximum amount of attempts, the port
 		// will stay allocated as we return the function.
-		s.portAlloc.Free(port)
+		r.portAlloc.Free(port)
 
 		// FIXME: with this implementation we waste a whole attempt
 		//        when the workload cannot be removed in this step.
@@ -248,7 +248,7 @@ func (s *syncer) handleInstancePending(ctx context.Context, instance *instancev1
 
 		// clean up the not working state, so we can retry
 		// with a fresh pod.
-		if err := s.wlService.RemoveWorkload(ctx, id); err != nil {
+		if err := r.wlService.RemoveWorkload(ctx, id); err != nil {
 			slog.ErrorContext(ctx, "failed to remove workload", "instance_id", id, "err", err)
 		}
 
@@ -256,14 +256,14 @@ func (s *syncer) handleInstancePending(ctx context.Context, instance *instancev1
 	}
 
 	wStatus.State = workload.StateRunning
-	s.store.Update(id, wStatus)
+	r.store.Update(id, wStatus)
 	return nil
 }
 
-func (s *syncer) handleInstanceDeleting(ctx context.Context, instance *instancev1alpha1.Instance) error {
-	if err := s.wlService.RemoveWorkload(ctx, instance.GetId()); err != nil {
+func (r *reconciler) handleInstanceDeleting(ctx context.Context, instance *instancev1alpha1.Instance) error {
+	if err := r.wlService.RemoveWorkload(ctx, instance.GetId()); err != nil {
 		if isNotFound(err) {
-			s.store.Update(instance.GetId(), workload.Status{
+			r.store.Update(instance.GetId(), workload.Status{
 				State: workload.StateDeleted,
 			})
 			return nil
@@ -271,15 +271,15 @@ func (s *syncer) handleInstanceDeleting(ctx context.Context, instance *instancev
 		return fmt.Errorf("remove workload: %w", err)
 	}
 
-	s.store.Update(instance.GetId(), workload.Status{
+	r.store.Update(instance.GetId(), workload.Status{
 		State: workload.StateDeleted,
 	})
 
 	return nil
 }
 
-func (s *syncer) handleInstanceRunning(ctx context.Context, instance *instancev1alpha1.Instance) error {
-	health, err := s.wlService.GetWorkloadHealth(ctx, instance.GetId())
+func (r *reconciler) handleInstanceRunning(ctx context.Context, instance *instancev1alpha1.Instance) error {
+	health, err := r.wlService.GetWorkloadHealth(ctx, instance.GetId())
 	if err != nil {
 		return fmt.Errorf("get workload health: %w", err)
 	}
@@ -288,11 +288,11 @@ func (s *syncer) handleInstanceRunning(ctx context.Context, instance *instancev1
 		return nil
 	}
 
-	if err := s.wlService.RemoveWorkload(ctx, instance.GetId()); err != nil {
+	if err := r.wlService.RemoveWorkload(ctx, instance.GetId()); err != nil {
 		// can happen if control plane update fails, but workload has already been deleted.
 		// this also enables manual deletion of pods, can come in handy when debugging.
 		if isNotFound(err) {
-			s.store.Update(instance.GetId(), workload.Status{
+			r.store.Update(instance.GetId(), workload.Status{
 				State: workload.StateDeleted,
 			})
 			return nil
@@ -300,7 +300,7 @@ func (s *syncer) handleInstanceRunning(ctx context.Context, instance *instancev1
 		return fmt.Errorf("remove workload: %w", err)
 	}
 
-	s.store.Update(instance.GetId(), workload.Status{
+	r.store.Update(instance.GetId(), workload.Status{
 		State: workload.StateDeleted,
 	})
 
