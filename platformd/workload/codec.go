@@ -18,7 +18,17 @@
 
 package workload
 
-import workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+import (
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/internal/ptr"
+)
+
+func WorkloadStatusToTransport(status Status) *workloadv1alpha2.WorkloadStatus {
+	return &workloadv1alpha2.WorkloadStatus{
+		State: ptr.Pointer(StateToTransport(status.State)),
+		Port:  ptr.Pointer(uint32(status.Port)),
+	}
+}
 
 func StateToTransport(state State) workloadv1alpha2.WorkloadState {
 	num, ok := workloadv1alpha2.WorkloadState_value[string(state)]
