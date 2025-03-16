@@ -30,8 +30,8 @@ var (
 type HealthStatus string
 
 var (
-	Healthy   HealthStatus = "HEALTY"
-	Unhealthy HealthStatus = "UNHEALTY"
+	HealthStatusHealthy   HealthStatus = "HEALTY"
+	HealthStatusUnhealthy HealthStatus = "UNHEALTY"
 )
 
 type Status struct {

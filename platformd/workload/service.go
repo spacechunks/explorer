@@ -2,7 +2,6 @@ package workload
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -11,11 +10,6 @@ import (
 )
 
 const PodLogDir = "/var/log/platformd/pods"
-
-var (
-	ErrWorkloadNotFound  = errors.New("workload not found")
-	ErrContainerNotFound = errors.New("container not found")
-)
 
 type Service interface {
 	RunWorkload(ctx context.Context, w Workload, attempt int) error
@@ -84,6 +78,7 @@ func (s *criService) RunWorkload(ctx context.Context, w Workload, attempt int) e
 			Name:      w.Name,
 			Uid:       w.ID,
 			Namespace: w.Namespace,
+			Attempt:   uint32(attempt),
 		},
 		Hostname:     w.Hostname, // TODO: explore if we can use the id as the hostname
 		LogDirectory: PodLogDir,
@@ -120,8 +115,7 @@ func (s *criService) RunWorkload(ctx context.Context, w Workload, attempt int) e
 		PodSandboxId: sboxResp.PodSandboxId,
 		Config: &runtimev1.ContainerConfig{
 			Metadata: &runtimev1.ContainerMetadata{
-				Name:    w.Name,
-				Attempt: uint32(attempt),
+				Name: w.Name,
 			},
 			Image: &runtimev1.ImageSpec{
 				UserSpecifiedImage: w.Image,
@@ -173,23 +167,23 @@ func (s *criService) GetWorkloadHealth(ctx context.Context, id string) (HealthSt
 		},
 	})
 	if err != nil {
-		return Unhealthy, fmt.Errorf("list containers: %w", err)
+		return HealthStatusUnhealthy, fmt.Errorf("list containers: %w", err)
 	}
 
 	if len(resp.GetContainers()) == 0 {
-		return Unhealthy, nil
+		return HealthStatusUnhealthy, nil
 	}
 
 	switch resp.GetContainers()[0].State {
 	case runtimev1.ContainerState_CONTAINER_RUNNING:
-		return Healthy, nil
+		return HealthStatusHealthy, nil
 	case runtimev1.ContainerState_CONTAINER_CREATED:
 	case runtimev1.ContainerState_CONTAINER_UNKNOWN:
 	case runtimev1.ContainerState_CONTAINER_EXITED:
-		return Unhealthy, nil
+		return HealthStatusUnhealthy, nil
 	}
 
-	return Healthy, nil
+	return HealthStatusHealthy, nil
 }
 
 // pullImageIfNotPresent first calls ListImages then checks if the image is contained in the response.
