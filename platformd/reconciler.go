@@ -250,6 +250,12 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 			State: workload.StateCreating,
 			Port:  port,
 		}
+		baseURL = fmt.Sprintf(
+			"%s/%s/%s",
+			r.cfg.RegistryEndpoint,
+			instance.GetChunk().GetName(),
+			instance.GetFlavor().GetName(),
+		)
 		labels = map[string]string{
 			workload.LabelWorkloadPort: strconv.Itoa(int(port)),
 		}
@@ -258,17 +264,13 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 	maps.Copy(labels, workload.InstanceLabels(instance))
 
 	w := workload.Workload{
-		ID:   id,
-		Name: instance.GetChunk().GetName() + "_" + instance.GetFlavor().GetName(),
-		Image: fmt.Sprintf(
-			"%s/%s/%s",
-			r.cfg.RegistryEndpoint,
-			instance.GetChunk().GetName(),
-			instance.GetFlavor().GetName(),
-		),
-		Namespace: r.cfg.WorkloadNamespace,
-		Hostname:  id,
-		Labels:    labels,
+		ID:              id,
+		Name:            instance.GetChunk().GetName() + "_" + instance.GetFlavor().GetName(),
+		BaseImage:       baseURL + "/base",
+		CheckpointImage: baseURL + "/checkpoint",
+		Namespace:       r.cfg.WorkloadNamespace,
+		Hostname:        id,
+		Labels:          labels,
 	}
 
 	if err := r.wlService.RunWorkload(ctx, w, attempt); err != nil {

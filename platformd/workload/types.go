@@ -40,23 +40,22 @@ type Status struct {
 }
 
 type Workload struct {
-	ID     string
-	Status Status
+	ID              string
+	CheckpointImage string
+	BaseImage       string
 
 	// below map directly to pod fields
 	Name      string
-	Image     string
 	Namespace string
 	Hostname  string
 	Labels    map[string]string
+
 	// NetworkNamespaceMode as per [runtimev1.NamespaceMode].
 	// keeping this value an int32 is intentional, so the workload
 	// api does not rely on runtime version specific value mapping,
 	// which would be the case if we were defining enum values for each
 	// [runtimev1.NamespaceMode] value.
 	NetworkNamespaceMode int32
-	Mounts               []Mount
-	Args                 []string
 }
 
 type Mount struct {
