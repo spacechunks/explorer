@@ -29,7 +29,6 @@ import (
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
-	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -188,11 +187,9 @@ func (r *reconciler) tick(ctx context.Context) {
 	)
 
 	for k, v := range statuses {
-		items = append(items, &workloadv1alpha2.WorkloadStatus{
-			Id:    &k,
-			State: ptr.Pointer(workload.StateToTransport(v.State)),
-			Port:  ptr.Pointer(uint32(v.Port)),
-		})
+		item := workload.WorkloadStatusToTransport(v)
+		item.Id = &k
+		items = append(items, item)
 	}
 
 	if _, err := r.insClient.ReceiveWorkloadStatusReports(ctx, &instancev1alpha1.ReceiveWorkloadStatusReportsRequest{

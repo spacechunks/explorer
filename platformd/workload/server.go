@@ -18,96 +18,42 @@
 
 package workload
 
-/*
 import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
-	workloadv1alpha1 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha1"
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/internal/ptr"
 )
 
 type Server struct {
-	workloadv1alpha1.UnimplementedWorkloadServiceServer
-	svc       Service
-	portAlloc *PortAllocator
-	store     Store
+	workloadv1alpha2.UnimplementedWorkloadServiceServer
+	store StatusStore
 }
 
-func NewServer(svc Service, alloc *PortAllocator, store Store) *Server {
+func NewServer(store StatusStore) *Server {
 	return &Server{
-		svc:       svc,
-		portAlloc: alloc,
-		store:     store,
+		store: store,
 	}
-}
-
-func (s *Server) RunWorkload(
-	ctx context.Context,
-	req *workloadv1alpha1.RunWorkloadRequest,
-) (*workloadv1alpha1.RunWorkloadResponse, error) {
-	port, err := s.portAlloc.Allocate()
-	if err != nil {
-		return nil, fmt.Errorf("allocate port: %w", err)
-	}
-
-	id, err := uuid.NewV7()
-	if err != nil {
-		return nil, fmt.Errorf("create uuid: %w", err)
-	}
-
-	w := Workload{
-		ID:                   id.String(),
-		Name:                 req.Name,
-		Image:                req.Image,
-		Namespace:            req.Namespace,
-		Hostname:             req.Hostname,
-		Labels:               req.Labels,
-		NetworkNamespaceMode: req.NetworkNamespaceMode,
-		Port:                 port,
-	}
-
-	s.store.SaveWorkload(w)
-
-	if err := s.svc.RunWorkload(ctx, w); err != nil {
-		return nil, fmt.Errorf("run workload: %w", err)
-	}
-
-	// FIXME(yannic): if we have more objects create codec package
-	//                which contains conversion logic from domain
-	//                to grpc object
-	//
-	return &workloadv1alpha1.RunWorkloadResponse{
-		Workload: &workloadv1alpha1.Workload{
-			Id:                   w.ID,
-			Name:                 w.Name,
-			Image:                w.Image,
-			Namespace:            w.Namespace,
-			Hostname:             w.Hostname,
-			Labels:               w.Labels,
-			NetworkNamespaceMode: w.NetworkNamespaceMode,
-			Port:                 uint32(port),
-		},
-	}, nil
 }
 
 func (s *Server) WorkloadStatus(
-	ctx context.Context,
-	req *workloadv1alpha1.WorkloadStatusRequest,
-) (*workloadv1alpha1.WorkloadStatusResponse, error) {
-	if req.Id == "" {
+	_ context.Context,
+	req *workloadv1alpha2.WorkloadStatusRequest,
+) (*workloadv1alpha2.WorkloadStatusResponse, error) {
+	if req.GetId() == "" {
 		return nil, fmt.Errorf("workload id required")
 	}
 
-	w := s.store.GetWorkload(req.Id)
-	if w == nil {
+	domain := s.store.Get(req.GetId())
+	if domain == nil {
 		return nil, fmt.Errorf("workload not found")
 	}
 
-	return &workloadv1alpha1.WorkloadStatusResponse{
-		Status: &workloadv1alpha1.WorkloadStatus{
-			State: workloadv1alpha1.WorkloadState_UNKNOWN,
-			Port:  uint32(w.Port),
-		},
+	transport := WorkloadStatusToTransport(*domain)
+	transport.Id = ptr.Pointer(req.GetId())
+
+	return &workloadv1alpha2.WorkloadStatusResponse{
+		Status: transport,
 	}, nil
-}*/
+}
