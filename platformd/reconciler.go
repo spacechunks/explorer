@@ -31,7 +31,7 @@ import (
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 var errMaxAttemptsReached = errors.New("reconciler: max attempts reached")
@@ -223,7 +223,7 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 	// successfully, because the state update did not reach
 	// the control plane yet or a bug in the control plane does
 	// not update states correctly.
-	if stat := r.store.Get(id); stat != nil && stat.State != workload.StateCreating {
+	if status := r.store.Get(id); status != nil && status.State != workload.StateCreating {
 		return nil
 	}
 
@@ -246,7 +246,7 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 	}
 
 	var (
-		wStatus = workload.Status{
+		status = workload.Status{
 			State: workload.StateCreating,
 			Port:  port,
 		}
@@ -293,8 +293,8 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 		return fmt.Errorf("run workload: %w", err)
 	}
 
-	wStatus.State = workload.StateRunning
-	r.store.Update(id, wStatus)
+	status.State = workload.StateRunning
+	r.store.Update(id, status)
 	return nil
 }
 
@@ -346,7 +346,7 @@ func (r *reconciler) handleInstanceRunning(ctx context.Context, instance *instan
 }
 
 func isNotFound(err error) bool {
-	st, ok := status.FromError(err)
+	st, ok := grpcstatus.FromError(err)
 	if ok && st.Code() == codes.NotFound {
 		return true
 	}

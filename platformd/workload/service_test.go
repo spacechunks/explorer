@@ -39,7 +39,7 @@ func TestRunWorkload(t *testing.T) {
 		opts = workload.Workload{
 			ID:                   testWorkloadID,
 			Name:                 "test",
-			Image:                "test-image",
+			CheckpointImage:      "test-image",
 			Namespace:            "test",
 			Hostname:             "test",
 			Labels:               map[string]string{"k": "v"},
@@ -62,19 +62,29 @@ func TestRunWorkload(t *testing.T) {
 			name:    "all options set - pull image if not present",
 			w:       opts,
 			attempt: 2,
-			prep: func(rtMock *mock.MockV1RuntimeServiceClient,
+			prep: func(
+				rtMock *mock.MockV1RuntimeServiceClient,
 				imgMock *mock.MockV1ImageServiceClient,
 				opts workload.Workload,
 				attempt int,
 			) {
 				imgMock.EXPECT().
 					ListImages(mocky.Anything, &runtimev1.ListImagesRequest{}).
-					Return(&runtimev1.ListImagesResponse{}, nil)
+					Return(&runtimev1.ListImagesResponse{}, nil).
+					Times(2)
 
 				imgMock.EXPECT().
 					PullImage(mocky.Anything, &runtimev1.PullImageRequest{
 						Image: &runtimev1.ImageSpec{
-							Image: opts.Image,
+							Image: opts.BaseImage,
+						},
+					}).
+					Return(&runtimev1.PullImageResponse{}, nil)
+
+				imgMock.EXPECT().
+					PullImage(mocky.Anything, &runtimev1.PullImageRequest{
+						Image: &runtimev1.ImageSpec{
+							Image: opts.CheckpointImage,
 						},
 					}).
 					Return(&runtimev1.PullImageResponse{}, nil)
@@ -85,7 +95,8 @@ func TestRunWorkload(t *testing.T) {
 		{
 			name: "image already present",
 			w:    opts,
-			prep: func(rtMock *mock.MockV1RuntimeServiceClient,
+			prep: func(
+				rtMock *mock.MockV1RuntimeServiceClient,
 				imgMock *mock.MockV1ImageServiceClient,
 				w workload.Workload,
 				_ int,
@@ -95,10 +106,22 @@ func TestRunWorkload(t *testing.T) {
 					Return(&runtimev1.ListImagesResponse{
 						Images: []*runtimev1.Image{
 							{
-								RepoTags: []string{w.Image},
+								RepoTags: []string{w.BaseImage},
 							},
 						},
-					}, nil)
+					}, nil).
+					Once()
+
+				imgMock.EXPECT().
+					ListImages(mocky.Anything, &runtimev1.ListImagesRequest{}).
+					Return(&runtimev1.ListImagesResponse{
+						Images: []*runtimev1.Image{
+							{
+								RepoTags: []string{w.CheckpointImage},
+							},
+						},
+					}, nil).
+					Once()
 
 				expect(rtMock, w, wlID, 0)
 			},
@@ -173,8 +196,8 @@ func expect(rtMock *mock.MockV1RuntimeServiceClient, w workload.Workload, wlID s
 					Name: w.Name,
 				},
 				Image: &runtimev1.ImageSpec{
-					UserSpecifiedImage: w.Image,
-					Image:              w.Image,
+					UserSpecifiedImage: w.CheckpointImage,
+					Image:              w.CheckpointImage,
 				},
 				Labels:  w.Labels,
 				LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
