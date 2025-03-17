@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	InstanceService_RunChunk_FullMethodName                     = "/instance.v1alpha1.InstanceService/RunChunk"
 	InstanceService_DiscoverInstances_FullMethodName            = "/instance.v1alpha1.InstanceService/DiscoverInstances"
-	InstanceService_ReceiveWorkloadStatusReports_FullMethodName = "/instance.v1alpha1.InstanceService/ReceiveWorkloadStatusReports"
+	InstanceService_ReceiveInstanceStatusReports_FullMethodName = "/instance.v1alpha1.InstanceService/ReceiveInstanceStatusReports"
 )
 
 // InstanceServiceClient is the client API for InstanceService service.
@@ -38,9 +38,9 @@ type InstanceServiceClient interface {
 	// DiscoverInstances returns all workloads that have been scheduled to a node for
 	// creation or removal. Platformd identifies itself using its unique node key.
 	DiscoverInstances(ctx context.Context, in *DiscoverInstanceRequest, opts ...grpc.CallOption) (*DiscoverInstanceResponse, error)
-	// ReceiveWorkloadStatusReports is intended to be called by platformd in order to report
+	// ReceiveInstanceStatusReport is intended to be called by platformd in order to report
 	// status updates back to the control plane.
-	ReceiveWorkloadStatusReports(ctx context.Context, in *ReceiveWorkloadStatusReportsRequest, opts ...grpc.CallOption) (*ReceiveWorkloadStatusReportResponse, error)
+	ReceiveInstanceStatusReports(ctx context.Context, in *ReceiveInstanceStatusReportsRequest, opts ...grpc.CallOption) (*ReceiveInstanceStatusReportsResponse, error)
 }
 
 type instanceServiceClient struct {
@@ -71,10 +71,10 @@ func (c *instanceServiceClient) DiscoverInstances(ctx context.Context, in *Disco
 	return out, nil
 }
 
-func (c *instanceServiceClient) ReceiveWorkloadStatusReports(ctx context.Context, in *ReceiveWorkloadStatusReportsRequest, opts ...grpc.CallOption) (*ReceiveWorkloadStatusReportResponse, error) {
+func (c *instanceServiceClient) ReceiveInstanceStatusReports(ctx context.Context, in *ReceiveInstanceStatusReportsRequest, opts ...grpc.CallOption) (*ReceiveInstanceStatusReportsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReceiveWorkloadStatusReportResponse)
-	err := c.cc.Invoke(ctx, InstanceService_ReceiveWorkloadStatusReports_FullMethodName, in, out, cOpts...)
+	out := new(ReceiveInstanceStatusReportsResponse)
+	err := c.cc.Invoke(ctx, InstanceService_ReceiveInstanceStatusReports_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -94,9 +94,9 @@ type InstanceServiceServer interface {
 	// DiscoverInstances returns all workloads that have been scheduled to a node for
 	// creation or removal. Platformd identifies itself using its unique node key.
 	DiscoverInstances(context.Context, *DiscoverInstanceRequest) (*DiscoverInstanceResponse, error)
-	// ReceiveWorkloadStatusReports is intended to be called by platformd in order to report
+	// ReceiveInstanceStatusReport is intended to be called by platformd in order to report
 	// status updates back to the control plane.
-	ReceiveWorkloadStatusReports(context.Context, *ReceiveWorkloadStatusReportsRequest) (*ReceiveWorkloadStatusReportResponse, error)
+	ReceiveInstanceStatusReports(context.Context, *ReceiveInstanceStatusReportsRequest) (*ReceiveInstanceStatusReportsResponse, error)
 	mustEmbedUnimplementedInstanceServiceServer()
 }
 
@@ -113,8 +113,8 @@ func (UnimplementedInstanceServiceServer) RunChunk(context.Context, *RunChunkReq
 func (UnimplementedInstanceServiceServer) DiscoverInstances(context.Context, *DiscoverInstanceRequest) (*DiscoverInstanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiscoverInstances not implemented")
 }
-func (UnimplementedInstanceServiceServer) ReceiveWorkloadStatusReports(context.Context, *ReceiveWorkloadStatusReportsRequest) (*ReceiveWorkloadStatusReportResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReceiveWorkloadStatusReports not implemented")
+func (UnimplementedInstanceServiceServer) ReceiveInstanceStatusReports(context.Context, *ReceiveInstanceStatusReportsRequest) (*ReceiveInstanceStatusReportsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReceiveInstanceStatusReports not implemented")
 }
 func (UnimplementedInstanceServiceServer) mustEmbedUnimplementedInstanceServiceServer() {}
 func (UnimplementedInstanceServiceServer) testEmbeddedByValue()                         {}
@@ -173,20 +173,20 @@ func _InstanceService_DiscoverInstances_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
-func _InstanceService_ReceiveWorkloadStatusReports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReceiveWorkloadStatusReportsRequest)
+func _InstanceService_ReceiveInstanceStatusReports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReceiveInstanceStatusReportsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(InstanceServiceServer).ReceiveWorkloadStatusReports(ctx, in)
+		return srv.(InstanceServiceServer).ReceiveInstanceStatusReports(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: InstanceService_ReceiveWorkloadStatusReports_FullMethodName,
+		FullMethod: InstanceService_ReceiveInstanceStatusReports_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InstanceServiceServer).ReceiveWorkloadStatusReports(ctx, req.(*ReceiveWorkloadStatusReportsRequest))
+		return srv.(InstanceServiceServer).ReceiveInstanceStatusReports(ctx, req.(*ReceiveInstanceStatusReportsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -207,8 +207,8 @@ var InstanceService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _InstanceService_DiscoverInstances_Handler,
 		},
 		{
-			MethodName: "ReceiveWorkloadStatusReports",
-			Handler:    _InstanceService_ReceiveWorkloadStatusReports_Handler,
+			MethodName: "ReceiveInstanceStatusReports",
+			Handler:    _InstanceService_ReceiveInstanceStatusReports_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
