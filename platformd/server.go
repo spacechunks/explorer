@@ -6,16 +6,16 @@ import (
 	"log/slog"
 	"net"
 	"net/netip"
-
-	"github.com/google/uuid"
-	"github.com/spacechunks/explorer/internal/datapath"
-	proxy2 "github.com/spacechunks/explorer/platformd/proxy"
-	xds2 "github.com/spacechunks/explorer/platformd/proxy/xds"
-	workload2 "github.com/spacechunks/explorer/platformd/workload"
+	"time"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/hashicorp/go-multierror"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/internal/datapath"
+	"github.com/spacechunks/explorer/platformd/proxy"
+	"github.com/spacechunks/explorer/platformd/proxy/xds"
+	"github.com/spacechunks/explorer/platformd/workload"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
@@ -55,32 +55,40 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	const proxyNodeID = "proxy-0"
 
 	var (
-		xdsCfg = cache.NewSnapshotCache(true, cache.IDHash{}, nil)
-		wlSvc  = workload2.NewService(
+		xdsCfg   = cache.NewSnapshotCache(true, cache.IDHash{}, nil)
+		rtClient = runtimev1.NewRuntimeServiceClient(criConn)
+		wlSvc    = workload.NewService(
 			s.logger,
-			runtimev1.NewRuntimeServiceClient(criConn),
+			rtClient,
 			runtimev1.NewImageServiceClient(criConn),
 		)
-		proxySvc = proxy2.NewService(
+		proxySvc = proxy.NewService(
 			s.logger,
-			proxy2.Config{
+			proxy.Config{
 				DNSUpstream: dnsUpstream,
 			},
-			xds2.NewMap(proxyNodeID, xdsCfg),
+			xds.NewMap(proxyNodeID, xdsCfg),
 		)
 
 		mgmtServer  = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
-		proxyServer = proxy2.NewServer(proxySvc)
-		/*wlServer    = workload2.NewServer(
-			wlSvc,
-			workload2.NewPortAllocator(30000, 40000),
-			workload2.NewStore(),
-		)*/
+		proxyServer = proxy.NewServer(proxySvc)
+		wlStore     = workload.NewStore()
+		wlServer    = workload.NewServer(wlStore)
+		reconciler  = newReconciler(s.logger, reconcilerConfig{
+			MaxAttempts:       0,
+			SyncInterval:      0,
+			NodeID:            "",
+			MinPort:           0,
+			MaxPort:           0,
+			WorkloadNamespace: "",
+			RegistryEndpoint:  "",
+		}, nil, wlSvc, wlStore)
+		gc = newPodGC(s.logger, rtClient, 1*time.Second, 5)
 	)
 
 	proxyv1alpha1.RegisterProxyServiceServer(mgmtServer, proxyServer)
-	//workloadv1alpha1.RegisterWorkloadServiceServer(mgmtServer, wlServer)
-	xds2.CreateAndRegisterServer(ctx, s.logger, mgmtServer, xdsCfg)
+	workloadv1alpha2.RegisterWorkloadServiceServer(mgmtServer, wlServer)
+	xds.CreateAndRegisterServer(ctx, s.logger, mgmtServer, xdsCfg)
 
 	bpf, err := datapath.LoadBPF()
 	if err != nil {
@@ -118,8 +126,12 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("apply global resources: %w", err)
 	}
 
+	gc.Start(ctx)
+	reconciler.Start(ctx)
+
+	// TODO: find better solution
 	// before we start our grpc services make sure our system workloads are running
-	if err := wlSvc.EnsureWorkload(ctx, workload2.Workload{
+	/*if err := wlSvc.EnsureWorkload(ctx, workload2.Workload{
 		ID:                   uuid.New().String(),
 		Name:                 "envoy",
 		Image:                cfg.EnvoyImage,
@@ -153,7 +165,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		},
 	}, workload2.SystemWorkloadLabels("coredns")); err != nil {
 		return fmt.Errorf("ensure coredns: %w", err)
-	}
+	}*/
 
 	unixSock, err := net.Listen("unix", cfg.ManagementServerListenSock)
 	if err != nil {
@@ -161,6 +173,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
+
 	var g multierror.Group
 	g.Go(func() error {
 		if err := mgmtServer.Serve(unixSock); err != nil {
@@ -175,6 +188,9 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	// add stop related code below
 
 	mgmtServer.GracefulStop()
+	gc.Stop()
+	reconciler.Stop()
+
 	g.Go(func() error {
 		if err := criConn.Close(); err != nil {
 			return fmt.Errorf("cri conn close: %w", err)
