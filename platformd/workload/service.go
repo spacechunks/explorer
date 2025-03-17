@@ -92,10 +92,10 @@ func (s *criService) RunWorkload(ctx context.Context, w Workload, attempt int) e
 			Searches: []string{"."},
 		},
 		Linux: &runtimev1.LinuxPodSandboxConfig{
-			SecurityContext: &runtimev1.LinuxSandboxSecurityContext{
-				NamespaceOptions: &runtimev1.NamespaceOption{
-					Network: runtimev1.NamespaceMode(w.NetworkNamespaceMode),
-				},
+			Resources: &runtimev1.LinuxContainerResources{
+				CpuPeriod:          int64(w.CPUPeriod),
+				CpuQuota:           int64(w.CPUQuota),
+				MemoryLimitInBytes: int64(w.MemoryLimitBytes),
 			},
 		},
 	}
