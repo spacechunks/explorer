@@ -79,13 +79,16 @@ type reconciler struct {
 }
 
 type reconcilerConfig struct {
-	MaxAttempts       int
-	SyncInterval      time.Duration
-	NodeID            string
-	MinPort           uint16
-	MaxPort           uint16
-	WorkloadNamespace string
-	RegistryEndpoint  string
+	MaxAttempts         int
+	SyncInterval        time.Duration
+	NodeID              string
+	MinPort             uint16
+	MaxPort             uint16
+	WorkloadNamespace   string
+	WorkloadCPUPeriod   uint64
+	WorkloadCPUQuota    uint64
+	WorkloadMemoryLimit uint64
+	RegistryEndpoint    string
 }
 
 func newReconciler(
@@ -264,13 +267,16 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 	maps.Copy(labels, workload.InstanceLabels(instance))
 
 	w := workload.Workload{
-		ID:              id,
-		Name:            instance.GetChunk().GetName() + "_" + instance.GetFlavor().GetName(),
-		BaseImage:       baseURL + "/base",
-		CheckpointImage: baseURL + "/checkpoint",
-		Namespace:       r.cfg.WorkloadNamespace,
-		Hostname:        id,
-		Labels:          labels,
+		ID:               id,
+		Name:             instance.GetChunk().GetName() + "_" + instance.GetFlavor().GetName(),
+		BaseImage:        baseURL + "/base",
+		CheckpointImage:  baseURL + "/checkpoint",
+		Namespace:        r.cfg.WorkloadNamespace,
+		Hostname:         id,
+		Labels:           labels,
+		CPUPeriod:        r.cfg.WorkloadCPUPeriod,
+		CPUQuota:         r.cfg.WorkloadCPUQuota,
+		MemoryLimitBytes: r.cfg.WorkloadMemoryLimit,
 	}
 
 	if err := r.wlService.RunWorkload(ctx, w, attempt); err != nil {

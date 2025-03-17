@@ -37,13 +37,15 @@ const testWorkloadID = "29533179-f25a-49e8-b2f7-ffb187327692"
 func TestRunWorkload(t *testing.T) {
 	var (
 		opts = workload.Workload{
-			ID:                   testWorkloadID,
-			Name:                 "test",
-			CheckpointImage:      "test-image",
-			Namespace:            "test",
-			Hostname:             "test",
-			Labels:               map[string]string{"k": "v"},
-			NetworkNamespaceMode: 1,
+			ID:               testWorkloadID,
+			Name:             "test",
+			CheckpointImage:  "test-image",
+			Namespace:        "test",
+			Hostname:         "test",
+			Labels:           map[string]string{"k": "v"},
+			CPUPeriod:        100000,
+			CPUQuota:         200000,
+			MemoryLimitBytes: 100000,
 		}
 		wlID = "29533179-f25a-49e8-b2f7-ffb187327692"
 	)
@@ -182,10 +184,10 @@ func expect(rtMock *mock.MockV1RuntimeServiceClient, w workload.Workload, wlID s
 				Searches: []string{"."},
 			},
 			Linux: &runtimev1.LinuxPodSandboxConfig{
-				SecurityContext: &runtimev1.LinuxSandboxSecurityContext{
-					NamespaceOptions: &runtimev1.NamespaceOption{
-						Network: runtimev1.NamespaceMode(w.NetworkNamespaceMode),
-					},
+				Resources: &runtimev1.LinuxContainerResources{
+					CpuPeriod:          int64(w.CPUPeriod),
+					CpuQuota:           int64(w.CPUQuota),
+					MemoryLimitInBytes: int64(w.MemoryLimitBytes),
 				},
 			},
 		}

@@ -41,10 +41,13 @@ import (
 
 func TestSyncer(t *testing.T) {
 	var (
-		nodeKey          = "uggeee"
-		namespace        = "test"
-		registryEndpoint = "reg.example.com"
-		maxAttempts      = 5
+		nodeKey                 = "uggeee"
+		namespace               = "test"
+		registryEndpoint        = "reg.example.com"
+		maxAttempts             = 5
+		cpuPeriod        uint64 = 1
+		cpuQuota         uint64 = 2
+		memoryLimit      uint64 = 3
 	)
 
 	expectedWorkload := func(ins *instancev1alpha1.Instance) workload.Workload {
@@ -59,13 +62,16 @@ func TestSyncer(t *testing.T) {
 		)
 
 		return workload.Workload{
-			ID:              ins.GetId(),
-			Name:            ins.GetChunk().GetName() + "_" + ins.GetFlavor().GetName(),
-			BaseImage:       baseURL + "/base",
-			CheckpointImage: baseURL + "/checkpoint",
-			Namespace:       namespace,
-			Hostname:        ins.GetId(),
-			Labels:          labels,
+			ID:               ins.GetId(),
+			Name:             ins.GetChunk().GetName() + "_" + ins.GetFlavor().GetName(),
+			BaseImage:        baseURL + "/base",
+			CheckpointImage:  baseURL + "/checkpoint",
+			Namespace:        namespace,
+			Hostname:         ins.GetId(),
+			Labels:           labels,
+			CPUPeriod:        cpuPeriod,
+			CPUQuota:         cpuQuota,
+			MemoryLimitBytes: memoryLimit,
 		}
 	}
 
@@ -338,13 +344,16 @@ func TestSyncer(t *testing.T) {
 				syncer     = newReconciler(
 					logger,
 					reconcilerConfig{
-						MaxAttempts:       maxAttempts,
-						SyncInterval:      100 * time.Millisecond,
-						NodeID:            nodeKey,
-						MinPort:           1,
-						MaxPort:           1,
-						WorkloadNamespace: namespace,
-						RegistryEndpoint:  registryEndpoint,
+						MaxAttempts:         maxAttempts,
+						SyncInterval:        100 * time.Millisecond,
+						NodeID:              nodeKey,
+						MinPort:             1,
+						MaxPort:             1,
+						WorkloadNamespace:   namespace,
+						WorkloadCPUPeriod:   cpuPeriod,
+						WorkloadCPUQuota:    cpuQuota,
+						WorkloadMemoryLimit: memoryLimit,
+						RegistryEndpoint:    registryEndpoint,
 					},
 					mockInsSvc,
 					mockWlSvc,
