@@ -51,18 +51,21 @@ func TestSyncer(t *testing.T) {
 		labels := workload.InstanceLabels(ins)
 		labels[workload.LabelWorkloadPort] = "1"
 
+		baseURL := fmt.Sprintf(
+			"%s/%s/%s",
+			registryEndpoint,
+			ins.GetChunk().GetName(),
+			ins.GetFlavor().GetName(),
+		)
+
 		return workload.Workload{
-			ID:   ins.GetId(),
-			Name: ins.GetChunk().GetName() + "_" + ins.GetFlavor().GetName(),
-			Image: fmt.Sprintf(
-				"%s/%s/%s",
-				registryEndpoint,
-				ins.GetChunk().GetName(),
-				ins.GetFlavor().GetName(),
-			),
-			Namespace: namespace,
-			Hostname:  ins.GetId(),
-			Labels:    labels,
+			ID:              ins.GetId(),
+			Name:            ins.GetChunk().GetName() + "_" + ins.GetFlavor().GetName(),
+			BaseImage:       baseURL + "/base",
+			CheckpointImage: baseURL + "/checkpoint",
+			Namespace:       namespace,
+			Hostname:        ins.GetId(),
+			Labels:          labels,
 		}
 	}
 

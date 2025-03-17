@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"os/exec"
 	"slices"
+	"time"
 
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
@@ -104,7 +107,25 @@ func (s *criService) RunWorkload(ctx context.Context, w Workload, attempt int) e
 		return fmt.Errorf("create pod: %w", err)
 	}
 
-	if err := s.pullImageIfNotPresent(ctx, logger, w.Image); err != nil {
+	if err := s.pullImageIfNotPresent(ctx, logger, w.BaseImage); err != nil {
+		return fmt.Errorf("pull image if not present: %w", err)
+	}
+
+	// HACK START - there is currently a strange behavior in crio (maybe a bug)
+	// that when freshly pulling the base image, restoring the checkpoint after
+	// will fail. this can be fixed by restarting crio and then restoring. until
+	// this has been further investigated, use this as a workaround.
+	//
+	// keep it behind env var guard, to make testing easier.
+	if ok := os.Getenv("PLATFORMD_ENABLE_CRIO_RESTART"); ok == "true" {
+		if out, err := exec.Command("systemctl", "restart", "crio").CombinedOutput(); err != nil {
+			return fmt.Errorf("systemctl restart crio: %w: %s", err, out)
+		}
+		time.Sleep(2 * time.Second)
+	}
+	// HACK END
+
+	if err := s.pullImageIfNotPresent(ctx, logger, w.CheckpointImage); err != nil {
 		return fmt.Errorf("pull image if not present: %w", err)
 	}
 
@@ -118,12 +139,11 @@ func (s *criService) RunWorkload(ctx context.Context, w Workload, attempt int) e
 				Name: w.Name,
 			},
 			Image: &runtimev1.ImageSpec{
-				UserSpecifiedImage: w.Image,
-				Image:              w.Image,
+				UserSpecifiedImage: w.CheckpointImage,
+				Image:              w.CheckpointImage,
 			},
 			Labels:  w.Labels,
 			LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
-			Args:    w.Args,
 		},
 		SandboxConfig: sboxCfg,
 	}
