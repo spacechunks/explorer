@@ -29,7 +29,6 @@ import (
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
-	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/workload"
@@ -124,7 +123,7 @@ func TestSyncer(t *testing.T) {
 					},
 				})
 
-				expectReportedStatus(insClient, ins.GetId(), workloadv1alpha2.WorkloadState_RUNNING, 1)
+				expectReportedStatus(insClient, ins.GetId(), instancev1alpha1.InstanceState_RUNNING, 1)
 			},
 		},
 		{
@@ -176,7 +175,7 @@ func TestSyncer(t *testing.T) {
 					},
 				})
 
-				expectReportedStatus(insClient, ins.GetId(), workloadv1alpha2.WorkloadState_CREATION_FAILED, 0)
+				expectReportedStatus(insClient, ins.GetId(), instancev1alpha1.InstanceState_CREATION_FAILED, 0)
 
 				store.EXPECT().Del(ins.GetId())
 			},
@@ -205,7 +204,7 @@ func TestSyncer(t *testing.T) {
 					},
 				})
 
-				expectReportedStatus(insClient, ins.GetId(), workloadv1alpha2.WorkloadState_DELETED, 0)
+				expectReportedStatus(insClient, ins.GetId(), instancev1alpha1.InstanceState_DELETED, 0)
 
 				store.EXPECT().Del(ins.GetId())
 			},
@@ -234,7 +233,7 @@ func TestSyncer(t *testing.T) {
 					},
 				})
 
-				expectReportedStatus(insClient, ins.GetId(), workloadv1alpha2.WorkloadState_DELETED, 0)
+				expectReportedStatus(insClient, ins.GetId(), instancev1alpha1.InstanceState_DELETED, 0)
 
 				store.EXPECT().Del(ins.GetId())
 			},
@@ -252,9 +251,9 @@ func TestSyncer(t *testing.T) {
 					Return(workload.HealthStatusHealthy, nil)
 
 				store.EXPECT().View().Return(map[string]workload.Status{})
-				insClient.EXPECT().ReceiveWorkloadStatusReports(
-					mocky.Anything, &instancev1alpha1.ReceiveWorkloadStatusReportsRequest{
-						Items: []*workloadv1alpha2.WorkloadStatus{},
+				insClient.EXPECT().ReceiveInstanceStatusReports(
+					mocky.Anything, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
+						Reports: []*instancev1alpha1.InstanceStatusReport{},
 					}).
 					Return(nil, nil)
 			},
@@ -286,7 +285,7 @@ func TestSyncer(t *testing.T) {
 					},
 				})
 
-				expectReportedStatus(insClient, ins.GetId(), workloadv1alpha2.WorkloadState_DELETED, 0)
+				expectReportedStatus(insClient, ins.GetId(), instancev1alpha1.InstanceState_DELETED, 0)
 
 				store.EXPECT().Del(ins.GetId())
 			},
@@ -318,13 +317,13 @@ func TestSyncer(t *testing.T) {
 					},
 				})
 
-				insClient.EXPECT().ReceiveWorkloadStatusReports(
-					mocky.Anything, &instancev1alpha1.ReceiveWorkloadStatusReportsRequest{
-						Items: []*workloadv1alpha2.WorkloadStatus{
+				insClient.EXPECT().ReceiveInstanceStatusReports(
+					mocky.Anything, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
+						Reports: []*instancev1alpha1.InstanceStatusReport{
 							{
-								Id:    ptr.Pointer(ins.GetId()),
-								State: ptr.Pointer(workloadv1alpha2.WorkloadState_DELETED),
-								Port:  ptr.Pointer(uint32(0)),
+								InstanceId: ptr.Pointer(ins.GetId()),
+								State:      ptr.Pointer(instancev1alpha1.InstanceState_DELETED),
+								Port:       ptr.Pointer(uint32(0)),
 							},
 						},
 					}).
@@ -405,16 +404,16 @@ func discoverInstance(
 func expectReportedStatus(
 	insClient *mock.MockV1alpha1InstanceServiceClient,
 	id string,
-	state workloadv1alpha2.WorkloadState,
+	state instancev1alpha1.InstanceState,
 	port uint32,
 ) {
-	insClient.EXPECT().ReceiveWorkloadStatusReports(
-		mocky.Anything, &instancev1alpha1.ReceiveWorkloadStatusReportsRequest{
-			Items: []*workloadv1alpha2.WorkloadStatus{
+	insClient.EXPECT().ReceiveInstanceStatusReports(
+		mocky.Anything, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
+			Reports: []*instancev1alpha1.InstanceStatusReport{
 				{
-					Id:    ptr.Pointer(id),
-					State: ptr.Pointer(state),
-					Port:  ptr.Pointer(port),
+					InstanceId: ptr.Pointer(id),
+					State:      ptr.Pointer(state),
+					Port:       ptr.Pointer(port),
 				},
 			},
 		}).

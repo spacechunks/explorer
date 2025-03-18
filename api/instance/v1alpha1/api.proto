@@ -38,7 +38,7 @@ service InstanceService {
   // creation or removal. Platformd identifies itself using its unique node key.
   rpc DiscoverInstances(DiscoverInstanceRequest) returns (DiscoverInstanceResponse);
 
-  // ReceiveInstanceStatusReport is intended to be called by platformd in order to report
+  // ReceiveInstanceStatusReports is intended to be called by platformd in order to report
   // status updates back to the control plane.
   rpc ReceiveInstanceStatusReports(ReceiveInstanceStatusReportsRequest) returns (ReceiveInstanceStatusReportsResponse);
 

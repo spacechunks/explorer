@@ -31,16 +31,23 @@ type Instance struct {
 	ChunkFlavor chunk.Flavor
 	Address     netip.Addr
 	State       State
+	Port        *uint16
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+type StatusReport struct {
+	InstanceID string
+	State      State
+	Port       uint16
 }
 
 type State string
 
 const (
-	StatePending  State = "PENDING"
-	StateStarting State = "STARTING"
-	StateRunning  State = "RUNNING"
-	StateDeleting State = "DELETING"
-	StateDeleted  State = "DELETED"
+	StatePending   State = "PENDING"
+	StateRunning   State = "RUNNING"
+	StateDeleting  State = "DELETING"
+	StateDeleted   State = "DELETED"
+	CreationFailed State = "CREATION_FAILED"
 )

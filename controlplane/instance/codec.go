@@ -25,9 +25,17 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// FromDomain converts the domain object to a transport layer object
-func FromDomain(ins Instance) *instancev1alpha1.Instance {
-	state := instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(ins.State)])
+// ToTransport converts the domain object to a transport layer object
+func ToTransport(ins Instance) *instancev1alpha1.Instance {
+	var (
+		port  *uint32
+		state = instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(ins.State)])
+	)
+
+	if ins.Port != nil {
+		port = ptr.Pointer(uint32(*ins.Port))
+	}
+
 	return &instancev1alpha1.Instance{
 		Id: &ins.ID,
 		Chunk: &chunkv1alpha1.Chunk{
@@ -45,7 +53,26 @@ func FromDomain(ins Instance) *instancev1alpha1.Instance {
 			UpdatedAt: timestamppb.New(ins.ChunkFlavor.UpdatedAt),
 		},
 		Ip:    ptr.Pointer(ins.Address.String()),
+		Port:  port,
 		State: &state,
+	}
+}
+
+func StatusReportToDomain(report *instancev1alpha1.InstanceStatusReport) StatusReport {
+	return StatusReport{
+		InstanceID: report.GetInstanceId(),
+		State:      State(report.GetState().String()), // TODO: state to domain function
+		Port:       uint16(report.GetPort()),
+	}
+}
+
+func StatusReportToTransport(report StatusReport) *instancev1alpha1.InstanceStatusReport {
+	return &instancev1alpha1.InstanceStatusReport{
+		InstanceId: &report.InstanceID,
+		Port:       ptr.Pointer(uint32(report.Port)),
+		State: ptr.Pointer(
+			instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(report.State)]),
+		),
 	}
 }
 

@@ -23,7 +23,6 @@ import (
 	"fmt"
 
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
-	"github.com/spacechunks/explorer/internal/ptr"
 )
 
 type Server struct {
@@ -51,7 +50,6 @@ func (s *Server) WorkloadStatus(
 	}
 
 	transport := WorkloadStatusToTransport(*domain)
-	transport.Id = ptr.Pointer(req.GetId())
 
 	return &workloadv1alpha2.WorkloadStatusResponse{
 		Status: transport,

@@ -174,7 +174,7 @@ func TestDiscoverInstances(t *testing.T) {
 			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
 				ret := make([]*instancev1alpha1.Instance, 0, len(instances))
 				for _, ins := range instances {
-					ret = append(ret, instance.FromDomain(ins))
+					ret = append(ret, instance.ToTransport(ins))
 				}
 				return ret
 			},
@@ -253,5 +253,67 @@ func TestDiscoverInstances(t *testing.T) {
 
 			require.ErrorIs(t, err, tt.err)
 		})
+	}
+}
+
+func TestReceiveInstanceStatusReports(t *testing.T) {
+	var (
+		ctx    = context.Background()
+		pg     = fixture.NewPostgres()
+		nodeID = test.NewUUIDv7(t)
+	)
+
+	fixture.RunControlPlane(t, pg)
+
+	ins := fixture.Instance()
+
+	// FIXME: find better way to seed nodes
+	_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
+	require.NoError(t, err)
+
+	_, err = pg.DB.CreateChunk(ctx, ins.Chunk)
+	require.NoError(t, err)
+
+	_, err = pg.DB.CreateFlavor(ctx, ins.ChunkFlavor, ins.Chunk.ID)
+	require.NoError(t, err)
+
+	_, err = pg.DB.CreateInstance(ctx, ins, nodeID)
+	require.NoError(t, err)
+
+	conn, err := grpc.NewClient(
+		fixture.ControlPlaneAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+
+	client := instancev1alpha1.NewInstanceServiceClient(conn)
+	expected := instance.ToTransport(ins)
+	expected.State = ptr.Pointer(instancev1alpha1.InstanceState_CREATION_FAILED)
+	expected.Port = ptr.Pointer(uint32(420))
+
+	_, err = client.ReceiveInstanceStatusReports(ctx, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
+		Reports: []*instancev1alpha1.InstanceStatusReport{
+			instance.StatusReportToTransport(instance.StatusReport{
+				InstanceID: ins.ID,
+				State:      instance.CreationFailed,
+				Port:       420,
+			}),
+		},
+	})
+	require.NoError(t, err)
+
+	resp, err := client.DiscoverInstances(ctx, &instancev1alpha1.DiscoverInstanceRequest{
+		NodeKey: &nodeID,
+	})
+	require.NoError(t, err)
+
+	if d := cmp.Diff(
+		resp.Instances,
+		[]*instancev1alpha1.Instance{
+			expected,
+		},
+		protocmp.Transform(),
+	); d != "" {
+		t.Fatalf("diff (-want +got):\n%s", d)
 	}
 }
