@@ -61,6 +61,7 @@ func TestCreateInstance(t *testing.T) {
 	// ^ above are prerequisites
 
 	expected := fixture.Instance()
+	expected.Port = nil // port will not be saved when creating
 
 	actual, err := pg.DB.CreateInstance(ctx, expected, nodeID)
 	require.NoError(t, err)
@@ -144,3 +145,5 @@ func TestGetInstancesByNodeID(t *testing.T) {
 
 	require.Equal(t, expected, acutalInstances)
 }
+
+// TODO: add test for applystatusreports

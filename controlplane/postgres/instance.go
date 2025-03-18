@@ -83,6 +83,8 @@ func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID 
 		// the data will stay the same.
 		row := rows[0]
 
+		// instance port is intentionally left out, because it will not be
+		// known beforehand atm, thus it will always be nil when creating.
 		ret = instance.Instance{
 			ID:        row.ID,
 			Address:   row.Address,
