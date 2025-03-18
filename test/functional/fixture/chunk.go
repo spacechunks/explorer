@@ -24,6 +24,7 @@ import (
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
+	"github.com/spacechunks/explorer/internal/ptr"
 )
 
 func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
@@ -75,6 +76,7 @@ func Instance(mod ...func(i *instance.Instance)) instance.Instance {
 		ChunkFlavor: Chunk().Flavors[0],
 		Address:     netip.MustParseAddr("198.51.100.1"),
 		State:       instance.StatePending,
+		Port:        ptr.Pointer(uint16(1337)),
 		CreatedAt:   time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
 		UpdatedAt:   time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
 	}

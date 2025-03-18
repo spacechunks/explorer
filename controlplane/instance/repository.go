@@ -23,4 +23,5 @@ import "context"
 type Repository interface {
 	CreateInstance(ctx context.Context, instance Instance, nodeID string) (Instance, error)
 	GetInstancesByNodeID(ctx context.Context, id string) ([]Instance, error)
+	ApplyStatusReports(ctx context.Context, reports []StatusReport) error
 }

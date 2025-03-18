@@ -28,7 +28,7 @@ import (
 	"time"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
-	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
@@ -186,17 +186,21 @@ func (r *reconciler) tick(ctx context.Context) {
 
 	var (
 		statuses = r.store.View()
-		items    = make([]*workloadv1alpha2.WorkloadStatus, 0, len(statuses))
+		items    = make([]*instancev1alpha1.InstanceStatusReport, 0, len(statuses))
 	)
 
 	for k, v := range statuses {
-		item := workload.WorkloadStatusToTransport(v)
-		item.Id = &k
-		items = append(items, item)
+		items = append(items, &instancev1alpha1.InstanceStatusReport{
+			InstanceId: &k,
+			Port:       ptr.Pointer(uint32(v.Port)),
+			State: ptr.Pointer(
+				instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(v.State)]),
+			),
+		})
 	}
 
-	if _, err := r.insClient.ReceiveWorkloadStatusReports(ctx, &instancev1alpha1.ReceiveWorkloadStatusReportsRequest{
-		Items: items,
+	if _, err := r.insClient.ReceiveInstanceStatusReports(ctx, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
+		Reports: items,
 	}); err != nil {
 		slog.ErrorContext(ctx, "sending workload status reports failed", "err", err)
 		r.ticker.Reset(3 * time.Second)

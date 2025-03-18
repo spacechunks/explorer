@@ -21,6 +21,7 @@ package functional
 import (
 	"context"
 	"errors"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -174,7 +175,8 @@ func TestDiscoverInstances(t *testing.T) {
 			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
 				ret := make([]*instancev1alpha1.Instance, 0, len(instances))
 				for _, ins := range instances {
-					ret = append(ret, instance.FromDomain(ins))
+					ins.Port = nil // port will be nil at this point
+					ret = append(ret, instance.ToTransport(ins))
 				}
 				return ret
 			},
@@ -252,6 +254,96 @@ func TestDiscoverInstances(t *testing.T) {
 			}
 
 			require.ErrorIs(t, err, tt.err)
+		})
+	}
+}
+
+func TestReceiveInstanceStatusReports(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    instance.Instance
+		report   instance.StatusReport
+		expected instance.Instance
+	}{
+		{
+			name:  "updates port and state successfully",
+			input: fixture.Instance(),
+			report: instance.StatusReport{
+				InstanceID: fixture.Instance().ID,
+				State:      instance.CreationFailed,
+				Port:       420,
+			},
+			expected: fixture.Instance(func(i *instance.Instance) {
+				i.State = instance.CreationFailed
+				i.Port = ptr.Pointer(uint16(420))
+			}),
+		},
+		{
+			name:  "updates with state = DELETED removes instance",
+			input: fixture.Instance(),
+			report: instance.StatusReport{
+				InstanceID: fixture.Instance().ID,
+				State:      instance.StateDeleted,
+			},
+			expected: instance.Instance{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx    = context.Background()
+				pg     = fixture.NewPostgres()
+				nodeID = test.NewUUIDv7(t)
+			)
+
+			fixture.RunControlPlane(t, pg)
+
+			ins := fixture.Instance()
+
+			// FIXME: find better way to seed nodes
+			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
+			require.NoError(t, err)
+
+			_, err = pg.DB.CreateChunk(ctx, ins.Chunk)
+			require.NoError(t, err)
+
+			_, err = pg.DB.CreateFlavor(ctx, ins.ChunkFlavor, ins.Chunk.ID)
+			require.NoError(t, err)
+
+			_, err = pg.DB.CreateInstance(ctx, ins, nodeID)
+			require.NoError(t, err)
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := instancev1alpha1.NewInstanceServiceClient(conn)
+
+			_, err = client.ReceiveInstanceStatusReports(ctx, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
+				Reports: []*instancev1alpha1.InstanceStatusReport{
+					instance.StatusReportToTransport(tt.report),
+				},
+			})
+			require.NoError(t, err)
+
+			resp, err := client.DiscoverInstances(ctx, &instancev1alpha1.DiscoverInstanceRequest{
+				NodeKey: &nodeID,
+			})
+			require.NoError(t, err)
+
+			var expected []*instancev1alpha1.Instance
+			if !reflect.DeepEqual(tt.expected, instance.Instance{}) {
+				expected = []*instancev1alpha1.Instance{
+					instance.ToTransport(tt.expected),
+				}
+			}
+
+			if d := cmp.Diff(resp.Instances, expected, protocmp.Transform()); d != "" {
+				t.Fatalf("diff (-want +got):\n%s", d)
+			}
 		})
 	}
 }

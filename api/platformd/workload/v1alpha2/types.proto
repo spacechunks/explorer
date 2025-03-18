@@ -46,7 +46,6 @@ enum WorkloadState {
 }
 
 message WorkloadStatus {
-  string id = 1;
   WorkloadState state = 2;
 
   // port allocated for the workload. programs binding

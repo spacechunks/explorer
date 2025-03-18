@@ -99,8 +99,8 @@ func (_c *MockV1alpha1InstanceServiceClient_DiscoverInstances_Call) RunAndReturn
 	return _c
 }
 
-// ReceiveWorkloadStatusReports provides a mock function with given fields: ctx, in, opts
-func (_m *MockV1alpha1InstanceServiceClient) ReceiveWorkloadStatusReports(ctx context.Context, in *v1alpha1.ReceiveWorkloadStatusReportsRequest, opts ...grpc.CallOption) (*v1alpha1.ReceiveWorkloadStatusReportResponse, error) {
+// ReceiveInstanceStatusReports provides a mock function with given fields: ctx, in, opts
+func (_m *MockV1alpha1InstanceServiceClient) ReceiveInstanceStatusReports(ctx context.Context, in *v1alpha1.ReceiveInstanceStatusReportsRequest, opts ...grpc.CallOption) (*v1alpha1.ReceiveInstanceStatusReportsResponse, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -111,23 +111,23 @@ func (_m *MockV1alpha1InstanceServiceClient) ReceiveWorkloadStatusReports(ctx co
 	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ReceiveWorkloadStatusReports")
+		panic("no return value specified for ReceiveInstanceStatusReports")
 	}
 
-	var r0 *v1alpha1.ReceiveWorkloadStatusReportResponse
+	var r0 *v1alpha1.ReceiveInstanceStatusReportsResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha1.ReceiveWorkloadStatusReportsRequest, ...grpc.CallOption) (*v1alpha1.ReceiveWorkloadStatusReportResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha1.ReceiveInstanceStatusReportsRequest, ...grpc.CallOption) (*v1alpha1.ReceiveInstanceStatusReportsResponse, error)); ok {
 		return rf(ctx, in, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha1.ReceiveWorkloadStatusReportsRequest, ...grpc.CallOption) *v1alpha1.ReceiveWorkloadStatusReportResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha1.ReceiveInstanceStatusReportsRequest, ...grpc.CallOption) *v1alpha1.ReceiveInstanceStatusReportsResponse); ok {
 		r0 = rf(ctx, in, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v1alpha1.ReceiveWorkloadStatusReportResponse)
+			r0 = ret.Get(0).(*v1alpha1.ReceiveInstanceStatusReportsResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *v1alpha1.ReceiveWorkloadStatusReportsRequest, ...grpc.CallOption) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *v1alpha1.ReceiveInstanceStatusReportsRequest, ...grpc.CallOption) error); ok {
 		r1 = rf(ctx, in, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -136,21 +136,21 @@ func (_m *MockV1alpha1InstanceServiceClient) ReceiveWorkloadStatusReports(ctx co
 	return r0, r1
 }
 
-// MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReceiveWorkloadStatusReports'
-type MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call struct {
+// MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReceiveInstanceStatusReports'
+type MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call struct {
 	*mock.Call
 }
 
-// ReceiveWorkloadStatusReports is a helper method to define mock.On call
+// ReceiveInstanceStatusReports is a helper method to define mock.On call
 //   - ctx context.Context
-//   - in *v1alpha1.ReceiveWorkloadStatusReportsRequest
+//   - in *v1alpha1.ReceiveInstanceStatusReportsRequest
 //   - opts ...grpc.CallOption
-func (_e *MockV1alpha1InstanceServiceClient_Expecter) ReceiveWorkloadStatusReports(ctx interface{}, in interface{}, opts ...interface{}) *MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call {
-	return &MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call{Call: _e.mock.On("ReceiveWorkloadStatusReports",
+func (_e *MockV1alpha1InstanceServiceClient_Expecter) ReceiveInstanceStatusReports(ctx interface{}, in interface{}, opts ...interface{}) *MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call {
+	return &MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call{Call: _e.mock.On("ReceiveInstanceStatusReports",
 		append([]interface{}{ctx, in}, opts...)...)}
 }
 
-func (_c *MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call) Run(run func(ctx context.Context, in *v1alpha1.ReceiveWorkloadStatusReportsRequest, opts ...grpc.CallOption)) *MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call {
+func (_c *MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call) Run(run func(ctx context.Context, in *v1alpha1.ReceiveInstanceStatusReportsRequest, opts ...grpc.CallOption)) *MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]grpc.CallOption, len(args)-2)
 		for i, a := range args[2:] {
@@ -158,17 +158,17 @@ func (_c *MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call) R
 				variadicArgs[i] = a.(grpc.CallOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(*v1alpha1.ReceiveWorkloadStatusReportsRequest), variadicArgs...)
+		run(args[0].(context.Context), args[1].(*v1alpha1.ReceiveInstanceStatusReportsRequest), variadicArgs...)
 	})
 	return _c
 }
 
-func (_c *MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call) Return(_a0 *v1alpha1.ReceiveWorkloadStatusReportResponse, _a1 error) *MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call {
+func (_c *MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call) Return(_a0 *v1alpha1.ReceiveInstanceStatusReportsResponse, _a1 error) *MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call) RunAndReturn(run func(context.Context, *v1alpha1.ReceiveWorkloadStatusReportsRequest, ...grpc.CallOption) (*v1alpha1.ReceiveWorkloadStatusReportResponse, error)) *MockV1alpha1InstanceServiceClient_ReceiveWorkloadStatusReports_Call {
+func (_c *MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call) RunAndReturn(run func(context.Context, *v1alpha1.ReceiveInstanceStatusReportsRequest, ...grpc.CallOption) (*v1alpha1.ReceiveInstanceStatusReportsResponse, error)) *MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call {
 	_c.Call.Return(run)
 	return _c
 }

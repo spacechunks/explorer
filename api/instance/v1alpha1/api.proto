@@ -22,10 +22,8 @@ package instance.v1alpha1;
 
 option go_package = "github.com/spacechunks/explorer/api/instance/v1alpha1";
 
-import "platformd/workload/v1alpha2/types.proto";
 import "instance/v1alpha1/types.proto";
 import "google/protobuf/timestamp.proto";
-
 
 service InstanceService {
 
@@ -40,9 +38,9 @@ service InstanceService {
   // creation or removal. Platformd identifies itself using its unique node key.
   rpc DiscoverInstances(DiscoverInstanceRequest) returns (DiscoverInstanceResponse);
 
-  // ReceiveWorkloadStatusReports is intended to be called by platformd in order to report
+  // ReceiveInstanceStatusReports is intended to be called by platformd in order to report
   // status updates back to the control plane.
-  rpc ReceiveWorkloadStatusReports(ReceiveWorkloadStatusReportsRequest) returns (ReceiveWorkloadStatusReportResponse);
+  rpc ReceiveInstanceStatusReports(ReceiveInstanceStatusReportsRequest) returns (ReceiveInstanceStatusReportsResponse);
 
   // GetInstance
   // stop instance
@@ -74,8 +72,8 @@ message DiscoverInstanceResponse {
   repeated Instance instances = 1;
 }
 
-message ReceiveWorkloadStatusReportsRequest {
-  repeated platformd.workload.v1alpha2.WorkloadStatus items = 1;
+message ReceiveInstanceStatusReportsRequest {
+  repeated InstanceStatusReport reports = 1;
 }
 
-message ReceiveWorkloadStatusReportResponse {}
+message ReceiveInstanceStatusReportsResponse {}

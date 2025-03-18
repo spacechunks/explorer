@@ -26,13 +26,13 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 )
 
 type Service interface {
 	RunChunk(ctx context.Context, chunkID string, flavorID string) (Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]Instance, error)
+	ReceiveInstanceStatusReports(ctx context.Context, reports []StatusReport) error
 }
 
 type svc struct {
@@ -104,7 +104,11 @@ func (s *svc) DiscoverInstances(ctx context.Context, nodeID string) ([]Instance,
 	return instances, nil
 }
 
-func (s *svc) ReceiveWorkloadStateReports(status []v1alpha2.WorkloadStatus) error {
+func (s *svc) ReceiveInstanceStatusReports(ctx context.Context, reports []StatusReport) error {
+	if err := s.repo.ApplyStatusReports(ctx, reports); err != nil {
+		return fmt.Errorf("apply status reports: %w", err)
+	}
+
 	// TODO:
 	// * update instance state based on workload state
 	//   * if workload state == DELETED

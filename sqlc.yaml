@@ -12,3 +12,7 @@ sql:
           - db_type: uuid
             go_type:
               type: string
+          - column: "public.instances.port"
+            go_type:
+              type: "int32"
+              pointer: true

@@ -60,3 +60,12 @@ SELECT * FROM instances i
     JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
 WHERE i.node_id = $1;
+
+-- name: BulkUpdateInstanceStateAndPort :batchexec
+UPDATE instances SET
+    state = $1,
+    port = $2,
+    updated_at = now();
+
+-- name: BulkDeleteInstances :batchexec
+DELETE FROM instances WHERE id = $1;

@@ -29,12 +29,12 @@ import (
 
 type Server struct {
 	instancev1alpha1.UnimplementedInstanceServiceServer
-	insService Service
+	svc Service
 }
 
-func NewServer(insService Service) *Server {
+func NewServer(service Service) *Server {
 	return &Server{
-		insService: insService,
+		svc: service,
 	}
 }
 
@@ -42,13 +42,13 @@ func (s *Server) RunChunk(
 	ctx context.Context,
 	req *instancev1alpha1.RunChunkRequest,
 ) (*instancev1alpha1.RunChunkResponse, error) {
-	ins, err := s.insService.RunChunk(ctx, req.GetChunkId(), req.GetFlavorId())
+	ins, err := s.svc.RunChunk(ctx, req.GetChunkId(), req.GetFlavorId())
 	if err != nil {
 		return nil, fmt.Errorf("run chunk: %w", err)
 	}
 
 	return &instancev1alpha1.RunChunkResponse{
-		Instance: FromDomain(ins),
+		Instance: ToTransport(ins),
 	}, nil
 }
 
@@ -60,19 +60,35 @@ func (s *Server) DiscoverInstances(
 		return nil, status.Error(codes.InvalidArgument, "node key is required")
 	}
 
-	instances, err := s.insService.DiscoverInstances(ctx, req.GetNodeKey())
+	instances, err := s.svc.DiscoverInstances(ctx, req.GetNodeKey())
 	if err != nil {
 		return nil, fmt.Errorf("discovering instances: %w", err)
 	}
 
 	ret := make([]*instancev1alpha1.Instance, 0, len(instances))
 	for _, ins := range instances {
-		ret = append(ret, FromDomain(ins))
+		ret = append(ret, ToTransport(ins))
 	}
 
 	return &instancev1alpha1.DiscoverInstanceResponse{
 		Instances: ret,
 	}, nil
+}
+
+func (s *Server) ReceiveInstanceStatusReports(
+	ctx context.Context,
+	req *instancev1alpha1.ReceiveInstanceStatusReportsRequest,
+) (*instancev1alpha1.ReceiveInstanceStatusReportsResponse, error) {
+	reports := make([]StatusReport, 0, len(req.GetReports()))
+	for _, r := range req.GetReports() {
+		reports = append(reports, StatusReportToDomain(r))
+	}
+
+	if err := s.svc.ReceiveInstanceStatusReports(ctx, reports); err != nil {
+		return nil, fmt.Errorf("receive instance status reports: %w", err)
+	}
+
+	return &instancev1alpha1.ReceiveInstanceStatusReportsResponse{}, nil
 }
 
 // TODO: tests

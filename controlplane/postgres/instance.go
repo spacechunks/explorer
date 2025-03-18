@@ -26,6 +26,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
+	"github.com/spacechunks/explorer/internal/ptr"
 )
 
 type instanceParams struct {
@@ -82,6 +83,8 @@ func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID 
 		// the data will stay the same.
 		row := rows[0]
 
+		// instance port is intentionally left out, because it will not be
+		// known beforehand atm, thus it will always be nil when creating.
 		ret = instance.Instance{
 			ID:        row.ID,
 			Address:   row.Address,
@@ -137,6 +140,10 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 		// purposes it should be considered.
 
 		for _, row := range rows {
+			var port *uint16
+			if row.Port != nil {
+				port = ptr.Pointer(uint16(*row.Port))
+			}
 			ret = append(ret, instance.Instance{
 				ID: row.ID,
 				Chunk: chunk.Chunk{
@@ -155,6 +162,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 				},
 				Address:   row.Address,
 				State:     instance.State(row.State),
+				Port:      port,
 				CreatedAt: row.CreatedAt.Time.UTC(),
 				UpdatedAt: row.UpdatedAt.Time.UTC(),
 			})
@@ -166,4 +174,52 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 	}
 
 	return ret, nil
+}
+
+// ApplyStatusReports updates instances rows that are not in [instance.StateDeleted] state.
+// all other instances will be removed from the table.
+func (db *DB) ApplyStatusReports(ctx context.Context, reports []instance.StatusReport) error {
+	var (
+		toUpdate = make([]query.BulkUpdateInstanceStateAndPortParams, 0, len(reports))
+		toRemove = make([]string, 0)
+	)
+
+	for _, report := range reports {
+		if report.State == instance.StateDeleted {
+			toRemove = append(toRemove, report.InstanceID)
+			continue
+		}
+		toUpdate = append(toUpdate, query.BulkUpdateInstanceStateAndPortParams{
+			State: query.InstanceState(report.State),
+			Port:  ptr.Pointer(int32(report.Port)),
+		})
+	}
+
+	// don't even attempt to open a connection to the db
+	if len(toRemove) == 0 && len(toUpdate) == 0 {
+		return nil
+	}
+
+	if err := db.do(context.Background(), func(q *query.Queries) error {
+		// always update all rows, even those that will be deleted
+		// afterward. when the database or service dies after the
+		// update we still have recorded the last state we observed.
+		bulkUpdate := q.BulkUpdateInstanceStateAndPort(ctx, toUpdate)
+		if err := db.bulkExecAndClose(bulkUpdate); err != nil {
+			return fmt.Errorf("bulk update: %w", err)
+		}
+
+		if len(toRemove) > 0 {
+			bulkDel := q.BulkDeleteInstances(ctx, toRemove)
+			if err := db.bulkExecAndClose(bulkDel); err != nil {
+				return fmt.Errorf("bulk delete: %w", err)
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }

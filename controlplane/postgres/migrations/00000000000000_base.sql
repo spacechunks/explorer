@@ -1,5 +1,5 @@
 -- migrate:up
-CREATE TYPE instance_state AS ENUM ('PENDING', 'STARTING', 'RUNNING', 'DELETING', 'DELETED');
+CREATE TYPE instance_state AS ENUM ('PENDING', 'STARTING', 'RUNNING', 'DELETING', 'DELETED', 'CREATION_FAILED');
 
 CREATE TABLE IF NOT EXISTS chunks (
     id          UUID             NOT NULL PRIMARY KEY,
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS instances (
     chunk_id       UUID           NOT NULL REFERENCES chunks(id),
     flavor_id      UUID           NOT NULL REFERENCES flavors(id),
     node_id        UUID           NOT NULL REFERENCES nodes(id),
---  port           INT,
+    port           INT,
     state          instance_state NOT NULL DEFAULT 'PENDING',
     created_at     TIMESTAMPTZ    NOT NULL DEFAULT now(),
     updated_at     TIMESTAMPTZ    NOT NULL DEFAULT now()

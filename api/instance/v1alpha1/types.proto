@@ -48,3 +48,11 @@ message Instance {
 
   InstanceState state = 6;
 }
+
+message InstanceStatusReport {
+  string instance_id = 1;
+
+  uint32 port = 2;
+
+  InstanceState state = 3;
+}
