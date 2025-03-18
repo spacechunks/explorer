@@ -175,6 +175,7 @@ func TestDiscoverInstances(t *testing.T) {
 			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
 				ret := make([]*instancev1alpha1.Instance, 0, len(instances))
 				for _, ins := range instances {
+					ins.Port = nil // port will be nil at this point
 					ret = append(ret, instance.ToTransport(ins))
 				}
 				return ret
