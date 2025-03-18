@@ -63,6 +63,7 @@ CREATE TABLE public.instances (
     chunk_id uuid NOT NULL,
     flavor_id uuid NOT NULL,
     node_id uuid NOT NULL,
+    port integer,
     state public.instance_state DEFAULT 'PENDING'::public.instance_state NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL

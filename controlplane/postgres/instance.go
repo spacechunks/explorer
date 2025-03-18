@@ -26,6 +26,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
+	"github.com/spacechunks/explorer/internal/ptr"
 )
 
 type instanceParams struct {
@@ -137,6 +138,10 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 		// purposes it should be considered.
 
 		for _, row := range rows {
+			var port *uint16
+			if row.Port != nil {
+				port = ptr.Pointer(uint16(*row.Port))
+			}
 			ret = append(ret, instance.Instance{
 				ID: row.ID,
 				Chunk: chunk.Chunk{
@@ -155,6 +160,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 				},
 				Address:   row.Address,
 				State:     instance.State(row.State),
+				Port:      port,
 				CreatedAt: row.CreatedAt.Time.UTC(),
 				UpdatedAt: row.UpdatedAt.Time.UTC(),
 			})
@@ -166,4 +172,33 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 	}
 
 	return ret, nil
+}
+
+func (db *DB) ApplyStatusReports(ctx context.Context, reports []instance.StatusReport) error {
+	return db.do(context.Background(), func(q *query.Queries) error {
+		updates := make([]query.BulkUpdateInstanceStateAndPortParams, 0, len(reports))
+		for _, report := range reports {
+			updates = append(updates, query.BulkUpdateInstanceStateAndPortParams{
+				State: query.InstanceState(report.State),
+				Port:  ptr.Pointer(int32(report.Port)),
+			})
+		}
+
+		var (
+			res = q.BulkUpdateInstanceStateAndPort(ctx, updates)
+			err error
+		)
+
+		defer res.Close()
+
+		res.Exec(func(i int, e error) {
+			err = e
+		})
+
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

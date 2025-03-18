@@ -79,6 +79,7 @@ type Instance struct {
 	ChunkID   string
 	FlavorID  string
 	NodeID    string
+	Port      *int32
 	State     InstanceState
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz

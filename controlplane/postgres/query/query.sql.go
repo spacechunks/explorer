@@ -182,7 +182,7 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 }
 
 const getInstance = `-- name: GetInstance :many
-SELECT i.id, i.chunk_id, flavor_id, node_id, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_id, node_id, port, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
     JOIN flavors f ON i.chunk_id = f.chunk_id
     JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
@@ -194,6 +194,7 @@ type GetInstanceRow struct {
 	ChunkID     string
 	FlavorID    string
 	NodeID      string
+	Port        *int32
 	State       InstanceState
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
@@ -227,6 +228,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.ChunkID,
 			&i.FlavorID,
 			&i.NodeID,
+			&i.Port,
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -256,7 +258,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 }
 
 const getInstancesByNodeID = `-- name: GetInstancesByNodeID :many
-SELECT i.id, i.chunk_id, flavor_id, node_id, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_id, node_id, port, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
     JOIN flavors f ON i.flavor_id = f.id
     JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
@@ -268,6 +270,7 @@ type GetInstancesByNodeIDRow struct {
 	ChunkID     string
 	FlavorID    string
 	NodeID      string
+	Port        *int32
 	State       InstanceState
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
@@ -301,6 +304,7 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 			&i.ChunkID,
 			&i.FlavorID,
 			&i.NodeID,
+			&i.Port,
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
