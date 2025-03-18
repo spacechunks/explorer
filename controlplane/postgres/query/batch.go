@@ -16,6 +16,49 @@ var (
 	ErrBatchAlreadyClosed = errors.New("batch already closed")
 )
 
+const bulkDeleteInstances = `-- name: BulkDeleteInstances :batchexec
+DELETE FROM instances WHERE id = $1
+`
+
+type BulkDeleteInstancesBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+func (q *Queries) BulkDeleteInstances(ctx context.Context, id []string) *BulkDeleteInstancesBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range id {
+		vals := []interface{}{
+			a,
+		}
+		batch.Queue(bulkDeleteInstances, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &BulkDeleteInstancesBatchResults{br, len(id), false}
+}
+
+func (b *BulkDeleteInstancesBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *BulkDeleteInstancesBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
 const bulkUpdateInstanceStateAndPort = `-- name: BulkUpdateInstanceStateAndPort :batchexec
 UPDATE instances SET
     state = $1,

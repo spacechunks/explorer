@@ -174,31 +174,50 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 	return ret, nil
 }
 
+// ApplyStatusReports updates instances rows that are not in [instance.StateDeleted] state.
+// all other instances will be removed from the table.
 func (db *DB) ApplyStatusReports(ctx context.Context, reports []instance.StatusReport) error {
-	return db.do(context.Background(), func(q *query.Queries) error {
-		updates := make([]query.BulkUpdateInstanceStateAndPortParams, 0, len(reports))
-		for _, report := range reports {
-			updates = append(updates, query.BulkUpdateInstanceStateAndPortParams{
-				State: query.InstanceState(report.State),
-				Port:  ptr.Pointer(int32(report.Port)),
-			})
+	var (
+		toUpdate = make([]query.BulkUpdateInstanceStateAndPortParams, 0, len(reports))
+		toRemove = make([]string, 0)
+	)
+
+	for _, report := range reports {
+		if report.State == instance.StateDeleted {
+			toRemove = append(toRemove, report.InstanceID)
+			continue
+		}
+		toUpdate = append(toUpdate, query.BulkUpdateInstanceStateAndPortParams{
+			State: query.InstanceState(report.State),
+			Port:  ptr.Pointer(int32(report.Port)),
+		})
+	}
+
+	// don't even attempt to open a connection to the db
+	if len(toRemove) == 0 && len(toUpdate) == 0 {
+		return nil
+	}
+
+	if err := db.do(context.Background(), func(q *query.Queries) error {
+		// always update all rows, even those that will be deleted
+		// afterward. when the database or service dies after the
+		// update we still have recorded the last state we observed.
+		bulkUpdate := q.BulkUpdateInstanceStateAndPort(ctx, toUpdate)
+		if err := db.bulkExecAndClose(bulkUpdate); err != nil {
+			return fmt.Errorf("bulk update: %w", err)
 		}
 
-		var (
-			res = q.BulkUpdateInstanceStateAndPort(ctx, updates)
-			err error
-		)
-
-		defer res.Close()
-
-		res.Exec(func(i int, e error) {
-			err = e
-		})
-
-		if err != nil {
-			return err
+		if len(toRemove) > 0 {
+			bulkDel := q.BulkDeleteInstances(ctx, toRemove)
+			if err := db.bulkExecAndClose(bulkDel); err != nil {
+				return fmt.Errorf("bulk delete: %w", err)
+			}
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }

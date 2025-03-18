@@ -35,6 +35,11 @@ type DB struct {
 	pool   *pgxpool.Pool
 }
 
+type bulkExecer interface {
+	Exec(f func(int, error))
+	Close() error
+}
+
 func NewDB(logger *slog.Logger, pool *pgxpool.Pool) *DB {
 	return &DB{
 		logger: logger,
@@ -73,4 +78,17 @@ func (db *DB) doTX(ctx context.Context, fn func(q *query.Queries) error) error {
 	}
 
 	return nil
+}
+
+func (db *DB) bulkExecAndClose(execer bulkExecer) error {
+	var err error
+	execer.Exec(func(i int, e error) {
+		err = e
+	})
+
+	if err := execer.Close(); err != nil {
+		return fmt.Errorf("close execer: %w", err)
+	}
+
+	return err
 }

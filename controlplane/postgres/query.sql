@@ -66,3 +66,6 @@ UPDATE instances SET
     state = $1,
     port = $2,
     updated_at = now();
+
+-- name: BulkDeleteInstances :batchexec
+DELETE FROM instances WHERE id = $1;
