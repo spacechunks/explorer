@@ -38,7 +38,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestSyncer(t *testing.T) {
+func TestReconciler(t *testing.T) {
 	var (
 		nodeKey                 = "uggeee"
 		namespace               = "test"
@@ -107,7 +107,7 @@ func TestSyncer(t *testing.T) {
 					})
 
 				wlSvc.EXPECT().
-					RunWorkload(mocky.Anything, expectedWorkload(ins), 1).
+					RunWorkload(mocky.Anything, expectedWorkload(ins), uint(1)).
 					Return(nil)
 
 				store.EXPECT().
@@ -160,7 +160,7 @@ func TestSyncer(t *testing.T) {
 
 				for i := 0; i < int(maxAttempts); i++ {
 					wlSvc.EXPECT().
-						RunWorkload(mocky.Anything, expectedWorkload(ins), i+1).
+						RunWorkload(mocky.Anything, expectedWorkload(ins), uint(i+1)).
 						Return(errors.New("some error"))
 				}
 
