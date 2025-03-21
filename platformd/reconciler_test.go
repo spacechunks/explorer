@@ -38,12 +38,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestSyncer(t *testing.T) {
+func TestReconciler(t *testing.T) {
 	var (
 		nodeKey                 = "uggeee"
 		namespace               = "test"
 		registryEndpoint        = "reg.example.com"
-		maxAttempts             = 5
+		maxAttempts      uint   = 5
 		cpuPeriod        uint64 = 1
 		cpuQuota         uint64 = 2
 		memoryLimit      uint64 = 3
@@ -107,7 +107,7 @@ func TestSyncer(t *testing.T) {
 					})
 
 				wlSvc.EXPECT().
-					RunWorkload(mocky.Anything, expectedWorkload(ins), 1).
+					RunWorkload(mocky.Anything, expectedWorkload(ins), uint(1)).
 					Return(nil)
 
 				store.EXPECT().
@@ -150,7 +150,7 @@ func TestSyncer(t *testing.T) {
 					Update(ins.GetId(), workload.Status{
 						State: workload.StateCreating,
 					}).
-					Times(maxAttempts)
+					Times(int(maxAttempts))
 
 				store.EXPECT().
 					Update(ins.GetId(), workload.Status{
@@ -158,16 +158,16 @@ func TestSyncer(t *testing.T) {
 					}).
 					NotBefore(attemptCalls)
 
-				for i := 0; i < maxAttempts; i++ {
+				for i := 0; i < int(maxAttempts); i++ {
 					wlSvc.EXPECT().
-						RunWorkload(mocky.Anything, expectedWorkload(ins), i+1).
+						RunWorkload(mocky.Anything, expectedWorkload(ins), uint(i+1)).
 						Return(errors.New("some error"))
 				}
 
 				wlSvc.EXPECT().
 					RemoveWorkload(mocky.Anything, ins.GetId()).
 					Return(nil).
-					Times(maxAttempts)
+					Times(int(maxAttempts))
 
 				store.EXPECT().View().Return(map[string]workload.Status{
 					ins.GetId(): {

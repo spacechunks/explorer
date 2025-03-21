@@ -73,13 +73,13 @@ type reconciler struct {
 	store     workload.StatusStore
 	portAlloc *portAllocator
 
-	attempts map[string]int
+	attempts map[string]uint
 	ticker   *time.Ticker
 	stop     chan bool
 }
 
 type reconcilerConfig struct {
-	MaxAttempts         int
+	MaxAttempts         uint
 	SyncInterval        time.Duration
 	NodeID              string
 	MinPort             uint16
@@ -106,7 +106,7 @@ func newReconciler(
 		store:     store,
 		portAlloc: newPortAllocator(cfg.MinPort, cfg.MaxPort),
 		ticker:    time.NewTicker(cfg.SyncInterval),
-		attempts:  make(map[string]int),
+		attempts:  make(map[string]uint),
 		stop:      make(chan bool),
 	}
 }
