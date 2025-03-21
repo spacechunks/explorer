@@ -75,11 +75,11 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		wlStore     = workload.NewStore()
 		wlServer    = workload.NewServer(wlStore)
 		reconciler  = newReconciler(s.logger, reconcilerConfig{
-			MaxAttempts:       0,
-			SyncInterval:      0,
-			NodeID:            "",
-			MinPort:           0,
-			MaxPort:           0,
+			MaxAttempts:       cfg.MaxAttempts,
+			SyncInterval:      cfg.SyncInterval,
+			NodeID:            cfg.NodeID,
+			MinPort:           cfg.MinPort,
+			MaxPort:           cfg.MaxPort,
 			WorkloadNamespace: "",
 			RegistryEndpoint:  "",
 		}, nil, wlSvc, wlStore)

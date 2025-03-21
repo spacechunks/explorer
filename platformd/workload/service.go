@@ -15,7 +15,7 @@ import (
 const PodLogDir = "/var/log/platformd/pods"
 
 type Service interface {
-	RunWorkload(ctx context.Context, w Workload, attempt int) error
+	RunWorkload(ctx context.Context, w Workload, attempt uint) error
 	RemoveWorkload(ctx context.Context, id string) error
 	GetWorkloadHealth(ctx context.Context, id string) (HealthStatus, error)
 	EnsureWorkload(ctx context.Context, w Workload, labelSelector map[string]string) error
@@ -73,7 +73,7 @@ func (s *criService) EnsureWorkload(ctx context.Context, w Workload, labelSelect
 }
 
 // RunWorkload calls the CRI to create a new pod based on the passed workload.
-func (s *criService) RunWorkload(ctx context.Context, w Workload, attempt int) error {
+func (s *criService) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 	logger := s.logger.With("workload_id", w.ID, "pod_name", w.Name, "namespace", w.Namespace)
 
 	sboxCfg := &runtimev1.PodSandboxConfig{

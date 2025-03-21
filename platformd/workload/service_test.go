@@ -52,12 +52,12 @@ func TestRunWorkload(t *testing.T) {
 	tests := []struct {
 		name    string
 		w       workload.Workload
-		attempt int
+		attempt uint
 		prep    func(
 			*mock.MockV1RuntimeServiceClient,
 			*mock.MockV1ImageServiceClient,
 			workload.Workload,
-			int,
+			uint,
 		)
 	}{
 		{
@@ -68,7 +68,7 @@ func TestRunWorkload(t *testing.T) {
 				rtMock *mock.MockV1RuntimeServiceClient,
 				imgMock *mock.MockV1ImageServiceClient,
 				opts workload.Workload,
-				attempt int,
+				attempt uint,
 			) {
 				imgMock.EXPECT().
 					ListImages(mocky.Anything, &runtimev1.ListImagesRequest{}).
@@ -101,7 +101,7 @@ func TestRunWorkload(t *testing.T) {
 				rtMock *mock.MockV1RuntimeServiceClient,
 				imgMock *mock.MockV1ImageServiceClient,
 				w workload.Workload,
-				_ int,
+				_ uint,
 			) {
 				imgMock.EXPECT().
 					ListImages(mocky.Anything, &runtimev1.ListImagesRequest{}).
@@ -164,7 +164,7 @@ func TestRemoveWorkload(t *testing.T) {
 }
 
 // expect runs all expectations required for a successful pod creation and container start
-func expect(rtMock *mock.MockV1RuntimeServiceClient, w workload.Workload, wlID string, attempt int) {
+func expect(rtMock *mock.MockV1RuntimeServiceClient, w workload.Workload, wlID string, attempt uint) {
 	var (
 		ctrID   = "ctr-test"
 		podID   = "pod-test"

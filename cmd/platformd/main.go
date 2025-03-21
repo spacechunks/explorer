@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/peterbourgon/ff/v3"
@@ -26,6 +27,13 @@ func main() {
 		getsockoptCgroup       = fs.String("getsockopt-cgroup", "", "container image to use for coredns")                                                       //nolint:lll
 		dnsServer              = fs.String("dns-server", "", "dns server used by the containers")                                                               //nolint:lll
 		hostIface              = fs.String("host-iface", "", "internet-facing network interface for ingress and egress traffic")                                //nolint:lll
+		maxAttempts            = fs.Uint("max-attempts", 5, "maximum number of attempts workload creation attempts")                                            //nolint:lll
+		syncInterval           = fs.Duration("sync-interval", 200*time.Millisecond, "i")                                                                        //nolint:lll
+		nodeID                 = fs.String("node-id", "", "unique node id")                                                                                     //nolint:lll
+		minPort                = fs.Uint("min-port", 30000, "start of the port range")                                                                          //nolint:lll
+		maxPort                = fs.Uint("max-port", 40000, "end of the port range")                                                                            //nolint:lll
+		workloadNamespace      = fs.String("workload-namespace", "", "namespace where the workload is deployed")                                                //nolint:lll
+		registryEndpoint       = fs.String("registry-endpoint", "", "registry endpoint")                                                                        //nolint:lll
 		_                      = fs.String("config", "/etc/platformd/config.json", "path to the config file")                                                   //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
@@ -44,6 +52,13 @@ func main() {
 			GetsockoptCGroup:           *getsockoptCgroup,
 			DNSServer:                  *dnsServer,
 			HostIface:                  *hostIface,
+			MaxAttempts:                *maxAttempts,
+			SyncInterval:               *syncInterval,
+			NodeID:                     *nodeID,
+			MinPort:                    uint16(*minPort), // TODO: validation
+			MaxPort:                    uint16(*maxPort),
+			WorkloadNamespace:          *workloadNamespace,
+			RegistryEndpoint:           *registryEndpoint,
 		}
 		ctx    = context.Background()
 		server = platformd.NewServer(logger)
