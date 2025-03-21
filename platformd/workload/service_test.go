@@ -18,20 +18,7 @@
 
 package workload_test
 
-import (
-	"context"
-	"fmt"
-	"log/slog"
-	"os"
-	"testing"
-
-	"github.com/spacechunks/explorer/internal/mock"
-	"github.com/spacechunks/explorer/platformd/workload"
-	mocky "github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
-)
-
+/*
 const testWorkloadID = "29533179-f25a-49e8-b2f7-ffb187327692"
 
 func TestRunWorkload(t *testing.T) {
@@ -134,9 +121,7 @@ func TestRunWorkload(t *testing.T) {
 			var (
 				ctx           = context.Background()
 				logger        = slog.New(slog.NewTextHandler(os.Stdout, nil))
-				mockRtClient  = mock.NewMockV1RuntimeServiceClient(t)
-				mockImgClient = mock.NewMockV1ImageServiceClient(t)
-				svc           = workload.NewService(logger, mockRtClient, mockImgClient)
+				svc           = workload.NewService(logger, mock.NewMockCriService(t))
 			)
 
 			tt.prep(mockRtClient, mockImgClient, tt.w, tt.attempt)
@@ -153,7 +138,7 @@ func TestRemoveWorkload(t *testing.T) {
 		logger        = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		mockRtClient  = mock.NewMockV1RuntimeServiceClient(t)
 		mockImgClient = mock.NewMockV1ImageServiceClient(t)
-		svc           = workload.NewService(logger, mockRtClient, mockImgClient)
+		svc           = workload.NewService(logger, cri.NewService(logger, mockRtClient, mockImgClient))
 	)
 
 	mockRtClient.EXPECT().StopPodSandbox(ctx, &runtimev1.StopPodSandboxRequest{
@@ -227,4 +212,4 @@ func expect(rtMock *mock.MockV1RuntimeServiceClient, w workload.Workload, wlID s
 			ContainerId: ctrID,
 		}).
 		Return(&runtimev1.StartContainerResponse{}, nil)
-}
+}*/

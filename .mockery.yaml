@@ -11,6 +11,9 @@ packages:
   github.com/spacechunks/explorer/cni:
     interfaces:
       Handler:
+  github.com/spacechunks/explorer/platformd/cri:
+    interfaces:
+      Service:
   github.com/spacechunks/explorer/platformd/workload:
     interfaces:
       Service:

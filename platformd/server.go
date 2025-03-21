@@ -13,6 +13,7 @@ import (
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 	"github.com/spacechunks/explorer/internal/datapath"
+	"github.com/spacechunks/explorer/platformd/cri"
 	"github.com/spacechunks/explorer/platformd/proxy"
 	"github.com/spacechunks/explorer/platformd/proxy/xds"
 	"github.com/spacechunks/explorer/platformd/workload"
@@ -57,10 +58,14 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	var (
 		xdsCfg   = cache.NewSnapshotCache(true, cache.IDHash{}, nil)
 		rtClient = runtimev1.NewRuntimeServiceClient(criConn)
-		wlSvc    = workload.NewService(
+		criSvc   = cri.NewService(
 			s.logger,
-			rtClient,
+			runtimev1.NewRuntimeServiceClient(criConn),
 			runtimev1.NewImageServiceClient(criConn),
+		)
+		wlSvc = workload.NewService(
+			s.logger,
+			criSvc,
 		)
 		proxySvc = proxy.NewService(
 			s.logger,
@@ -80,8 +85,8 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			NodeID:            cfg.NodeID,
 			MinPort:           cfg.MinPort,
 			MaxPort:           cfg.MaxPort,
-			WorkloadNamespace: "",
-			RegistryEndpoint:  "",
+			WorkloadNamespace: cfg.WorkloadNamespace,
+			RegistryEndpoint:  cfg.RegistryEndpoint,
 		}, nil, wlSvc, wlStore)
 		gc = newPodGC(s.logger, rtClient, 1*time.Second, 5)
 	)
@@ -129,43 +134,68 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	gc.Start(ctx)
 	reconciler.Start(ctx)
 
-	// TODO: find better solution
 	// before we start our grpc services make sure our system workloads are running
-	/*if err := wlSvc.EnsureWorkload(ctx, workload2.Workload{
-		ID:                   uuid.New().String(),
-		Name:                 "envoy",
-		Image:                cfg.EnvoyImage,
-		Namespace:            "system",
-		NetworkNamespaceMode: int32(runtimev1.NamespaceMode_NODE),
-		Labels:               workload2.SystemWorkloadLabels("envoy"),
-		Args:                 []string{"-c /etc/envoy/config.yaml", "-l debug"},
-		Mounts: []workload2.Mount{
-			{
-				HostPath:      "/etc/platformd/proxy.conf",
-				ContainerPath: "/etc/envoy/config.yaml",
+
+	if err := criSvc.EnsurePod(ctx, cri.RunOptions{
+		PodConfig: &runtimev1.PodSandboxConfig{
+			Metadata: &runtimev1.PodSandboxMetadata{
+				Uid:  "envoy",
+				Name: "envoy",
+			},
+			Hostname:     "envoy",
+			LogDirectory: cri.PodLogDir,
+			Linux: &runtimev1.LinuxPodSandboxConfig{
+				SecurityContext: &runtimev1.LinuxSandboxSecurityContext{
+					NamespaceOptions: &runtimev1.NamespaceOption{
+						Network: runtimev1.NamespaceMode_NODE,
+					},
+				},
+				// TODO: resources
 			},
 		},
-	}, workload2.SystemWorkloadLabels("envoy")); err != nil {
+		ContainerConfig: &runtimev1.ContainerConfig{
+			Args: []string{"-c /etc/envoy/config.yaml", "-l debug"},
+			Mounts: []*runtimev1.Mount{
+				{
+					HostPath:      "/etc/platformd/proxy.conf",
+					ContainerPath: "/etc/envoy/config.yaml",
+				},
+			},
+		},
+	}, cfg.EnvoyImage); err != nil {
 		return fmt.Errorf("ensure envoy: %w", err)
 	}
 
-	if err := wlSvc.EnsureWorkload(ctx, workload2.Workload{
-		ID:                   uuid.New().String(),
-		Name:                 "coredns",
-		Image:                "docker.io/coredns/coredns",
-		Namespace:            "system",
-		NetworkNamespaceMode: int32(runtimev1.NamespaceMode_NODE),
-		Labels:               workload2.SystemWorkloadLabels("coredns"),
-		Args:                 []string{"-conf", "/etc/coredns/Corefile"},
-		Mounts: []workload2.Mount{
-			{
-				HostPath:      "/etc/platformd/dns.conf",
-				ContainerPath: "/etc/coredns/Corefile",
+	if err := criSvc.EnsurePod(ctx, cri.RunOptions{
+		PodConfig: &runtimev1.PodSandboxConfig{
+			Metadata: &runtimev1.PodSandboxMetadata{
+				Uid:  "coredns",
+				Name: "coredns",
+			},
+			Labels:       workload.SystemWorkloadLabels("coredns"),
+			Hostname:     "coredns",
+			LogDirectory: cri.PodLogDir,
+			Linux: &runtimev1.LinuxPodSandboxConfig{
+				SecurityContext: &runtimev1.LinuxSandboxSecurityContext{
+					NamespaceOptions: &runtimev1.NamespaceOption{
+						Network: runtimev1.NamespaceMode_NODE,
+					},
+				},
+				// TODO: resources
 			},
 		},
-	}, workload2.SystemWorkloadLabels("coredns")); err != nil {
+		ContainerConfig: &runtimev1.ContainerConfig{
+			Args: []string{"-conf", "/etc/coredns/Corefile"},
+			Mounts: []*runtimev1.Mount{
+				{
+					HostPath:      "/etc/platformd/dns.conf",
+					ContainerPath: "/etc/coredns/Corefile",
+				},
+			},
+		},
+	}, cfg.EnvoyImage); err != nil {
 		return fmt.Errorf("ensure coredns: %w", err)
-	}*/
+	}
 
 	unixSock, err := net.Listen("unix", cfg.ManagementServerListenSock)
 	if err != nil {
