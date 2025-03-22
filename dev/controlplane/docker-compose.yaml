@@ -5,7 +5,7 @@ services:
     image: postgres:17
     environment:
       POSTGRES_USER: spc
-      POSTGRES_PASSWORD: passwd
+      POSTGRES_PASSWORD: ouiwef98245z837
       POSTGRES_DB: explorer
     ports:
       - "5432:5432"
