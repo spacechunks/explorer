@@ -16,7 +16,7 @@ jobs:
         with:
           go-version: 1.24.1
       - run: |
-          sudo cp ./nodedev/cni/10-ignore.link /etc/systemd/network/10-ignore.link
+          sudo cp ./dev/cni/10-ignore.link /etc/systemd/network/10-ignore.link
           sudo systemctl restart systemd-networkd
           sleep 2 # keep this here, because we need to wait a lil
       - run: make functests
