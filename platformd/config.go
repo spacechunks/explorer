@@ -6,6 +6,7 @@ type Config struct {
 	ManagementServerListenSock string
 	CRIListenSock              string
 	EnvoyImage                 string
+	CoreDNSImage               string
 	GetsockoptCGroup           string
 	DNSServer                  string
 	HostIface                  string

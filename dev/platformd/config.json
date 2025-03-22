@@ -4,6 +4,7 @@
   "getsockopt-cgroup": "/sys/fs/cgroup",
   "dns-server": "127.0.0.1:1053",
   "envoy-image": "docker.io/envoyproxy/envoy:v1.31.4",
+  "coredns-image": "docker.io/coredns/coredns:1.12.0",
   "host-iface": "eth0",
   "max-attempts": 5,
   "sync-interval": "200ms",

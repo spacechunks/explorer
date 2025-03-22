@@ -123,7 +123,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	}
 
 	if err := bpf.AttachAndPinDNAT(iface); err != nil {
-		return fmt.Errorf("attach dnat bpf: %w", err)
+		return fmt.Errorf("attach dnat bpf: %w", err) // TODO: ignore exists, FIXME: update if exists
 	}
 
 	if err := bpf.AddSNATTarget(0, ip, uint8(iface.Index)); err != nil {
@@ -131,7 +131,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	}
 
 	if err := bpf.AttachAndPinGetsockopt(cfg.GetsockoptCGroup); err != nil {
-		return fmt.Errorf("attach getsockopt: %w", err)
+		return fmt.Errorf("attach getsockopt: %w", err) // TODO: ignore exists, FIXME: update if exists
 	}
 
 	if err := proxySvc.ApplyGlobalResources(ctx); err != nil {
@@ -146,8 +146,9 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	if err := criSvc.EnsurePod(ctx, cri.RunOptions{
 		PodConfig: &runtimev1.PodSandboxConfig{
 			Metadata: &runtimev1.PodSandboxMetadata{
-				Uid:  "envoy",
-				Name: "envoy",
+				Uid:       "envoy",
+				Name:      "envoy",
+				Namespace: "explorer-system",
 			},
 			Hostname:     "envoy",
 			LogDirectory: cri.PodLogDir,
@@ -162,6 +163,10 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		},
 		ContainerConfig: &runtimev1.ContainerConfig{
 			Args: []string{"-c /etc/envoy/config.yaml", "-l debug"},
+			Image: &runtimev1.ImageSpec{
+				Image:              cfg.EnvoyImage,
+				UserSpecifiedImage: cfg.EnvoyImage,
+			},
 			Mounts: []*runtimev1.Mount{
 				{
 					HostPath:      "/etc/platformd/proxy.conf",
@@ -169,15 +174,16 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 				},
 			},
 		},
-	}, cfg.EnvoyImage); err != nil {
+	}); err != nil {
 		return fmt.Errorf("ensure envoy: %w", err)
 	}
 
 	if err := criSvc.EnsurePod(ctx, cri.RunOptions{
 		PodConfig: &runtimev1.PodSandboxConfig{
 			Metadata: &runtimev1.PodSandboxMetadata{
-				Uid:  "coredns",
-				Name: "coredns",
+				Uid:       "coredns",
+				Name:      "coredns",
+				Namespace: "explorer-system",
 			},
 			Labels:       workload.SystemWorkloadLabels("coredns"),
 			Hostname:     "coredns",
@@ -193,6 +199,10 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		},
 		ContainerConfig: &runtimev1.ContainerConfig{
 			Args: []string{"-conf", "/etc/coredns/Corefile"},
+			Image: &runtimev1.ImageSpec{
+				Image:              cfg.CoreDNSImage,
+				UserSpecifiedImage: cfg.CoreDNSImage,
+			},
 			Mounts: []*runtimev1.Mount{
 				{
 					HostPath:      "/etc/platformd/dns.conf",
@@ -200,7 +210,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 				},
 			},
 		},
-	}, cfg.EnvoyImage); err != nil {
+	}); err != nil {
 		return fmt.Errorf("ensure coredns: %w", err)
 	}
 

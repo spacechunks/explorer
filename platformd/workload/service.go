@@ -140,7 +140,9 @@ func (s *svc) RemoveWorkload(ctx context.Context, id string) error {
 func (s *svc) GetWorkloadHealth(ctx context.Context, id string) (HealthStatus, error) {
 	resp, err := s.criService.GetRuntimeClient().ListContainers(ctx, &runtimev1.ListContainersRequest{
 		Filter: &runtimev1.ContainerFilter{
-			PodSandboxId: id,
+			LabelSelector: map[string]string{
+				LabelWorkloadID: id,
+			},
 		},
 	})
 	if err != nil {

@@ -24,6 +24,7 @@ func main() {
 		proxyServiceListenSock = fs.String("management-server-listen-sock", "/var/run/platformd/platformd.sock", "path to the unix domain socket to listen on") //nolint:lll
 		criListenSock          = fs.String("cri-listen-sock", "/var/run/crio/crio.sock", "path to the unix domain socket the CRI is listening on")              //nolint:lll
 		envoyImage             = fs.String("envoy-image", "", "container image to use for envoy")                                                               //nolint:lll
+		coreDNSImage           = fs.String("coredns-image", "", "container image to use for CoreDNS")                                                           //nolint:lll
 		getsockoptCgroup       = fs.String("getsockopt-cgroup", "", "container image to use for coredns")                                                       //nolint:lll
 		dnsServer              = fs.String("dns-server", "", "dns server used by the containers")                                                               //nolint:lll
 		hostIface              = fs.String("host-iface", "", "internet-facing network interface for ingress and egress traffic")                                //nolint:lll
@@ -50,6 +51,7 @@ func main() {
 			ManagementServerListenSock: *proxyServiceListenSock,
 			CRIListenSock:              *criListenSock,
 			EnvoyImage:                 *envoyImage,
+			CoreDNSImage:               *coreDNSImage,
 			GetsockoptCGroup:           *getsockoptCgroup,
 			DNSServer:                  *dnsServer,
 			HostIface:                  *hostIface,
