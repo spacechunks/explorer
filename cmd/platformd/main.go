@@ -34,6 +34,7 @@ func main() {
 		maxPort                = fs.Uint("max-port", 40000, "end of the port range")                                                                            //nolint:lll
 		workloadNamespace      = fs.String("workload-namespace", "", "namespace where the workload is deployed")                                                //nolint:lll
 		registryEndpoint       = fs.String("registry-endpoint", "", "registry endpoint")                                                                        //nolint:lll
+		controlPlaneEndpoint   = fs.String("control-plane-endpoint", "", "control plane endpoint")                                                              //nolint:lll
 		_                      = fs.String("config", "/etc/platformd/config.json", "path to the config file")                                                   //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
@@ -59,6 +60,7 @@ func main() {
 			MaxPort:                    uint16(*maxPort),
 			WorkloadNamespace:          *workloadNamespace,
 			RegistryEndpoint:           *registryEndpoint,
+			ControlPlaneEndpoint:       *controlPlaneEndpoint,
 		}
 		ctx    = context.Background()
 		server = platformd.NewServer(logger)

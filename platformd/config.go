@@ -16,4 +16,5 @@ type Config struct {
 	MaxPort                    uint16
 	WorkloadNamespace          string
 	RegistryEndpoint           string
+	ControlPlaneEndpoint       string
 }
