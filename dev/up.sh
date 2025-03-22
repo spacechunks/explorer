@@ -19,9 +19,10 @@
 export GOOS=linux
 export GOARCH=arm64
 
-go build -o nodedev/netglue cmd/netglue/main.go \
-  && go build -o nodedev/platformd cmd/platformd/main.go \
-  && go build -o nodedev/test cmd/test/main.go
+go build -o dev/cni/netglue cmd/netglue/main.go \
+  && go build -o dev/platformd/platformd cmd/platformd/main.go \
+  && go build -o dev/test cmd/test/main.go \
+  && go build -o dev/controlplane/controlplane cmd/controlplane/main.go
 
 #if [ $RETEST == "true" ]; then
 #  ip=$(hcloud server ip nodedev-yannic)
@@ -33,12 +34,12 @@ go build -o nodedev/netglue cmd/netglue/main.go \
 #  exit 0
 #fi
 
-hcloud server delete nodedev-yannic
-hcloud server create --name nodedev-yannic --type cax21 --image ubuntu-24.04 --ssh-key macos-m2-pro
-ip=$(hcloud server ip nodedev-yannic)
+hcloud server delete dev-yannic
+hcloud server create --name dev-yannic --type cax21 --image ubuntu-24.04 --ssh-key macos-m2-pro
+ip=$(hcloud server ip dev-yannic)
 
 
 sleep 30 # takes a bit of time until the server is reachable from the network
 
-scp -r -o StrictHostKeyChecking=no nodedev/* root@$ip:/root
+scp -r -o StrictHostKeyChecking=no dev/* root@$ip:/root
 ssh -o StrictHostKeyChecking=no root@$ip '/root/provision-full.sh'

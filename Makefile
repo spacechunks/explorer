@@ -62,9 +62,9 @@ gogen:
 genproto:
 	buf generate --template ./api/buf.gen.yaml --output ./api ./api
 
-.PHONY: nodedev
-nodedev:
-	./nodedev/up.sh
+.PHONY: dev
+dev:
+	./dev/up.sh
 
 .PHONY: unittests
 unittests: $(REPACK_IMG) $(UNPACK_IMG)
@@ -73,13 +73,13 @@ unittests: $(REPACK_IMG) $(UNPACK_IMG)
 
 .PHONY: e2etests
 e2etests:
-	GOOS=linux GOARCH=arm64 go build -o ./nodedev/ptpnat ./cmd/ptpnat/main.go
+	GOOS=linux GOARCH=arm64 go build -o ./dev/ptpnat ./cmd/ptpnat/main.go
 	$(SUDO) go test ./test/e2e/...
 
 .PHONY: functests
 functests: $(CNI_PLUGINS)
 	$(RUN) $(SUDO) FUNCTESTS_ENVOY_IMAGE=docker.io/envoyproxy/envoy:v1.31.4 \
-				   FUNCTESTS_ENVOY_CONFIG=../../nodedev/platformd/envoy-xds.yaml \
+				   FUNCTESTS_ENVOY_CONFIG=../../dev/platformd/envoy-xds.yaml \
 				   FUNCTESTS_POSTGRES_IMAGE=postgres:17 \
 				   FUNCTESTS_POSTGRES_USER=spc \
 				   FUNCTESTS_POSTGRES_PASS=test123 \

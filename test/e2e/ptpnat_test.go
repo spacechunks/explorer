@@ -32,7 +32,7 @@ import (
 	"github.com/bramvdbogaerde/go-scp/auth"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/spacechunks/explorer/nodedev"
+	"github.com/spacechunks/explorer/dev"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
 )
@@ -78,12 +78,12 @@ func setup(t *testing.T, ctx context.Context, env *test.Env, addr string) {
 
 	defer scpClient.Close()
 
-	err = fs.WalkDir(nodedev.Files, ".", func(path string, d fs.DirEntry, _ error) error {
+	err = fs.WalkDir(dev.Files, ".", func(path string, d fs.DirEntry, _ error) error {
 		if d.IsDir() {
 			return nil
 		}
 
-		data, err := nodedev.Files.ReadFile(path)
+		data, err := dev.Files.ReadFile(path)
 		if err != nil {
 			return err
 		}

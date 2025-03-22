@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: spc
+      POSTGRES_PASSWORD: passwd
+      POSTGRES_DB: explorer
+    ports:
+      - "5432:5432"
+    volumes:
+      - /root/controlplane/pg_data:/var/lib/postgresql/data
+    restart: always
