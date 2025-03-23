@@ -127,8 +127,12 @@ func (o *Objects) AttachAndPinDNAT(iface *net.Interface) error {
 		return fmt.Errorf("attach: %w", err)
 	}
 
-	// pin because cni is short-lived
+	// pin, so in case platformd crashes the program is still running
 	if err := l.Pin(fmt.Sprintf("%s/dnat_%s", ProgPinPath, iface.Name)); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			// TODO: update prog
+			return nil
+		}
 		return fmt.Errorf("pin link: %w", err)
 	}
 
@@ -164,6 +168,7 @@ func (o *Objects) AttachAndPinGetsockopt(cgroupPath string) error {
 	}
 	if err := l.Pin(fmt.Sprintf("%s/cgroup_getsockopt", ProgPinPath)); err != nil {
 		if errors.Is(err, os.ErrExist) {
+			// TODO: update prog
 			return nil
 		}
 		return fmt.Errorf("pin: %w", err)
