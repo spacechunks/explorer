@@ -91,7 +91,7 @@ func TestRunChunk(t *testing.T) {
 			var (
 				ctx    = context.Background()
 				pg     = fixture.NewPostgres()
-				nodeID = "01955772-c4c5-75db-babd-dca81f6e164e"
+				nodeID = "0195c2f6-f40c-72df-a0f1-e468f1be77b1"
 			)
 
 			fixture.RunControlPlane(t, pg)
