@@ -25,7 +25,9 @@ type Service interface {
 	GetRuntimeClient() runtimev1.RuntimeServiceClient
 	EnsurePod(ctx context.Context, opts RunOptions) error
 	RunContainer(ctx context.Context, req *runtimev1.CreateContainerRequest) (string, error)
-	EnsureImage(ctx context.Context, imageURL string) error
+	// EnsureImage makes sure that the OCI image with the given url is present.
+	// Returns true if pulling was necessary, false if not.
+	EnsureImage(ctx context.Context, imageURL string) (bool, error)
 }
 
 type svc struct {
@@ -75,7 +77,7 @@ func (s *svc) EnsurePod(ctx context.Context, opts RunOptions) error {
 		return fmt.Errorf("create pod: %w", err)
 	}
 
-	if err := s.EnsureImage(ctx, opts.ContainerConfig.Image.Image); err != nil {
+	if _, err := s.EnsureImage(ctx, opts.ContainerConfig.Image.Image); err != nil {
 		return fmt.Errorf("ensure image: %w", err)
 	}
 
@@ -134,10 +136,10 @@ func (s *svc) RunContainer(ctx context.Context, req *runtimev1.CreateContainerRe
 // EnsureImage first calls ListImages then checks if the image is contained in the response.
 // if this is not the case PullImage is being called. this function does not access the services logger,
 // and instead uses a passed one, to preserve arguments which provide additional context to the image pull.
-func (s *svc) EnsureImage(ctx context.Context, imageURL string) error {
+func (s *svc) EnsureImage(ctx context.Context, imageURL string) (bool, error) {
 	listResp, err := s.imgClient.ListImages(ctx, &runtimev1.ListImagesRequest{})
 	if err != nil {
-		return fmt.Errorf("list images: %w", err)
+		return false, fmt.Errorf("list images: %w", err)
 	}
 
 	var img *runtimev1.Image
@@ -149,7 +151,7 @@ func (s *svc) EnsureImage(ctx context.Context, imageURL string) error {
 	}
 
 	if img != nil {
-		return nil
+		return false, nil
 	}
 
 	logger := s.logger.With("image", imageURL)
@@ -160,9 +162,8 @@ func (s *svc) EnsureImage(ctx context.Context, imageURL string) error {
 			Image: imageURL,
 		},
 	}); err != nil {
-		return fmt.Errorf("pull image: %w", err)
+		return false, fmt.Errorf("pull image: %w", err)
 	}
 
-	logger.InfoContext(ctx, "image pulled")
-	return nil
+	return true, nil
 }

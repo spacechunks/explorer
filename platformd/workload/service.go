@@ -63,14 +63,8 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 		},
 	}
 
-	sboxResp, err := s.criService.GetRuntimeClient().RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
-		Config: sboxCfg,
-	})
+	pulled, err := s.criService.EnsureImage(ctx, w.BaseImage)
 	if err != nil {
-		return fmt.Errorf("create pod: %w", err)
-	}
-
-	if err := s.criService.EnsureImage(ctx, w.BaseImage); err != nil {
 		return fmt.Errorf("pull image if not present: %w", err)
 	}
 
@@ -80,15 +74,23 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 	// this has been further investigated, use this as a workaround.
 	//
 	// keep it behind env var guard, to make testing easier.
-	if ok := os.Getenv("PLATFORMD_ENABLE_CRIO_RESTART"); ok == "true" {
+	if ok := os.Getenv("PLATFORMD_ENABLE_CRIO_RESTART"); ok == "true" && pulled {
+		s.logger.InfoContext(ctx, "restarting crio")
 		if out, err := exec.Command("systemctl", "restart", "crio").CombinedOutput(); err != nil {
 			return fmt.Errorf("systemctl restart crio: %w: %s", err, out)
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 	// HACK END
 
-	if err := s.criService.EnsureImage(ctx, w.CheckpointImage); err != nil {
+	sboxResp, err := s.criService.GetRuntimeClient().RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
+		Config: sboxCfg,
+	})
+	if err != nil {
+		return fmt.Errorf("create pod: %w", err)
+	}
+
+	if _, err := s.criService.EnsureImage(ctx, w.CheckpointImage); err != nil {
 		return fmt.Errorf("pull image if not present: %w", err)
 	}
 

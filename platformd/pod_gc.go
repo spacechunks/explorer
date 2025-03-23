@@ -62,7 +62,7 @@ func (p *podGC) Start(ctx context.Context) {
 				},
 			})
 			if err != nil {
-				slog.ErrorContext(ctx, "failed listing pod sandboxes", "err", err)
+				p.logger.ErrorContext(ctx, "failed listing pod sandboxes", "err", err)
 				continue
 			}
 			for _, pod := range resp.Items {
@@ -72,7 +72,7 @@ func (p *podGC) Start(ctx context.Context) {
 				if _, err := p.rtClient.RemovePodSandbox(ctx, &runtimev1.RemovePodSandboxRequest{
 					PodSandboxId: pod.Id,
 				}); err != nil {
-					slog.ErrorContext(
+					p.logger.ErrorContext(
 						ctx,
 						"failed removing pod sandbox",
 						"pod_id", pod.Id,
