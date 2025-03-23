@@ -8,7 +8,6 @@ package v1alpha1
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -38,7 +37,7 @@ type InstanceServiceClient interface {
 	// DiscoverInstances returns all workloads that have been scheduled to a node for
 	// creation or removal. Platformd identifies itself using its unique node key.
 	DiscoverInstances(ctx context.Context, in *DiscoverInstanceRequest, opts ...grpc.CallOption) (*DiscoverInstanceResponse, error)
-	// ReceiveInstanceStatusReport is intended to be called by platformd in order to report
+	// ReceiveInstanceStatusReports is intended to be called by platformd in order to report
 	// status updates back to the control plane.
 	ReceiveInstanceStatusReports(ctx context.Context, in *ReceiveInstanceStatusReportsRequest, opts ...grpc.CallOption) (*ReceiveInstanceStatusReportsResponse, error)
 }
@@ -94,7 +93,7 @@ type InstanceServiceServer interface {
 	// DiscoverInstances returns all workloads that have been scheduled to a node for
 	// creation or removal. Platformd identifies itself using its unique node key.
 	DiscoverInstances(context.Context, *DiscoverInstanceRequest) (*DiscoverInstanceResponse, error)
-	// ReceiveInstanceStatusReport is intended to be called by platformd in order to report
+	// ReceiveInstanceStatusReports is intended to be called by platformd in order to report
 	// status updates back to the control plane.
 	ReceiveInstanceStatusReports(context.Context, *ReceiveInstanceStatusReportsRequest) (*ReceiveInstanceStatusReportsResponse, error)
 	mustEmbedUnimplementedInstanceServiceServer()

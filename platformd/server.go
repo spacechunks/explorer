@@ -10,6 +10,7 @@ import (
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/hashicorp/go-multierror"
+	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 	"github.com/spacechunks/explorer/internal/datapath"
@@ -38,6 +39,11 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("failed to create cri grpc client: %w", err)
 	}
 
+	cpConn, err := grpc.NewClient(cfg.ControlPlaneEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return fmt.Errorf("failed to create cri grpc client: %w", err)
+	}
+
 	dnsUpstream, err := netip.ParseAddrPort(cfg.DNSServer)
 	if err != nil {
 		return fmt.Errorf("failed to parse dns server address: %w", err)
@@ -56,9 +62,10 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	const proxyNodeID = "proxy-0"
 
 	var (
-		xdsCfg   = cache.NewSnapshotCache(true, cache.IDHash{}, nil)
-		rtClient = runtimev1.NewRuntimeServiceClient(criConn)
-		criSvc   = cri.NewService(
+		xdsCfg    = cache.NewSnapshotCache(true, cache.IDHash{}, nil)
+		rtClient  = runtimev1.NewRuntimeServiceClient(criConn)
+		insClient = instancev1alpha1.NewInstanceServiceClient(cpConn)
+		criSvc    = cri.NewService(
 			s.logger,
 			runtimev1.NewRuntimeServiceClient(criConn),
 			runtimev1.NewImageServiceClient(criConn),
@@ -87,7 +94,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			MaxPort:           cfg.MaxPort,
 			WorkloadNamespace: cfg.WorkloadNamespace,
 			RegistryEndpoint:  cfg.RegistryEndpoint,
-		}, nil, wlSvc, wlStore)
+		}, insClient, wlSvc, wlStore)
 		gc = newPodGC(s.logger, rtClient, 1*time.Second, 5)
 	)
 
@@ -116,7 +123,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	}
 
 	if err := bpf.AttachAndPinDNAT(iface); err != nil {
-		return fmt.Errorf("attach dnat bpf: %w", err)
+		return fmt.Errorf("attach dnat bpf: %w", err) // TODO: ignore exists, FIXME: update if exists
 	}
 
 	if err := bpf.AddSNATTarget(0, ip, uint8(iface.Index)); err != nil {
@@ -124,23 +131,21 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	}
 
 	if err := bpf.AttachAndPinGetsockopt(cfg.GetsockoptCGroup); err != nil {
-		return fmt.Errorf("attach getsockopt: %w", err)
+		return fmt.Errorf("attach getsockopt: %w", err) // TODO: ignore exists, FIXME: update if exists
 	}
 
 	if err := proxySvc.ApplyGlobalResources(ctx); err != nil {
 		return fmt.Errorf("apply global resources: %w", err)
 	}
 
-	gc.Start(ctx)
-	reconciler.Start(ctx)
-
 	// before we start our grpc services make sure our system workloads are running
 
 	if err := criSvc.EnsurePod(ctx, cri.RunOptions{
 		PodConfig: &runtimev1.PodSandboxConfig{
 			Metadata: &runtimev1.PodSandboxMetadata{
-				Uid:  "envoy",
-				Name: "envoy",
+				Uid:       "envoy",
+				Name:      "envoy",
+				Namespace: "explorer-system",
 			},
 			Hostname:     "envoy",
 			LogDirectory: cri.PodLogDir,
@@ -155,6 +160,10 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		},
 		ContainerConfig: &runtimev1.ContainerConfig{
 			Args: []string{"-c /etc/envoy/config.yaml", "-l debug"},
+			Image: &runtimev1.ImageSpec{
+				Image:              cfg.EnvoyImage,
+				UserSpecifiedImage: cfg.EnvoyImage,
+			},
 			Mounts: []*runtimev1.Mount{
 				{
 					HostPath:      "/etc/platformd/proxy.conf",
@@ -162,15 +171,16 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 				},
 			},
 		},
-	}, cfg.EnvoyImage); err != nil {
+	}); err != nil {
 		return fmt.Errorf("ensure envoy: %w", err)
 	}
 
 	if err := criSvc.EnsurePod(ctx, cri.RunOptions{
 		PodConfig: &runtimev1.PodSandboxConfig{
 			Metadata: &runtimev1.PodSandboxMetadata{
-				Uid:  "coredns",
-				Name: "coredns",
+				Uid:       "coredns",
+				Name:      "coredns",
+				Namespace: "explorer-system",
 			},
 			Labels:       workload.SystemWorkloadLabels("coredns"),
 			Hostname:     "coredns",
@@ -186,6 +196,10 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		},
 		ContainerConfig: &runtimev1.ContainerConfig{
 			Args: []string{"-conf", "/etc/coredns/Corefile"},
+			Image: &runtimev1.ImageSpec{
+				Image:              cfg.CoreDNSImage,
+				UserSpecifiedImage: cfg.CoreDNSImage,
+			},
 			Mounts: []*runtimev1.Mount{
 				{
 					HostPath:      "/etc/platformd/dns.conf",
@@ -193,7 +207,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 				},
 			},
 		},
-	}, cfg.EnvoyImage); err != nil {
+	}); err != nil {
 		return fmt.Errorf("ensure coredns: %w", err)
 	}
 
@@ -212,6 +226,13 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		}
 		return nil
 	})
+
+	// start reconciler after mgmt server has been started,
+	// because otherwise creating pending instances will
+	// fail as netglue is not able to retrieve the allocated
+	// host port.
+	go gc.Start(ctx)
+	go reconciler.Start(ctx)
 
 	<-ctx.Done()
 

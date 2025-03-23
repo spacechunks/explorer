@@ -51,7 +51,7 @@ func NewService(logger *slog.Logger, repo Repository, chunkService chunk.Service
 
 func (s *svc) RunChunk(ctx context.Context, chunkID string, flavorID string) (Instance, error) {
 	// FIXME: hardcoded for now, determine node to schedule instance to later
-	const nodeID = "01955772-c4c5-75db-babd-dca81f6e164e"
+	const nodeID = "0195c2f6-f40c-72df-a0f1-e468f1be77b1"
 
 	c, err := s.chunkService.GetChunk(ctx, chunkID)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *svc) DiscoverInstances(ctx context.Context, nodeID string) ([]Instance,
 		return nil, err
 	}
 
-	s.logger.InfoContext(ctx, "found instances", "instances", len(instances), "node_id", nodeID)
+	s.logger.DebugContext(ctx, "found instances", "instances", len(instances), "node_id", nodeID)
 
 	// sort to return consistent output
 	sort.Slice(instances, func(i, j int) bool {
@@ -108,12 +108,6 @@ func (s *svc) ReceiveInstanceStatusReports(ctx context.Context, reports []Status
 	if err := s.repo.ApplyStatusReports(ctx, reports); err != nil {
 		return fmt.Errorf("apply status reports: %w", err)
 	}
-
-	// TODO:
-	// * update instance state based on workload state
-	//   * if workload state == DELETED
-	//     * remove from table
-
 	return nil
 }
 

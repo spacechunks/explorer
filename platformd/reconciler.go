@@ -132,7 +132,7 @@ func (r *reconciler) tick(ctx context.Context) {
 		NodeKey: &r.cfg.NodeID,
 	})
 	if err != nil {
-		slog.ErrorContext(ctx, "discover instances failed", "node_id", r.cfg.NodeID, "err", err)
+		r.logger.ErrorContext(ctx, "discover instances failed", "node_id", r.cfg.NodeID, "err", err)
 		// if we encounter an error backoff for a longer period than the sync interval,
 		// because we don't want to spam the control plane if things are not working.
 		// FIXME: use exponential backoff
@@ -143,8 +143,8 @@ func (r *reconciler) tick(ctx context.Context) {
 	for _, ins := range discResp.Instances {
 		id := ins.GetId()
 		switch ins.GetState() {
-		case instancev1alpha1.InstanceState_PENDING:
-			if err := r.handleInstancePending(ctx, ins); err != nil {
+		case instancev1alpha1.InstanceState_PENDING, instancev1alpha1.InstanceState_CREATING:
+			if err := r.handleInstanceCreation(ctx, ins); err != nil {
 				if errors.Is(err, errMaxAttemptsReached) {
 					r.logger.WarnContext(ctx,
 						"max attempts reached",
@@ -179,7 +179,7 @@ func (r *reconciler) tick(ctx context.Context) {
 			}
 			continue
 		default:
-			r.logger.DebugContext(ctx, "skipping instance", "state", ins.GetState())
+			r.logger.InfoContext(ctx, "skipping instance", "state", ins.GetState()) // TODO: debug
 			continue
 		}
 	}
@@ -190,6 +190,7 @@ func (r *reconciler) tick(ctx context.Context) {
 	)
 
 	for k, v := range statuses {
+		r.logger.InfoContext(ctx, "instance status", "instance_id", k, "state", v.State, "port", v.Port)
 		items = append(items, &instancev1alpha1.InstanceStatusReport{
 			InstanceId: &k,
 			Port:       ptr.Pointer(uint32(v.Port)),
@@ -202,7 +203,7 @@ func (r *reconciler) tick(ctx context.Context) {
 	if _, err := r.insClient.ReceiveInstanceStatusReports(ctx, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
 		Reports: items,
 	}); err != nil {
-		slog.ErrorContext(ctx, "sending workload status reports failed", "err", err)
+		r.logger.ErrorContext(ctx, "sending workload status reports failed", "err", err)
 		r.ticker.Reset(3 * time.Second)
 		return
 	}
@@ -217,11 +218,13 @@ func (r *reconciler) tick(ctx context.Context) {
 	r.ticker.Reset(r.cfg.SyncInterval)
 }
 
-func (r *reconciler) handleInstancePending(ctx context.Context, instance *instancev1alpha1.Instance) error {
+func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *instancev1alpha1.Instance) error {
 	var (
 		id      = instance.GetId()
 		attempt = r.attempts[id]
 	)
+
+	r.logger.InfoContext(ctx, "handling pending instance", "instance_id", id, "attempt", attempt)
 
 	// if the instance is not in state CREATING, skip it.
 	// this check is necessary, because it can happen that we
@@ -231,6 +234,7 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 	// the control plane yet or a bug in the control plane does
 	// not update states correctly.
 	if status := r.store.Get(id); status != nil && status.State != workload.StateCreating {
+		r.logger.InfoContext(ctx, "skip")
 		return nil
 	}
 
@@ -252,11 +256,14 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 		return fmt.Errorf("failed to allocate port: %w", err)
 	}
 
+	// port needs to be updated BEFORE calling RunWorkload
+	// so netglue can be aware of the host port that has been
+	// allocated.
+	r.store.Update(id, workload.Status{
+		Port: port,
+	})
+
 	var (
-		status = workload.Status{
-			State: workload.StateCreating,
-			Port:  port,
-		}
 		baseURL = fmt.Sprintf(
 			"%s/%s/%s",
 			r.cfg.RegistryEndpoint,
@@ -303,8 +310,9 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 		return fmt.Errorf("run workload: %w", err)
 	}
 
-	status.State = workload.StateRunning
-	r.store.Update(id, status)
+	r.store.Update(id, workload.Status{
+		State: workload.StateRunning,
+	})
 	return nil
 }
 

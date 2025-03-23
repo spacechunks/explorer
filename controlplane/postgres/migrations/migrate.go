@@ -16,39 +16,44 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package instance
+package migrations
 
 import (
-	"net/netip"
-	"time"
+	"embed"
+	"fmt"
+	"io"
+	"net/url"
 
-	"github.com/spacechunks/explorer/controlplane/chunk"
+	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
+
+	"github.com/amacneil/dbmate/v2/pkg/dbmate"
 )
 
-type Instance struct {
-	ID          string
-	Chunk       chunk.Chunk
-	ChunkFlavor chunk.Flavor
-	Address     netip.Addr
-	State       State
-	Port        *uint16
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+//go:embed *.sql
+var fs embed.FS
+
+func Migrate(dsn string) error {
+	pgDSN, err := url.Parse(dsn)
+	if err != nil {
+		return fmt.Errorf("parse dsn: %w", err)
+	}
+
+	mate := dbmate.New(pgDSN)
+	mate.FS = fs
+	mate.Log = io.Discard
+	mate.MigrationsDir = []string{"./"}
+
+	if _, err := mate.FindMigrations(); err != nil {
+		return fmt.Errorf("find migrations: %w", err)
+	}
+
+	if err := mate.Wait(); err != nil {
+		return fmt.Errorf("wait migrations: %w", err)
+	}
+
+	if err := mate.Migrate(); err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+
+	return nil
 }
-
-type StatusReport struct {
-	InstanceID string
-	State      State
-	Port       uint16
-}
-
-type State string
-
-const (
-	StatePending   State = "PENDING"
-	StateCreating  State = "CREATING"
-	StateRunning   State = "RUNNING"
-	StateDeleting  State = "DELETING"
-	StateDeleted   State = "DELETED"
-	CreationFailed State = "CREATION_FAILED"
-)

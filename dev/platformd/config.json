@@ -4,12 +4,14 @@
   "getsockopt-cgroup": "/sys/fs/cgroup",
   "dns-server": "127.0.0.1:1053",
   "envoy-image": "docker.io/envoyproxy/envoy:v1.31.4",
+  "coredns-image": "docker.io/coredns/coredns:1.12.0",
   "host-iface": "eth0",
   "max-attempts": 5,
   "sync-interval": "200ms",
-  "node-id": "0195b95d-9113-776a-a1ab-a58b20469843",
+  "node-id": "0195c2f6-f40c-72df-a0f1-e468f1be77b1",
   "min-port": 30000,
   "max-port": 40000,
   "workload-namespace": "explorer-instances",
-  "registry-endpoint": "ghcr.io"
+  "registry-endpoint": "ghcr.io/spacechunks/explorer-dev",
+  "control-plane-endpoint": "localhost:9012"
 }

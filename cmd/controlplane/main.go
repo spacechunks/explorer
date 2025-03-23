@@ -31,14 +31,15 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/peterbourgon/ff/v3"
 	"github.com/spacechunks/explorer/controlplane"
+	"github.com/spacechunks/explorer/controlplane/postgres/migrations"
 )
 
 func main() {
 	var (
 		logger       = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		fs           = flag.NewFlagSet("controlplane", flag.ContinueOnError)
-		listenAddr   = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                  //nolint:lll
-		pgConnString = fs.String("postgres-dsn", "", "connection string in the form of postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]") //nolint:lll
+		listenAddr   = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                //nolint:lll
+		pgConnString = fs.String("postgres-dsn", "", "connection string in the form of postgres://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]") //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
@@ -47,11 +48,12 @@ func main() {
 	}
 
 	var (
-		ctx, cancel = context.WithCancel(context.Background())
-		server      = controlplane.NewServer(logger, controlplane.Config{
+		cfg = controlplane.Config{
 			ListenAddr:   *listenAddr,
 			DBConnString: *pgConnString,
-		})
+		}
+		ctx, cancel = context.WithCancel(context.Background())
+		server      = controlplane.NewServer(logger, cfg)
 	)
 
 	go func() {
@@ -61,6 +63,10 @@ func main() {
 		logger.Info("received shutdown signal", "signal", s)
 		cancel()
 	}()
+
+	if err := migrations.Migrate(cfg.DBConnString); err != nil {
+		die(logger, "failed to run migrations", err)
+	}
 
 	if err := server.Run(ctx); err != nil {
 		var multi *multierror.Error

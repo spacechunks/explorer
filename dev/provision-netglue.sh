@@ -40,7 +40,7 @@ mkdir -p /opt/cni
 cp -r plugins/bin /opt/cni
 
 # install cni
-cp netglue /opt/cni/bin/netglue
+cp cni/netglue /opt/cni/bin/netglue
 mkdir -p /etc/cni/net.d/
 cp /root/10-netglue.conflist /etc/cni/net.d/10-netglue.conflist
 

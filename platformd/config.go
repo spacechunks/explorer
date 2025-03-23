@@ -6,6 +6,7 @@ type Config struct {
 	ManagementServerListenSock string
 	CRIListenSock              string
 	EnvoyImage                 string
+	CoreDNSImage               string
 	GetsockoptCGroup           string
 	DNSServer                  string
 	HostIface                  string
@@ -16,4 +17,5 @@ type Config struct {
 	MaxPort                    uint16
 	WorkloadNamespace          string
 	RegistryEndpoint           string
+	ControlPlaneEndpoint       string
 }

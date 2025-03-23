@@ -5,6 +5,7 @@ package mock
 import (
 	context "context"
 
+	cri "github.com/spacechunks/explorer/platformd/cri"
 	mock "github.com/stretchr/testify/mock"
 
 	v1 "k8s.io/cri-api/pkg/apis/runtime/v1"
@@ -70,17 +71,17 @@ func (_c *MockCriService_EnsureImage_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// EnsurePod provides a mock function with given fields: ctx, sboxCfg, imageURL
-func (_m *MockCriService) EnsurePod(ctx context.Context, sboxCfg *v1.PodSandboxConfig, imageURL string) error {
-	ret := _m.Called(ctx, sboxCfg, imageURL)
+// EnsurePod provides a mock function with given fields: ctx, opts
+func (_m *MockCriService) EnsurePod(ctx context.Context, opts cri.RunOptions) error {
+	ret := _m.Called(ctx, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for EnsurePod")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.PodSandboxConfig, string) error); ok {
-		r0 = rf(ctx, sboxCfg, imageURL)
+	if rf, ok := ret.Get(0).(func(context.Context, cri.RunOptions) error); ok {
+		r0 = rf(ctx, opts)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -95,15 +96,14 @@ type MockCriService_EnsurePod_Call struct {
 
 // EnsurePod is a helper method to define mock.On call
 //   - ctx context.Context
-//   - sboxCfg *v1.PodSandboxConfig
-//   - imageURL string
-func (_e *MockCriService_Expecter) EnsurePod(ctx interface{}, sboxCfg interface{}, imageURL interface{}) *MockCriService_EnsurePod_Call {
-	return &MockCriService_EnsurePod_Call{Call: _e.mock.On("EnsurePod", ctx, sboxCfg, imageURL)}
+//   - opts cri.RunOptions
+func (_e *MockCriService_Expecter) EnsurePod(ctx interface{}, opts interface{}) *MockCriService_EnsurePod_Call {
+	return &MockCriService_EnsurePod_Call{Call: _e.mock.On("EnsurePod", ctx, opts)}
 }
 
-func (_c *MockCriService_EnsurePod_Call) Run(run func(ctx context.Context, sboxCfg *v1.PodSandboxConfig, imageURL string)) *MockCriService_EnsurePod_Call {
+func (_c *MockCriService_EnsurePod_Call) Run(run func(ctx context.Context, opts cri.RunOptions)) *MockCriService_EnsurePod_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*v1.PodSandboxConfig), args[2].(string))
+		run(args[0].(context.Context), args[1].(cri.RunOptions))
 	})
 	return _c
 }
@@ -113,7 +113,7 @@ func (_c *MockCriService_EnsurePod_Call) Return(_a0 error) *MockCriService_Ensur
 	return _c
 }
 
-func (_c *MockCriService_EnsurePod_Call) RunAndReturn(run func(context.Context, *v1.PodSandboxConfig, string) error) *MockCriService_EnsurePod_Call {
+func (_c *MockCriService_EnsurePod_Call) RunAndReturn(run func(context.Context, cri.RunOptions) error) *MockCriService_EnsurePod_Call {
 	_c.Call.Return(run)
 	return _c
 }

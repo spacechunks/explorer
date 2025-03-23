@@ -9,7 +9,12 @@ import (
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
-const PodLogDir = "/var/log/platformd/pods"
+const (
+	PodLogDir   = "/var/log/platformd/pods"
+	LabelPodUID = "io.kubernetes.pod.uid"
+)
+
+var ErrPodNotFound = fmt.Errorf("pod not found")
 
 type RunOptions struct {
 	PodConfig       *runtimev1.PodSandboxConfig
@@ -18,9 +23,11 @@ type RunOptions struct {
 
 type Service interface {
 	GetRuntimeClient() runtimev1.RuntimeServiceClient
-	EnsurePod(ctx context.Context, opts RunOptions, imageURL string) error
+	EnsurePod(ctx context.Context, opts RunOptions) error
 	RunContainer(ctx context.Context, req *runtimev1.CreateContainerRequest) (string, error)
-	EnsureImage(ctx context.Context, imageURL string) error
+	// EnsureImage makes sure that the OCI image with the given url is present.
+	// Returns true if pulling was necessary, false if not.
+	EnsureImage(ctx context.Context, imageURL string) (bool, error)
 }
 
 type svc struct {
@@ -45,10 +52,12 @@ func (s *svc) GetRuntimeClient() runtimev1.RuntimeServiceClient {
 	return s.rtClient
 }
 
-func (s *svc) EnsurePod(ctx context.Context, opts RunOptions, imageURL string) error {
-	resp, err := s.rtClient.ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
+func (s *svc) EnsurePod(ctx context.Context, opts RunOptions) error {
+	listPodsResp, err := s.rtClient.ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
 		Filter: &runtimev1.PodSandboxFilter{
-			Id: opts.PodConfig.Metadata.Uid,
+			LabelSelector: map[string]string{
+				LabelPodUID: opts.PodConfig.Metadata.Uid,
+			},
 		},
 	})
 	if err != nil {
@@ -57,19 +66,19 @@ func (s *svc) EnsurePod(ctx context.Context, opts RunOptions, imageURL string) e
 
 	// TODO: what do we do if the pod found is in NOT_READY state
 
-	if len(resp.Items) > 0 {
+	if len(listPodsResp.Items) > 0 {
 		return nil
 	}
 
-	if _, err := s.rtClient.RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
+	runPodResp, err := s.rtClient.RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
 		Config: opts.PodConfig,
-	}); err != nil {
+	})
+	if err != nil {
 		return fmt.Errorf("create pod: %w", err)
 	}
 
-	opts.ContainerConfig.Image = &runtimev1.ImageSpec{
-		UserSpecifiedImage: imageURL,
-		Image:              imageURL,
+	if _, err := s.EnsureImage(ctx, opts.ContainerConfig.Image.Image); err != nil {
+		return fmt.Errorf("ensure image: %w", err)
 	}
 
 	opts.ContainerConfig.LogPath = fmt.Sprintf(
@@ -77,19 +86,20 @@ func (s *svc) EnsurePod(ctx context.Context, opts RunOptions, imageURL string) e
 		opts.PodConfig.Metadata.Namespace,
 		opts.PodConfig.Metadata.Name,
 	)
+
 	opts.ContainerConfig.Metadata = &runtimev1.ContainerMetadata{
 		Name: opts.PodConfig.Metadata.Name,
 	}
 
 	req := &runtimev1.CreateContainerRequest{
-		PodSandboxId:  opts.PodConfig.Metadata.Uid,
+		PodSandboxId:  runPodResp.PodSandboxId,
 		Config:        opts.ContainerConfig,
 		SandboxConfig: opts.PodConfig,
 	}
 
 	s.logger.InfoContext(ctx,
 		"no matching workload found, creating pod",
-		"pod_id", opts.PodConfig.Metadata.Uid,
+		"pod_uid", opts.PodConfig.Metadata.Uid,
 		"pod_name", opts.PodConfig.Metadata.Name,
 		"namespace", opts.PodConfig.Metadata.Namespace,
 	)
@@ -123,13 +133,13 @@ func (s *svc) RunContainer(ctx context.Context, req *runtimev1.CreateContainerRe
 	return ctrResp.ContainerId, nil
 }
 
-// PullImageIfNotPresent first calls ListImages then checks if the image is contained in the response.
+// EnsureImage first calls ListImages then checks if the image is contained in the response.
 // if this is not the case PullImage is being called. this function does not access the services logger,
 // and instead uses a passed one, to preserve arguments which provide additional context to the image pull.
-func (s *svc) EnsureImage(ctx context.Context, imageURL string) error {
+func (s *svc) EnsureImage(ctx context.Context, imageURL string) (bool, error) {
 	listResp, err := s.imgClient.ListImages(ctx, &runtimev1.ListImagesRequest{})
 	if err != nil {
-		return fmt.Errorf("list images: %w", err)
+		return false, fmt.Errorf("list images: %w", err)
 	}
 
 	var img *runtimev1.Image
@@ -141,7 +151,7 @@ func (s *svc) EnsureImage(ctx context.Context, imageURL string) error {
 	}
 
 	if img != nil {
-		return nil
+		return false, nil
 	}
 
 	logger := s.logger.With("image", imageURL)
@@ -152,9 +162,8 @@ func (s *svc) EnsureImage(ctx context.Context, imageURL string) error {
 			Image: imageURL,
 		},
 	}); err != nil {
-		return fmt.Errorf("pull image: %w", err)
+		return false, fmt.Errorf("pull image: %w", err)
 	}
 
-	logger.InfoContext(ctx, "image pulled")
-	return nil
+	return true, nil
 }

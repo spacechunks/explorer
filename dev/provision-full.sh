@@ -54,7 +54,7 @@ cp -r plugins/bin /opt/cni
 
 # install cni
 mkdir -p /etc/cni/net.d/
-   cp netglue /opt/cni/bin/netglue
+cp cni/netglue /opt/cni/bin/netglue
 cp cni/00-netglue.conflist /etc/cni/net.d/00-netglue.conflist
 
 cp cni/10-ignore.link /etc/systemd/network/10-ignore.link
@@ -98,6 +98,11 @@ cd ./crun
 make
 mv crun /usr/bin/crun
 cd -
+
+# control plane
+mkdir controlplane/pg_data
+curl https://get.docker.com | bash
+cd controlplane && docker compose up -d
 
 
 # run nginx pod
