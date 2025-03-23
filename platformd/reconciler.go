@@ -256,11 +256,14 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 		return fmt.Errorf("failed to allocate port: %w", err)
 	}
 
+	// port needs to be updated BEFORE calling RunWorkload
+	// so netglue can be aware of the host port that has been
+	// allocated.
+	r.store.Update(id, workload.Status{
+		Port: port,
+	})
+
 	var (
-		status = workload.Status{
-			State: workload.StateCreating,
-			Port:  port,
-		}
 		baseURL = fmt.Sprintf(
 			"%s/%s/%s",
 			r.cfg.RegistryEndpoint,
@@ -307,8 +310,9 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 		return fmt.Errorf("run workload: %w", err)
 	}
 
-	status.State = workload.StateRunning
-	r.store.Update(id, status)
+	r.store.Update(id, workload.Status{
+		State: workload.StateRunning,
+	})
 	return nil
 }
 
