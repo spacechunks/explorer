@@ -132,7 +132,7 @@ func (r *reconciler) tick(ctx context.Context) {
 		NodeKey: &r.cfg.NodeID,
 	})
 	if err != nil {
-		slog.ErrorContext(ctx, "discover instances failed", "node_id", r.cfg.NodeID, "err", err)
+		r.logger.ErrorContext(ctx, "discover instances failed", "node_id", r.cfg.NodeID, "err", err)
 		// if we encounter an error backoff for a longer period than the sync interval,
 		// because we don't want to spam the control plane if things are not working.
 		// FIXME: use exponential backoff
@@ -143,7 +143,7 @@ func (r *reconciler) tick(ctx context.Context) {
 	for _, ins := range discResp.Instances {
 		id := ins.GetId()
 		switch ins.GetState() {
-		case instancev1alpha1.InstanceState_PENDING:
+		case instancev1alpha1.InstanceState_PENDING, instancev1alpha1.InstanceState_CREATING:
 			if err := r.handleInstancePending(ctx, ins); err != nil {
 				if errors.Is(err, errMaxAttemptsReached) {
 					r.logger.WarnContext(ctx,
@@ -179,7 +179,7 @@ func (r *reconciler) tick(ctx context.Context) {
 			}
 			continue
 		default:
-			r.logger.DebugContext(ctx, "skipping instance", "state", ins.GetState())
+			r.logger.InfoContext(ctx, "skipping instance", "state", ins.GetState()) // TODO: debug
 			continue
 		}
 	}
@@ -190,6 +190,7 @@ func (r *reconciler) tick(ctx context.Context) {
 	)
 
 	for k, v := range statuses {
+		r.logger.InfoContext(ctx, "instance status", "instance_id", k, "state", v.State, "port", v.Port)
 		items = append(items, &instancev1alpha1.InstanceStatusReport{
 			InstanceId: &k,
 			Port:       ptr.Pointer(uint32(v.Port)),
@@ -202,7 +203,7 @@ func (r *reconciler) tick(ctx context.Context) {
 	if _, err := r.insClient.ReceiveInstanceStatusReports(ctx, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
 		Reports: items,
 	}); err != nil {
-		slog.ErrorContext(ctx, "sending workload status reports failed", "err", err)
+		r.logger.ErrorContext(ctx, "sending workload status reports failed", "err", err)
 		r.ticker.Reset(3 * time.Second)
 		return
 	}
@@ -223,6 +224,8 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 		attempt = r.attempts[id]
 	)
 
+	r.logger.InfoContext(ctx, "handling pending instance", "instance_id", id, "attempt", attempt)
+
 	// if the instance is not in state CREATING, skip it.
 	// this check is necessary, because it can happen that we
 	// receive an instance that is still in PENDING state from the
@@ -231,6 +234,7 @@ func (r *reconciler) handleInstancePending(ctx context.Context, instance *instan
 	// the control plane yet or a bug in the control plane does
 	// not update states correctly.
 	if status := r.store.Get(id); status != nil && status.State != workload.StateCreating {
+		r.logger.InfoContext(ctx, "skip")
 		return nil
 	}
 
