@@ -12,6 +12,6 @@
   "min-port": 30000,
   "max-port": 40000,
   "workload-namespace": "explorer-instances",
-  "registry-endpoint": "ghcr.io/explorer-dev",
+  "registry-endpoint": "ghcr.io/spacechunks/explorer-dev",
   "control-plane-endpoint": "localhost:9012"
 }

@@ -25,12 +25,14 @@ go build -o dev/cni/netglue cmd/netglue/main.go \
   && go build -o dev/controlplane/controlplane cmd/controlplane/main.go
 
 #if [ $RETEST == "true" ]; then
-#  ip=$(hcloud server ip nodedev-yannic)
-#  go build -o nodedev/netglue cmd/netglue/main.go \
-#    && go build -o nodedev/platformd cmd/platformd/main.go \
-#    && go build -o nodedev/test cmd/test/main.go
-#  scp -r -o StrictHostKeyChecking=no nodedev/* root@$ip:/root
-#  ssh -o StrictHostKeyChecking=no root@$ip 'cp netglue /opt/cni/bin/netglue'
+#  ip=$(hcloud server ip dev-yannic)
+#  go build -o dev/cni/netglue cmd/netglue/main.go \
+#    && go build -o dev/platformd/platformd cmd/platformd/main.go \
+#    && go build -o dev/test cmd/test/main.go \
+#    && go build -o dev/controlplane/controlplane cmd/controlplane/main.go
+#  scp -r -o StrictHostKeyChecking=no dev/* root@$ip:/root
+#  ssh -o StrictHostKeyChecking=no root@$ip 'cp /root/cni/netglue /opt/cni/bin/netglue'
+#  ssh -o StrictHostKeyChecking=no root@$ip 'cp /root/platformd/config.json /etc/platformd/config.json'
 #  exit 0
 #fi
 

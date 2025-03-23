@@ -6,7 +6,7 @@ cp:
 
 .PHONY: pd
 pd:
-	./platformd/platformd
+	PLATFORMD_ENABLE_CRIO_RESTART=true ./platformd/platformd
 
 .PHONY: t
 t:
