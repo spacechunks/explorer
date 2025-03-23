@@ -144,7 +144,7 @@ func (r *reconciler) tick(ctx context.Context) {
 		id := ins.GetId()
 		switch ins.GetState() {
 		case instancev1alpha1.InstanceState_PENDING, instancev1alpha1.InstanceState_CREATING:
-			if err := r.handleInstancePending(ctx, ins); err != nil {
+			if err := r.handleInstanceCreation(ctx, ins); err != nil {
 				if errors.Is(err, errMaxAttemptsReached) {
 					r.logger.WarnContext(ctx,
 						"max attempts reached",
@@ -218,7 +218,7 @@ func (r *reconciler) tick(ctx context.Context) {
 	r.ticker.Reset(r.cfg.SyncInterval)
 }
 
-func (r *reconciler) handleInstancePending(ctx context.Context, instance *instancev1alpha1.Instance) error {
+func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *instancev1alpha1.Instance) error {
 	var (
 		id      = instance.GetId()
 		attempt = r.attempts[id]

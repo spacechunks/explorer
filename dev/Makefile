@@ -7,3 +7,7 @@ cp:
 .PHONY: pd
 pd:
 	./platformd/platformd
+
+.PHONY: t
+t:
+	./test
