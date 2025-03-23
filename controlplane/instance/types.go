@@ -46,6 +46,7 @@ type State string
 
 const (
 	StatePending   State = "PENDING"
+	StateCreating  State = "CREATING"
 	StateRunning   State = "RUNNING"
 	StateDeleting  State = "DELETING"
 	StateDeleted   State = "DELETED"

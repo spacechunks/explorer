@@ -27,7 +27,7 @@ import "google/protobuf/timestamp.proto";
 
 enum InstanceState {
   PENDING = 0;
-  STARTING = 1;
+  CREATING = 1;
   RUNNING = 2;
   DELETING = 3;
   DELETED = 4;
