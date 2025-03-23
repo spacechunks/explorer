@@ -106,6 +106,11 @@ func TestReconciler(t *testing.T) {
 						State: workload.StateCreating,
 					})
 
+				store.EXPECT().
+					Update(ins.GetId(), workload.Status{
+						Port: 1,
+					})
+
 				wlSvc.EXPECT().
 					RunWorkload(mocky.Anything, expectedWorkload(ins), uint(1)).
 					Return(nil)
@@ -113,7 +118,6 @@ func TestReconciler(t *testing.T) {
 				store.EXPECT().
 					Update(ins.GetId(), workload.Status{
 						State: workload.StateRunning,
-						Port:  1,
 					})
 
 				store.EXPECT().View().Return(map[string]workload.Status{
@@ -157,6 +161,11 @@ func TestReconciler(t *testing.T) {
 						State: workload.StateCreationFailed,
 					}).
 					NotBefore(attemptCalls)
+
+				store.EXPECT().
+					Update(ins.GetId(), workload.Status{
+						Port: 1,
+					}).Times(int(maxAttempts))
 
 				for i := 0; i < int(maxAttempts); i++ {
 					wlSvc.EXPECT().
