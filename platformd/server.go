@@ -138,9 +138,6 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("apply global resources: %w", err)
 	}
 
-	go gc.Start(ctx)
-	go reconciler.Start(ctx)
-
 	// before we start our grpc services make sure our system workloads are running
 
 	if err := criSvc.EnsurePod(ctx, cri.RunOptions{
@@ -229,6 +226,13 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		}
 		return nil
 	})
+
+	// start reconciler after mgmt server has been started,
+	// because otherwise creating pending instances will
+	// fail as netglue is not able to retrieve the allocated
+	// host port.
+	go gc.Start(ctx)
+	go reconciler.Start(ctx)
 
 	<-ctx.Done()
 
