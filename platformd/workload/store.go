@@ -53,10 +53,12 @@ func (s *inmemStore) Update(id string, new Status) {
 
 	if curr.State != "" {
 		curr.State = new.State
+		s.data[id] = curr
 	}
 
 	if curr.Port != 0 {
 		curr.Port = new.Port
+		s.data[id] = curr
 	}
 }
 
