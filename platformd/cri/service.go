@@ -14,25 +14,34 @@ const (
 	LabelPodUID = "io.kubernetes.pod.uid"
 )
 
-var ErrPodNotFound = fmt.Errorf("pod not found")
-
 type RunOptions struct {
 	PodConfig       *runtimev1.PodSandboxConfig
 	ContainerConfig *runtimev1.ContainerConfig
 }
 
+// Service provides access to the cri api. its main purpose is to
+// provide QoL functions. [runtimev1.RuntimeServiceClient] is embedded
+// to avoid needing a getter or having to implement wrapper functions.
 type Service interface {
-	GetRuntimeClient() runtimev1.RuntimeServiceClient
+	runtimev1.RuntimeServiceClient
+
+	// EnsurePod makes sure the pod with the configured uid is present.
+	// If not, all necessary resources will be created.
 	EnsurePod(ctx context.Context, opts RunOptions) error
+
+	// RunContainer creates the container and starts it.
+	// Returns the started containers ID.
 	RunContainer(ctx context.Context, req *runtimev1.CreateContainerRequest) (string, error)
+
 	// EnsureImage makes sure that the OCI image with the given url is present.
 	// Returns true if pulling was necessary, false if not.
 	EnsureImage(ctx context.Context, imageURL string) (bool, error)
 }
 
 type svc struct {
+	runtimev1.RuntimeServiceClient
+
 	logger    *slog.Logger
-	rtClient  runtimev1.RuntimeServiceClient
 	imgClient runtimev1.ImageServiceClient
 }
 
@@ -42,18 +51,14 @@ func NewService(
 	imgClient runtimev1.ImageServiceClient,
 ) Service {
 	return &svc{
-		logger:    logger.With("component", "cri-service"),
-		rtClient:  rtClient,
-		imgClient: imgClient,
+		RuntimeServiceClient: rtClient,
+		logger:               logger.With("component", "cri-service"),
+		imgClient:            imgClient,
 	}
 }
 
-func (s *svc) GetRuntimeClient() runtimev1.RuntimeServiceClient {
-	return s.rtClient
-}
-
 func (s *svc) EnsurePod(ctx context.Context, opts RunOptions) error {
-	listPodsResp, err := s.rtClient.ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
+	listPodsResp, err := s.RuntimeServiceClient.ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
 		Filter: &runtimev1.PodSandboxFilter{
 			LabelSelector: map[string]string{
 				LabelPodUID: opts.PodConfig.Metadata.Uid,
@@ -64,13 +69,11 @@ func (s *svc) EnsurePod(ctx context.Context, opts RunOptions) error {
 		return fmt.Errorf("list pod sandbox: %w", err)
 	}
 
-	// TODO: what do we do if the pod found is in NOT_READY state
-
 	if len(listPodsResp.Items) > 0 {
 		return nil
 	}
 
-	runPodResp, err := s.rtClient.RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
+	runPodResp, err := s.RuntimeServiceClient.RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
 		Config: opts.PodConfig,
 	})
 	if err != nil {
@@ -104,27 +107,20 @@ func (s *svc) EnsurePod(ctx context.Context, opts RunOptions) error {
 		"namespace", opts.PodConfig.Metadata.Namespace,
 	)
 
-	ctrResp, err := s.rtClient.CreateContainer(ctx, req)
-	if err != nil {
-		return fmt.Errorf("create container: %w", err)
-	}
-
-	if _, err := s.rtClient.StartContainer(ctx, &runtimev1.StartContainerRequest{
-		ContainerId: ctrResp.ContainerId,
-	}); err != nil {
-		return fmt.Errorf("start container: %w", err)
+	if _, err := s.RunContainer(ctx, req); err != nil {
+		return fmt.Errorf("run container: %w", err)
 	}
 
 	return nil
 }
 
 func (s *svc) RunContainer(ctx context.Context, req *runtimev1.CreateContainerRequest) (string, error) {
-	ctrResp, err := s.rtClient.CreateContainer(ctx, req)
+	ctrResp, err := s.RuntimeServiceClient.CreateContainer(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("create container: %w", err)
 	}
 
-	if _, err := s.rtClient.StartContainer(ctx, &runtimev1.StartContainerRequest{
+	if _, err := s.RuntimeServiceClient.StartContainer(ctx, &runtimev1.StartContainerRequest{
 		ContainerId: ctrResp.ContainerId,
 	}); err != nil {
 		return "", fmt.Errorf("start container: %w", err)

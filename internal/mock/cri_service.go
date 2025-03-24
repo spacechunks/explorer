@@ -6,6 +6,8 @@ import (
 	context "context"
 
 	cri "github.com/spacechunks/explorer/platformd/cri"
+	grpc "google.golang.org/grpc"
+
 	mock "github.com/stretchr/testify/mock"
 
 	v1 "k8s.io/cri-api/pkg/apis/runtime/v1"
@@ -24,22 +26,402 @@ func (_m *MockCriService) EXPECT() *MockCriService_Expecter {
 	return &MockCriService_Expecter{mock: &_m.Mock}
 }
 
+// Attach provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) Attach(ctx context.Context, in *v1.AttachRequest, opts ...grpc.CallOption) (*v1.AttachResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Attach")
+	}
+
+	var r0 *v1.AttachResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.AttachRequest, ...grpc.CallOption) (*v1.AttachResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.AttachRequest, ...grpc.CallOption) *v1.AttachResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.AttachResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.AttachRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_Attach_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Attach'
+type MockCriService_Attach_Call struct {
+	*mock.Call
+}
+
+// Attach is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.AttachRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) Attach(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_Attach_Call {
+	return &MockCriService_Attach_Call{Call: _e.mock.On("Attach",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_Attach_Call) Run(run func(ctx context.Context, in *v1.AttachRequest, opts ...grpc.CallOption)) *MockCriService_Attach_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.AttachRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_Attach_Call) Return(_a0 *v1.AttachResponse, _a1 error) *MockCriService_Attach_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_Attach_Call) RunAndReturn(run func(context.Context, *v1.AttachRequest, ...grpc.CallOption) (*v1.AttachResponse, error)) *MockCriService_Attach_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CheckpointContainer provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) CheckpointContainer(ctx context.Context, in *v1.CheckpointContainerRequest, opts ...grpc.CallOption) (*v1.CheckpointContainerResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CheckpointContainer")
+	}
+
+	var r0 *v1.CheckpointContainerResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.CheckpointContainerRequest, ...grpc.CallOption) (*v1.CheckpointContainerResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.CheckpointContainerRequest, ...grpc.CallOption) *v1.CheckpointContainerResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.CheckpointContainerResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.CheckpointContainerRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_CheckpointContainer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckpointContainer'
+type MockCriService_CheckpointContainer_Call struct {
+	*mock.Call
+}
+
+// CheckpointContainer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.CheckpointContainerRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) CheckpointContainer(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_CheckpointContainer_Call {
+	return &MockCriService_CheckpointContainer_Call{Call: _e.mock.On("CheckpointContainer",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_CheckpointContainer_Call) Run(run func(ctx context.Context, in *v1.CheckpointContainerRequest, opts ...grpc.CallOption)) *MockCriService_CheckpointContainer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.CheckpointContainerRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_CheckpointContainer_Call) Return(_a0 *v1.CheckpointContainerResponse, _a1 error) *MockCriService_CheckpointContainer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_CheckpointContainer_Call) RunAndReturn(run func(context.Context, *v1.CheckpointContainerRequest, ...grpc.CallOption) (*v1.CheckpointContainerResponse, error)) *MockCriService_CheckpointContainer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ContainerStats provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) ContainerStats(ctx context.Context, in *v1.ContainerStatsRequest, opts ...grpc.CallOption) (*v1.ContainerStatsResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ContainerStats")
+	}
+
+	var r0 *v1.ContainerStatsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ContainerStatsRequest, ...grpc.CallOption) (*v1.ContainerStatsResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ContainerStatsRequest, ...grpc.CallOption) *v1.ContainerStatsResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ContainerStatsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ContainerStatsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ContainerStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContainerStats'
+type MockCriService_ContainerStats_Call struct {
+	*mock.Call
+}
+
+// ContainerStats is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ContainerStatsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) ContainerStats(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_ContainerStats_Call {
+	return &MockCriService_ContainerStats_Call{Call: _e.mock.On("ContainerStats",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_ContainerStats_Call) Run(run func(ctx context.Context, in *v1.ContainerStatsRequest, opts ...grpc.CallOption)) *MockCriService_ContainerStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ContainerStatsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_ContainerStats_Call) Return(_a0 *v1.ContainerStatsResponse, _a1 error) *MockCriService_ContainerStats_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ContainerStats_Call) RunAndReturn(run func(context.Context, *v1.ContainerStatsRequest, ...grpc.CallOption) (*v1.ContainerStatsResponse, error)) *MockCriService_ContainerStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ContainerStatus provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) ContainerStatus(ctx context.Context, in *v1.ContainerStatusRequest, opts ...grpc.CallOption) (*v1.ContainerStatusResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ContainerStatus")
+	}
+
+	var r0 *v1.ContainerStatusResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ContainerStatusRequest, ...grpc.CallOption) (*v1.ContainerStatusResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ContainerStatusRequest, ...grpc.CallOption) *v1.ContainerStatusResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ContainerStatusResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ContainerStatusRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ContainerStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContainerStatus'
+type MockCriService_ContainerStatus_Call struct {
+	*mock.Call
+}
+
+// ContainerStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ContainerStatusRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) ContainerStatus(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_ContainerStatus_Call {
+	return &MockCriService_ContainerStatus_Call{Call: _e.mock.On("ContainerStatus",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_ContainerStatus_Call) Run(run func(ctx context.Context, in *v1.ContainerStatusRequest, opts ...grpc.CallOption)) *MockCriService_ContainerStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ContainerStatusRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_ContainerStatus_Call) Return(_a0 *v1.ContainerStatusResponse, _a1 error) *MockCriService_ContainerStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ContainerStatus_Call) RunAndReturn(run func(context.Context, *v1.ContainerStatusRequest, ...grpc.CallOption) (*v1.ContainerStatusResponse, error)) *MockCriService_ContainerStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateContainer provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) CreateContainer(ctx context.Context, in *v1.CreateContainerRequest, opts ...grpc.CallOption) (*v1.CreateContainerResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateContainer")
+	}
+
+	var r0 *v1.CreateContainerResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.CreateContainerRequest, ...grpc.CallOption) (*v1.CreateContainerResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.CreateContainerRequest, ...grpc.CallOption) *v1.CreateContainerResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.CreateContainerResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.CreateContainerRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_CreateContainer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateContainer'
+type MockCriService_CreateContainer_Call struct {
+	*mock.Call
+}
+
+// CreateContainer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.CreateContainerRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) CreateContainer(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_CreateContainer_Call {
+	return &MockCriService_CreateContainer_Call{Call: _e.mock.On("CreateContainer",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_CreateContainer_Call) Run(run func(ctx context.Context, in *v1.CreateContainerRequest, opts ...grpc.CallOption)) *MockCriService_CreateContainer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.CreateContainerRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_CreateContainer_Call) Return(_a0 *v1.CreateContainerResponse, _a1 error) *MockCriService_CreateContainer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_CreateContainer_Call) RunAndReturn(run func(context.Context, *v1.CreateContainerRequest, ...grpc.CallOption) (*v1.CreateContainerResponse, error)) *MockCriService_CreateContainer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // EnsureImage provides a mock function with given fields: ctx, imageURL
-func (_m *MockCriService) EnsureImage(ctx context.Context, imageURL string) error {
+func (_m *MockCriService) EnsureImage(ctx context.Context, imageURL string) (bool, error) {
 	ret := _m.Called(ctx, imageURL)
 
 	if len(ret) == 0 {
 		panic("no return value specified for EnsureImage")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
+		return rf(ctx, imageURL)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) bool); ok {
 		r0 = rf(ctx, imageURL)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(bool)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, imageURL)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockCriService_EnsureImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EnsureImage'
@@ -61,12 +443,12 @@ func (_c *MockCriService_EnsureImage_Call) Run(run func(ctx context.Context, ima
 	return _c
 }
 
-func (_c *MockCriService_EnsureImage_Call) Return(_a0 error) *MockCriService_EnsureImage_Call {
-	_c.Call.Return(_a0)
+func (_c *MockCriService_EnsureImage_Call) Return(_a0 bool, _a1 error) *MockCriService_EnsureImage_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockCriService_EnsureImage_Call) RunAndReturn(run func(context.Context, string) error) *MockCriService_EnsureImage_Call {
+func (_c *MockCriService_EnsureImage_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *MockCriService_EnsureImage_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -118,49 +500,1112 @@ func (_c *MockCriService_EnsurePod_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
-// GetRuntimeClient provides a mock function with given fields:
-func (_m *MockCriService) GetRuntimeClient() v1.RuntimeServiceClient {
-	ret := _m.Called()
+// Exec provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) Exec(ctx context.Context, in *v1.ExecRequest, opts ...grpc.CallOption) (*v1.ExecResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetRuntimeClient")
+		panic("no return value specified for Exec")
 	}
 
-	var r0 v1.RuntimeServiceClient
-	if rf, ok := ret.Get(0).(func() v1.RuntimeServiceClient); ok {
-		r0 = rf()
+	var r0 *v1.ExecResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ExecRequest, ...grpc.CallOption) (*v1.ExecResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ExecRequest, ...grpc.CallOption) *v1.ExecResponse); ok {
+		r0 = rf(ctx, in, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1.RuntimeServiceClient)
+			r0 = ret.Get(0).(*v1.ExecResponse)
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ExecRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
-// MockCriService_GetRuntimeClient_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRuntimeClient'
-type MockCriService_GetRuntimeClient_Call struct {
+// MockCriService_Exec_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Exec'
+type MockCriService_Exec_Call struct {
 	*mock.Call
 }
 
-// GetRuntimeClient is a helper method to define mock.On call
-func (_e *MockCriService_Expecter) GetRuntimeClient() *MockCriService_GetRuntimeClient_Call {
-	return &MockCriService_GetRuntimeClient_Call{Call: _e.mock.On("GetRuntimeClient")}
+// Exec is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ExecRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) Exec(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_Exec_Call {
+	return &MockCriService_Exec_Call{Call: _e.mock.On("Exec",
+		append([]interface{}{ctx, in}, opts...)...)}
 }
 
-func (_c *MockCriService_GetRuntimeClient_Call) Run(run func()) *MockCriService_GetRuntimeClient_Call {
+func (_c *MockCriService_Exec_Call) Run(run func(ctx context.Context, in *v1.ExecRequest, opts ...grpc.CallOption)) *MockCriService_Exec_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ExecRequest), variadicArgs...)
 	})
 	return _c
 }
 
-func (_c *MockCriService_GetRuntimeClient_Call) Return(_a0 v1.RuntimeServiceClient) *MockCriService_GetRuntimeClient_Call {
-	_c.Call.Return(_a0)
+func (_c *MockCriService_Exec_Call) Return(_a0 *v1.ExecResponse, _a1 error) *MockCriService_Exec_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockCriService_GetRuntimeClient_Call) RunAndReturn(run func() v1.RuntimeServiceClient) *MockCriService_GetRuntimeClient_Call {
+func (_c *MockCriService_Exec_Call) RunAndReturn(run func(context.Context, *v1.ExecRequest, ...grpc.CallOption) (*v1.ExecResponse, error)) *MockCriService_Exec_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ExecSync provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) ExecSync(ctx context.Context, in *v1.ExecSyncRequest, opts ...grpc.CallOption) (*v1.ExecSyncResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExecSync")
+	}
+
+	var r0 *v1.ExecSyncResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ExecSyncRequest, ...grpc.CallOption) (*v1.ExecSyncResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ExecSyncRequest, ...grpc.CallOption) *v1.ExecSyncResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ExecSyncResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ExecSyncRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ExecSync_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExecSync'
+type MockCriService_ExecSync_Call struct {
+	*mock.Call
+}
+
+// ExecSync is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ExecSyncRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) ExecSync(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_ExecSync_Call {
+	return &MockCriService_ExecSync_Call{Call: _e.mock.On("ExecSync",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_ExecSync_Call) Run(run func(ctx context.Context, in *v1.ExecSyncRequest, opts ...grpc.CallOption)) *MockCriService_ExecSync_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ExecSyncRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_ExecSync_Call) Return(_a0 *v1.ExecSyncResponse, _a1 error) *MockCriService_ExecSync_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ExecSync_Call) RunAndReturn(run func(context.Context, *v1.ExecSyncRequest, ...grpc.CallOption) (*v1.ExecSyncResponse, error)) *MockCriService_ExecSync_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetContainerEvents provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) GetContainerEvents(ctx context.Context, in *v1.GetEventsRequest, opts ...grpc.CallOption) (v1.RuntimeService_GetContainerEventsClient, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetContainerEvents")
+	}
+
+	var r0 v1.RuntimeService_GetContainerEventsClient
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.GetEventsRequest, ...grpc.CallOption) (v1.RuntimeService_GetContainerEventsClient, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.GetEventsRequest, ...grpc.CallOption) v1.RuntimeService_GetContainerEventsClient); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1.RuntimeService_GetContainerEventsClient)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.GetEventsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_GetContainerEvents_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetContainerEvents'
+type MockCriService_GetContainerEvents_Call struct {
+	*mock.Call
+}
+
+// GetContainerEvents is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.GetEventsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) GetContainerEvents(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_GetContainerEvents_Call {
+	return &MockCriService_GetContainerEvents_Call{Call: _e.mock.On("GetContainerEvents",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_GetContainerEvents_Call) Run(run func(ctx context.Context, in *v1.GetEventsRequest, opts ...grpc.CallOption)) *MockCriService_GetContainerEvents_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.GetEventsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_GetContainerEvents_Call) Return(_a0 v1.RuntimeService_GetContainerEventsClient, _a1 error) *MockCriService_GetContainerEvents_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_GetContainerEvents_Call) RunAndReturn(run func(context.Context, *v1.GetEventsRequest, ...grpc.CallOption) (v1.RuntimeService_GetContainerEventsClient, error)) *MockCriService_GetContainerEvents_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListContainerStats provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) ListContainerStats(ctx context.Context, in *v1.ListContainerStatsRequest, opts ...grpc.CallOption) (*v1.ListContainerStatsResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListContainerStats")
+	}
+
+	var r0 *v1.ListContainerStatsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListContainerStatsRequest, ...grpc.CallOption) (*v1.ListContainerStatsResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListContainerStatsRequest, ...grpc.CallOption) *v1.ListContainerStatsResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ListContainerStatsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ListContainerStatsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ListContainerStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListContainerStats'
+type MockCriService_ListContainerStats_Call struct {
+	*mock.Call
+}
+
+// ListContainerStats is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ListContainerStatsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) ListContainerStats(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_ListContainerStats_Call {
+	return &MockCriService_ListContainerStats_Call{Call: _e.mock.On("ListContainerStats",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_ListContainerStats_Call) Run(run func(ctx context.Context, in *v1.ListContainerStatsRequest, opts ...grpc.CallOption)) *MockCriService_ListContainerStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ListContainerStatsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_ListContainerStats_Call) Return(_a0 *v1.ListContainerStatsResponse, _a1 error) *MockCriService_ListContainerStats_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ListContainerStats_Call) RunAndReturn(run func(context.Context, *v1.ListContainerStatsRequest, ...grpc.CallOption) (*v1.ListContainerStatsResponse, error)) *MockCriService_ListContainerStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListContainers provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) ListContainers(ctx context.Context, in *v1.ListContainersRequest, opts ...grpc.CallOption) (*v1.ListContainersResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListContainers")
+	}
+
+	var r0 *v1.ListContainersResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListContainersRequest, ...grpc.CallOption) (*v1.ListContainersResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListContainersRequest, ...grpc.CallOption) *v1.ListContainersResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ListContainersResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ListContainersRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ListContainers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListContainers'
+type MockCriService_ListContainers_Call struct {
+	*mock.Call
+}
+
+// ListContainers is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ListContainersRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) ListContainers(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_ListContainers_Call {
+	return &MockCriService_ListContainers_Call{Call: _e.mock.On("ListContainers",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_ListContainers_Call) Run(run func(ctx context.Context, in *v1.ListContainersRequest, opts ...grpc.CallOption)) *MockCriService_ListContainers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ListContainersRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_ListContainers_Call) Return(_a0 *v1.ListContainersResponse, _a1 error) *MockCriService_ListContainers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ListContainers_Call) RunAndReturn(run func(context.Context, *v1.ListContainersRequest, ...grpc.CallOption) (*v1.ListContainersResponse, error)) *MockCriService_ListContainers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListMetricDescriptors provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) ListMetricDescriptors(ctx context.Context, in *v1.ListMetricDescriptorsRequest, opts ...grpc.CallOption) (*v1.ListMetricDescriptorsResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListMetricDescriptors")
+	}
+
+	var r0 *v1.ListMetricDescriptorsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListMetricDescriptorsRequest, ...grpc.CallOption) (*v1.ListMetricDescriptorsResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListMetricDescriptorsRequest, ...grpc.CallOption) *v1.ListMetricDescriptorsResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ListMetricDescriptorsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ListMetricDescriptorsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ListMetricDescriptors_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListMetricDescriptors'
+type MockCriService_ListMetricDescriptors_Call struct {
+	*mock.Call
+}
+
+// ListMetricDescriptors is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ListMetricDescriptorsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) ListMetricDescriptors(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_ListMetricDescriptors_Call {
+	return &MockCriService_ListMetricDescriptors_Call{Call: _e.mock.On("ListMetricDescriptors",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_ListMetricDescriptors_Call) Run(run func(ctx context.Context, in *v1.ListMetricDescriptorsRequest, opts ...grpc.CallOption)) *MockCriService_ListMetricDescriptors_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ListMetricDescriptorsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_ListMetricDescriptors_Call) Return(_a0 *v1.ListMetricDescriptorsResponse, _a1 error) *MockCriService_ListMetricDescriptors_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ListMetricDescriptors_Call) RunAndReturn(run func(context.Context, *v1.ListMetricDescriptorsRequest, ...grpc.CallOption) (*v1.ListMetricDescriptorsResponse, error)) *MockCriService_ListMetricDescriptors_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListPodSandbox provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) ListPodSandbox(ctx context.Context, in *v1.ListPodSandboxRequest, opts ...grpc.CallOption) (*v1.ListPodSandboxResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListPodSandbox")
+	}
+
+	var r0 *v1.ListPodSandboxResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListPodSandboxRequest, ...grpc.CallOption) (*v1.ListPodSandboxResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListPodSandboxRequest, ...grpc.CallOption) *v1.ListPodSandboxResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ListPodSandboxResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ListPodSandboxRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ListPodSandbox_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListPodSandbox'
+type MockCriService_ListPodSandbox_Call struct {
+	*mock.Call
+}
+
+// ListPodSandbox is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ListPodSandboxRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) ListPodSandbox(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_ListPodSandbox_Call {
+	return &MockCriService_ListPodSandbox_Call{Call: _e.mock.On("ListPodSandbox",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_ListPodSandbox_Call) Run(run func(ctx context.Context, in *v1.ListPodSandboxRequest, opts ...grpc.CallOption)) *MockCriService_ListPodSandbox_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ListPodSandboxRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_ListPodSandbox_Call) Return(_a0 *v1.ListPodSandboxResponse, _a1 error) *MockCriService_ListPodSandbox_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ListPodSandbox_Call) RunAndReturn(run func(context.Context, *v1.ListPodSandboxRequest, ...grpc.CallOption) (*v1.ListPodSandboxResponse, error)) *MockCriService_ListPodSandbox_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListPodSandboxMetrics provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) ListPodSandboxMetrics(ctx context.Context, in *v1.ListPodSandboxMetricsRequest, opts ...grpc.CallOption) (*v1.ListPodSandboxMetricsResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListPodSandboxMetrics")
+	}
+
+	var r0 *v1.ListPodSandboxMetricsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListPodSandboxMetricsRequest, ...grpc.CallOption) (*v1.ListPodSandboxMetricsResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListPodSandboxMetricsRequest, ...grpc.CallOption) *v1.ListPodSandboxMetricsResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ListPodSandboxMetricsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ListPodSandboxMetricsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ListPodSandboxMetrics_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListPodSandboxMetrics'
+type MockCriService_ListPodSandboxMetrics_Call struct {
+	*mock.Call
+}
+
+// ListPodSandboxMetrics is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ListPodSandboxMetricsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) ListPodSandboxMetrics(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_ListPodSandboxMetrics_Call {
+	return &MockCriService_ListPodSandboxMetrics_Call{Call: _e.mock.On("ListPodSandboxMetrics",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_ListPodSandboxMetrics_Call) Run(run func(ctx context.Context, in *v1.ListPodSandboxMetricsRequest, opts ...grpc.CallOption)) *MockCriService_ListPodSandboxMetrics_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ListPodSandboxMetricsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_ListPodSandboxMetrics_Call) Return(_a0 *v1.ListPodSandboxMetricsResponse, _a1 error) *MockCriService_ListPodSandboxMetrics_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ListPodSandboxMetrics_Call) RunAndReturn(run func(context.Context, *v1.ListPodSandboxMetricsRequest, ...grpc.CallOption) (*v1.ListPodSandboxMetricsResponse, error)) *MockCriService_ListPodSandboxMetrics_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListPodSandboxStats provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) ListPodSandboxStats(ctx context.Context, in *v1.ListPodSandboxStatsRequest, opts ...grpc.CallOption) (*v1.ListPodSandboxStatsResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListPodSandboxStats")
+	}
+
+	var r0 *v1.ListPodSandboxStatsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListPodSandboxStatsRequest, ...grpc.CallOption) (*v1.ListPodSandboxStatsResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ListPodSandboxStatsRequest, ...grpc.CallOption) *v1.ListPodSandboxStatsResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ListPodSandboxStatsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ListPodSandboxStatsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ListPodSandboxStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListPodSandboxStats'
+type MockCriService_ListPodSandboxStats_Call struct {
+	*mock.Call
+}
+
+// ListPodSandboxStats is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ListPodSandboxStatsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) ListPodSandboxStats(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_ListPodSandboxStats_Call {
+	return &MockCriService_ListPodSandboxStats_Call{Call: _e.mock.On("ListPodSandboxStats",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_ListPodSandboxStats_Call) Run(run func(ctx context.Context, in *v1.ListPodSandboxStatsRequest, opts ...grpc.CallOption)) *MockCriService_ListPodSandboxStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ListPodSandboxStatsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_ListPodSandboxStats_Call) Return(_a0 *v1.ListPodSandboxStatsResponse, _a1 error) *MockCriService_ListPodSandboxStats_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ListPodSandboxStats_Call) RunAndReturn(run func(context.Context, *v1.ListPodSandboxStatsRequest, ...grpc.CallOption) (*v1.ListPodSandboxStatsResponse, error)) *MockCriService_ListPodSandboxStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PodSandboxStats provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) PodSandboxStats(ctx context.Context, in *v1.PodSandboxStatsRequest, opts ...grpc.CallOption) (*v1.PodSandboxStatsResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PodSandboxStats")
+	}
+
+	var r0 *v1.PodSandboxStatsResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.PodSandboxStatsRequest, ...grpc.CallOption) (*v1.PodSandboxStatsResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.PodSandboxStatsRequest, ...grpc.CallOption) *v1.PodSandboxStatsResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.PodSandboxStatsResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.PodSandboxStatsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_PodSandboxStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PodSandboxStats'
+type MockCriService_PodSandboxStats_Call struct {
+	*mock.Call
+}
+
+// PodSandboxStats is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.PodSandboxStatsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) PodSandboxStats(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_PodSandboxStats_Call {
+	return &MockCriService_PodSandboxStats_Call{Call: _e.mock.On("PodSandboxStats",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_PodSandboxStats_Call) Run(run func(ctx context.Context, in *v1.PodSandboxStatsRequest, opts ...grpc.CallOption)) *MockCriService_PodSandboxStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.PodSandboxStatsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_PodSandboxStats_Call) Return(_a0 *v1.PodSandboxStatsResponse, _a1 error) *MockCriService_PodSandboxStats_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_PodSandboxStats_Call) RunAndReturn(run func(context.Context, *v1.PodSandboxStatsRequest, ...grpc.CallOption) (*v1.PodSandboxStatsResponse, error)) *MockCriService_PodSandboxStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PodSandboxStatus provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) PodSandboxStatus(ctx context.Context, in *v1.PodSandboxStatusRequest, opts ...grpc.CallOption) (*v1.PodSandboxStatusResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PodSandboxStatus")
+	}
+
+	var r0 *v1.PodSandboxStatusResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.PodSandboxStatusRequest, ...grpc.CallOption) (*v1.PodSandboxStatusResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.PodSandboxStatusRequest, ...grpc.CallOption) *v1.PodSandboxStatusResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.PodSandboxStatusResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.PodSandboxStatusRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_PodSandboxStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PodSandboxStatus'
+type MockCriService_PodSandboxStatus_Call struct {
+	*mock.Call
+}
+
+// PodSandboxStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.PodSandboxStatusRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) PodSandboxStatus(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_PodSandboxStatus_Call {
+	return &MockCriService_PodSandboxStatus_Call{Call: _e.mock.On("PodSandboxStatus",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_PodSandboxStatus_Call) Run(run func(ctx context.Context, in *v1.PodSandboxStatusRequest, opts ...grpc.CallOption)) *MockCriService_PodSandboxStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.PodSandboxStatusRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_PodSandboxStatus_Call) Return(_a0 *v1.PodSandboxStatusResponse, _a1 error) *MockCriService_PodSandboxStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_PodSandboxStatus_Call) RunAndReturn(run func(context.Context, *v1.PodSandboxStatusRequest, ...grpc.CallOption) (*v1.PodSandboxStatusResponse, error)) *MockCriService_PodSandboxStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PortForward provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) PortForward(ctx context.Context, in *v1.PortForwardRequest, opts ...grpc.CallOption) (*v1.PortForwardResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PortForward")
+	}
+
+	var r0 *v1.PortForwardResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.PortForwardRequest, ...grpc.CallOption) (*v1.PortForwardResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.PortForwardRequest, ...grpc.CallOption) *v1.PortForwardResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.PortForwardResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.PortForwardRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_PortForward_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PortForward'
+type MockCriService_PortForward_Call struct {
+	*mock.Call
+}
+
+// PortForward is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.PortForwardRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) PortForward(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_PortForward_Call {
+	return &MockCriService_PortForward_Call{Call: _e.mock.On("PortForward",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_PortForward_Call) Run(run func(ctx context.Context, in *v1.PortForwardRequest, opts ...grpc.CallOption)) *MockCriService_PortForward_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.PortForwardRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_PortForward_Call) Return(_a0 *v1.PortForwardResponse, _a1 error) *MockCriService_PortForward_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_PortForward_Call) RunAndReturn(run func(context.Context, *v1.PortForwardRequest, ...grpc.CallOption) (*v1.PortForwardResponse, error)) *MockCriService_PortForward_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RemoveContainer provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) RemoveContainer(ctx context.Context, in *v1.RemoveContainerRequest, opts ...grpc.CallOption) (*v1.RemoveContainerResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveContainer")
+	}
+
+	var r0 *v1.RemoveContainerResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.RemoveContainerRequest, ...grpc.CallOption) (*v1.RemoveContainerResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.RemoveContainerRequest, ...grpc.CallOption) *v1.RemoveContainerResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.RemoveContainerResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.RemoveContainerRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_RemoveContainer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveContainer'
+type MockCriService_RemoveContainer_Call struct {
+	*mock.Call
+}
+
+// RemoveContainer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.RemoveContainerRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) RemoveContainer(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_RemoveContainer_Call {
+	return &MockCriService_RemoveContainer_Call{Call: _e.mock.On("RemoveContainer",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_RemoveContainer_Call) Run(run func(ctx context.Context, in *v1.RemoveContainerRequest, opts ...grpc.CallOption)) *MockCriService_RemoveContainer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.RemoveContainerRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_RemoveContainer_Call) Return(_a0 *v1.RemoveContainerResponse, _a1 error) *MockCriService_RemoveContainer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_RemoveContainer_Call) RunAndReturn(run func(context.Context, *v1.RemoveContainerRequest, ...grpc.CallOption) (*v1.RemoveContainerResponse, error)) *MockCriService_RemoveContainer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RemovePodSandbox provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) RemovePodSandbox(ctx context.Context, in *v1.RemovePodSandboxRequest, opts ...grpc.CallOption) (*v1.RemovePodSandboxResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemovePodSandbox")
+	}
+
+	var r0 *v1.RemovePodSandboxResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.RemovePodSandboxRequest, ...grpc.CallOption) (*v1.RemovePodSandboxResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.RemovePodSandboxRequest, ...grpc.CallOption) *v1.RemovePodSandboxResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.RemovePodSandboxResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.RemovePodSandboxRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_RemovePodSandbox_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemovePodSandbox'
+type MockCriService_RemovePodSandbox_Call struct {
+	*mock.Call
+}
+
+// RemovePodSandbox is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.RemovePodSandboxRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) RemovePodSandbox(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_RemovePodSandbox_Call {
+	return &MockCriService_RemovePodSandbox_Call{Call: _e.mock.On("RemovePodSandbox",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_RemovePodSandbox_Call) Run(run func(ctx context.Context, in *v1.RemovePodSandboxRequest, opts ...grpc.CallOption)) *MockCriService_RemovePodSandbox_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.RemovePodSandboxRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_RemovePodSandbox_Call) Return(_a0 *v1.RemovePodSandboxResponse, _a1 error) *MockCriService_RemovePodSandbox_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_RemovePodSandbox_Call) RunAndReturn(run func(context.Context, *v1.RemovePodSandboxRequest, ...grpc.CallOption) (*v1.RemovePodSandboxResponse, error)) *MockCriService_RemovePodSandbox_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReopenContainerLog provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) ReopenContainerLog(ctx context.Context, in *v1.ReopenContainerLogRequest, opts ...grpc.CallOption) (*v1.ReopenContainerLogResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReopenContainerLog")
+	}
+
+	var r0 *v1.ReopenContainerLogResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ReopenContainerLogRequest, ...grpc.CallOption) (*v1.ReopenContainerLogResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.ReopenContainerLogRequest, ...grpc.CallOption) *v1.ReopenContainerLogResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.ReopenContainerLogResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.ReopenContainerLogRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ReopenContainerLog_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReopenContainerLog'
+type MockCriService_ReopenContainerLog_Call struct {
+	*mock.Call
+}
+
+// ReopenContainerLog is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.ReopenContainerLogRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) ReopenContainerLog(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_ReopenContainerLog_Call {
+	return &MockCriService_ReopenContainerLog_Call{Call: _e.mock.On("ReopenContainerLog",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_ReopenContainerLog_Call) Run(run func(ctx context.Context, in *v1.ReopenContainerLogRequest, opts ...grpc.CallOption)) *MockCriService_ReopenContainerLog_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.ReopenContainerLogRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_ReopenContainerLog_Call) Return(_a0 *v1.ReopenContainerLogResponse, _a1 error) *MockCriService_ReopenContainerLog_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ReopenContainerLog_Call) RunAndReturn(run func(context.Context, *v1.ReopenContainerLogRequest, ...grpc.CallOption) (*v1.ReopenContainerLogResponse, error)) *MockCriService_ReopenContainerLog_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -218,6 +1663,672 @@ func (_c *MockCriService_RunContainer_Call) Return(_a0 string, _a1 error) *MockC
 }
 
 func (_c *MockCriService_RunContainer_Call) RunAndReturn(run func(context.Context, *v1.CreateContainerRequest) (string, error)) *MockCriService_RunContainer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RunPodSandbox provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) RunPodSandbox(ctx context.Context, in *v1.RunPodSandboxRequest, opts ...grpc.CallOption) (*v1.RunPodSandboxResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RunPodSandbox")
+	}
+
+	var r0 *v1.RunPodSandboxResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.RunPodSandboxRequest, ...grpc.CallOption) (*v1.RunPodSandboxResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.RunPodSandboxRequest, ...grpc.CallOption) *v1.RunPodSandboxResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.RunPodSandboxResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.RunPodSandboxRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_RunPodSandbox_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RunPodSandbox'
+type MockCriService_RunPodSandbox_Call struct {
+	*mock.Call
+}
+
+// RunPodSandbox is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.RunPodSandboxRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) RunPodSandbox(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_RunPodSandbox_Call {
+	return &MockCriService_RunPodSandbox_Call{Call: _e.mock.On("RunPodSandbox",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_RunPodSandbox_Call) Run(run func(ctx context.Context, in *v1.RunPodSandboxRequest, opts ...grpc.CallOption)) *MockCriService_RunPodSandbox_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.RunPodSandboxRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_RunPodSandbox_Call) Return(_a0 *v1.RunPodSandboxResponse, _a1 error) *MockCriService_RunPodSandbox_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_RunPodSandbox_Call) RunAndReturn(run func(context.Context, *v1.RunPodSandboxRequest, ...grpc.CallOption) (*v1.RunPodSandboxResponse, error)) *MockCriService_RunPodSandbox_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RuntimeConfig provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) RuntimeConfig(ctx context.Context, in *v1.RuntimeConfigRequest, opts ...grpc.CallOption) (*v1.RuntimeConfigResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RuntimeConfig")
+	}
+
+	var r0 *v1.RuntimeConfigResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.RuntimeConfigRequest, ...grpc.CallOption) (*v1.RuntimeConfigResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.RuntimeConfigRequest, ...grpc.CallOption) *v1.RuntimeConfigResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.RuntimeConfigResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.RuntimeConfigRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_RuntimeConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RuntimeConfig'
+type MockCriService_RuntimeConfig_Call struct {
+	*mock.Call
+}
+
+// RuntimeConfig is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.RuntimeConfigRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) RuntimeConfig(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_RuntimeConfig_Call {
+	return &MockCriService_RuntimeConfig_Call{Call: _e.mock.On("RuntimeConfig",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_RuntimeConfig_Call) Run(run func(ctx context.Context, in *v1.RuntimeConfigRequest, opts ...grpc.CallOption)) *MockCriService_RuntimeConfig_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.RuntimeConfigRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_RuntimeConfig_Call) Return(_a0 *v1.RuntimeConfigResponse, _a1 error) *MockCriService_RuntimeConfig_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_RuntimeConfig_Call) RunAndReturn(run func(context.Context, *v1.RuntimeConfigRequest, ...grpc.CallOption) (*v1.RuntimeConfigResponse, error)) *MockCriService_RuntimeConfig_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StartContainer provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) StartContainer(ctx context.Context, in *v1.StartContainerRequest, opts ...grpc.CallOption) (*v1.StartContainerResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StartContainer")
+	}
+
+	var r0 *v1.StartContainerResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StartContainerRequest, ...grpc.CallOption) (*v1.StartContainerResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StartContainerRequest, ...grpc.CallOption) *v1.StartContainerResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.StartContainerResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.StartContainerRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_StartContainer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartContainer'
+type MockCriService_StartContainer_Call struct {
+	*mock.Call
+}
+
+// StartContainer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.StartContainerRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) StartContainer(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_StartContainer_Call {
+	return &MockCriService_StartContainer_Call{Call: _e.mock.On("StartContainer",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_StartContainer_Call) Run(run func(ctx context.Context, in *v1.StartContainerRequest, opts ...grpc.CallOption)) *MockCriService_StartContainer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.StartContainerRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_StartContainer_Call) Return(_a0 *v1.StartContainerResponse, _a1 error) *MockCriService_StartContainer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_StartContainer_Call) RunAndReturn(run func(context.Context, *v1.StartContainerRequest, ...grpc.CallOption) (*v1.StartContainerResponse, error)) *MockCriService_StartContainer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Status provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) Status(ctx context.Context, in *v1.StatusRequest, opts ...grpc.CallOption) (*v1.StatusResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Status")
+	}
+
+	var r0 *v1.StatusResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StatusRequest, ...grpc.CallOption) (*v1.StatusResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StatusRequest, ...grpc.CallOption) *v1.StatusResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.StatusResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.StatusRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_Status_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Status'
+type MockCriService_Status_Call struct {
+	*mock.Call
+}
+
+// Status is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.StatusRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) Status(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_Status_Call {
+	return &MockCriService_Status_Call{Call: _e.mock.On("Status",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_Status_Call) Run(run func(ctx context.Context, in *v1.StatusRequest, opts ...grpc.CallOption)) *MockCriService_Status_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.StatusRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_Status_Call) Return(_a0 *v1.StatusResponse, _a1 error) *MockCriService_Status_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_Status_Call) RunAndReturn(run func(context.Context, *v1.StatusRequest, ...grpc.CallOption) (*v1.StatusResponse, error)) *MockCriService_Status_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StopContainer provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) StopContainer(ctx context.Context, in *v1.StopContainerRequest, opts ...grpc.CallOption) (*v1.StopContainerResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StopContainer")
+	}
+
+	var r0 *v1.StopContainerResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StopContainerRequest, ...grpc.CallOption) (*v1.StopContainerResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StopContainerRequest, ...grpc.CallOption) *v1.StopContainerResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.StopContainerResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.StopContainerRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_StopContainer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StopContainer'
+type MockCriService_StopContainer_Call struct {
+	*mock.Call
+}
+
+// StopContainer is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.StopContainerRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) StopContainer(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_StopContainer_Call {
+	return &MockCriService_StopContainer_Call{Call: _e.mock.On("StopContainer",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_StopContainer_Call) Run(run func(ctx context.Context, in *v1.StopContainerRequest, opts ...grpc.CallOption)) *MockCriService_StopContainer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.StopContainerRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_StopContainer_Call) Return(_a0 *v1.StopContainerResponse, _a1 error) *MockCriService_StopContainer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_StopContainer_Call) RunAndReturn(run func(context.Context, *v1.StopContainerRequest, ...grpc.CallOption) (*v1.StopContainerResponse, error)) *MockCriService_StopContainer_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StopPodSandbox provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) StopPodSandbox(ctx context.Context, in *v1.StopPodSandboxRequest, opts ...grpc.CallOption) (*v1.StopPodSandboxResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StopPodSandbox")
+	}
+
+	var r0 *v1.StopPodSandboxResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StopPodSandboxRequest, ...grpc.CallOption) (*v1.StopPodSandboxResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StopPodSandboxRequest, ...grpc.CallOption) *v1.StopPodSandboxResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.StopPodSandboxResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.StopPodSandboxRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_StopPodSandbox_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StopPodSandbox'
+type MockCriService_StopPodSandbox_Call struct {
+	*mock.Call
+}
+
+// StopPodSandbox is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.StopPodSandboxRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) StopPodSandbox(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_StopPodSandbox_Call {
+	return &MockCriService_StopPodSandbox_Call{Call: _e.mock.On("StopPodSandbox",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_StopPodSandbox_Call) Run(run func(ctx context.Context, in *v1.StopPodSandboxRequest, opts ...grpc.CallOption)) *MockCriService_StopPodSandbox_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.StopPodSandboxRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_StopPodSandbox_Call) Return(_a0 *v1.StopPodSandboxResponse, _a1 error) *MockCriService_StopPodSandbox_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_StopPodSandbox_Call) RunAndReturn(run func(context.Context, *v1.StopPodSandboxRequest, ...grpc.CallOption) (*v1.StopPodSandboxResponse, error)) *MockCriService_StopPodSandbox_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateContainerResources provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) UpdateContainerResources(ctx context.Context, in *v1.UpdateContainerResourcesRequest, opts ...grpc.CallOption) (*v1.UpdateContainerResourcesResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateContainerResources")
+	}
+
+	var r0 *v1.UpdateContainerResourcesResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.UpdateContainerResourcesRequest, ...grpc.CallOption) (*v1.UpdateContainerResourcesResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.UpdateContainerResourcesRequest, ...grpc.CallOption) *v1.UpdateContainerResourcesResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.UpdateContainerResourcesResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.UpdateContainerResourcesRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_UpdateContainerResources_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateContainerResources'
+type MockCriService_UpdateContainerResources_Call struct {
+	*mock.Call
+}
+
+// UpdateContainerResources is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.UpdateContainerResourcesRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) UpdateContainerResources(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_UpdateContainerResources_Call {
+	return &MockCriService_UpdateContainerResources_Call{Call: _e.mock.On("UpdateContainerResources",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_UpdateContainerResources_Call) Run(run func(ctx context.Context, in *v1.UpdateContainerResourcesRequest, opts ...grpc.CallOption)) *MockCriService_UpdateContainerResources_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.UpdateContainerResourcesRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_UpdateContainerResources_Call) Return(_a0 *v1.UpdateContainerResourcesResponse, _a1 error) *MockCriService_UpdateContainerResources_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_UpdateContainerResources_Call) RunAndReturn(run func(context.Context, *v1.UpdateContainerResourcesRequest, ...grpc.CallOption) (*v1.UpdateContainerResourcesResponse, error)) *MockCriService_UpdateContainerResources_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateRuntimeConfig provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) UpdateRuntimeConfig(ctx context.Context, in *v1.UpdateRuntimeConfigRequest, opts ...grpc.CallOption) (*v1.UpdateRuntimeConfigResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateRuntimeConfig")
+	}
+
+	var r0 *v1.UpdateRuntimeConfigResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.UpdateRuntimeConfigRequest, ...grpc.CallOption) (*v1.UpdateRuntimeConfigResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.UpdateRuntimeConfigRequest, ...grpc.CallOption) *v1.UpdateRuntimeConfigResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.UpdateRuntimeConfigResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.UpdateRuntimeConfigRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_UpdateRuntimeConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateRuntimeConfig'
+type MockCriService_UpdateRuntimeConfig_Call struct {
+	*mock.Call
+}
+
+// UpdateRuntimeConfig is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.UpdateRuntimeConfigRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) UpdateRuntimeConfig(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_UpdateRuntimeConfig_Call {
+	return &MockCriService_UpdateRuntimeConfig_Call{Call: _e.mock.On("UpdateRuntimeConfig",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_UpdateRuntimeConfig_Call) Run(run func(ctx context.Context, in *v1.UpdateRuntimeConfigRequest, opts ...grpc.CallOption)) *MockCriService_UpdateRuntimeConfig_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.UpdateRuntimeConfigRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_UpdateRuntimeConfig_Call) Return(_a0 *v1.UpdateRuntimeConfigResponse, _a1 error) *MockCriService_UpdateRuntimeConfig_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_UpdateRuntimeConfig_Call) RunAndReturn(run func(context.Context, *v1.UpdateRuntimeConfigRequest, ...grpc.CallOption) (*v1.UpdateRuntimeConfigResponse, error)) *MockCriService_UpdateRuntimeConfig_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Version provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) Version(ctx context.Context, in *v1.VersionRequest, opts ...grpc.CallOption) (*v1.VersionResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Version")
+	}
+
+	var r0 *v1.VersionResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.VersionRequest, ...grpc.CallOption) (*v1.VersionResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.VersionRequest, ...grpc.CallOption) *v1.VersionResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.VersionResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.VersionRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_Version_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Version'
+type MockCriService_Version_Call struct {
+	*mock.Call
+}
+
+// Version is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.VersionRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) Version(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_Version_Call {
+	return &MockCriService_Version_Call{Call: _e.mock.On("Version",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_Version_Call) Run(run func(ctx context.Context, in *v1.VersionRequest, opts ...grpc.CallOption)) *MockCriService_Version_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.VersionRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_Version_Call) Return(_a0 *v1.VersionResponse, _a1 error) *MockCriService_Version_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_Version_Call) RunAndReturn(run func(context.Context, *v1.VersionRequest, ...grpc.CallOption) (*v1.VersionResponse, error)) *MockCriService_Version_Call {
 	_c.Call.Return(run)
 	return _c
 }
