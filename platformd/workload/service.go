@@ -83,7 +83,7 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 	}
 	// HACK END
 
-	sboxResp, err := s.criService.GetRuntimeClient().RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
+	sboxResp, err := s.criService.RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
 		Config: sboxCfg,
 	})
 	if err != nil {
@@ -127,7 +127,7 @@ func (s *svc) RemoveWorkload(ctx context.Context, id string) error {
 	// FIXME: stop container of pod first then call stop sandbox.
 	//        calling stop sandbox should also remove the stopped
 	//        container.
-	if _, err := s.criService.GetRuntimeClient().StopPodSandbox(ctx, &runtimev1.StopPodSandboxRequest{
+	if _, err := s.criService.StopPodSandbox(ctx, &runtimev1.StopPodSandboxRequest{
 		PodSandboxId: id,
 	}); err != nil {
 		return fmt.Errorf("stop pod sandbox: %w", err)
@@ -140,7 +140,7 @@ func (s *svc) RemoveWorkload(ctx context.Context, id string) error {
 // if it cannot be found, or the status is CREATED, EXITED or UNKNOWN, the workload
 // is considered unhealthy.
 func (s *svc) GetWorkloadHealth(ctx context.Context, id string) (HealthStatus, error) {
-	resp, err := s.criService.GetRuntimeClient().ListContainers(ctx, &runtimev1.ListContainersRequest{
+	resp, err := s.criService.ListContainers(ctx, &runtimev1.ListContainersRequest{
 		Filter: &runtimev1.ContainerFilter{
 			LabelSelector: map[string]string{
 				LabelWorkloadID: id,
