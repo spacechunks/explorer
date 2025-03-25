@@ -12,8 +12,6 @@ import (
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
-const PodLogDir = "/var/log/platformd/pods"
-
 type Service interface {
 	RunWorkload(ctx context.Context, w Workload, attempt uint) error
 	RemoveWorkload(ctx context.Context, id string) error
@@ -47,7 +45,7 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 			Attempt:   uint32(attempt),
 		},
 		Hostname:     w.Hostname, // TODO: explore if we can use the id as the hostname
-		LogDirectory: PodLogDir,
+		LogDirectory: cri.PodLogDir,
 		Labels:       w.Labels,
 		DnsConfig: &runtimev1.DNSConfig{
 			Servers:  []string{"10.0.0.53"}, // TODO: make configurable
@@ -158,9 +156,9 @@ func (s *svc) GetWorkloadHealth(ctx context.Context, id string) (HealthStatus, e
 	switch resp.GetContainers()[0].State {
 	case runtimev1.ContainerState_CONTAINER_RUNNING:
 		return HealthStatusHealthy, nil
-	case runtimev1.ContainerState_CONTAINER_CREATED:
-	case runtimev1.ContainerState_CONTAINER_UNKNOWN:
-	case runtimev1.ContainerState_CONTAINER_EXITED:
+	case runtimev1.ContainerState_CONTAINER_EXITED,
+		runtimev1.ContainerState_CONTAINER_CREATED,
+		runtimev1.ContainerState_CONTAINER_UNKNOWN:
 		return HealthStatusUnhealthy, nil
 	}
 

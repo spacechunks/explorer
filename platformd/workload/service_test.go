@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/spacechunks/explorer/internal/mock"
+	"github.com/spacechunks/explorer/platformd/cri"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"github.com/spacechunks/explorer/test"
 	mocky "github.com/stretchr/testify/mock"
@@ -65,7 +66,7 @@ func TestRunWorkload(t *testing.T) {
 							Attempt:   uint32(attempt),
 						},
 						Hostname:     w.Hostname,
-						LogDirectory: workload.PodLogDir,
+						LogDirectory: cri.PodLogDir,
 						Labels:       w.Labels,
 						DnsConfig: &runtimev1.DNSConfig{
 							Servers:  []string{"10.0.0.53"},
@@ -152,4 +153,64 @@ func TestRemoveWorkload(t *testing.T) {
 		Return(&runtimev1.StopPodSandboxResponse{}, nil)
 
 	require.NoError(t, svc.RemoveWorkload(ctx, wlID))
+}
+
+func TestGetWorkloadHealth(t *testing.T) {
+	tests := []struct {
+		name     string
+		state    runtimev1.ContainerState
+		expected workload.HealthStatus
+	}{
+		{
+			name:     "HEALTHY: ContainerState_CONTAINER_RUNNING",
+			state:    runtimev1.ContainerState_CONTAINER_RUNNING,
+			expected: workload.HealthStatusHealthy,
+		},
+		{
+			name:     "UNHEALTHY: ContainerState_CONTAINER_CREATED",
+			state:    runtimev1.ContainerState_CONTAINER_CREATED,
+			expected: workload.HealthStatusUnhealthy,
+		},
+		{
+			name:     "UNHEALTHY: ContainerState_CONTAINER_UNKNOWN",
+			state:    runtimev1.ContainerState_CONTAINER_UNKNOWN,
+			expected: workload.HealthStatusUnhealthy,
+		},
+		{
+			name:     "UNHEALTHY: ContainerState_CONTAINER_EXITED",
+			state:    runtimev1.ContainerState_CONTAINER_EXITED,
+			expected: workload.HealthStatusUnhealthy,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx            = context.Background()
+				logger         = slog.New(slog.NewTextHandler(os.Stdout, nil))
+				mockCRIService = mock.NewMockCriService(t)
+				svc            = workload.NewService(logger, mockCRIService)
+			)
+
+			mockCRIService.EXPECT().
+				ListContainers(ctx, &runtimev1.ListContainersRequest{
+					Filter: &runtimev1.ContainerFilter{
+						LabelSelector: map[string]string{
+							workload.LabelWorkloadID: "",
+						},
+					},
+				}).
+				Return(&runtimev1.ListContainersResponse{
+					Containers: []*runtimev1.Container{
+						{
+							State: tt.state,
+						},
+					},
+				}, nil)
+
+			status, err := svc.GetWorkloadHealth(ctx, "")
+			require.NoError(t, err)
+
+			require.Equal(t, tt.expected, status)
+		})
+	}
 }
