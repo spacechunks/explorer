@@ -18,113 +18,118 @@
 
 package workload_test
 
-/*
-const testWorkloadID = "29533179-f25a-49e8-b2f7-ffb187327692"
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"testing"
+
+	"github.com/spacechunks/explorer/internal/mock"
+	"github.com/spacechunks/explorer/platformd/cri"
+	"github.com/spacechunks/explorer/platformd/workload"
+	"github.com/spacechunks/explorer/test"
+	mocky "github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
+)
 
 func TestRunWorkload(t *testing.T) {
-	var (
-		opts = workload.Workload{
-			ID:               testWorkloadID,
-			Name:             "test",
-			CheckpointImage:  "test-image",
-			Namespace:        "test",
-			Hostname:         "test",
-			Labels:           map[string]string{"k": "v"},
-			CPUPeriod:        100000,
-			CPUQuota:         200000,
-			MemoryLimitBytes: 100000,
-		}
-		wlID = "29533179-f25a-49e8-b2f7-ffb187327692"
-	)
 	tests := []struct {
 		name    string
 		w       workload.Workload
 		attempt uint
-		prep    func(
-			*mock.MockV1RuntimeServiceClient,
-			*mock.MockV1ImageServiceClient,
-			workload.Workload,
-			uint,
-		)
+		prep    func(*mock.MockCriService, workload.Workload, uint)
 	}{
 		{
-			name:    "all options set - pull image if not present",
-			w:       opts,
-			attempt: 2,
-			prep: func(
-				rtMock *mock.MockV1RuntimeServiceClient,
-				imgMock *mock.MockV1ImageServiceClient,
-				opts workload.Workload,
-				attempt uint,
-			) {
-				imgMock.EXPECT().
-					ListImages(mocky.Anything, &runtimev1.ListImagesRequest{}).
-					Return(&runtimev1.ListImagesResponse{}, nil).
-					Times(2)
-
-				imgMock.EXPECT().
-					PullImage(mocky.Anything, &runtimev1.PullImageRequest{
-						Image: &runtimev1.ImageSpec{
-							Image: opts.BaseImage,
-						},
-					}).
-					Return(&runtimev1.PullImageResponse{}, nil)
-
-				imgMock.EXPECT().
-					PullImage(mocky.Anything, &runtimev1.PullImageRequest{
-						Image: &runtimev1.ImageSpec{
-							Image: opts.CheckpointImage,
-						},
-					}).
-					Return(&runtimev1.PullImageResponse{}, nil)
-
-				expect(rtMock, opts, wlID, attempt)
+			name: "everyhing works",
+			w: workload.Workload{
+				ID:               test.NewUUIDv7(t),
+				Name:             "test",
+				CheckpointImage:  "test-image",
+				Namespace:        "test",
+				Hostname:         "test",
+				Labels:           map[string]string{"k": "v"},
+				CPUPeriod:        100000,
+				CPUQuota:         200000,
+				MemoryLimitBytes: 100000,
 			},
-		},
-		{
-			name: "image already present",
-			w:    opts,
-			prep: func(
-				rtMock *mock.MockV1RuntimeServiceClient,
-				imgMock *mock.MockV1ImageServiceClient,
-				w workload.Workload,
-				_ uint,
-			) {
-				imgMock.EXPECT().
-					ListImages(mocky.Anything, &runtimev1.ListImagesRequest{}).
-					Return(&runtimev1.ListImagesResponse{
-						Images: []*runtimev1.Image{
-							{
-								RepoTags: []string{w.BaseImage},
+			attempt: 1,
+			prep: func(criService *mock.MockCriService, w workload.Workload, attempt uint) {
+				var (
+					podID   = "pod-test"
+					sboxCfg = &runtimev1.PodSandboxConfig{
+						Metadata: &runtimev1.PodSandboxMetadata{
+							Name:      w.Name,
+							Uid:       w.ID,
+							Namespace: w.Namespace,
+							Attempt:   uint32(attempt),
+						},
+						Hostname:     w.Hostname,
+						LogDirectory: cri.PodLogDir,
+						Labels:       w.Labels,
+						DnsConfig: &runtimev1.DNSConfig{
+							Servers:  []string{"10.0.0.53"},
+							Options:  []string{"edns0", "trust-ad"},
+							Searches: []string{"."},
+						},
+						Linux: &runtimev1.LinuxPodSandboxConfig{
+							Resources: &runtimev1.LinuxContainerResources{
+								CpuPeriod:          int64(w.CPUPeriod),
+								CpuQuota:           int64(w.CPUQuota),
+								MemoryLimitInBytes: int64(w.MemoryLimitBytes),
 							},
 						},
-					}, nil).
-					Once()
-
-				imgMock.EXPECT().
-					ListImages(mocky.Anything, &runtimev1.ListImagesRequest{}).
-					Return(&runtimev1.ListImagesResponse{
-						Images: []*runtimev1.Image{
-							{
-								RepoTags: []string{w.CheckpointImage},
+					}
+					ctrReq = &runtimev1.CreateContainerRequest{
+						PodSandboxId: podID,
+						Config: &runtimev1.ContainerConfig{
+							Metadata: &runtimev1.ContainerMetadata{
+								Name: w.Name,
 							},
+							Image: &runtimev1.ImageSpec{
+								UserSpecifiedImage: w.CheckpointImage,
+								Image:              w.CheckpointImage,
+							},
+							Labels:  w.Labels,
+							LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
 						},
-					}, nil).
-					Once()
+						SandboxConfig: sboxCfg,
+					}
+				)
 
-				expect(rtMock, w, wlID, 0)
+				criService.EXPECT().
+					EnsureImage(mocky.Anything, w.BaseImage).
+					Return(false, nil)
+
+				criService.EXPECT().
+					RunPodSandbox(mocky.Anything, &runtimev1.RunPodSandboxRequest{
+						Config: sboxCfg,
+					}).
+					Return(&runtimev1.RunPodSandboxResponse{
+						PodSandboxId: podID,
+					}, nil)
+
+				criService.EXPECT().
+					EnsureImage(mocky.Anything, w.CheckpointImage).
+					Return(false, nil)
+
+				criService.EXPECT().
+					RunContainer(mocky.Anything, ctrReq).
+					Return("", nil)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ctx           = context.Background()
-				logger        = slog.New(slog.NewTextHandler(os.Stdout, nil))
-				svc           = workload.NewService(logger, mock.NewMockCriService(t))
+				ctx            = context.Background()
+				logger         = slog.New(slog.NewTextHandler(os.Stdout, nil))
+				mockCRIService = mock.NewMockCriService(t)
+				svc            = workload.NewService(logger, mockCRIService)
 			)
 
-			tt.prep(mockRtClient, mockImgClient, tt.w, tt.attempt)
+			tt.prep(mockCRIService, tt.w, tt.attempt)
 
 			err := svc.RunWorkload(ctx, tt.w, tt.attempt)
 			require.NoError(t, err)
@@ -134,82 +139,78 @@ func TestRunWorkload(t *testing.T) {
 
 func TestRemoveWorkload(t *testing.T) {
 	var (
-		ctx           = context.Background()
-		logger        = slog.New(slog.NewTextHandler(os.Stdout, nil))
-		mockRtClient  = mock.NewMockV1RuntimeServiceClient(t)
-		mockImgClient = mock.NewMockV1ImageServiceClient(t)
-		svc           = workload.NewService(logger, cri.NewService(logger, mockRtClient, mockImgClient))
+		ctx            = context.Background()
+		wlID           = test.NewUUIDv7(t)
+		logger         = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		mockCRIService = mock.NewMockCriService(t)
+		svc            = workload.NewService(logger, mockCRIService)
 	)
 
-	mockRtClient.EXPECT().StopPodSandbox(ctx, &runtimev1.StopPodSandboxRequest{
-		PodSandboxId: testWorkloadID,
-	}).Return(&runtimev1.StopPodSandboxResponse{}, nil)
+	mockCRIService.EXPECT().
+		StopPodSandbox(ctx, &runtimev1.StopPodSandboxRequest{
+			PodSandboxId: wlID,
+		}).
+		Return(&runtimev1.StopPodSandboxResponse{}, nil)
 
-	require.NoError(t, svc.RemoveWorkload(ctx, testWorkloadID))
+	require.NoError(t, svc.RemoveWorkload(ctx, wlID))
 }
 
-// expect runs all expectations required for a successful pod creation and container start
-func expect(rtMock *mock.MockV1RuntimeServiceClient, w workload.Workload, wlID string, attempt uint) {
-	var (
-		ctrID   = "ctr-test"
-		podID   = "pod-test"
-		sboxCfg = &runtimev1.PodSandboxConfig{
-			Metadata: &runtimev1.PodSandboxMetadata{
-				Name:      w.Name,
-				Uid:       wlID,
-				Namespace: w.Namespace,
-				Attempt:   uint32(attempt),
-			},
-			Hostname:     w.Hostname,
-			LogDirectory: workload.PodLogDir,
-			Labels:       w.Labels,
-			DnsConfig: &runtimev1.DNSConfig{
-				Servers:  []string{"10.0.0.53"},
-				Options:  []string{"edns0", "trust-ad"},
-				Searches: []string{"."},
-			},
-			Linux: &runtimev1.LinuxPodSandboxConfig{
-				Resources: &runtimev1.LinuxContainerResources{
-					CpuPeriod:          int64(w.CPUPeriod),
-					CpuQuota:           int64(w.CPUQuota),
-					MemoryLimitInBytes: int64(w.MemoryLimitBytes),
-				},
-			},
-		}
-		ctrReq = &runtimev1.CreateContainerRequest{
-			PodSandboxId: podID,
-			Config: &runtimev1.ContainerConfig{
-				Metadata: &runtimev1.ContainerMetadata{
-					Name: w.Name,
-				},
-				Image: &runtimev1.ImageSpec{
-					UserSpecifiedImage: w.CheckpointImage,
-					Image:              w.CheckpointImage,
-				},
-				Labels:  w.Labels,
-				LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
-			},
-			SandboxConfig: sboxCfg,
-		}
-	)
+func TestGetWorkloadHealth(t *testing.T) {
+	tests := []struct {
+		name     string
+		state    runtimev1.ContainerState
+		expected workload.HealthStatus
+	}{
+		{
+			name:     "HEALTHY: ContainerState_CONTAINER_RUNNING",
+			state:    runtimev1.ContainerState_CONTAINER_RUNNING,
+			expected: workload.HealthStatusHealthy,
+		},
+		{
+			name:     "UNHEALTHY: ContainerState_CONTAINER_CREATED",
+			state:    runtimev1.ContainerState_CONTAINER_CREATED,
+			expected: workload.HealthStatusUnhealthy,
+		},
+		{
+			name:     "UNHEALTHY: ContainerState_CONTAINER_UNKNOWN",
+			state:    runtimev1.ContainerState_CONTAINER_UNKNOWN,
+			expected: workload.HealthStatusUnhealthy,
+		},
+		{
+			name:     "UNHEALTHY: ContainerState_CONTAINER_EXITED",
+			state:    runtimev1.ContainerState_CONTAINER_EXITED,
+			expected: workload.HealthStatusUnhealthy,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx            = context.Background()
+				logger         = slog.New(slog.NewTextHandler(os.Stdout, nil))
+				mockCRIService = mock.NewMockCriService(t)
+				svc            = workload.NewService(logger, mockCRIService)
+			)
 
-	rtMock.EXPECT().
-		RunPodSandbox(mocky.Anything, &runtimev1.RunPodSandboxRequest{
-			Config: sboxCfg,
-		}).
-		Return(&runtimev1.RunPodSandboxResponse{
-			PodSandboxId: podID,
-		}, nil)
+			mockCRIService.EXPECT().
+				ListContainers(ctx, &runtimev1.ListContainersRequest{
+					Filter: &runtimev1.ContainerFilter{
+						LabelSelector: map[string]string{
+							workload.LabelWorkloadID: "",
+						},
+					},
+				}).
+				Return(&runtimev1.ListContainersResponse{
+					Containers: []*runtimev1.Container{
+						{
+							State: tt.state,
+						},
+					},
+				}, nil)
 
-	rtMock.EXPECT().
-		CreateContainer(mocky.Anything, ctrReq).
-		Return(&runtimev1.CreateContainerResponse{
-			ContainerId: ctrID,
-		}, nil)
+			status, err := svc.GetWorkloadHealth(ctx, "")
+			require.NoError(t, err)
 
-	rtMock.EXPECT().
-		StartContainer(mocky.Anything, &runtimev1.StartContainerRequest{
-			ContainerId: ctrID,
-		}).
-		Return(&runtimev1.StartContainerResponse{}, nil)
-}*/
+			require.Equal(t, tt.expected, status)
+		})
+	}
+}
