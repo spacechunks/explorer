@@ -40,6 +40,7 @@ var (
 	ErrIPAMConfigNotSet          = errors.New("ipam config not set")
 	ErrPodUIDMissing             = errors.New("K8S_POD_UID in CNI_ARGS missing")
 	ErrInsufficientAddresses     = errors.New("ipam: need 2 ip addresses")
+	ErrInvalidPort               = errors.New("invalid port")
 )
 
 type Conf struct {
@@ -249,6 +250,10 @@ func getHostPort(
 	})
 	if err != nil {
 		return 0, fmt.Errorf("get workload status: %w", err)
+	}
+
+	if resp.Status.GetPort() == 0 {
+		return 0, ErrInvalidPort
 	}
 
 	return uint16(resp.Status.GetPort()), nil
