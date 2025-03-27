@@ -19,6 +19,6 @@ jobs:
       - run: make internal/image/testdata/unpack-img.tar.gz
       - run: make internal/image/testdata/repack-img.tar.gz
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: v1.64.8
+          version: v2.0.0

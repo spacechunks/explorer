@@ -10,3 +10,4 @@ dev/test
 /cmd/test
 unpack-img.tar.gz
 repack-img.tar.gz
+.golangci.bck.yaml
