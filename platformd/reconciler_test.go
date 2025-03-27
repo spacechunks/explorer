@@ -191,6 +191,65 @@ func TestReconciler(t *testing.T) {
 			},
 		},
 		{
+			name: "instance CREATING: make sure it gets processed",
+			prep: func(
+				wlSvc *mock.MockWorkloadService,
+				insClient *mock.MockV1alpha1InstanceServiceClient,
+				store *mock.MockWorkloadStatusStore,
+			) {
+				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_CREATING)
+
+				veryFirstGetCall := store.EXPECT().
+					Get(ins.GetId()).
+					Return(&workload.Status{
+						State: workload.StateCreating,
+					}).
+					Once()
+				store.EXPECT().
+					Get(ins.GetId()).
+					Return(&workload.Status{
+						State: workload.StateRunning,
+						Port:  1,
+					}).
+					NotBefore(veryFirstGetCall)
+
+				store.EXPECT().
+					Get(ins.GetId()).
+					Return(&workload.Status{
+						State: workload.StateCreating,
+					})
+
+				store.EXPECT().
+					Update(ins.GetId(), workload.Status{
+						State: workload.StateCreating,
+					})
+
+				updatePortCall := store.EXPECT().
+					Update(ins.GetId(), workload.Status{
+						Port: 1,
+					}).Call
+
+				wlSvc.EXPECT().
+					RunWorkload(mocky.Anything, expectedWorkload(ins), uint(1)).
+					Return(nil).
+					NotBefore(updatePortCall)
+
+				store.EXPECT().
+					Update(ins.GetId(), workload.Status{
+						State: workload.StateRunning,
+					})
+
+				store.EXPECT().View().Return(map[string]workload.Status{
+					ins.GetId(): {
+						State: workload.StateRunning,
+						Port:  1,
+					},
+				})
+
+				expectReportedStatus(insClient, ins.GetId(), instancev1alpha1.InstanceState_RUNNING, 1)
+			},
+		},
+		{
 			name: "instance DELETING: remove workload",
 			prep: func(
 				wlSvc *mock.MockWorkloadService,
