@@ -162,15 +162,16 @@ func TestReconciler(t *testing.T) {
 					}).
 					NotBefore(attemptCalls)
 
-				store.EXPECT().
+				updatePortCall := store.EXPECT().
 					Update(ins.GetId(), workload.Status{
 						Port: 1,
-					}).Times(int(maxAttempts))
+					}).Call
 
 				for i := 0; i < int(maxAttempts); i++ {
 					wlSvc.EXPECT().
 						RunWorkload(mocky.Anything, expectedWorkload(ins), uint(i+1)).
-						Return(errors.New("some error"))
+						Return(errors.New("some error")).
+						NotBefore(updatePortCall)
 				}
 
 				wlSvc.EXPECT().
@@ -187,6 +188,65 @@ func TestReconciler(t *testing.T) {
 				expectReportedStatus(insClient, ins.GetId(), instancev1alpha1.InstanceState_CREATION_FAILED, 0)
 
 				store.EXPECT().Del(ins.GetId())
+			},
+		},
+		{
+			name: "instance CREATING: make sure it gets processed",
+			prep: func(
+				wlSvc *mock.MockWorkloadService,
+				insClient *mock.MockV1alpha1InstanceServiceClient,
+				store *mock.MockWorkloadStatusStore,
+			) {
+				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_CREATING)
+
+				veryFirstGetCall := store.EXPECT().
+					Get(ins.GetId()).
+					Return(&workload.Status{
+						State: workload.StateCreating,
+					}).
+					Once()
+				store.EXPECT().
+					Get(ins.GetId()).
+					Return(&workload.Status{
+						State: workload.StateRunning,
+						Port:  1,
+					}).
+					NotBefore(veryFirstGetCall)
+
+				store.EXPECT().
+					Get(ins.GetId()).
+					Return(&workload.Status{
+						State: workload.StateCreating,
+					})
+
+				store.EXPECT().
+					Update(ins.GetId(), workload.Status{
+						State: workload.StateCreating,
+					})
+
+				updatePortCall := store.EXPECT().
+					Update(ins.GetId(), workload.Status{
+						Port: 1,
+					}).Call
+
+				wlSvc.EXPECT().
+					RunWorkload(mocky.Anything, expectedWorkload(ins), uint(1)).
+					Return(nil).
+					NotBefore(updatePortCall)
+
+				store.EXPECT().
+					Update(ins.GetId(), workload.Status{
+						State: workload.StateRunning,
+					})
+
+				store.EXPECT().View().Return(map[string]workload.Status{
+					ins.GetId(): {
+						State: workload.StateRunning,
+						Port:  1,
+					},
+				})
+
+				expectReportedStatus(insClient, ins.GetId(), instancev1alpha1.InstanceState_RUNNING, 1)
 			},
 		},
 		{
