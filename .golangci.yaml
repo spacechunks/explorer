@@ -1,33 +1,50 @@
-linters-settings:
-  gofmt:
-    rewrite-rules:
-      - pattern: interface{}
-        replacement: any
-  misspell:
-    locale: US
-    mode: restricted
-  exhaustive:
-    default-signifies-exhaustive: true
-  lll:
-    line-length: 120
+version: "2"
 linters:
-  disable-all: true
+  default: none
   enable:
-    - rowserrcheck
-    - exhaustive
-    - unparam
-    - gofmt
-    - lll
-    - gosimple
-    - goimports
-    - gomodguard
-    - whitespace
-    - staticcheck
-    - misspell
-    - typecheck
     - bodyclose
     - exhaustive
-    - unparam
-    - unused
+    - gomodguard
     - govet
     - ineffassign
+    - lll
+    - misspell
+    - rowserrcheck
+    - staticcheck
+    - unparam
+    - unused
+    - whitespace
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
+    lll:
+      line-length: 120
+    misspell:
+      mode: restricted
+      locale: US
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
