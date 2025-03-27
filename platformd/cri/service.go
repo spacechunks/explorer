@@ -58,7 +58,7 @@ func NewService(
 }
 
 func (s *svc) EnsurePod(ctx context.Context, opts RunOptions) error {
-	listPodsResp, err := s.RuntimeServiceClient.ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
+	listPodsResp, err := s.ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
 		Filter: &runtimev1.PodSandboxFilter{
 			LabelSelector: map[string]string{
 				LabelPodUID: opts.PodConfig.Metadata.Uid,
@@ -73,7 +73,7 @@ func (s *svc) EnsurePod(ctx context.Context, opts RunOptions) error {
 		return nil
 	}
 
-	runPodResp, err := s.RuntimeServiceClient.RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
+	runPodResp, err := s.RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
 		Config: opts.PodConfig,
 	})
 	if err != nil {
@@ -115,12 +115,12 @@ func (s *svc) EnsurePod(ctx context.Context, opts RunOptions) error {
 }
 
 func (s *svc) RunContainer(ctx context.Context, req *runtimev1.CreateContainerRequest) (string, error) {
-	ctrResp, err := s.RuntimeServiceClient.CreateContainer(ctx, req)
+	ctrResp, err := s.CreateContainer(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("create container: %w", err)
 	}
 
-	if _, err := s.RuntimeServiceClient.StartContainer(ctx, &runtimev1.StartContainerRequest{
+	if _, err := s.StartContainer(ctx, &runtimev1.StartContainerRequest{
 		ContainerId: ctrResp.ContainerId,
 	}); err != nil {
 		return "", fmt.Errorf("start container: %w", err)
