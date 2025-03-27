@@ -162,15 +162,16 @@ func TestReconciler(t *testing.T) {
 					}).
 					NotBefore(attemptCalls)
 
-				store.EXPECT().
+				updatePortCall := store.EXPECT().
 					Update(ins.GetId(), workload.Status{
 						Port: 1,
-					}).Times(int(maxAttempts))
+					}).Call
 
 				for i := 0; i < int(maxAttempts); i++ {
 					wlSvc.EXPECT().
 						RunWorkload(mocky.Anything, expectedWorkload(ins), uint(i+1)).
-						Return(errors.New("some error"))
+						Return(errors.New("some error")).
+						NotBefore(updatePortCall)
 				}
 
 				wlSvc.EXPECT().
