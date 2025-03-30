@@ -36,4 +36,24 @@ CREATE TABLE IF NOT EXISTS instances (
     updated_at     TIMESTAMPTZ    NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS flavor_versions (
+    id              UUID          NOT NULL PRIMARY KEY,
+    flavor_id       UUID          NOT NULL REFERENCES flavors(id) ON DELETE CASCADE,
+    root_hash       CHAR(16)      NOT NULL,
+    version         VARCHAR(25)   NOT NULL,
+    prev_version_id UUID          NOT NULL,
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    UNIQUE (flavor_id, version)
+);
+
+CREATE INDEX root_hash_idx ON flavor_versions (root_hash);
+
+CREATE TABLE IF NOT EXISTS flavor_change_sets (
+    flavor_version_id UUID          NOT NULL REFERENCES flavor_versions(id) ON DELETE CASCADE,
+    file_hash         CHAR(16),               -- file_hash can be null if removed = true
+    file_path         VARCHAR(4096) NOT NULL, -- 4096 is PATH_MAX chars on linux
+    removed           BOOLEAN       NOT NULL DEFAULT FALSE,
+    created_at        TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+
 -- migrate:down
