@@ -5,6 +5,7 @@ go 1.24
 require (
 	github.com/amacneil/dbmate/v2 v2.26.0
 	github.com/bramvdbogaerde/go-scp v1.5.0
+	github.com/cbergoon/merkletree v0.2.0
 	github.com/cilium/ebpf v0.15.0
 	github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42
 	github.com/containernetworking/cni v1.2.0

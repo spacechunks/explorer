@@ -37,6 +37,34 @@ VALUES
     ($1, $2, $3, $4, $5)
 RETURNING *;
 
+-- name: LatestFlavorVersionByFlavorID :one
+SELECT * FROM flavor_versions WHERE flavor_id = $1
+ORDER BY created_at DESC LIMIT 1;
+
+-- name: FlavorVersionByHash :one
+SELECT version FROM flavor_versions WHERE hash = $1;
+
+-- name: FlavorVersionExists :exec
+SELECT EXISTS(
+    SELECT 1 FROM flavor_versions
+    WHERE version = $1 AND flavor_id = $2
+);
+
+-- name: FlavorVersionFileHashes :many
+SELECT * FROM flavor_version_files WHERE flavor_version_id = $1;
+
+-- name: CreateFlavorVersion :exec
+INSERT INTO flavor_versions
+    (id, flavor_id, hash, version, prev_version_id)
+VALUES
+    ($1, $2, $3, $4, $5);
+
+-- name: BulkInsertFlavorFileHashes :batchexec
+INSERT INTO flavor_version_files
+    (flavor_version_id, file_hash, file_path)
+VALUES
+    ($1, $2, $3);
+
 /*
  * INSTANCES
  */

@@ -16,10 +16,11 @@ SET row_security = off;
 
 CREATE TYPE public.instance_state AS ENUM (
     'PENDING',
-    'STARTING',
+    'CREATING',
     'RUNNING',
     'DELETING',
-    'DELETED'
+    'DELETED',
+    'CREATION_FAILED'
 );
 
 
@@ -38,6 +39,32 @@ CREATE TABLE public.chunks (
     tags character varying(25)[] NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: flavor_version_files; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flavor_version_files (
+    flavor_version_id uuid NOT NULL,
+    file_hash character(16),
+    file_path character varying(4096) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: flavor_versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flavor_versions (
+    id uuid NOT NULL,
+    flavor_id uuid NOT NULL,
+    hash character(16) NOT NULL,
+    version character varying(25) NOT NULL,
+    prev_version_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -99,6 +126,22 @@ ALTER TABLE ONLY public.chunks
 
 
 --
+-- Name: flavor_versions flavor_versions_flavor_id_version_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavor_versions
+    ADD CONSTRAINT flavor_versions_flavor_id_version_key UNIQUE (flavor_id, version);
+
+
+--
+-- Name: flavor_versions flavor_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavor_versions
+    ADD CONSTRAINT flavor_versions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: flavors flavors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -128,6 +171,36 @@ ALTER TABLE ONLY public.nodes
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: flavor_hash_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX flavor_hash_idx ON public.flavor_versions USING btree (hash);
+
+
+--
+-- Name: flavor_version_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX flavor_version_idx ON public.flavor_versions USING btree (version);
+
+
+--
+-- Name: flavor_version_files flavor_version_files_flavor_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavor_version_files
+    ADD CONSTRAINT flavor_version_files_flavor_version_id_fkey FOREIGN KEY (flavor_version_id) REFERENCES public.flavor_versions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: flavor_versions flavor_versions_flavor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavor_versions
+    ADD CONSTRAINT flavor_versions_flavor_id_fkey FOREIGN KEY (flavor_id) REFERENCES public.flavors(id) ON DELETE CASCADE;
 
 
 --

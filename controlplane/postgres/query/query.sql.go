@@ -94,6 +94,32 @@ func (q *Queries) CreateFlavor(ctx context.Context, arg CreateFlavorParams) (Fla
 	return i, err
 }
 
+const createFlavorVersion = `-- name: CreateFlavorVersion :exec
+INSERT INTO flavor_versions
+    (id, flavor_id, hash, version, prev_version_id)
+VALUES
+    ($1, $2, $3, $4, $5)
+`
+
+type CreateFlavorVersionParams struct {
+	ID            string
+	FlavorID      string
+	Hash          string
+	Version       string
+	PrevVersionID string
+}
+
+func (q *Queries) CreateFlavorVersion(ctx context.Context, arg CreateFlavorVersionParams) error {
+	_, err := q.db.Exec(ctx, createFlavorVersion,
+		arg.ID,
+		arg.FlavorID,
+		arg.Hash,
+		arg.Version,
+		arg.PrevVersionID,
+	)
+	return err
+}
+
 const createInstance = `-- name: CreateInstance :exec
 /*
  * INSTANCES
@@ -126,6 +152,63 @@ func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) 
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const flavorVersionByHash = `-- name: FlavorVersionByHash :one
+SELECT version FROM flavor_versions WHERE hash = $1
+`
+
+func (q *Queries) FlavorVersionByHash(ctx context.Context, hash string) (string, error) {
+	row := q.db.QueryRow(ctx, flavorVersionByHash, hash)
+	var version string
+	err := row.Scan(&version)
+	return version, err
+}
+
+const flavorVersionExists = `-- name: FlavorVersionExists :exec
+SELECT EXISTS(
+    SELECT 1 FROM flavor_versions
+    WHERE version = $1 AND flavor_id = $2
+)
+`
+
+type FlavorVersionExistsParams struct {
+	Version  string
+	FlavorID string
+}
+
+func (q *Queries) FlavorVersionExists(ctx context.Context, arg FlavorVersionExistsParams) error {
+	_, err := q.db.Exec(ctx, flavorVersionExists, arg.Version, arg.FlavorID)
+	return err
+}
+
+const flavorVersionFileHashes = `-- name: FlavorVersionFileHashes :many
+SELECT flavor_version_id, file_hash, file_path, created_at FROM flavor_version_files WHERE flavor_version_id = $1
+`
+
+func (q *Queries) FlavorVersionFileHashes(ctx context.Context, flavorVersionID string) ([]FlavorVersionFile, error) {
+	rows, err := q.db.Query(ctx, flavorVersionFileHashes, flavorVersionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FlavorVersionFile
+	for rows.Next() {
+		var i FlavorVersionFile
+		if err := rows.Scan(
+			&i.FlavorVersionID,
+			&i.FileHash,
+			&i.FilePath,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getChunkByID = `-- name: GetChunkByID :many
@@ -331,6 +414,25 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 		return nil, err
 	}
 	return items, nil
+}
+
+const latestFlavorVersionByFlavorID = `-- name: LatestFlavorVersionByFlavorID :one
+SELECT id, flavor_id, hash, version, prev_version_id, created_at FROM flavor_versions WHERE flavor_id = $1
+ORDER BY created_at DESC LIMIT 1
+`
+
+func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID string) (FlavorVersion, error) {
+	row := q.db.QueryRow(ctx, latestFlavorVersionByFlavorID, flavorID)
+	var i FlavorVersion
+	err := row.Scan(
+		&i.ID,
+		&i.FlavorID,
+		&i.Hash,
+		&i.Version,
+		&i.PrevVersionID,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updateChunk = `-- name: UpdateChunk :one

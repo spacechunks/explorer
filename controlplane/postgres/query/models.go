@@ -15,11 +15,12 @@ import (
 type InstanceState string
 
 const (
-	InstanceStatePENDING  InstanceState = "PENDING"
-	InstanceStateSTARTING InstanceState = "STARTING"
-	InstanceStateRUNNING  InstanceState = "RUNNING"
-	InstanceStateDELETING InstanceState = "DELETING"
-	InstanceStateDELETED  InstanceState = "DELETED"
+	InstanceStatePENDING        InstanceState = "PENDING"
+	InstanceStateCREATING       InstanceState = "CREATING"
+	InstanceStateRUNNING        InstanceState = "RUNNING"
+	InstanceStateDELETING       InstanceState = "DELETING"
+	InstanceStateDELETED        InstanceState = "DELETED"
+	InstanceStateCREATIONFAILED InstanceState = "CREATION_FAILED"
 )
 
 func (e *InstanceState) Scan(src interface{}) error {
@@ -72,6 +73,22 @@ type Flavor struct {
 	Name      string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+}
+
+type FlavorVersion struct {
+	ID            string
+	FlavorID      string
+	Hash          string
+	Version       string
+	PrevVersionID string
+	CreatedAt     pgtype.Timestamptz
+}
+
+type FlavorVersionFile struct {
+	FlavorVersionID string
+	FileHash        pgtype.Text
+	FilePath        string
+	CreatedAt       pgtype.Timestamptz
 }
 
 type Instance struct {
