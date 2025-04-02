@@ -22,7 +22,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/spacechunks/explorer/test/functional/fixture"
+	fixture2 "github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,12 +30,12 @@ import (
 func TestCreateChunk(t *testing.T) {
 	var (
 		ctx = context.Background()
-		pg  = fixture.NewPostgres()
+		pg  = fixture2.NewPostgres()
 	)
 
 	pg.Run(t, ctx)
 
-	expected := fixture.Chunk()
+	expected := fixture2.Chunk()
 
 	c, err := pg.DB.CreateChunk(ctx, expected)
 	require.NoError(t, err)

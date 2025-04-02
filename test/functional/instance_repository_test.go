@@ -28,7 +28,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/test"
-	"github.com/spacechunks/explorer/test/functional/fixture"
+	fixture2 "github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,9 +40,9 @@ func TestCreateInstance(t *testing.T) {
 
 	var (
 		ctx    = context.Background()
-		pg     = fixture.NewPostgres()
+		pg     = fixture2.NewPostgres()
 		nodeID = test.NewUUIDv7(t)
-		c      = fixture.Chunk()
+		c      = fixture2.Chunk()
 	)
 
 	pg.Run(t, ctx)
@@ -60,7 +60,7 @@ func TestCreateInstance(t *testing.T) {
 
 	// ^ above are prerequisites
 
-	expected := fixture.Instance()
+	expected := fixture2.Instance()
 	expected.Port = nil // port will not be saved when creating
 
 	actual, err := pg.DB.CreateInstance(ctx, expected, nodeID)
@@ -72,7 +72,7 @@ func TestCreateInstance(t *testing.T) {
 func TestGetInstancesByNodeID(t *testing.T) {
 	var (
 		ctx    = context.Background()
-		pg     = fixture.NewPostgres()
+		pg     = fixture2.NewPostgres()
 		nodeID = test.NewUUIDv7(t)
 	)
 
@@ -82,21 +82,21 @@ func TestGetInstancesByNodeID(t *testing.T) {
 	require.NoError(t, err)
 
 	chunks := []chunk.Chunk{
-		fixture.Chunk(func(c *chunk.Chunk) {
+		fixture2.Chunk(func(c *chunk.Chunk) {
 			c.ID = "01953e54-8ac5-7c1a-b468-dffdc26d2087"
 			c.Name = "chunk1"
 			c.Flavors = []chunk.Flavor{
-				fixture.Flavor(func(f *chunk.Flavor) {
+				fixture2.Flavor(func(f *chunk.Flavor) {
 					f.ID = test.NewUUIDv7(t)
 					f.Name = "flavor_" + test.RandHexStr(t)
 				}),
 			}
 		}),
-		fixture.Chunk(func(c *chunk.Chunk) {
+		fixture2.Chunk(func(c *chunk.Chunk) {
 			c.ID = "01953e54-b686-764a-874f-dbc45b67152c"
 			c.Name = "chunk2"
 			c.Flavors = []chunk.Flavor{
-				fixture.Flavor(func(f *chunk.Flavor) {
+				fixture2.Flavor(func(f *chunk.Flavor) {
 					f.ID = test.NewUUIDv7(t)
 					f.Name = "flavor_" + test.RandHexStr(t)
 				}),
