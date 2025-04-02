@@ -22,7 +22,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
@@ -34,16 +33,6 @@ type instanceParams struct {
 }
 
 func createInstanceParams(nodeID string, instance instance.Instance) (instanceParams, error) {
-	createdAt := pgtype.Timestamptz{}
-	if err := createdAt.Scan(instance.CreatedAt); err != nil {
-		return instanceParams{}, fmt.Errorf("scan updated at: %w", err)
-	}
-
-	updatedAt := pgtype.Timestamptz{}
-	if err := updatedAt.Scan(instance.UpdatedAt); err != nil {
-		return instanceParams{}, fmt.Errorf("scan updated at: %w", err)
-	}
-
 	return instanceParams{
 		create: query.CreateInstanceParams{
 			ID:        instance.ID,
@@ -51,8 +40,8 @@ func createInstanceParams(nodeID string, instance instance.Instance) (instancePa
 			FlavorID:  instance.ChunkFlavor.ID,
 			NodeID:    nodeID,
 			State:     query.InstanceState(instance.State),
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
+			CreatedAt: instance.CreatedAt,
+			UpdatedAt: instance.UpdatedAt,
 		},
 	}, nil
 }
@@ -89,15 +78,15 @@ func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID 
 			ID:        row.ID,
 			Address:   row.Address,
 			State:     instance.State(row.State),
-			CreatedAt: row.CreatedAt.Time.UTC(),
-			UpdatedAt: row.UpdatedAt.Time.UTC(),
+			CreatedAt: row.CreatedAt.UTC(),
+			UpdatedAt: row.UpdatedAt.UTC(),
 			Chunk: chunk.Chunk{
 				ID:          row.ID_3,
 				Name:        row.Name_2,
 				Description: row.Description,
 				Tags:        row.Tags,
-				CreatedAt:   row.CreatedAt_3.Time.UTC(),
-				UpdatedAt:   row.UpdatedAt_3.Time.UTC(),
+				CreatedAt:   row.CreatedAt_3.UTC(),
+				UpdatedAt:   row.UpdatedAt_3.UTC(),
 			},
 		}
 
@@ -106,8 +95,8 @@ func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID 
 			f := chunk.Flavor{
 				ID:        instanceRow.ID_2,
 				Name:      instanceRow.Name,
-				CreatedAt: instanceRow.CreatedAt_2.Time.UTC(),
-				UpdatedAt: instanceRow.UpdatedAt_2.Time.UTC(),
+				CreatedAt: instanceRow.CreatedAt_2.UTC(),
+				UpdatedAt: instanceRow.UpdatedAt_2.UTC(),
 			}
 
 			if instanceRow.FlavorID == f.ID {
@@ -151,20 +140,20 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 					Name:        row.Name_2,
 					Description: row.Description,
 					Tags:        row.Tags,
-					CreatedAt:   row.CreatedAt_3.Time.UTC(),
-					UpdatedAt:   row.UpdatedAt_3.Time.UTC(),
+					CreatedAt:   row.CreatedAt_3.UTC(),
+					UpdatedAt:   row.UpdatedAt_3.UTC(),
 				},
 				ChunkFlavor: chunk.Flavor{
 					ID:        row.ID_2,
 					Name:      row.Name,
-					CreatedAt: row.CreatedAt_2.Time.UTC(),
-					UpdatedAt: row.UpdatedAt_2.Time.UTC(),
+					CreatedAt: row.CreatedAt_2.UTC(),
+					UpdatedAt: row.UpdatedAt_2.UTC(),
 				},
 				Address:   row.Address,
 				State:     instance.State(row.State),
 				Port:      port,
-				CreatedAt: row.CreatedAt.Time.UTC(),
-				UpdatedAt: row.UpdatedAt.Time.UTC(),
+				CreatedAt: row.CreatedAt.UTC(),
+				UpdatedAt: row.UpdatedAt.UTC(),
 			})
 		}
 

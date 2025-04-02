@@ -8,8 +8,7 @@ package query
 import (
 	"context"
 	"net/netip"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 const createChunk = `-- name: CreateChunk :one
@@ -29,8 +28,8 @@ type CreateChunkParams struct {
 	Name        string
 	Description string
 	Tags        []string
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) (Chunk, error) {
@@ -70,8 +69,8 @@ type CreateFlavorParams struct {
 	ID        string
 	ChunkID   string
 	Name      string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // TODO: insert multiple (aka :batchmany)
@@ -96,9 +95,9 @@ func (q *Queries) CreateFlavor(ctx context.Context, arg CreateFlavorParams) (Fla
 
 const createFlavorVersion = `-- name: CreateFlavorVersion :exec
 INSERT INTO flavor_versions
-    (id, flavor_id, hash, version, prev_version_id)
+    (id, flavor_id, hash, version, prev_version_id, created_at)
 VALUES
-    ($1, $2, $3, $4, $5)
+    ($1, $2, $3, $4, $5, $6)
 `
 
 type CreateFlavorVersionParams struct {
@@ -107,6 +106,7 @@ type CreateFlavorVersionParams struct {
 	Hash          string
 	Version       string
 	PrevVersionID string
+	CreatedAt     time.Time
 }
 
 func (q *Queries) CreateFlavorVersion(ctx context.Context, arg CreateFlavorVersionParams) error {
@@ -116,6 +116,7 @@ func (q *Queries) CreateFlavorVersion(ctx context.Context, arg CreateFlavorVersi
 		arg.Hash,
 		arg.Version,
 		arg.PrevVersionID,
+		arg.CreatedAt,
 	)
 	return err
 }
@@ -137,8 +138,8 @@ type CreateInstanceParams struct {
 	FlavorID  string
 	NodeID    string
 	State     InstanceState
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) error {
@@ -222,13 +223,13 @@ type GetChunkByIDRow struct {
 	Name        string
 	Description string
 	Tags        []string
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	ID_2        string
 	ChunkID     string
 	Name_2      string
-	CreatedAt_2 pgtype.Timestamptz
-	UpdatedAt_2 pgtype.Timestamptz
+	CreatedAt_2 time.Time
+	UpdatedAt_2 time.Time
 }
 
 // TODO: read multiple
@@ -279,22 +280,22 @@ type GetInstanceRow struct {
 	NodeID      string
 	Port        *int32
 	State       InstanceState
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	ID_2        string
 	ChunkID_2   string
 	Name        string
-	CreatedAt_2 pgtype.Timestamptz
-	UpdatedAt_2 pgtype.Timestamptz
+	CreatedAt_2 time.Time
+	UpdatedAt_2 time.Time
 	ID_3        string
 	Name_2      string
 	Description string
 	Tags        []string
-	CreatedAt_3 pgtype.Timestamptz
-	UpdatedAt_3 pgtype.Timestamptz
+	CreatedAt_3 time.Time
+	UpdatedAt_3 time.Time
 	ID_4        string
 	Address     netip.Addr
-	CreatedAt_4 pgtype.Timestamptz
+	CreatedAt_4 time.Time
 }
 
 func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow, error) {
@@ -355,22 +356,22 @@ type GetInstancesByNodeIDRow struct {
 	NodeID      string
 	Port        *int32
 	State       InstanceState
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	ID_2        string
 	ChunkID_2   string
 	Name        string
-	CreatedAt_2 pgtype.Timestamptz
-	UpdatedAt_2 pgtype.Timestamptz
+	CreatedAt_2 time.Time
+	UpdatedAt_2 time.Time
 	ID_3        string
 	Name_2      string
 	Description string
 	Tags        []string
-	CreatedAt_3 pgtype.Timestamptz
-	UpdatedAt_3 pgtype.Timestamptz
+	CreatedAt_3 time.Time
+	UpdatedAt_3 time.Time
 	ID_4        string
 	Address     netip.Addr
-	CreatedAt_4 pgtype.Timestamptz
+	CreatedAt_4 time.Time
 }
 
 func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]GetInstancesByNodeIDRow, error) {

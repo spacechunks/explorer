@@ -22,7 +22,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
@@ -33,24 +32,14 @@ type chunkParams struct {
 }
 
 func createChunkParams(c chunk.Chunk) (chunkParams, error) {
-	createdAt := pgtype.Timestamptz{}
-	if err := createdAt.Scan(c.CreatedAt); err != nil {
-		return chunkParams{}, fmt.Errorf("scan updated at: %w", err)
-	}
-
-	updatedAt := pgtype.Timestamptz{}
-	if err := updatedAt.Scan(c.UpdatedAt); err != nil {
-		return chunkParams{}, fmt.Errorf("scan updated at: %w", err)
-	}
-
 	return chunkParams{
 		create: query.CreateChunkParams{
 			ID:          c.ID,
 			Name:        c.Name,
 			Description: c.Description,
 			Tags:        c.Tags,
-			CreatedAt:   createdAt,
-			UpdatedAt:   updatedAt,
+			CreatedAt:   c.CreatedAt,
+			UpdatedAt:   c.UpdatedAt,
 		},
 		update: query.UpdateChunkParams{
 			Name:        c.Name,
@@ -67,8 +56,8 @@ func rowToChunk(c query.Chunk) chunk.Chunk {
 		Name:        c.Name,
 		Description: c.Description,
 		Tags:        c.Tags,
-		CreatedAt:   c.CreatedAt.Time.UTC(),
-		UpdatedAt:   c.UpdatedAt.Time.UTC(),
+		CreatedAt:   c.CreatedAt.UTC(),
+		UpdatedAt:   c.UpdatedAt.UTC(),
 	}
 }
 
@@ -115,8 +104,8 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 				Name:        row.Name,
 				Description: row.Description,
 				Tags:        row.Tags,
-				CreatedAt:   row.CreatedAt.Time.UTC(),
-				UpdatedAt:   row.UpdatedAt.Time.UTC(),
+				CreatedAt:   row.CreatedAt.UTC(),
+				UpdatedAt:   row.UpdatedAt.UTC(),
 			}
 		)
 
@@ -124,8 +113,8 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 			flavors = append(flavors, chunk.Flavor{
 				ID:        r.ID_2,
 				Name:      r.Name_2,
-				CreatedAt: r.CreatedAt_2.Time.UTC(),
-				UpdatedAt: r.UpdatedAt_2.Time.UTC(),
+				CreatedAt: r.CreatedAt_2.UTC(),
+				UpdatedAt: r.UpdatedAt_2.UTC(),
 			})
 		}
 

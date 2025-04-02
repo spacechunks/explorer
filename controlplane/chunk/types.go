@@ -55,6 +55,7 @@ type FlavorVersion struct {
 	Version    string
 	Hash       string
 	FileHashes []FileHash
+	CreatedAt  time.Time
 }
 
 type FileHash struct {

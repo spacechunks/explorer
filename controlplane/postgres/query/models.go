@@ -8,6 +8,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"net/netip"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -63,16 +64,16 @@ type Chunk struct {
 	Name        string
 	Description string
 	Tags        []string
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type Flavor struct {
 	ID        string
 	ChunkID   string
 	Name      string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type FlavorVersion struct {
@@ -81,14 +82,14 @@ type FlavorVersion struct {
 	Hash          string
 	Version       string
 	PrevVersionID string
-	CreatedAt     pgtype.Timestamptz
+	CreatedAt     time.Time
 }
 
 type FlavorVersionFile struct {
 	FlavorVersionID string
 	FileHash        pgtype.Text
 	FilePath        string
-	CreatedAt       pgtype.Timestamptz
+	CreatedAt       time.Time
 }
 
 type Instance struct {
@@ -98,14 +99,14 @@ type Instance struct {
 	NodeID    string
 	Port      *int32
 	State     InstanceState
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Node struct {
 	ID        string
 	Address   netip.Addr
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 }
 
 type SchemaMigration struct {

@@ -21,7 +21,9 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
@@ -32,23 +34,13 @@ type flavorParams struct {
 }
 
 func createFlavorParams(flavor chunk.Flavor, chunkID string) (flavorParams, error) {
-	createdAt := pgtype.Timestamptz{}
-	if err := createdAt.Scan(flavor.CreatedAt); err != nil {
-		return flavorParams{}, fmt.Errorf("scan created at: %w", err)
-	}
-
-	updatedAt := pgtype.Timestamptz{}
-	if err := updatedAt.Scan(flavor.UpdatedAt); err != nil {
-		return flavorParams{}, fmt.Errorf("scan updated at: %w", err)
-	}
-
 	return flavorParams{
 		create: query.CreateFlavorParams{
 			ID:        flavor.ID,
 			ChunkID:   chunkID,
 			Name:      flavor.Name,
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
+			CreatedAt: flavor.CreatedAt,
+			UpdatedAt: flavor.UpdatedAt,
 		},
 	}, nil
 }
@@ -69,8 +61,8 @@ func (db *DB) CreateFlavor(ctx context.Context, flavor chunk.Flavor, chunkID str
 		ret = chunk.Flavor{
 			ID:        f.ID,
 			Name:      f.Name,
-			CreatedAt: f.CreatedAt.Time.UTC(),
-			UpdatedAt: f.UpdatedAt.Time.UTC(),
+			CreatedAt: f.CreatedAt.UTC(),
+			UpdatedAt: f.UpdatedAt.UTC(),
 		}
 		return nil
 	}); err != nil {
@@ -151,14 +143,24 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 	return ret, nil
 }
 
-func (db *DB) CreateFlavorVersion(ctx context.Context, version chunk.FlavorVersion, prevVersionID string) error {
-	return db.doTX(ctx, func(q *query.Queries) error {
+func (db *DB) CreateFlavorVersion(
+	ctx context.Context,
+	version chunk.FlavorVersion,
+	prevVersionID string,
+) (chunk.FlavorVersion, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return chunk.FlavorVersion{}, fmt.Errorf("flavor version id: %w", err)
+	}
+
+	if err := db.doTX(ctx, func(q *query.Queries) error {
 		if err := q.CreateFlavorVersion(ctx, query.CreateFlavorVersionParams{
-			ID:            version.ID,
+			ID:            id.String(),
 			FlavorID:      version.Flavor.ID,
 			Hash:          version.Hash,
 			Version:       version.Version,
 			PrevVersionID: prevVersionID,
+			CreatedAt:     time.Now(),
 		}); err != nil {
 			return fmt.Errorf("create flavor version: %w", err)
 		}
@@ -180,5 +182,13 @@ func (db *DB) CreateFlavorVersion(ctx context.Context, version chunk.FlavorVersi
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return chunk.FlavorVersion{}, err
+	}
+
+	ret := version
+	ret.ID = id.String()
+	ret.CreatedAt = version.CreatedAt
+
+	return ret, nil
 }

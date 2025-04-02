@@ -30,5 +30,5 @@ type Repository interface {
 	FlavorVersionExists(ctx context.Context, flavorID string, version string) (bool, error)
 	FlavorVersionByHash(ctx context.Context, hash string) (string, error)
 	LatestFlavorVersion(ctx context.Context, flavorID string) (FlavorVersion, error)
-	CreateFlavorVersion(ctx context.Context, version FlavorVersion, prevVersionID string) error
+	CreateFlavorVersion(ctx context.Context, version FlavorVersion, prevVersionID string) (FlavorVersion, error)
 }

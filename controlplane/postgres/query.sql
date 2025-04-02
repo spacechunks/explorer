@@ -55,9 +55,9 @@ SELECT * FROM flavor_version_files WHERE flavor_version_id = $1;
 
 -- name: CreateFlavorVersion :exec
 INSERT INTO flavor_versions
-    (id, flavor_id, hash, version, prev_version_id)
+    (id, flavor_id, hash, version, prev_version_id, created_at)
 VALUES
-    ($1, $2, $3, $4, $5);
+    ($1, $2, $3, $4, $5, $6);
 
 -- name: BulkInsertFlavorFileHashes :batchexec
 INSERT INTO flavor_version_files
