@@ -31,7 +31,7 @@ type chunkParams struct {
 	update query.UpdateChunkParams
 }
 
-func createChunkParams(c chunk.Chunk) (chunkParams, error) {
+func createChunkParams(c chunk.Chunk) chunkParams {
 	return chunkParams{
 		create: query.CreateChunkParams{
 			ID:          c.ID,
@@ -47,7 +47,7 @@ func createChunkParams(c chunk.Chunk) (chunkParams, error) {
 			Tags:        c.Tags,
 			ID:          c.ID,
 		},
-	}, nil
+	}
 }
 
 func rowToChunk(c query.Chunk) chunk.Chunk {
@@ -62,10 +62,7 @@ func rowToChunk(c query.Chunk) chunk.Chunk {
 }
 
 func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, error) {
-	params, err := createChunkParams(c)
-	if err != nil {
-		return chunk.Chunk{}, fmt.Errorf("chunk params: %w", err)
-	}
+	params := createChunkParams(c)
 
 	var ret chunk.Chunk
 	if err := db.do(ctx, func(q *query.Queries) error {
@@ -129,10 +126,7 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 }
 
 func (db *DB) UpdateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, error) {
-	params, err := createChunkParams(c)
-	if err != nil {
-		return chunk.Chunk{}, fmt.Errorf("chunk params: %w", err)
-	}
+	params := createChunkParams(c)
 
 	var ret chunk.Chunk
 	if err := db.do(ctx, func(q *query.Queries) error {

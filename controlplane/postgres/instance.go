@@ -32,7 +32,7 @@ type instanceParams struct {
 	create query.CreateInstanceParams
 }
 
-func createInstanceParams(nodeID string, instance instance.Instance) (instanceParams, error) {
+func createInstanceParams(nodeID string, instance instance.Instance) instanceParams {
 	return instanceParams{
 		create: query.CreateInstanceParams{
 			ID:        instance.ID,
@@ -43,14 +43,11 @@ func createInstanceParams(nodeID string, instance instance.Instance) (instancePa
 			CreatedAt: instance.CreatedAt,
 			UpdatedAt: instance.UpdatedAt,
 		},
-	}, nil
+	}
 }
 
 func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID string) (instance.Instance, error) {
-	params, err := createInstanceParams(nodeID, ins)
-	if err != nil {
-		return instance.Instance{}, fmt.Errorf("instance params: %w", err)
-	}
+	params := createInstanceParams(nodeID, ins)
 
 	var ret instance.Instance
 	if err := db.doTX(ctx, func(q *query.Queries) error {
