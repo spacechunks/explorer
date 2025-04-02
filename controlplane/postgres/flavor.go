@@ -33,7 +33,7 @@ type flavorParams struct {
 	create query.CreateFlavorParams
 }
 
-func createFlavorParams(flavor chunk.Flavor, chunkID string) (flavorParams, error) {
+func createFlavorParams(flavor chunk.Flavor, chunkID string) flavorParams {
 	return flavorParams{
 		create: query.CreateFlavorParams{
 			ID:        flavor.ID,
@@ -42,14 +42,11 @@ func createFlavorParams(flavor chunk.Flavor, chunkID string) (flavorParams, erro
 			CreatedAt: flavor.CreatedAt,
 			UpdatedAt: flavor.UpdatedAt,
 		},
-	}, nil
+	}
 }
 
 func (db *DB) CreateFlavor(ctx context.Context, flavor chunk.Flavor, chunkID string) (chunk.Flavor, error) {
-	params, err := createFlavorParams(flavor, chunkID)
-	if err != nil {
-		return chunk.Flavor{}, fmt.Errorf("flavor params: %w", err)
-	}
+	params := createFlavorParams(flavor, chunkID)
 
 	var ret chunk.Flavor
 	if err := db.do(ctx, func(q *query.Queries) error {
