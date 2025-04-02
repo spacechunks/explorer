@@ -19,19 +19,8 @@
 package chunk
 
 import (
-	"crypto/sha256"
-	"errors"
 	"time"
-
-	"github.com/cbergoon/merkletree"
 )
-
-type Flavor struct {
-	ID        string
-	Name      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
 
 type Chunk struct {
 	ID          string
@@ -41,40 +30,4 @@ type Chunk struct {
 	Flavors     []Flavor
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-}
-
-type FlavorVersionDiff struct {
-	Added   []FileHash
-	Removed []FileHash
-	Changed []FileHash
-}
-
-type FlavorVersion struct {
-	ID         string
-	Flavor     Flavor
-	Version    string
-	Hash       string
-	FileHashes []FileHash
-	CreatedAt  time.Time
-}
-
-type FileHash struct {
-	Path string
-	Hash string
-}
-
-func (f FileHash) CalculateHash() ([]byte, error) {
-	h := sha256.New()
-	if _, err := h.Write([]byte(f.Hash)); err != nil {
-		return nil, err
-	}
-	return h.Sum(nil), nil
-}
-
-func (f FileHash) Equals(other merkletree.Content) (bool, error) {
-	otherHash, ok := other.(FileHash)
-	if !ok {
-		return false, errors.New("value is not of type FileHash")
-	}
-	return f.Hash == otherHash.Hash, nil
 }

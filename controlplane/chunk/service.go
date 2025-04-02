@@ -26,6 +26,7 @@ import (
 type Service interface {
 	CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
 	GetChunk(ctx context.Context, id string) (Chunk, error)
+	CreateFlavorVersion(ctx context.Context, version FlavorVersion) (FlavorVersion, FlavorVersionDiff, error)
 }
 
 type svc struct {

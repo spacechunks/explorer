@@ -19,12 +19,16 @@
 package fixture
 
 import (
+	"fmt"
 	"net/netip"
+	"testing"
 	"time"
 
+	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/internal/ptr"
+	"github.com/stretchr/testify/require"
 )
 
 func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
@@ -67,6 +71,49 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 	}
 
 	return flavor
+}
+
+func FlavorVersion(t *testing.T, mod ...func(c *chunk.FlavorVersion)) chunk.FlavorVersion {
+	version := chunk.FlavorVersion{
+		Flavor: chunk.Flavor{
+			ID: Flavor().ID,
+		},
+		Version: "v1",
+		FileHashes: []chunk.FileHash{
+			{
+				Path: "server.properties",
+				Hash: "server.properties-hash",
+			},
+			{
+				Path: "plugins/myplugin/config.json",
+				Hash: "config.json-hash",
+			},
+			{
+				Path: "paper.yml",
+				Hash: "paper.yml-hash",
+			},
+		},
+	}
+
+	for _, mod := range mod {
+		mod(&version)
+	}
+
+	content := make([]merkletree.Content, 0, len(version.FileHashes))
+	for _, f := range version.FileHashes {
+		content = append(content, f)
+	}
+
+	tree, err := merkletree.NewTree(content)
+	require.NoError(t, err)
+	version.Hash = fmt.Sprintf("%x", tree.MerkleRoot())
+
+	// call twice in case we need to modify the hash
+	for _, mod := range mod {
+		mod(&version)
+	}
+
+	return version
 }
 
 func Instance(mod ...func(i *instance.Instance)) instance.Instance {

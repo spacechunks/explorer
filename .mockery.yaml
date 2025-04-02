@@ -18,6 +18,9 @@ packages:
     interfaces:
       Service:
       StatusStore:
+  github.com/spacechunks/explorer/controlplane/chunk:
+    interfaces:
+      Repository:
   github.com/spacechunks/explorer/api/instance/v1alpha1:
     interfaces:
       InstanceServiceClient:
