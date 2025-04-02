@@ -56,3 +56,17 @@ message Flavor {
 
   google.protobuf.Timestamp updated_at = 4;
 }
+
+message FlavorVersion {
+  string id = 1;
+  Flavor flavor = 2;
+  string version = 3;
+  string hash = 4;
+  repeated FileHashes file_hashes = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message FileHashes {
+  string Path = 1;
+  string hash = 2;
+}

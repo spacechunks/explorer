@@ -80,7 +80,15 @@ func (InstanceState) EnumDescriptor() ([]byte, []int) {
 	return file_instance_v1alpha1_types_proto_rawDescGZIP(), []int{0}
 }
 
-// Instance defines a running replica of a specific chunk.
+// Instance defines a running replica of a specific chunk flavor.
+//
+// We differentiate between Chunks and Instances. Chunks define the
+// configuration and provide metadata, like a name, description tags
+// and so on, that describe the experience the user can expect when
+// attempting to run the chunk. Instances on the other hand, are a
+// running replica of a particular Chunk flavor. This means that
+// there can be multiple replicas of a chunk flavor by different
+// users.
 type Instance struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

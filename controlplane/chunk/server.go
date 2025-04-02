@@ -19,6 +19,8 @@
 package chunk
 
 import (
+	"context"
+
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 )
 
@@ -31,4 +33,23 @@ func NewServer(service Service) *Server {
 	return &Server{
 		service: service,
 	}
+}
+
+func (s *Server) CreateFlavorVersion(
+	ctx context.Context,
+	req *chunkv1alpha1.CreateFlavorVersionRequest,
+) (*chunkv1alpha1.CreateFlavorVersionResponse, error) {
+	domain := FlavorVersionToDomain(req.GetVersion())
+
+	version, diff, err := s.service.CreateFlavorVersion(ctx, domain)
+	if err != nil {
+		return nil, err
+	}
+
+	return &chunkv1alpha1.CreateFlavorVersionResponse{
+		Version:      FlavorVersionToTransport(version),
+		ChangedFiles: FileHashSliceToTransport(diff.Changed),
+		RemovedFiles: FileHashSliceToTransport(diff.Removed),
+		AddedFiles:   FileHashSliceToTransport(diff.Added),
+	}, nil
 }
