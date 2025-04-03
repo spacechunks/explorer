@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"log"
 	"maps"
 	"slices"
 	"sort"
@@ -124,9 +123,6 @@ func (s *svc) CreateFlavorVersion(
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("latest flavor version file hashes: %w", err)
 	}
 
-	log.Println(prevVersion.FileHashes)
-	log.Println(version.FileHashes)
-
 	var (
 		prevContent, _             = hashTreeContent(prevVersion.FileHashes)
 		newContent, newContentList = hashTreeContent(version.FileHashes)
@@ -188,19 +184,18 @@ func (s *svc) CreateFlavorVersion(
 	}
 
 	var (
-		all = make([]FileHash, 0, len(unchanged)+len(changed)+len(added))
+		all  = make([]FileHash, 0, len(unchanged)+len(changed)+len(added))
+		diff = FlavorVersionDiff{
+			Added:   added,
+			Removed: removed,
+			Changed: changed,
+		}
 	)
 
 	sortByPath(unchanged)
 	sortByPath(changed)
 	sortByPath(added)
 	sortByPath(removed)
-
-	diff := FlavorVersionDiff{
-		Added:   added,
-		Removed: removed,
-		Changed: changed,
-	}
 
 	all = append(all, unchanged...)
 	all = append(all, changed...)
