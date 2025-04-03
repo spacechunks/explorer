@@ -30,8 +30,9 @@ service ChunkService {
 
   // CreateFlavorVersion creates a new flavor version for a
   // given flavor by determining the added, changed and removed
-  // files. it also makes sure versions with a duplicate set of
-  // files are being created.
+  // files. it also prevents version duplicates, meaning either
+  // version numbers or the provided set of files match with
+  // an already existing version.
   //
   // Defined error codes:
   // - ALREADY_EXISTS:
