@@ -47,7 +47,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					// plugins/myplugin/config.json not present -> its removed
 					{
 						Path: "paper.yml", // unchanged
-						Hash: "paper.yml-hash",
+						Hash: "pppppppppppppppp",
 					},
 					{
 						Path: "server.properties", // changed
@@ -69,7 +69,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 				Removed: []chunk.FileHash{
 					{
 						Path: "plugins/myplugin/config.json",
-						Hash: "config.json-hash",
+						Hash: "cooooooooooooooo",
 					},
 				},
 				Changed: []chunk.FileHash{
