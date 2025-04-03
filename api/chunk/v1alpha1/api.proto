@@ -27,6 +27,18 @@ import "chunk/v1alpha1/types.proto";
 // ChunkService provides the public api for interacting with Chunks
 // and flavors of Chunks.
 service ChunkService {
+
+  // CreateFlavorVersion creates a new flavor version for a
+  // given flavor by determining the added, changed and removed
+  // files. it also makes sure versions with a duplicate set of
+  // files are being created.
+  //
+  // Defined error codes:
+  // - ALREADY_EXISTS:
+  //   - the flavor version about to be created is already present
+  //   - a version with the exact same set of files already exists
+  // - FAILED_PRECONDITION
+  //   - the provided version hash does not match with the provided file hashes
   rpc CreateFlavorVersion(CreateFlavorVersionRequest) returns (CreateFlavorVersionResponse);
 }
 
