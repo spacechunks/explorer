@@ -64,7 +64,7 @@ func FlavorVersionToTransport(domain FlavorVersion) *chunkv1alpha1.FlavorVersion
 }
 
 func FileHashSliceToTransport(domain []FileHash) []*chunkv1alpha1.FileHashes {
-	hashes := make([]*chunkv1alpha1.FileHashes, len(domain))
+	hashes := make([]*chunkv1alpha1.FileHashes, 0, len(domain))
 	for _, fh := range domain {
 		hashes = append(hashes, &chunkv1alpha1.FileHashes{
 			Path: &fh.Path,
