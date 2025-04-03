@@ -44,7 +44,7 @@ ORDER BY created_at DESC LIMIT 1;
 -- name: FlavorVersionByHash :one
 SELECT version FROM flavor_versions WHERE hash = $1;
 
--- name: FlavorVersionExists :exec
+-- name: FlavorVersionExists :one
 SELECT EXISTS(
     SELECT 1 FROM flavor_versions
     WHERE version = $1 AND flavor_id = $2

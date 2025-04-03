@@ -105,7 +105,7 @@ type CreateFlavorVersionParams struct {
 	FlavorID      string
 	Hash          string
 	Version       string
-	PrevVersionID string
+	PrevVersionID *string
 	CreatedAt     time.Time
 }
 
@@ -166,7 +166,7 @@ func (q *Queries) FlavorVersionByHash(ctx context.Context, hash string) (string,
 	return version, err
 }
 
-const flavorVersionExists = `-- name: FlavorVersionExists :exec
+const flavorVersionExists = `-- name: FlavorVersionExists :one
 SELECT EXISTS(
     SELECT 1 FROM flavor_versions
     WHERE version = $1 AND flavor_id = $2
@@ -178,9 +178,11 @@ type FlavorVersionExistsParams struct {
 	FlavorID string
 }
 
-func (q *Queries) FlavorVersionExists(ctx context.Context, arg FlavorVersionExistsParams) error {
-	_, err := q.db.Exec(ctx, flavorVersionExists, arg.Version, arg.FlavorID)
-	return err
+func (q *Queries) FlavorVersionExists(ctx context.Context, arg FlavorVersionExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, flavorVersionExists, arg.Version, arg.FlavorID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const flavorVersionFileHashes = `-- name: FlavorVersionFileHashes :many

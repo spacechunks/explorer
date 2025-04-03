@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS flavor_versions (
     flavor_id       UUID          NOT NULL REFERENCES flavors(id) ON DELETE CASCADE,
     hash            CHAR(16)      NOT NULL,
     version         VARCHAR(25)   NOT NULL,
-    prev_version_id UUID          NOT NULL,
+    prev_version_id UUID,
     created_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
     UNIQUE (flavor_id, version)
 );

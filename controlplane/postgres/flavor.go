@@ -20,10 +20,14 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
@@ -70,16 +74,23 @@ func (db *DB) CreateFlavor(ctx context.Context, flavor chunk.Flavor, chunkID str
 }
 
 func (db *DB) FlavorVersionExists(ctx context.Context, flavorID string, version string) (bool, error) {
+	var ret bool
 	if err := db.do(ctx, func(q *query.Queries) error {
-		return q.FlavorVersionExists(ctx, query.FlavorVersionExistsParams{
+		ok, err := q.FlavorVersionExists(ctx, query.FlavorVersionExistsParams{
 			FlavorID: flavorID,
 			Version:  version,
 		})
+		if err != nil {
+			return err
+		}
+
+		ret = ok
+		return nil
 	}); err != nil {
 		return false, err
 	}
 
-	return true, nil
+	return ret, nil
 }
 
 func (db *DB) FlavorVersionByHash(ctx context.Context, hash string) (string, error) {
@@ -87,6 +98,10 @@ func (db *DB) FlavorVersionByHash(ctx context.Context, hash string) (string, err
 	if err := db.do(ctx, func(q *query.Queries) error {
 		version, err := q.FlavorVersionByHash(ctx, hash)
 		if err != nil {
+			// if no row is found this means we are fine
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
 			return err
 		}
 		ret = version
@@ -106,10 +121,13 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 
 		latest, err := q.LatestFlavorVersionByFlavorID(ctx, flavorID)
 		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
 			return fmt.Errorf("get flavor version: %w", err)
 		}
 
-		files, err := q.FlavorVersionFileHashes(ctx, latest.FlavorID)
+		files, err := q.FlavorVersionFileHashes(ctx, latest.ID)
 		if err != nil {
 			return err
 		}
@@ -121,6 +139,10 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 				Hash: f.FileHash.String,
 			})
 		}
+
+		sort.Slice(hashes, func(i, j int) bool {
+			return strings.Compare(hashes[i].Path, hashes[j].Path) < 0
+		})
 
 		ret = chunk.FlavorVersion{
 			ID: latest.ID,
@@ -150,22 +172,29 @@ func (db *DB) CreateFlavorVersion(
 		return chunk.FlavorVersion{}, fmt.Errorf("flavor version id: %w", err)
 	}
 
+	now := time.Now()
+
 	if err := db.doTX(ctx, func(q *query.Queries) error {
-		if err := q.CreateFlavorVersion(ctx, query.CreateFlavorVersionParams{
-			ID:            id.String(),
-			FlavorID:      version.Flavor.ID,
-			Hash:          version.Hash,
-			Version:       version.Version,
-			PrevVersionID: prevVersionID,
-			CreatedAt:     time.Now(),
-		}); err != nil {
+		createParams := query.CreateFlavorVersionParams{
+			ID:        id.String(),
+			FlavorID:  version.Flavor.ID,
+			Hash:      version.Hash,
+			Version:   version.Version,
+			CreatedAt: now,
+		}
+
+		if prevVersionID != "" {
+			createParams.PrevVersionID = &prevVersionID
+		}
+
+		if err := q.CreateFlavorVersion(ctx, createParams); err != nil {
 			return fmt.Errorf("create flavor version: %w", err)
 		}
 
 		dbHashes := make([]query.BulkInsertFlavorFileHashesParams, 0, len(version.FileHashes))
 		for _, f := range version.FileHashes {
 			dbHashes = append(dbHashes, query.BulkInsertFlavorFileHashesParams{
-				FlavorVersionID: version.ID,
+				FlavorVersionID: id.String(),
 				FileHash: pgtype.Text{
 					String: f.Hash,
 					Valid:  true,
@@ -185,7 +214,7 @@ func (db *DB) CreateFlavorVersion(
 
 	ret := version
 	ret.ID = id.String()
-	ret.CreatedAt = version.CreatedAt
+	ret.CreatedAt = now
 
 	return ret, nil
 }

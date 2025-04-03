@@ -81,7 +81,7 @@ type FlavorVersion struct {
 	FlavorID      string
 	Hash          string
 	Version       string
-	PrevVersionID string
+	PrevVersionID *string
 	CreatedAt     time.Time
 }
 

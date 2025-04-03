@@ -63,7 +63,7 @@ CREATE TABLE public.flavor_versions (
     flavor_id uuid NOT NULL,
     hash character(16) NOT NULL,
     version character varying(25) NOT NULL,
-    prev_version_id uuid NOT NULL,
+    prev_version_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 

@@ -10,6 +10,10 @@ sql:
         sql_package: pgx/v5
         overrides:
           - db_type: uuid
+            nullable: true
+            go_type:
+              type: '*string'
+          - db_type: uuid
             go_type:
               type: string
           - column: "public.instances.port"
