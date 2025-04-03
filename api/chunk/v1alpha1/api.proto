@@ -25,15 +25,31 @@ option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
 import "chunk/v1alpha1/types.proto";
 
 // ChunkService provides the public api for interacting with Chunks
-// and Instances of Chunks.
-//
-// We differentiate between Chunks and Instances. Chunks define the
-// configuration and provide metadata, like a name, description tags
-// and so on, that describe the experience the user can expect when
-// attempting to run the chunk. Instances on the other hand, describe
-// a running replica of a particular Chunk. This means that there can
-// be multiple replicas of a chunk by different users.
+// and flavors of Chunks.
 service ChunkService {
-  // create chunk
-  // list chunks
+
+  // CreateFlavorVersion creates a new flavor version for a
+  // given flavor by determining the added, changed and removed
+  // files. it also prevents version duplicates, meaning either
+  // version numbers or the provided set of files match with
+  // an already existing version.
+  //
+  // Defined error codes:
+  // - ALREADY_EXISTS:
+  //   - the flavor version about to be created is already present
+  //   - a version with the exact same set of files already exists
+  // - FAILED_PRECONDITION
+  //   - the provided version hash does not match with the provided file hashes
+  rpc CreateFlavorVersion(CreateFlavorVersionRequest) returns (CreateFlavorVersionResponse);
+}
+
+message CreateFlavorVersionRequest {
+  FlavorVersion version = 1;
+}
+
+message CreateFlavorVersionResponse {
+  FlavorVersion version = 1;
+  repeated FileHashes changed_files = 2;
+  repeated FileHashes removed_files = 3;
+  repeated FileHashes added_files = 4;
 }

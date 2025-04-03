@@ -19,6 +19,26 @@ CREATE TABLE IF NOT EXISTS flavors (
     updated_at           TIMESTAMPTZ      NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS flavor_versions (
+    id              UUID          NOT NULL PRIMARY KEY,
+    flavor_id       UUID          NOT NULL REFERENCES flavors(id) ON DELETE CASCADE,
+    hash            CHAR(16)      NOT NULL,
+    version         VARCHAR(25)   NOT NULL,
+    prev_version_id UUID,
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    UNIQUE (flavor_id, version)
+);
+
+CREATE UNIQUE INDEX flavor_version_idx ON flavor_versions(version);
+CREATE UNIQUE INDEX flavor_hash_idx ON flavor_versions(hash);
+
+CREATE TABLE IF NOT EXISTS flavor_version_files (
+    flavor_version_id UUID          NOT NULL REFERENCES flavor_versions(id) ON DELETE CASCADE,
+    file_hash         CHAR(16),               -- file_hash can be null if removed = true
+    file_path         VARCHAR(4096) NOT NULL, -- 4096 is PATH_MAX chars on linux
+    created_at        TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS nodes (
     id         UUID        NOT NULL PRIMARY KEY,
     address    INET        NOT NULL,

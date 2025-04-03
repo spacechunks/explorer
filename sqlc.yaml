@@ -10,9 +10,16 @@ sql:
         sql_package: pgx/v5
         overrides:
           - db_type: uuid
+            nullable: true
+            go_type:
+              type: '*string'
+          - db_type: uuid
             go_type:
               type: string
           - column: "public.instances.port"
             go_type:
               type: "int32"
               pointer: true
+          - db_type: "pg_catalog.timestamptz"
+            go_type:
+              type: "time.Time"

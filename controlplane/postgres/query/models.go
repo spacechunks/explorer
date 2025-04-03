@@ -8,6 +8,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"net/netip"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -15,11 +16,12 @@ import (
 type InstanceState string
 
 const (
-	InstanceStatePENDING  InstanceState = "PENDING"
-	InstanceStateSTARTING InstanceState = "STARTING"
-	InstanceStateRUNNING  InstanceState = "RUNNING"
-	InstanceStateDELETING InstanceState = "DELETING"
-	InstanceStateDELETED  InstanceState = "DELETED"
+	InstanceStatePENDING        InstanceState = "PENDING"
+	InstanceStateCREATING       InstanceState = "CREATING"
+	InstanceStateRUNNING        InstanceState = "RUNNING"
+	InstanceStateDELETING       InstanceState = "DELETING"
+	InstanceStateDELETED        InstanceState = "DELETED"
+	InstanceStateCREATIONFAILED InstanceState = "CREATION_FAILED"
 )
 
 func (e *InstanceState) Scan(src interface{}) error {
@@ -62,16 +64,32 @@ type Chunk struct {
 	Name        string
 	Description string
 	Tags        []string
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type Flavor struct {
 	ID        string
 	ChunkID   string
 	Name      string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type FlavorVersion struct {
+	ID            string
+	FlavorID      string
+	Hash          string
+	Version       string
+	PrevVersionID *string
+	CreatedAt     time.Time
+}
+
+type FlavorVersionFile struct {
+	FlavorVersionID string
+	FileHash        pgtype.Text
+	FilePath        string
+	CreatedAt       time.Time
 }
 
 type Instance struct {
@@ -81,14 +99,14 @@ type Instance struct {
 	NodeID    string
 	Port      *int32
 	State     InstanceState
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type Node struct {
 	ID        string
 	Address   netip.Addr
-	CreatedAt pgtype.Timestamptz
+	CreatedAt time.Time
 }
 
 type SchemaMigration struct {

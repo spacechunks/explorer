@@ -18,14 +18,9 @@
 
 package chunk
 
-import "time"
-
-type Flavor struct {
-	ID        string
-	Name      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
+import (
+	"time"
+)
 
 type Chunk struct {
 	ID          string

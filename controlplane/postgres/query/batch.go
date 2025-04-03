@@ -10,6 +10,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
@@ -55,6 +56,60 @@ func (b *BulkDeleteInstancesBatchResults) Exec(f func(int, error)) {
 }
 
 func (b *BulkDeleteInstancesBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
+const bulkInsertFlavorFileHashes = `-- name: BulkInsertFlavorFileHashes :batchexec
+INSERT INTO flavor_version_files
+    (flavor_version_id, file_hash, file_path)
+VALUES
+    ($1, $2, $3)
+`
+
+type BulkInsertFlavorFileHashesBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type BulkInsertFlavorFileHashesParams struct {
+	FlavorVersionID string
+	FileHash        pgtype.Text
+	FilePath        string
+}
+
+func (q *Queries) BulkInsertFlavorFileHashes(ctx context.Context, arg []BulkInsertFlavorFileHashesParams) *BulkInsertFlavorFileHashesBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.FlavorVersionID,
+			a.FileHash,
+			a.FilePath,
+		}
+		batch.Queue(bulkInsertFlavorFileHashes, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &BulkInsertFlavorFileHashesBatchResults{br, len(arg), false}
+}
+
+func (b *BulkInsertFlavorFileHashesBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *BulkInsertFlavorFileHashesBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }

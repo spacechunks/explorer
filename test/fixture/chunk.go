@@ -19,12 +19,20 @@
 package fixture
 
 import (
+	"fmt"
+	"hash"
 	"net/netip"
+	"sort"
+	"strings"
+	"testing"
 	"time"
 
+	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/internal/ptr"
+	"github.com/stretchr/testify/require"
+	"github.com/zeebo/xxh3"
 )
 
 func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
@@ -67,6 +75,61 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 	}
 
 	return flavor
+}
+
+func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.FlavorVersion {
+	version := chunk.FlavorVersion{
+		Flavor: chunk.Flavor{
+			ID: Flavor().ID,
+		},
+		Version: "v1",
+		FileHashes: []chunk.FileHash{
+			{
+				Path: "server.properties",
+				Hash: "server-prop-hash", // hashes can only be 16 chars long
+			},
+			{
+				Path: "plugins/myplugin/config.json",
+				Hash: "cooooooooooooooo",
+			},
+			{
+				Path: "paper.yml",
+				Hash: "pppppppppppppppp",
+			},
+		},
+	}
+
+	for _, mod := range mod {
+		mod(&version)
+	}
+
+	sort.Slice(version.FileHashes, func(i, j int) bool {
+		return strings.Compare(version.FileHashes[i].Path, version.FileHashes[j].Path) < 0
+	})
+
+	sorted := make([]chunk.FileHash, len(version.FileHashes))
+	copy(sorted, version.FileHashes)
+
+	content := make([]merkletree.Content, 0, len(version.FileHashes))
+	for _, f := range version.FileHashes {
+		content = append(content, f)
+	}
+
+	tree, err := merkletree.NewTreeWithHashStrategy(content, func() hash.Hash {
+		return xxh3.New()
+	})
+	require.NoError(t, err)
+	version.Hash = fmt.Sprintf("%x", tree.MerkleRoot())
+
+	// call twice in case we need to modify the hash
+	for _, mod := range mod {
+		mod(&version)
+	}
+
+	// the unsorted slice has been applied again by the loop above
+	version.FileHashes = sorted
+
+	return version
 }
 
 func Instance(mod ...func(i *instance.Instance)) instance.Instance {

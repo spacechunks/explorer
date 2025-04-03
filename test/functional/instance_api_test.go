@@ -34,7 +34,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/test"
-	"github.com/spacechunks/explorer/test/functional/fixture"
+	fixture2 "github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -54,23 +54,23 @@ func TestRunChunk(t *testing.T) {
 	}{
 		{
 			name:     "can run chunk",
-			chunkID:  fixture.Chunk().ID,
-			flavorID: fixture.Chunk().Flavors[0].ID,
+			chunkID:  fixture2.Chunk().ID,
+			flavorID: fixture2.Chunk().Flavors[0].ID,
 			expected: &instancev1alpha1.Instance{
 				Id: nil,
 				Chunk: &chunkv1alpha1.Chunk{
-					Id:          ptr.Pointer(fixture.Chunk().ID),
-					Name:        ptr.Pointer(fixture.Chunk().Name),
-					Description: ptr.Pointer(fixture.Chunk().Description),
-					Tags:        fixture.Chunk().Tags,
-					CreatedAt:   timestamppb.New(fixture.Chunk().CreatedAt),
-					UpdatedAt:   timestamppb.New(fixture.Chunk().UpdatedAt),
+					Id:          ptr.Pointer(fixture2.Chunk().ID),
+					Name:        ptr.Pointer(fixture2.Chunk().Name),
+					Description: ptr.Pointer(fixture2.Chunk().Description),
+					Tags:        fixture2.Chunk().Tags,
+					CreatedAt:   timestamppb.New(fixture2.Chunk().CreatedAt),
+					UpdatedAt:   timestamppb.New(fixture2.Chunk().UpdatedAt),
 				},
 				Flavor: &chunkv1alpha1.Flavor{
-					Id:        ptr.Pointer(fixture.Chunk().Flavors[0].ID),
-					Name:      ptr.Pointer(fixture.Chunk().Flavors[0].Name),
-					CreatedAt: timestamppb.New(fixture.Chunk().Flavors[0].CreatedAt),
-					UpdatedAt: timestamppb.New(fixture.Chunk().Flavors[0].UpdatedAt),
+					Id:        ptr.Pointer(fixture2.Chunk().Flavors[0].ID),
+					Name:      ptr.Pointer(fixture2.Chunk().Flavors[0].Name),
+					CreatedAt: timestamppb.New(fixture2.Chunk().Flavors[0].CreatedAt),
+					UpdatedAt: timestamppb.New(fixture2.Chunk().Flavors[0].UpdatedAt),
 				},
 				Ip:    ptr.Pointer("198.51.100.1"),
 				State: ptr.Pointer(instancev1alpha1.InstanceState_PENDING),
@@ -90,24 +90,24 @@ func TestRunChunk(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx    = context.Background()
-				pg     = fixture.NewPostgres()
+				pg     = fixture2.NewPostgres()
 				nodeID = "0195c2f6-f40c-72df-a0f1-e468f1be77b1"
 			)
 
-			fixture.RunControlPlane(t, pg)
+			fixture2.RunControlPlane(t, pg)
 
 			// FIXME: find better way to seed nodes
 			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
 			require.NoError(t, err)
 
-			_, err = pg.DB.CreateChunk(ctx, fixture.Chunk())
+			_, err = pg.DB.CreateChunk(ctx, fixture2.Chunk())
 			require.NoError(t, err)
 
-			_, err = pg.DB.CreateFlavor(ctx, fixture.Chunk().Flavors[0], fixture.Chunk().ID)
+			_, err = pg.DB.CreateFlavor(ctx, fixture2.Chunk().Flavors[0], fixture2.Chunk().ID)
 			require.NoError(t, err)
 
 			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
+				fixture2.ControlPlaneAddr,
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 			)
 			require.NoError(t, err)
@@ -147,26 +147,26 @@ func TestDiscoverInstances(t *testing.T) {
 			name:   "can discover instances",
 			nodeID: nodeID,
 			input: []instance.Instance{
-				fixture.Instance(func(i *instance.Instance) {
-					flavor := fixture.Flavor(func(f *chunk.Flavor) {
+				fixture2.Instance(func(i *instance.Instance) {
+					flavor := fixture2.Flavor(func(f *chunk.Flavor) {
 						f.ID = test.NewUUIDv7(t)
 					})
 					i.ID = "6566d325-8146-4532-b014-e13d7069af77"
 					i.State = instance.StateRunning
 					i.ChunkFlavor = flavor
-					i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
+					i.Chunk = fixture2.Chunk(func(c *chunk.Chunk) {
 						c.ID = test.NewUUIDv7(t)
 						c.Flavors = []chunk.Flavor{flavor}
 					})
 				}),
-				fixture.Instance(func(i *instance.Instance) {
-					flavor := fixture.Flavor(func(f *chunk.Flavor) {
+				fixture2.Instance(func(i *instance.Instance) {
+					flavor := fixture2.Flavor(func(f *chunk.Flavor) {
 						f.ID = test.NewUUIDv7(t)
 					})
 					i.ID = "43fc4528-30ae-4003-9edf-8ab3bdae6c69"
 					i.State = instance.StatePending
 					i.ChunkFlavor = flavor
-					i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
+					i.Chunk = fixture2.Chunk(func(c *chunk.Chunk) {
 						c.ID = test.NewUUIDv7(t)
 						c.Flavors = []chunk.Flavor{flavor}
 					})
@@ -185,7 +185,7 @@ func TestDiscoverInstances(t *testing.T) {
 			name:   "wrong node id returns no instances",
 			nodeID: "019556c6-ee21-7997-b97e-52e999e60a71",
 			input: []instance.Instance{
-				fixture.Instance(),
+				fixture2.Instance(),
 			},
 			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
 				return nil
@@ -206,10 +206,10 @@ func TestDiscoverInstances(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				pg  = fixture2.NewPostgres()
 			)
 
-			fixture.RunControlPlane(t, pg)
+			fixture2.RunControlPlane(t, pg)
 
 			// FIXME: find better way to seed nodes
 			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
@@ -227,7 +227,7 @@ func TestDiscoverInstances(t *testing.T) {
 			}
 
 			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
+				fixture2.ControlPlaneAddr,
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 			)
 			require.NoError(t, err)
@@ -267,22 +267,22 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 	}{
 		{
 			name:  "updates port and state successfully",
-			input: fixture.Instance(),
+			input: fixture2.Instance(),
 			report: instance.StatusReport{
-				InstanceID: fixture.Instance().ID,
+				InstanceID: fixture2.Instance().ID,
 				State:      instance.CreationFailed,
 				Port:       420,
 			},
-			expected: fixture.Instance(func(i *instance.Instance) {
+			expected: fixture2.Instance(func(i *instance.Instance) {
 				i.State = instance.CreationFailed
 				i.Port = ptr.Pointer(uint16(420))
 			}),
 		},
 		{
 			name:  "updates with state = DELETED removes instance",
-			input: fixture.Instance(),
+			input: fixture2.Instance(),
 			report: instance.StatusReport{
-				InstanceID: fixture.Instance().ID,
+				InstanceID: fixture2.Instance().ID,
 				State:      instance.StateDeleted,
 			},
 			expected: instance.Instance{},
@@ -293,13 +293,13 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx    = context.Background()
-				pg     = fixture.NewPostgres()
+				pg     = fixture2.NewPostgres()
 				nodeID = test.NewUUIDv7(t)
 			)
 
-			fixture.RunControlPlane(t, pg)
+			fixture2.RunControlPlane(t, pg)
 
-			ins := fixture.Instance()
+			ins := fixture2.Instance()
 
 			// FIXME: find better way to seed nodes
 			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
@@ -315,7 +315,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			require.NoError(t, err)
 
 			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
+				fixture2.ControlPlaneAddr,
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 			)
 			require.NoError(t, err)

@@ -8,8 +8,7 @@ package query
 import (
 	"context"
 	"net/netip"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 const createChunk = `-- name: CreateChunk :one
@@ -29,8 +28,8 @@ type CreateChunkParams struct {
 	Name        string
 	Description string
 	Tags        []string
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) (Chunk, error) {
@@ -70,8 +69,8 @@ type CreateFlavorParams struct {
 	ID        string
 	ChunkID   string
 	Name      string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // TODO: insert multiple (aka :batchmany)
@@ -94,6 +93,34 @@ func (q *Queries) CreateFlavor(ctx context.Context, arg CreateFlavorParams) (Fla
 	return i, err
 }
 
+const createFlavorVersion = `-- name: CreateFlavorVersion :exec
+INSERT INTO flavor_versions
+    (id, flavor_id, hash, version, prev_version_id, created_at)
+VALUES
+    ($1, $2, $3, $4, $5, $6)
+`
+
+type CreateFlavorVersionParams struct {
+	ID            string
+	FlavorID      string
+	Hash          string
+	Version       string
+	PrevVersionID *string
+	CreatedAt     time.Time
+}
+
+func (q *Queries) CreateFlavorVersion(ctx context.Context, arg CreateFlavorVersionParams) error {
+	_, err := q.db.Exec(ctx, createFlavorVersion,
+		arg.ID,
+		arg.FlavorID,
+		arg.Hash,
+		arg.Version,
+		arg.PrevVersionID,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const createInstance = `-- name: CreateInstance :exec
 /*
  * INSTANCES
@@ -111,8 +138,8 @@ type CreateInstanceParams struct {
 	FlavorID  string
 	NodeID    string
 	State     InstanceState
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) error {
@@ -128,6 +155,65 @@ func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) 
 	return err
 }
 
+const flavorVersionByHash = `-- name: FlavorVersionByHash :one
+SELECT version FROM flavor_versions WHERE hash = $1
+`
+
+func (q *Queries) FlavorVersionByHash(ctx context.Context, hash string) (string, error) {
+	row := q.db.QueryRow(ctx, flavorVersionByHash, hash)
+	var version string
+	err := row.Scan(&version)
+	return version, err
+}
+
+const flavorVersionExists = `-- name: FlavorVersionExists :one
+SELECT EXISTS(
+    SELECT 1 FROM flavor_versions
+    WHERE version = $1 AND flavor_id = $2
+)
+`
+
+type FlavorVersionExistsParams struct {
+	Version  string
+	FlavorID string
+}
+
+func (q *Queries) FlavorVersionExists(ctx context.Context, arg FlavorVersionExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, flavorVersionExists, arg.Version, arg.FlavorID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const flavorVersionFileHashes = `-- name: FlavorVersionFileHashes :many
+SELECT flavor_version_id, file_hash, file_path, created_at FROM flavor_version_files WHERE flavor_version_id = $1
+`
+
+func (q *Queries) FlavorVersionFileHashes(ctx context.Context, flavorVersionID string) ([]FlavorVersionFile, error) {
+	rows, err := q.db.Query(ctx, flavorVersionFileHashes, flavorVersionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FlavorVersionFile
+	for rows.Next() {
+		var i FlavorVersionFile
+		if err := rows.Scan(
+			&i.FlavorVersionID,
+			&i.FileHash,
+			&i.FilePath,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getChunkByID = `-- name: GetChunkByID :many
 SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at FROM chunks c
     JOIN flavors f ON f.chunk_id = c.id
@@ -139,13 +225,13 @@ type GetChunkByIDRow struct {
 	Name        string
 	Description string
 	Tags        []string
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	ID_2        string
 	ChunkID     string
 	Name_2      string
-	CreatedAt_2 pgtype.Timestamptz
-	UpdatedAt_2 pgtype.Timestamptz
+	CreatedAt_2 time.Time
+	UpdatedAt_2 time.Time
 }
 
 // TODO: read multiple
@@ -196,22 +282,22 @@ type GetInstanceRow struct {
 	NodeID      string
 	Port        *int32
 	State       InstanceState
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	ID_2        string
 	ChunkID_2   string
 	Name        string
-	CreatedAt_2 pgtype.Timestamptz
-	UpdatedAt_2 pgtype.Timestamptz
+	CreatedAt_2 time.Time
+	UpdatedAt_2 time.Time
 	ID_3        string
 	Name_2      string
 	Description string
 	Tags        []string
-	CreatedAt_3 pgtype.Timestamptz
-	UpdatedAt_3 pgtype.Timestamptz
+	CreatedAt_3 time.Time
+	UpdatedAt_3 time.Time
 	ID_4        string
 	Address     netip.Addr
-	CreatedAt_4 pgtype.Timestamptz
+	CreatedAt_4 time.Time
 }
 
 func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow, error) {
@@ -272,22 +358,22 @@ type GetInstancesByNodeIDRow struct {
 	NodeID      string
 	Port        *int32
 	State       InstanceState
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	ID_2        string
 	ChunkID_2   string
 	Name        string
-	CreatedAt_2 pgtype.Timestamptz
-	UpdatedAt_2 pgtype.Timestamptz
+	CreatedAt_2 time.Time
+	UpdatedAt_2 time.Time
 	ID_3        string
 	Name_2      string
 	Description string
 	Tags        []string
-	CreatedAt_3 pgtype.Timestamptz
-	UpdatedAt_3 pgtype.Timestamptz
+	CreatedAt_3 time.Time
+	UpdatedAt_3 time.Time
 	ID_4        string
 	Address     netip.Addr
-	CreatedAt_4 pgtype.Timestamptz
+	CreatedAt_4 time.Time
 }
 
 func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]GetInstancesByNodeIDRow, error) {
@@ -331,6 +417,25 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 		return nil, err
 	}
 	return items, nil
+}
+
+const latestFlavorVersionByFlavorID = `-- name: LatestFlavorVersionByFlavorID :one
+SELECT id, flavor_id, hash, version, prev_version_id, created_at FROM flavor_versions WHERE flavor_id = $1
+ORDER BY created_at DESC LIMIT 1
+`
+
+func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID string) (FlavorVersion, error) {
+	row := q.db.QueryRow(ctx, latestFlavorVersionByFlavorID, flavorID)
+	var i FlavorVersion
+	err := row.Scan(
+		&i.ID,
+		&i.FlavorID,
+		&i.Hash,
+		&i.Version,
+		&i.PrevVersionID,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updateChunk = `-- name: UpdateChunk :one

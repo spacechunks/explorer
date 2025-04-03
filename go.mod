@@ -5,6 +5,7 @@ go 1.24
 require (
 	github.com/amacneil/dbmate/v2 v2.26.0
 	github.com/bramvdbogaerde/go-scp v1.5.0
+	github.com/cbergoon/merkletree v0.2.0
 	github.com/cilium/ebpf v0.15.0
 	github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42
 	github.com/containernetworking/cni v1.2.0
@@ -72,6 +73,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
@@ -114,6 +116,7 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
+	github.com/zeebo/xxh3 v1.0.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.59.0 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect
