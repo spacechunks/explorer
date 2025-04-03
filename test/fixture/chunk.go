@@ -20,7 +20,10 @@ package fixture
 
 import (
 	"fmt"
+	"hash"
 	"net/netip"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,6 +32,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/stretchr/testify/require"
+	"github.com/zeebo/xxh3"
 )
 
 func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
@@ -73,7 +77,7 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 	return flavor
 }
 
-func FlavorVersion(t *testing.T, mod ...func(c *chunk.FlavorVersion)) chunk.FlavorVersion {
+func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.FlavorVersion {
 	version := chunk.FlavorVersion{
 		Flavor: chunk.Flavor{
 			ID: Flavor().ID,
@@ -82,15 +86,15 @@ func FlavorVersion(t *testing.T, mod ...func(c *chunk.FlavorVersion)) chunk.Flav
 		FileHashes: []chunk.FileHash{
 			{
 				Path: "server.properties",
-				Hash: "server.properties-hash",
+				Hash: "server-prop-hash", // hashes can only be 16 chars long
 			},
 			{
 				Path: "plugins/myplugin/config.json",
-				Hash: "config.json-hash",
+				Hash: "cooooooooooooooo",
 			},
 			{
 				Path: "paper.yml",
-				Hash: "paper.yml-hash",
+				Hash: "pppppppppppppppp",
 			},
 		},
 	}
@@ -99,12 +103,21 @@ func FlavorVersion(t *testing.T, mod ...func(c *chunk.FlavorVersion)) chunk.Flav
 		mod(&version)
 	}
 
+	sort.Slice(version.FileHashes, func(i, j int) bool {
+		return strings.Compare(version.FileHashes[i].Path, version.FileHashes[j].Path) < 0
+	})
+
+	sorted := make([]chunk.FileHash, len(version.FileHashes))
+	copy(sorted, version.FileHashes)
+
 	content := make([]merkletree.Content, 0, len(version.FileHashes))
 	for _, f := range version.FileHashes {
 		content = append(content, f)
 	}
 
-	tree, err := merkletree.NewTree(content)
+	tree, err := merkletree.NewTreeWithHashStrategy(content, func() hash.Hash {
+		return xxh3.New()
+	})
 	require.NoError(t, err)
 	version.Hash = fmt.Sprintf("%x", tree.MerkleRoot())
 
@@ -112,6 +125,9 @@ func FlavorVersion(t *testing.T, mod ...func(c *chunk.FlavorVersion)) chunk.Flav
 	for _, mod := range mod {
 		mod(&version)
 	}
+
+	// the unsorted slice has been applied again by the loop above
+	version.FileHashes = sorted
 
 	return version
 }

@@ -20,14 +20,18 @@ package chunk
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
+	"hash"
+	"log"
 	"maps"
 	"slices"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/cbergoon/merkletree"
+	"github.com/zeebo/xxh3"
 )
 
 var (
@@ -76,11 +80,7 @@ type FileHash struct {
 }
 
 func (f FileHash) CalculateHash() ([]byte, error) {
-	h := sha256.New()
-	if _, err := h.Write([]byte(f.Hash)); err != nil {
-		return nil, err
-	}
-	return h.Sum(nil), nil
+	return []byte(fmt.Sprintf("%x", xxh3.HashString(f.Hash))), nil
 }
 
 func (f FileHash) Equals(other merkletree.Content) (bool, error) {
@@ -110,7 +110,7 @@ func (s *svc) CreateFlavorVersion(
 
 	dupVersion, err := s.repo.FlavorVersionByHash(ctx, version.Hash)
 	if err != nil {
-		return FlavorVersion{}, FlavorVersionDiff{}, err
+		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("flavor version by hash: %w", err)
 	}
 
 	if dupVersion != "" {
@@ -124,12 +124,17 @@ func (s *svc) CreateFlavorVersion(
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("latest flavor version file hashes: %w", err)
 	}
 
+	log.Println(prevVersion.FileHashes)
+	log.Println(version.FileHashes)
+
 	var (
 		prevContent, _             = hashTreeContent(prevVersion.FileHashes)
 		newContent, newContentList = hashTreeContent(version.FileHashes)
 	)
 
-	newContentTree, err := merkletree.NewTree(newContentList)
+	newContentTree, err := merkletree.NewTreeWithHashStrategy(newContentList, func() hash.Hash {
+		return xxh3.New()
+	})
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("merkle tree: %w", err)
 	}
@@ -183,17 +188,26 @@ func (s *svc) CreateFlavorVersion(
 	}
 
 	var (
-		all  = make([]FileHash, 0, len(unchanged)+len(changed)+len(added))
-		diff = FlavorVersionDiff{
-			Added:   added,
-			Removed: removed,
-			Changed: changed,
-		}
+		all = make([]FileHash, 0, len(unchanged)+len(changed)+len(added))
 	)
+
+	sortByPath(unchanged)
+	sortByPath(changed)
+	sortByPath(added)
+	sortByPath(removed)
+
+	diff := FlavorVersionDiff{
+		Added:   added,
+		Removed: removed,
+		Changed: changed,
+	}
 
 	all = append(all, unchanged...)
 	all = append(all, changed...)
 	all = append(all, added...)
+
+	sortByPath(all)
+
 	version.FileHashes = all
 
 	created, err := s.repo.CreateFlavorVersion(ctx, version, prevVersion.ID)
@@ -202,6 +216,12 @@ func (s *svc) CreateFlavorVersion(
 	}
 
 	return created, diff, nil
+}
+
+func sortByPath(sl []FileHash) {
+	sort.Slice(sl, func(i, j int) bool {
+		return strings.Compare(sl[i].Path, sl[j].Path) < 0
+	})
 }
 
 func hashTreeContent(hashes []FileHash) (map[string]merkletree.Content, []merkletree.Content) {
