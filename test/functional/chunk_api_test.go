@@ -33,6 +33,96 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
+func TestCreateFlavor(t *testing.T) {
+	c := fixture.Chunk()
+	tests := []struct {
+		name  string
+		req   *chunkv1alpha1.CreateFlavorRequest
+		other *chunk.Flavor
+		err   error
+	}{
+		{
+			name: "works",
+			req: &chunkv1alpha1.CreateFlavorRequest{
+				ChunkId: &c.ID,
+				Name:    ptr.Pointer(fixture.Flavor().Name),
+			},
+		},
+		{
+			name: "flavor already exists",
+			req: &chunkv1alpha1.CreateFlavorRequest{
+				ChunkId: &c.ID,
+				Name:    ptr.Pointer(fixture.Flavor().Name),
+			},
+			other: ptr.Pointer(fixture.Flavor()),
+			err:   chunk.ErrFlavorNameExists,
+		},
+		{
+			name: "invalid chunk id",
+			req: &chunkv1alpha1.CreateFlavorRequest{
+				Name: ptr.Pointer("adawdaw"),
+			},
+			err: chunk.ErrInvalidChunkID,
+		},
+		{
+			name: "invalid flavor name",
+			req: &chunkv1alpha1.CreateFlavorRequest{
+				ChunkId: &c.ID,
+			},
+			err: chunk.ErrInvalidChunkID,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+			)
+
+			fixture.RunControlPlane(t, pg)
+
+			_, err := pg.DB.CreateChunk(ctx, c)
+			require.NoError(t, err)
+
+			if tt.other != nil {
+				_, err := pg.DB.CreateFlavor(ctx, c.ID, *tt.other)
+				require.NoError(t, err)
+			}
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+			resp, err := client.CreateFlavor(ctx, tt.req)
+
+			if tt.err != nil {
+				require.ErrorAs(t, err, &tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+			expected := &chunkv1alpha1.Flavor{
+				Id:   tt.req.ChunkId,
+				Name: tt.req.Name,
+			}
+
+			if d := cmp.Diff(
+				resp.GetFlavor(),
+				expected,
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&chunkv1alpha1.Flavor{}, "id", "updated_at", "created_at"),
+			); d != "" {
+				t.Fatalf("CreateFlavorResponse mismatch (-want +got):\n%s", d)
+			}
+
+		})
+	}
+}
+
 func TestCreateFlavorVersion(t *testing.T) {
 	var (
 		c      = fixture.Chunk()
@@ -146,7 +236,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			_, err := pg.DB.CreateChunk(ctx, c)
 			require.NoError(t, err)
 
-			_, err = pg.DB.CreateFlavor(ctx, flavor, c.ID)
+			_, err = pg.DB.CreateFlavor(ctx, c.ID, flavor)
 			require.NoError(t, err)
 
 			conn, err := grpc.NewClient(

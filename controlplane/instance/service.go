@@ -58,15 +58,15 @@ func (s *svc) RunChunk(ctx context.Context, chunkID string, flavorID string) (In
 		return Instance{}, fmt.Errorf("chunk by id: %w", err)
 	}
 
-	var flavor chunk.Flavor
+	var flavor *chunk.Flavor
 	for _, f := range c.Flavors {
 		if f.ID == flavorID {
-			flavor = f
+			flavor = &f
 			break
 		}
 	}
 
-	if flavor == (chunk.Flavor{}) {
+	if flavor == nil {
 		return Instance{}, fmt.Errorf("flavor not found")
 	}
 
@@ -78,7 +78,7 @@ func (s *svc) RunChunk(ctx context.Context, chunkID string, flavorID string) (In
 	ins, err := s.repo.CreateInstance(ctx, Instance{
 		ID:          instanceID.String(),
 		Chunk:       c,
-		ChunkFlavor: flavor,
+		ChunkFlavor: *flavor,
 		State:       StatePending,
 	}, nodeID)
 	if err != nil {

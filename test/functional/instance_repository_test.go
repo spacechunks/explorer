@@ -54,7 +54,7 @@ func TestCreateInstance(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, f := range c.Flavors {
-		_, err = pg.DB.CreateFlavor(ctx, f, c.ID)
+		_, err = pg.DB.CreateFlavor(ctx, c.ID, f)
 		require.NoError(t, err)
 	}
 
@@ -110,7 +110,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 		_, err = pg.DB.CreateChunk(ctx, c)
 		require.NoError(t, err)
 
-		_, err = pg.DB.CreateFlavor(ctx, c.Flavors[0], c.ID)
+		_, err = pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
 		require.NoError(t, err)
 
 		ins := instance.Instance{

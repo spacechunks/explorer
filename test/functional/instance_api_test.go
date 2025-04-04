@@ -103,7 +103,7 @@ func TestRunChunk(t *testing.T) {
 			_, err = pg.DB.CreateChunk(ctx, fixture2.Chunk())
 			require.NoError(t, err)
 
-			_, err = pg.DB.CreateFlavor(ctx, fixture2.Chunk().Flavors[0], fixture2.Chunk().ID)
+			_, err = pg.DB.CreateFlavor(ctx, fixture2.Chunk().ID, fixture2.Chunk().Flavors[0])
 			require.NoError(t, err)
 
 			conn, err := grpc.NewClient(
@@ -219,7 +219,7 @@ func TestDiscoverInstances(t *testing.T) {
 				_, err = pg.DB.CreateChunk(ctx, i.Chunk)
 				require.NoError(t, err)
 
-				_, err = pg.DB.CreateFlavor(ctx, i.ChunkFlavor, i.Chunk.ID)
+				_, err = pg.DB.CreateFlavor(ctx, i.Chunk.ID, i.ChunkFlavor)
 				require.NoError(t, err)
 
 				_, err = pg.DB.CreateInstance(ctx, i, nodeID)
@@ -308,7 +308,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			_, err = pg.DB.CreateChunk(ctx, ins.Chunk)
 			require.NoError(t, err)
 
-			_, err = pg.DB.CreateFlavor(ctx, ins.ChunkFlavor, ins.Chunk.ID)
+			_, err = pg.DB.CreateFlavor(ctx, ins.Chunk.ID, ins.ChunkFlavor)
 			require.NoError(t, err)
 
 			_, err = pg.DB.CreateInstance(ctx, ins, nodeID)

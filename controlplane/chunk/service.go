@@ -26,6 +26,7 @@ import (
 type Service interface {
 	CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
 	GetChunk(ctx context.Context, id string) (Chunk, error)
+	CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error)
 	CreateFlavorVersion(ctx context.Context, version FlavorVersion) (FlavorVersion, FlavorVersionDiff, error)
 }
 

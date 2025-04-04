@@ -20,8 +20,16 @@ package chunk
 
 import (
 	"context"
+	"fmt"
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+var (
+	ErrInvalidChunkID    = status.Errorf(codes.InvalidArgument, "provided chunk id is invalid")
+	ErrInvalidFlavorName = status.Errorf(codes.InvalidArgument, "provided flavor name is invalid")
 )
 
 type Server struct {
@@ -33,6 +41,32 @@ func NewServer(service Service) *Server {
 	return &Server{
 		service: service,
 	}
+}
+
+func (s *Server) CreateFlavor(
+	ctx context.Context,
+	req *chunkv1alpha1.CreateFlavorRequest,
+) (*chunkv1alpha1.CreateFlavorResponse, error) {
+	if req.GetChunkId() == "" {
+		return nil, ErrInvalidChunkID
+	}
+
+	if req.GetName() == "" {
+		return nil, ErrInvalidFlavorName
+	}
+
+	domain := Flavor{
+		Name: req.GetName(),
+	}
+
+	created, err := s.service.CreateFlavor(ctx, req.GetChunkId(), domain)
+	if err != nil {
+		return nil, fmt.Errorf("create flavor: %w", err)
+	}
+
+	return &chunkv1alpha1.CreateFlavorResponse{
+		Flavor: FlavorToTransport(created),
+	}, nil
 }
 
 func (s *Server) CreateFlavorVersion(
