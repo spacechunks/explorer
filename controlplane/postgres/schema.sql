@@ -142,6 +142,14 @@ ALTER TABLE ONLY public.flavor_versions
 
 
 --
+-- Name: flavors flavors_id_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavors
+    ADD CONSTRAINT flavors_id_name_key UNIQUE (id, name);
+
+
+--
 -- Name: flavors flavors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -178,6 +186,13 @@ ALTER TABLE ONLY public.schema_migrations
 --
 
 CREATE UNIQUE INDEX flavor_hash_idx ON public.flavor_versions USING btree (hash);
+
+
+--
+-- Name: flavor_name_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX flavor_name_idx ON public.flavors USING btree (name);
 
 
 --
