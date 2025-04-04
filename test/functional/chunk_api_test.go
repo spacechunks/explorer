@@ -118,7 +118,6 @@ func TestCreateFlavor(t *testing.T) {
 			); d != "" {
 				t.Fatalf("CreateFlavorResponse mismatch (-want +got):\n%s", d)
 			}
-
 		})
 	}
 }
