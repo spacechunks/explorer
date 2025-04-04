@@ -33,41 +33,56 @@ import (
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
-type flavorParams struct {
-	create query.CreateFlavorParams
-}
-
-func createFlavorParams(flavor chunk.Flavor, chunkID string) flavorParams {
-	return flavorParams{
-		create: query.CreateFlavorParams{
-			ID:        flavor.ID,
-			ChunkID:   chunkID,
-			Name:      flavor.Name,
-			CreatedAt: flavor.CreatedAt,
-			UpdatedAt: flavor.UpdatedAt,
-		},
+func (db *DB) CreateFlavor(ctx context.Context, chunkID string, flavor chunk.Flavor) (chunk.Flavor, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return chunk.Flavor{}, fmt.Errorf("create flavor id: %w", err)
 	}
-}
-
-func (db *DB) CreateFlavor(ctx context.Context, flavor chunk.Flavor, chunkID string) (chunk.Flavor, error) {
-	params := createFlavorParams(flavor, chunkID)
 
 	var ret chunk.Flavor
 	if err := db.do(ctx, func(q *query.Queries) error {
-		f, err := q.CreateFlavor(ctx, params.create)
-		if err != nil {
+		now := time.Now()
+
+		if err := q.CreateFlavor(ctx, query.CreateFlavorParams{
+			ID:        id.String(),
+			ChunkID:   chunkID,
+			Name:      flavor.Name,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}); err != nil {
 			return fmt.Errorf("create flavor: %w", err)
 		}
 
 		ret = chunk.Flavor{
-			ID:        f.ID,
-			Name:      f.Name,
-			CreatedAt: f.CreatedAt.UTC(),
-			UpdatedAt: f.UpdatedAt.UTC(),
+			ID:        id.String(),
+			Name:      flavor.Name,
+			CreatedAt: now,
+			UpdatedAt: now,
 		}
+
 		return nil
 	}); err != nil {
 		return chunk.Flavor{}, err
+	}
+
+	return ret, nil
+}
+
+func (db *DB) FlavorNameExists(ctx context.Context, chunkID string, name string) (bool, error) {
+	var ret bool
+	if err := db.do(ctx, func(q *query.Queries) error {
+		ok, err := q.FlavorNameExists(ctx, query.FlavorNameExistsParams{
+			ChunkID: chunkID,
+			Name:    name,
+		})
+		if err != nil {
+			return err
+		}
+
+		ret = ok
+		return nil
+	}); err != nil {
+		return false, err
 	}
 
 	return ret, nil

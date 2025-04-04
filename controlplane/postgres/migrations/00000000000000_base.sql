@@ -1,6 +1,4 @@
 -- migrate:up
-CREATE TYPE instance_state AS ENUM ('PENDING', 'CREATING', 'RUNNING', 'DELETING', 'DELETED', 'CREATION_FAILED');
-
 CREATE TABLE IF NOT EXISTS chunks (
     id          UUID             NOT NULL PRIMARY KEY,
     name        VARCHAR(25)      NOT NULL,
@@ -11,12 +9,17 @@ CREATE TABLE IF NOT EXISTS chunks (
     updated_at  TIMESTAMPTZ      NOT NULL DEFAULT now()
 );
 
+--
+-- flavors
+--
+
 CREATE TABLE IF NOT EXISTS flavors (
     id                   UUID PRIMARY KEY NOT NULL,
     chunk_id             UUID             NOT NULL REFERENCES chunks(id),
     name                 VARCHAR(25)      NOT NULL,
     created_at           TIMESTAMPTZ      NOT NULL DEFAULT now(),
-    updated_at           TIMESTAMPTZ      NOT NULL DEFAULT now()
+    updated_at           TIMESTAMPTZ      NOT NULL DEFAULT now(),
+    UNIQUE (id, name)
 );
 
 CREATE TABLE IF NOT EXISTS flavor_versions (
@@ -29,15 +32,22 @@ CREATE TABLE IF NOT EXISTS flavor_versions (
     UNIQUE (flavor_id, version)
 );
 
-CREATE UNIQUE INDEX flavor_version_idx ON flavor_versions(version);
-CREATE UNIQUE INDEX flavor_hash_idx ON flavor_versions(hash);
-
 CREATE TABLE IF NOT EXISTS flavor_version_files (
     flavor_version_id UUID          NOT NULL REFERENCES flavor_versions(id) ON DELETE CASCADE,
     file_hash         CHAR(16),               -- file_hash can be null if removed = true
     file_path         VARCHAR(4096) NOT NULL, -- 4096 is PATH_MAX chars on linux
     created_at        TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
+
+CREATE UNIQUE INDEX flavor_name_idx ON flavors(name);
+CREATE UNIQUE INDEX flavor_version_idx ON flavor_versions(version);
+CREATE UNIQUE INDEX flavor_hash_idx ON flavor_versions(hash);
+
+--
+-- instances
+--
+
+CREATE TYPE instance_state AS ENUM ('PENDING', 'CREATING', 'RUNNING', 'DELETING', 'DELETED', 'CREATION_FAILED');
 
 CREATE TABLE IF NOT EXISTS nodes (
     id         UUID        NOT NULL PRIMARY KEY,

@@ -30,12 +30,17 @@ RETURNING *;
  */
 
 -- TODO: insert multiple (aka :batchmany)
--- name: CreateFlavor :one
+-- name: CreateFlavor :exec
 INSERT INTO flavors
     (id, chunk_id, name, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4, $5)
-RETURNING *;
+    ($1, $2, $3, $4, $5);
+
+-- name: FlavorNameExists :one
+SELECT EXISTS(
+    SELECT 1 FROM flavors
+    WHERE name = $1 AND chunk_id = $2
+);
 
 -- name: LatestFlavorVersionByFlavorID :one
 SELECT * FROM flavor_versions WHERE flavor_id = $1

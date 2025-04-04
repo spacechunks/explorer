@@ -27,6 +27,15 @@ import "chunk/v1alpha1/types.proto";
 // ChunkService provides the public api for interacting with Chunks
 // and flavors of Chunks.
 service ChunkService {
+  // CreateFlavor creates a new flavor for a given chunk.
+  //
+  // Defined error codes:
+  // - ALREADY_EXISTS:
+  //   - a flavor with the given name already exists for this chunk
+  // - INVALID_ARGUMENT:
+  //   - the provided chunk id is invalid
+  //   - the provided flavor name is invalid
+  rpc CreateFlavor(CreateFlavorRequest) returns (CreateFlavorResponse);
 
   // CreateFlavorVersion creates a new flavor version for a
   // given flavor by determining the added, changed and removed
@@ -38,9 +47,18 @@ service ChunkService {
   // - ALREADY_EXISTS:
   //   - the flavor version about to be created is already present
   //   - a version with the exact same set of files already exists
-  // - FAILED_PRECONDITION
+  // - FAILED_PRECONDITION:
   //   - the provided version hash does not match with the provided file hashes
   rpc CreateFlavorVersion(CreateFlavorVersionRequest) returns (CreateFlavorVersionResponse);
+}
+
+message CreateFlavorRequest {
+  string chunk_id = 1;
+  string name = 2;
+}
+
+message CreateFlavorResponse {
+  Flavor flavor = 1;
 }
 
 message CreateFlavorVersionRequest {

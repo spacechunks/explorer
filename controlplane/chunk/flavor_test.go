@@ -29,6 +29,62 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCreateFlavor(t *testing.T) {
+	chunkID := "somethingsomething"
+	tests := []struct {
+		name     string
+		flavor   chunk.Flavor
+		expected chunk.Flavor
+		err      error
+		prep     func(*mock.MockChunkRepository)
+	}{
+		{
+			name:     "works",
+			flavor:   fixture.Flavor(),
+			expected: fixture.Flavor(),
+			prep: func(repo *mock.MockChunkRepository) {
+				repo.EXPECT().
+					FlavorNameExists(mocky.Anything, chunkID, fixture.Flavor().Name).
+					Return(false, nil)
+				repo.EXPECT().
+					CreateFlavor(mocky.Anything, chunkID, fixture.Flavor()).
+					Return(fixture.Flavor(), nil)
+			},
+		},
+		{
+			name:   "flavor name already exists",
+			err:    chunk.ErrFlavorNameExists,
+			flavor: fixture.Flavor(),
+			prep: func(repo *mock.MockChunkRepository) {
+				repo.EXPECT().
+					FlavorNameExists(mocky.Anything, chunkID, fixture.Flavor().Name).
+					Return(true, nil)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx      = context.Background()
+				mockRepo = mock.NewMockChunkRepository(t)
+				svc      = chunk.NewService(mockRepo)
+			)
+
+			tt.prep(mockRepo)
+
+			actual, err := svc.CreateFlavor(ctx, chunkID, tt.flavor)
+
+			if tt.err != nil {
+				require.ErrorAs(t, err, &tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 func TestCreateFlavorVersion(t *testing.T) {
 	tests := []struct {
 		name         string

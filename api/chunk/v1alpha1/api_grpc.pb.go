@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	ChunkService_CreateFlavor_FullMethodName        = "/chunk.v1alpha1.ChunkService/CreateFlavor"
 	ChunkService_CreateFlavorVersion_FullMethodName = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
 )
 
@@ -29,6 +30,20 @@ const (
 // ChunkService provides the public api for interacting with Chunks
 // and flavors of Chunks.
 type ChunkServiceClient interface {
+	CreateFlavor(ctx context.Context, in *CreateFlavorRequest, opts ...grpc.CallOption) (*CreateFlavorResponse, error)
+	// CreateFlavorVersion creates a new flavor version for a
+	// given flavor by determining the added, changed and removed
+	// files. it also prevents version duplicates, meaning either
+	// version numbers or the provided set of files match with
+	// an already existing version.
+	//
+	// Defined error codes:
+	// - ALREADY_EXISTS:
+	//   - the flavor version about to be created is already present
+	//   - a version with the exact same set of files already exists
+	//
+	// - FAILED_PRECONDITION
+	//   - the provided version hash does not match with the provided file hashes
 	CreateFlavorVersion(ctx context.Context, in *CreateFlavorVersionRequest, opts ...grpc.CallOption) (*CreateFlavorVersionResponse, error)
 }
 
@@ -38,6 +53,16 @@ type chunkServiceClient struct {
 
 func NewChunkServiceClient(cc grpc.ClientConnInterface) ChunkServiceClient {
 	return &chunkServiceClient{cc}
+}
+
+func (c *chunkServiceClient) CreateFlavor(ctx context.Context, in *CreateFlavorRequest, opts ...grpc.CallOption) (*CreateFlavorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateFlavorResponse)
+	err := c.cc.Invoke(ctx, ChunkService_CreateFlavor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *chunkServiceClient) CreateFlavorVersion(ctx context.Context, in *CreateFlavorVersionRequest, opts ...grpc.CallOption) (*CreateFlavorVersionResponse, error) {
@@ -57,6 +82,20 @@ func (c *chunkServiceClient) CreateFlavorVersion(ctx context.Context, in *Create
 // ChunkService provides the public api for interacting with Chunks
 // and flavors of Chunks.
 type ChunkServiceServer interface {
+	CreateFlavor(context.Context, *CreateFlavorRequest) (*CreateFlavorResponse, error)
+	// CreateFlavorVersion creates a new flavor version for a
+	// given flavor by determining the added, changed and removed
+	// files. it also prevents version duplicates, meaning either
+	// version numbers or the provided set of files match with
+	// an already existing version.
+	//
+	// Defined error codes:
+	// - ALREADY_EXISTS:
+	//   - the flavor version about to be created is already present
+	//   - a version with the exact same set of files already exists
+	//
+	// - FAILED_PRECONDITION
+	//   - the provided version hash does not match with the provided file hashes
 	CreateFlavorVersion(context.Context, *CreateFlavorVersionRequest) (*CreateFlavorVersionResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
@@ -68,6 +107,9 @@ type ChunkServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedChunkServiceServer struct{}
 
+func (UnimplementedChunkServiceServer) CreateFlavor(context.Context, *CreateFlavorRequest) (*CreateFlavorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateFlavor not implemented")
+}
 func (UnimplementedChunkServiceServer) CreateFlavorVersion(context.Context, *CreateFlavorVersionRequest) (*CreateFlavorVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateFlavorVersion not implemented")
 }
@@ -90,6 +132,24 @@ func RegisterChunkServiceServer(s grpc.ServiceRegistrar, srv ChunkServiceServer)
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ChunkService_ServiceDesc, srv)
+}
+
+func _ChunkService_CreateFlavor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateFlavorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).CreateFlavor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_CreateFlavor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).CreateFlavor(ctx, req.(*CreateFlavorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ChunkService_CreateFlavorVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -117,6 +177,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "chunk.v1alpha1.ChunkService",
 	HandlerType: (*ChunkServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateFlavor",
+			Handler:    _ChunkService_CreateFlavor_Handler,
+		},
 		{
 			MethodName: "CreateFlavorVersion",
 			Handler:    _ChunkService_CreateFlavorVersion_Handler,

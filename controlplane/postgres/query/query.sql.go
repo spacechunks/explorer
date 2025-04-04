@@ -53,7 +53,7 @@ func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) (Chunk
 	return i, err
 }
 
-const createFlavor = `-- name: CreateFlavor :one
+const createFlavor = `-- name: CreateFlavor :exec
 /*
  * FLAVORS
  */
@@ -62,7 +62,6 @@ INSERT INTO flavors
     (id, chunk_id, name, created_at, updated_at)
 VALUES
     ($1, $2, $3, $4, $5)
-RETURNING id, chunk_id, name, created_at, updated_at
 `
 
 type CreateFlavorParams struct {
@@ -74,23 +73,15 @@ type CreateFlavorParams struct {
 }
 
 // TODO: insert multiple (aka :batchmany)
-func (q *Queries) CreateFlavor(ctx context.Context, arg CreateFlavorParams) (Flavor, error) {
-	row := q.db.QueryRow(ctx, createFlavor,
+func (q *Queries) CreateFlavor(ctx context.Context, arg CreateFlavorParams) error {
+	_, err := q.db.Exec(ctx, createFlavor,
 		arg.ID,
 		arg.ChunkID,
 		arg.Name,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	var i Flavor
-	err := row.Scan(
-		&i.ID,
-		&i.ChunkID,
-		&i.Name,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+	return err
 }
 
 const createFlavorVersion = `-- name: CreateFlavorVersion :exec
@@ -153,6 +144,25 @@ func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) 
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const flavorNameExists = `-- name: FlavorNameExists :one
+SELECT EXISTS(
+    SELECT 1 FROM flavors
+    WHERE name = $1 AND chunk_id = $2
+)
+`
+
+type FlavorNameExistsParams struct {
+	Name    string
+	ChunkID string
+}
+
+func (q *Queries) FlavorNameExists(ctx context.Context, arg FlavorNameExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, flavorNameExists, arg.Name, arg.ChunkID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const flavorVersionByHash = `-- name: FlavorVersionByHash :one
