@@ -29,7 +29,6 @@ import "google/protobuf/timestamp.proto";
 // from a minigame to a freebuild server.
 message Chunk {
   string id = 1;
-
   string name = 2;
 
   // Description briefly describes what the user can
@@ -43,17 +42,13 @@ message Chunk {
   // User owner = 5;
 
   google.protobuf.Timestamp created_at = 6;
-
   google.protobuf.Timestamp updated_at = 7;
 }
 
 message Flavor {
   string id = 1;
-
   string name = 2;
-
   google.protobuf.Timestamp created_at = 3;
-
   google.protobuf.Timestamp updated_at = 4;
 }
 

@@ -34,6 +34,7 @@ import (
 )
 
 var (
+	ErrFlavorNameExists          = errors.New("flavor name already exists")
 	ErrFlavorVersionExists       = errors.New("flavor version already exists")
 	ErrFlavorVersionHashMismatch = errors.New("flavor hash does not match")
 )
@@ -93,6 +94,24 @@ func (f FileHash) Equals(other merkletree.Content) (bool, error) {
 /*
  * service functions
  */
+
+func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error) {
+	exists, err := s.repo.FlavorNameExists(ctx, chunkID, flavor.Name)
+	if err != nil {
+		return Flavor{}, fmt.Errorf("flavor name exists: %w", err)
+	}
+
+	if exists {
+		return Flavor{}, ErrFlavorNameExists
+	}
+
+	ret, err := s.repo.CreateFlavor(ctx, chunkID, flavor)
+	if err != nil {
+		return Flavor{}, err
+	}
+
+	return ret, nil
+}
 
 func (s *svc) CreateFlavorVersion(
 	ctx context.Context,

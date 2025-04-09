@@ -25,10 +25,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/test"
-	fixture2 "github.com/spacechunks/explorer/test/fixture"
+	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,9 +42,9 @@ func TestCreateInstance(t *testing.T) {
 
 	var (
 		ctx    = context.Background()
-		pg     = fixture2.NewPostgres()
+		pg     = fixture.NewPostgres()
 		nodeID = test.NewUUIDv7(t)
-		c      = fixture2.Chunk()
+		c      = fixture.Chunk()
 	)
 
 	pg.Run(t, ctx)
@@ -50,29 +52,38 @@ func TestCreateInstance(t *testing.T) {
 	_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
 	require.NoError(t, err)
 
+	c.Flavors = []chunk.Flavor{c.Flavors[0]}
+
 	_, err = pg.DB.CreateChunk(ctx, c)
 	require.NoError(t, err)
 
-	for _, f := range c.Flavors {
-		_, err = pg.DB.CreateFlavor(ctx, f, c.ID)
-		require.NoError(t, err)
-	}
+	createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
+	require.NoError(t, err)
 
 	// ^ above are prerequisites
 
-	expected := fixture2.Instance()
+	expected := fixture.Instance()
+	expected.Chunk = c
+	expected.ChunkFlavor = createdFlavor
 	expected.Port = nil // port will not be saved when creating
 
 	actual, err := pg.DB.CreateInstance(ctx, expected, nodeID)
 	require.NoError(t, err)
 
-	require.Equal(t, expected, actual)
+	if d := cmp.Diff(
+		expected,
+		actual,
+		test.IgnoreFields(test.IgnoredInstanceFields...),
+		cmpopts.EquateComparable(netip.Addr{}),
+	); d != "" {
+		t.Fatalf("CreateInstance() mismatch (-want +got):\n%s", d)
+	}
 }
 
 func TestGetInstancesByNodeID(t *testing.T) {
 	var (
 		ctx    = context.Background()
-		pg     = fixture2.NewPostgres()
+		pg     = fixture.NewPostgres()
 		nodeID = test.NewUUIDv7(t)
 	)
 
@@ -82,21 +93,21 @@ func TestGetInstancesByNodeID(t *testing.T) {
 	require.NoError(t, err)
 
 	chunks := []chunk.Chunk{
-		fixture2.Chunk(func(c *chunk.Chunk) {
+		fixture.Chunk(func(c *chunk.Chunk) {
 			c.ID = "01953e54-8ac5-7c1a-b468-dffdc26d2087"
 			c.Name = "chunk1"
 			c.Flavors = []chunk.Flavor{
-				fixture2.Flavor(func(f *chunk.Flavor) {
+				fixture.Flavor(func(f *chunk.Flavor) {
 					f.ID = test.NewUUIDv7(t)
 					f.Name = "flavor_" + test.RandHexStr(t)
 				}),
 			}
 		}),
-		fixture2.Chunk(func(c *chunk.Chunk) {
+		fixture.Chunk(func(c *chunk.Chunk) {
 			c.ID = "01953e54-b686-764a-874f-dbc45b67152c"
 			c.Name = "chunk2"
 			c.Flavors = []chunk.Flavor{
-				fixture2.Flavor(func(f *chunk.Flavor) {
+				fixture.Flavor(func(f *chunk.Flavor) {
 					f.ID = test.NewUUIDv7(t)
 					f.Name = "flavor_" + test.RandHexStr(t)
 				}),
@@ -110,13 +121,13 @@ func TestGetInstancesByNodeID(t *testing.T) {
 		_, err = pg.DB.CreateChunk(ctx, c)
 		require.NoError(t, err)
 
-		_, err = pg.DB.CreateFlavor(ctx, c.Flavors[0], c.ID)
+		createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
 		require.NoError(t, err)
 
 		ins := instance.Instance{
 			ID:          test.NewUUIDv7(t),
 			Chunk:       c,
-			ChunkFlavor: c.Flavors[0],
+			ChunkFlavor: createdFlavor,
 			Address:     netip.MustParseAddr("198.51.100.1"),
 			State:       instance.StatePending,
 			CreatedAt:   c.CreatedAt,
@@ -126,7 +137,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 		// see FIXME in GetInstancesByNodeID
 		ins.Chunk.Flavors = nil
 
-		_, err := pg.DB.CreateInstance(ctx, ins, nodeID)
+		_, err = pg.DB.CreateInstance(ctx, ins, nodeID)
 		require.NoError(t, err)
 
 		expected = append(expected, ins)
@@ -143,7 +154,14 @@ func TestGetInstancesByNodeID(t *testing.T) {
 		return strings.Compare(acutalInstances[i].ID, acutalInstances[j].ID) < 0
 	})
 
-	require.Equal(t, expected, acutalInstances)
+	if d := cmp.Diff(
+		expected,
+		acutalInstances,
+		test.IgnoreFields(test.IgnoredInstanceFields...),
+		cmpopts.EquateComparable(netip.Addr{}),
+	); d != "" {
+		t.Fatalf("TestGetInstancesByNodeID() mismatch (-want +got):\n%s", d)
+	}
 }
 
 // TODO: add test for applystatusreports
