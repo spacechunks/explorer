@@ -85,6 +85,66 @@ func TestCreateFlavor(t *testing.T) {
 	}
 }
 
+func TestListFlavors(t *testing.T) {
+	chunkID := "somethingsomething"
+	tests := []struct {
+		name     string
+		expected []chunk.Flavor
+		err      error
+		prep     func(*mock.MockChunkRepository, []chunk.Flavor)
+	}{
+		{
+			name: "works",
+			expected: []chunk.Flavor{
+				fixture.Flavor(func(f *chunk.Flavor) {
+					f.Name = "f1"
+				}),
+				fixture.Flavor(func(f *chunk.Flavor) {
+					f.Name = "f2"
+				}),
+			},
+			prep: func(repo *mock.MockChunkRepository, flavors []chunk.Flavor) {
+				repo.EXPECT().
+					ChunkExists(mocky.Anything, chunkID).
+					Return(true, nil)
+				repo.EXPECT().
+					ListFlavorsByChunkID(mocky.Anything, chunkID).
+					Return(flavors, nil)
+			},
+		},
+		{
+			name: "chunk does not exists",
+			err:  chunk.ErrInvalidChunkID,
+			prep: func(repo *mock.MockChunkRepository, _ []chunk.Flavor) {
+				repo.EXPECT().
+					ChunkExists(mocky.Anything, chunkID).
+					Return(false, nil)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx      = context.Background()
+				mockRepo = mock.NewMockChunkRepository(t)
+				svc      = chunk.NewService(mockRepo)
+			)
+
+			tt.prep(mockRepo, tt.expected)
+
+			flavors, err := svc.ListFlavors(ctx, chunkID)
+
+			if tt.err != nil {
+				require.ErrorIs(t, err, chunk.ErrChunkNotFound)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, flavors)
+		})
+	}
+}
+
 func TestCreateFlavorVersion(t *testing.T) {
 	tests := []struct {
 		name         string

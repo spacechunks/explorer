@@ -31,12 +31,14 @@ import (
 
 	"github.com/cbergoon/merkletree"
 	"github.com/zeebo/xxh3"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
-	ErrFlavorNameExists          = errors.New("flavor name already exists")
-	ErrFlavorVersionExists       = errors.New("flavor version already exists")
-	ErrFlavorVersionHashMismatch = errors.New("flavor hash does not match")
+	ErrFlavorNameExists          = status.Error(codes.AlreadyExists, "flavor name already exists")
+	ErrFlavorVersionExists       = status.Error(codes.AlreadyExists, "flavor version already exists")
+	ErrFlavorVersionHashMismatch = status.Error(codes.FailedPrecondition, "flavor hash does not match")
 )
 
 type ErrFlavorVersionDuplicate struct {
@@ -111,6 +113,28 @@ func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (
 	}
 
 	return ret, nil
+}
+
+func (s *svc) ListFlavors(ctx context.Context, chunkID string) ([]Flavor, error) {
+	// reason why we check if the chunk exists is so that we can return
+	// a more descriptive error message. otherwise we would simply seturn
+	// an empty list in the response, which is does not indicate if the
+	// chunk is missing or does not have any flavors configured.
+	exists, err := s.repo.ChunkExists(ctx, chunkID)
+	if err != nil {
+		return nil, fmt.Errorf("chunk exists: %w", err)
+	}
+
+	if !exists {
+		return nil, ErrChunkNotFound
+	}
+
+	flavors, err := s.repo.ListFlavorsByChunkID(ctx, chunkID)
+	if err != nil {
+		return nil, fmt.Errorf("list flavors: %w", err)
+	}
+
+	return flavors, nil
 }
 
 func (s *svc) CreateFlavorVersion(
