@@ -142,3 +142,20 @@ func (db *DB) UpdateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 
 	return ret, nil
 }
+
+func (db *DB) ChunkExists(ctx context.Context, id string) (bool, error) {
+	var ret bool
+	if err := db.do(ctx, func(q *query.Queries) error {
+		ok, err := q.ChunkExists(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		ret = ok
+		return nil
+	}); err != nil {
+		return false, err
+	}
+
+	return ret, nil
+}

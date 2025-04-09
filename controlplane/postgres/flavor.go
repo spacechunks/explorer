@@ -68,6 +68,33 @@ func (db *DB) CreateFlavor(ctx context.Context, chunkID string, flavor chunk.Fla
 	return ret, nil
 }
 
+func (db *DB) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]chunk.Flavor, error) {
+	var ret []chunk.Flavor
+	if err := db.do(ctx, func(q *query.Queries) error {
+		flavors, err := q.ListFlavorsByChunkID(ctx, chunkID)
+		if err != nil {
+			return err
+		}
+
+		ret = make([]chunk.Flavor, 0, len(flavors))
+
+		for _, f := range flavors {
+			ret = append(ret, chunk.Flavor{
+				ID:        f.ID,
+				Name:      f.Name,
+				CreatedAt: f.CreatedAt,
+				UpdatedAt: f.UpdatedAt,
+			})
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
 func (db *DB) FlavorNameExists(ctx context.Context, chunkID string, name string) (bool, error) {
 	var ret bool
 	if err := db.do(ctx, func(q *query.Queries) error {

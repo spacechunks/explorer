@@ -11,6 +11,20 @@ import (
 	"time"
 )
 
+const chunkExists = `-- name: ChunkExists :one
+SELECT EXISTS(
+    SELECT 1 FROM chunks
+    WHERE id = $1
+)
+`
+
+func (q *Queries) ChunkExists(ctx context.Context, id string) (bool, error) {
+	row := q.db.QueryRow(ctx, chunkExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const createChunk = `-- name: CreateChunk :one
 /*
  * CHUNKS
@@ -446,6 +460,36 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listFlavorsByChunkID = `-- name: ListFlavorsByChunkID :many
+SELECT id, chunk_id, name, created_at, updated_at FROM flavors WHERE chunk_id = $1
+`
+
+func (q *Queries) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]Flavor, error) {
+	rows, err := q.db.Query(ctx, listFlavorsByChunkID, chunkID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Flavor
+	for rows.Next() {
+		var i Flavor
+		if err := rows.Scan(
+			&i.ID,
+			&i.ChunkID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateChunk = `-- name: UpdateChunk :one

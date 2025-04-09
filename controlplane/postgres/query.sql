@@ -25,6 +25,12 @@ SET
 WHERE id = $4
 RETURNING *;
 
+-- name: ChunkExists :one
+SELECT EXISTS(
+    SELECT 1 FROM chunks
+    WHERE id = $1
+);
+
 /*
  * FLAVORS
  */
@@ -35,6 +41,9 @@ INSERT INTO flavors
     (id, chunk_id, name, created_at, updated_at)
 VALUES
     ($1, $2, $3, $4, $5);
+
+-- name: ListFlavorsByChunkID :many
+SELECT * FROM flavors WHERE chunk_id = $1;
 
 -- name: FlavorNameExists :one
 SELECT EXISTS(

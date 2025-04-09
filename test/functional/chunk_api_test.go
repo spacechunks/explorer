@@ -70,7 +70,7 @@ func TestCreateFlavor(t *testing.T) {
 			req: &chunkv1alpha1.CreateFlavorRequest{
 				ChunkId: &c.ID,
 			},
-			err: chunk.ErrInvalidChunkID,
+			err: chunk.ErrInvalidFlavorName,
 		},
 	}
 	for _, tt := range tests {
@@ -118,6 +118,91 @@ func TestCreateFlavor(t *testing.T) {
 				test.IgnoredProtoFlavorFields,
 			); d != "" {
 				t.Fatalf("CreateFlavorResponse mismatch (-want +got):\n%s", d)
+			}
+		})
+	}
+}
+
+func TestListFlavors(t *testing.T) {
+	tests := []struct {
+		name     string
+		req      *chunkv1alpha1.ListFlavorsRequest
+		expected []chunk.Flavor
+		c        *chunk.Chunk
+		err      error
+	}{
+		{
+			name: "works",
+			c:    ptr.Pointer(fixture.Chunk()),
+			expected: []chunk.Flavor{
+				fixture.Flavor(func(f *chunk.Flavor) {
+					f.Name = "f1"
+				}),
+				fixture.Flavor(func(f *chunk.Flavor) {
+					f.Name = "f2"
+				}),
+			},
+			req: &chunkv1alpha1.ListFlavorsRequest{
+				ChunkId: ptr.Pointer(fixture.Chunk().ID),
+			},
+		},
+		{
+			name: "invalid chunk id",
+			req:  &chunkv1alpha1.ListFlavorsRequest{},
+			err:  chunk.ErrInvalidChunkID,
+		},
+		{
+			name: "chunk not found",
+			req:  &chunkv1alpha1.ListFlavorsRequest{},
+			err:  chunk.ErrChunkNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+			)
+
+			fixture.RunControlPlane(t, pg)
+
+			var expected []*chunkv1alpha1.Flavor
+
+			if tt.c != nil {
+				_, err := pg.DB.CreateChunk(ctx, *tt.c)
+				require.NoError(t, err)
+
+				for _, f := range tt.expected {
+					_, err := pg.DB.CreateFlavor(ctx, tt.c.ID, f)
+					expected = append(expected, chunk.FlavorToTransport(f))
+					require.NoError(t, err)
+				}
+			}
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+			resp, err := client.ListFlavors(ctx, tt.req)
+
+			if tt.err != nil {
+				require.ErrorAs(t, err, &tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			if d := cmp.Diff(
+				resp.GetFlavors(),
+				expected,
+				protocmp.Transform(),
+				test.IgnoredProtoFlavorFields,
+			); d != "" {
+				t.Fatalf("mismatch (-want +got):\n%s", d)
 			}
 		})
 	}
