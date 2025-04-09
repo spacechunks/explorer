@@ -26,6 +26,7 @@ import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/internal/ptr"
+	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -114,7 +115,7 @@ func TestCreateFlavor(t *testing.T) {
 				resp.GetFlavor(),
 				expected,
 				protocmp.Transform(),
-				protocmp.IgnoreFields(&chunkv1alpha1.Flavor{}, "id", "updated_at", "created_at"),
+				test.IgnoredProtoFlavorFields,
 			); d != "" {
 				t.Fatalf("CreateFlavorResponse mismatch (-want +got):\n%s", d)
 			}
@@ -235,7 +236,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			_, err := pg.DB.CreateChunk(ctx, c)
 			require.NoError(t, err)
 
-			_, err = pg.DB.CreateFlavor(ctx, c.ID, flavor)
+			createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, flavor)
 			require.NoError(t, err)
 
 			conn, err := grpc.NewClient(
@@ -247,12 +248,14 @@ func TestCreateFlavorVersion(t *testing.T) {
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
 			if tt.prevVersion != nil {
+				tt.prevVersion.Flavor.ID = createdFlavor.ID
 				_, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
 					Version: chunk.FlavorVersionToTransport(*tt.prevVersion),
 				})
 				require.NoError(t, err)
 			}
 
+			tt.newVersion.Flavor.ID = createdFlavor.ID
 			version := chunk.FlavorVersionToTransport(tt.newVersion)
 
 			resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
@@ -278,7 +281,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 				resp,
 				expected,
 				protocmp.Transform(),
-				protocmp.IgnoreFields(&chunkv1alpha1.FlavorVersion{}, "id", "created_at"),
+				test.IgnoredProtoFlavorVersionFields,
 			); d != "" {
 				t.Fatalf("CreateFlavorVersionResponse mismatch (-want +got):\n%s", d)
 			}
