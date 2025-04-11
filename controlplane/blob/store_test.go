@@ -88,7 +88,6 @@ func TestBlobStorePut(t *testing.T) {
 			require.NoError(t, store.Put(ctx, tt.input))
 		})
 	}
-
 }
 
 func TestBlobStoreGet(t *testing.T) {
