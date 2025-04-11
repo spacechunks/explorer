@@ -66,4 +66,14 @@ CREATE TABLE IF NOT EXISTS instances (
     updated_at     TIMESTAMPTZ    NOT NULL DEFAULT now()
 );
 
+--
+-- blob store
+--
+
+CREATE TABLE IF NOT EXISTS blobs (
+    hash CHAR(16)          NOT NULL PRIMARY KEY,
+    data BYTEA             NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- migrate:down

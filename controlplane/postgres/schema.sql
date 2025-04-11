@@ -29,6 +29,17 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: blobs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.blobs (
+    hash character(16) NOT NULL,
+    data bytea NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: chunks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -115,6 +126,14 @@ CREATE TABLE public.nodes (
 CREATE TABLE public.schema_migrations (
     version character varying(128) NOT NULL
 );
+
+
+--
+-- Name: blobs blobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blobs
+    ADD CONSTRAINT blobs_pkey PRIMARY KEY (hash);
 
 
 --
