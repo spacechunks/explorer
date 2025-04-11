@@ -80,6 +80,18 @@ VALUES
     ($1, $2, $3);
 
 /*
+ * BLOB STORE
+ */
+
+-- name: BulkInsertBlobData :batchexec
+INSERT INTO blobs
+    (hash, data)
+VALUES ($1, $2);
+
+-- name: BulkGetBlobData :batchmany
+SELECT * FROM blobs WHERE hash = $1;
+
+/*
  * INSTANCES
  */
 

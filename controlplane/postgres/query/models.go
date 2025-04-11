@@ -59,6 +59,12 @@ func (ns NullInstanceState) Value() (driver.Value, error) {
 	return string(ns.InstanceState), nil
 }
 
+type Blob struct {
+	Hash      string
+	Data      []byte
+	CreatedAt time.Time
+}
+
 type Chunk struct {
 	ID          string
 	Name        string

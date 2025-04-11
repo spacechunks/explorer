@@ -60,6 +60,119 @@ func (b *BulkDeleteInstancesBatchResults) Close() error {
 	return b.br.Close()
 }
 
+const bulkGetBlobData = `-- name: BulkGetBlobData :batchmany
+SELECT hash, data, created_at FROM blobs WHERE hash = $1
+`
+
+type BulkGetBlobDataBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+func (q *Queries) BulkGetBlobData(ctx context.Context, hash []string) *BulkGetBlobDataBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range hash {
+		vals := []interface{}{
+			a,
+		}
+		batch.Queue(bulkGetBlobData, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &BulkGetBlobDataBatchResults{br, len(hash), false}
+}
+
+func (b *BulkGetBlobDataBatchResults) Query(f func(int, []Blob, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		var items []Blob
+		if b.closed {
+			if f != nil {
+				f(t, items, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		err := func() error {
+			rows, err := b.br.Query()
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var i Blob
+				if err := rows.Scan(&i.Hash, &i.Data, &i.CreatedAt); err != nil {
+					return err
+				}
+				items = append(items, i)
+			}
+			return rows.Err()
+		}()
+		if f != nil {
+			f(t, items, err)
+		}
+	}
+}
+
+func (b *BulkGetBlobDataBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
+const bulkInsertBlobData = `-- name: BulkInsertBlobData :batchexec
+/*
+ * BLOB STORE
+ */
+
+INSERT INTO blobs
+    (hash, data)
+VALUES ($1, $2)
+`
+
+type BulkInsertBlobDataBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type BulkInsertBlobDataParams struct {
+	Hash string
+	Data []byte
+}
+
+func (q *Queries) BulkInsertBlobData(ctx context.Context, arg []BulkInsertBlobDataParams) *BulkInsertBlobDataBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.Hash,
+			a.Data,
+		}
+		batch.Queue(bulkInsertBlobData, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &BulkInsertBlobDataBatchResults{br, len(arg), false}
+}
+
+func (b *BulkInsertBlobDataBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *BulkInsertBlobDataBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
 const bulkInsertFlavorFileHashes = `-- name: BulkInsertFlavorFileHashes :batchexec
 INSERT INTO flavor_version_files
     (flavor_version_id, file_hash, file_path)
