@@ -29,36 +29,66 @@ import (
 )
 
 func TestBlobStorePut(t *testing.T) {
-	var (
-		mockRepo = mock.NewMockBlobRepository(t)
-		store    = blob.NewPGStore(mockRepo)
-		ctx      = context.Background()
-		input    = []blob.Object{
-			{
-				Hash: "d447b1ea40e6988b",
-				Data: []byte("hello world"),
+	tests := []struct {
+		name     string
+		input    []blob.Object
+		expected []blob.Object
+		err      error
+	}{
+		{
+			name: "add missing hash",
+			input: []blob.Object{
+				{
+					Hash: "d447b1ea40e6988b",
+					Data: []byte("hello world"),
+				},
+				{
+					Data: []byte("ugede ishde"),
+				},
 			},
-			{
-				Data: []byte("ugede ishde"),
+			expected: []blob.Object{
+				{
+					Hash: "d447b1ea40e6988b",
+					Data: []byte("hello world"),
+				},
+				{
+					Hash: "1f47515caccc8b7c",
+					Data: []byte("ugede ishde"),
+				},
 			},
-		}
-		expected = []blob.Object{
-			{
-				Hash: "d447b1ea40e6988b",
-				Data: []byte("hello world"),
+		},
+		{
+			name: "data too large",
+			input: []blob.Object{
+				{
+					Data: make([]byte, 1_000_000_001),
+				},
 			},
-			{
-				Hash: "1f47515caccc8b7c",
-				Data: []byte("ugede ishde"),
-			},
-		}
-	)
+			err: blob.ErrDataTooLarge,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				mockRepo = mock.NewMockBlobRepository(t)
+				store    = blob.NewPGStore(mockRepo)
+				ctx      = context.Background()
+			)
 
-	mockRepo.EXPECT().
-		BulkWriteBlobs(mocky.Anything, expected).
-		Return(nil)
+			if tt.err != nil {
+				err := store.Put(ctx, tt.input)
+				require.ErrorIs(t, err, tt.err)
+				return
+			}
 
-	require.NoError(t, store.Put(ctx, input))
+			mockRepo.EXPECT().
+				BulkWriteBlobs(mocky.Anything, tt.expected).
+				Return(nil)
+
+			require.NoError(t, store.Put(ctx, tt.input))
+		})
+	}
+
 }
 
 func TestBlobStoreGet(t *testing.T) {

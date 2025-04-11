@@ -20,10 +20,13 @@ package blob
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/zeebo/xxh3"
 )
+
+var ErrDataTooLarge = errors.New("passed data exceeds 1 gb")
 
 type Object struct {
 	Hash string
@@ -50,10 +53,19 @@ func NewPGStore(repo Repository) Store {
 	}
 }
 
+// Put stores all the objects in the backing store. If a hash is
+// missing it will be generated. this operation will fail if the
+// passed slice contains objects with data larger than 1 gb.
 func (s *pgStore) Put(ctx context.Context, objects []Object) error {
+	oneGB := 1_000_000_000 // bytes
 	// make sure every passed object has a valid hash set
 	// if this is not the case, writing to the db fails
 	for i, obj := range objects {
+		// postgres bytea type only supports data up to 1 gb.
+		if len(obj.Data) > oneGB {
+			return ErrDataTooLarge
+		}
+
 		if obj.Hash != "" {
 			continue
 		}
