@@ -273,7 +273,7 @@ type FileHashes struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Path *string `protobuf:"bytes,1,opt,name=Path" json:"Path,omitempty"`
+	Path *string `protobuf:"bytes,1,opt,name=path" json:"path,omitempty"`
 	Hash *string `protobuf:"bytes,2,opt,name=hash" json:"hash,omitempty"`
 }
 
@@ -319,6 +319,59 @@ func (x *FileHashes) GetHash() string {
 		return *x.Hash
 	}
 	return ""
+}
+
+type File struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Path *string `protobuf:"bytes,1,opt,name=path" json:"path,omitempty"`
+	Data []byte  `protobuf:"bytes,2,opt,name=data" json:"data,omitempty"`
+}
+
+func (x *File) Reset() {
+	*x = File{}
+	mi := &file_chunk_v1alpha1_types_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *File) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*File) ProtoMessage() {}
+
+func (x *File) ProtoReflect() protoreflect.Message {
+	mi := &file_chunk_v1alpha1_types_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use File.ProtoReflect.Descriptor instead.
+func (*File) Descriptor() ([]byte, []int) {
+	return file_chunk_v1alpha1_types_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *File) GetPath() string {
+	if x != nil && x.Path != nil {
+		return *x.Path
+	}
+	return ""
+}
+
+func (x *File) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
 }
 
 var File_chunk_v1alpha1_types_proto protoreflect.FileDescriptor
@@ -369,9 +422,12 @@ var file_chunk_v1alpha1_types_proto_rawDesc = []byte{
 	0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e,
 	0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x09, 0x63, 0x72, 0x65, 0x61, 0x74,
 	0x65, 0x64, 0x41, 0x74, 0x22, 0x34, 0x0a, 0x0a, 0x46, 0x69, 0x6c, 0x65, 0x48, 0x61, 0x73, 0x68,
-	0x65, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x50, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x04, 0x50, 0x61, 0x74, 0x68, 0x12, 0x12, 0x0a, 0x04, 0x68, 0x61, 0x73, 0x68, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x68, 0x61, 0x73, 0x68, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69,
+	0x65, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x12, 0x12, 0x0a, 0x04, 0x68, 0x61, 0x73, 0x68, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x68, 0x61, 0x73, 0x68, 0x22, 0x2e, 0x0a, 0x04, 0x46, 0x69,
+	0x6c, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x70, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x04, 0x70, 0x61, 0x74, 0x68, 0x12, 0x12, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x61, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69,
 	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x73, 0x70, 0x61, 0x63, 0x65, 0x63, 0x68,
 	0x75, 0x6e, 0x6b, 0x73, 0x2f, 0x65, 0x78, 0x70, 0x6c, 0x6f, 0x72, 0x65, 0x72, 0x2f, 0x61, 0x70,
 	0x69, 0x2f, 0x63, 0x68, 0x75, 0x6e, 0x6b, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31,
@@ -390,22 +446,23 @@ func file_chunk_v1alpha1_types_proto_rawDescGZIP() []byte {
 	return file_chunk_v1alpha1_types_proto_rawDescData
 }
 
-var file_chunk_v1alpha1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_chunk_v1alpha1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_chunk_v1alpha1_types_proto_goTypes = []any{
 	(*Chunk)(nil),                 // 0: chunk.v1alpha1.Chunk
 	(*Flavor)(nil),                // 1: chunk.v1alpha1.Flavor
 	(*FlavorVersion)(nil),         // 2: chunk.v1alpha1.FlavorVersion
 	(*FileHashes)(nil),            // 3: chunk.v1alpha1.FileHashes
-	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
+	(*File)(nil),                  // 4: chunk.v1alpha1.File
+	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
 }
 var file_chunk_v1alpha1_types_proto_depIdxs = []int32{
-	4, // 0: chunk.v1alpha1.Chunk.created_at:type_name -> google.protobuf.Timestamp
-	4, // 1: chunk.v1alpha1.Chunk.updated_at:type_name -> google.protobuf.Timestamp
-	4, // 2: chunk.v1alpha1.Flavor.created_at:type_name -> google.protobuf.Timestamp
-	4, // 3: chunk.v1alpha1.Flavor.updated_at:type_name -> google.protobuf.Timestamp
+	5, // 0: chunk.v1alpha1.Chunk.created_at:type_name -> google.protobuf.Timestamp
+	5, // 1: chunk.v1alpha1.Chunk.updated_at:type_name -> google.protobuf.Timestamp
+	5, // 2: chunk.v1alpha1.Flavor.created_at:type_name -> google.protobuf.Timestamp
+	5, // 3: chunk.v1alpha1.Flavor.updated_at:type_name -> google.protobuf.Timestamp
 	1, // 4: chunk.v1alpha1.FlavorVersion.flavor:type_name -> chunk.v1alpha1.Flavor
 	3, // 5: chunk.v1alpha1.FlavorVersion.file_hashes:type_name -> chunk.v1alpha1.FileHashes
-	4, // 6: chunk.v1alpha1.FlavorVersion.created_at:type_name -> google.protobuf.Timestamp
+	5, // 6: chunk.v1alpha1.FlavorVersion.created_at:type_name -> google.protobuf.Timestamp
 	7, // [7:7] is the sub-list for method output_type
 	7, // [7:7] is the sub-list for method input_type
 	7, // [7:7] is the sub-list for extension type_name
@@ -424,7 +481,7 @@ func file_chunk_v1alpha1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_chunk_v1alpha1_types_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -60,6 +60,20 @@ service ChunkService {
   // - FAILED_PRECONDITION:
   //   - the provided version hash does not match with the provided file hashes
   rpc CreateFlavorVersion(CreateFlavorVersionRequest) returns (CreateFlavorVersionResponse);
+
+  // SaveFlavorFiles is used to save the added and changed files that have been
+  // determined by CreateFlavorVersion to the blob store. Note that ONLY the added
+  // and changed files are accepted. If files are missing or unexpected files are
+  // present, the request will fail.
+  //
+  // Defined error codes:
+  // - ALREADY_EXISTS:
+  //   - files have already been uploaded
+  // - FAILED_PRECONDITION:
+  //   - the hash of the provided files does not match with the previous determined
+  //     hash of all newly added and changed files. this means that some files have
+  //     changed after creating the flavor version or are missing.
+  rpc SaveFlavorFiles(SaveFlavorFilesRequest) returns (SaveFlavorFilesResponse);
 }
 
 message CreateFlavorRequest {
@@ -88,4 +102,12 @@ message CreateFlavorVersionResponse {
   repeated FileHashes changed_files = 2;
   repeated FileHashes removed_files = 3;
   repeated FileHashes added_files = 4;
+}
+
+message SaveFlavorFilesRequest {
+  string flavor_version_id = 1;
+  repeated File files = 2;
+}
+
+message SaveFlavorFilesResponse {
 }
