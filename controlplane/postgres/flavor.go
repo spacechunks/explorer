@@ -312,6 +312,8 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 			})
 		}
 
+		ret.FileHashes = hashes
+
 		return nil
 	}); err != nil {
 		return chunk.FlavorVersion{}, err
