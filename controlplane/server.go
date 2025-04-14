@@ -28,6 +28,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
@@ -54,9 +55,16 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 
 	var (
-		db           = postgres.NewDB(s.logger, pool)
-		grpcServer   = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
-		chunkService = chunk.NewService(db)
+		db         = postgres.NewDB(s.logger, pool)
+		grpcServer = grpc.NewServer(
+			grpc.Creds(insecure.NewCredentials()),
+			// this option is important to set, because
+			// flavor file upload will exceed the default
+			// size of 4mb.
+			grpc.MaxRecvMsgSize(s.cfg.MaxGRPCMessageSize),
+		)
+		blobStore    = blob.NewPGStore(db)
+		chunkService = chunk.NewService(db, blobStore)
 		chunkServer  = chunk.NewServer(chunkService)
 		insService   = instance.NewService(s.logger, db, chunkService)
 		insServer    = instance.NewServer(insService)

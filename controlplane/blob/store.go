@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/cbergoon/merkletree"
 	"github.com/zeebo/xxh3"
 )
 
@@ -31,6 +32,27 @@ var ErrDataTooLarge = errors.New("passed data exceeds 1 gb")
 type Object struct {
 	Hash string
 	Data []byte
+}
+
+func (o *Object) hash() []byte {
+	if o.Hash != "" {
+		return []byte(o.Hash)
+	}
+	str := fmt.Sprintf("%x", xxh3.Hash(o.Data))
+	o.Hash = str
+	return []byte(str)
+}
+
+func (o Object) CalculateHash() ([]byte, error) {
+	return o.hash(), nil
+}
+
+func (o Object) Equals(other merkletree.Content) (bool, error) {
+	otherObj, ok := other.(Object)
+	if !ok {
+		return false, errors.New("value is not of type File")
+	}
+	return o.Hash == otherObj.Hash, nil
 }
 
 type Store interface {

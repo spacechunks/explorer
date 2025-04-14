@@ -286,7 +286,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			err: chunk.ErrFlavorVersionExists,
 		},
 		{
-			name: "version mismatch",
+			name: "version hash mismatch",
 			prevVersion: ptr.Pointer(fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
 				v.Flavor = flavor
 			})),
@@ -295,7 +295,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 				v.Version = "v2"
 				v.Hash = "wrong-hash"
 			}),
-			err: chunk.ErrFlavorVersionHashMismatch,
+			err: chunk.ErrHashMismatch,
 		},
 		{
 			name: "duplicate version",
@@ -372,4 +372,205 @@ func TestCreateFlavorVersion(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSaveFlavorFiles(t *testing.T) {
+	files := []chunk.File{
+		{
+			Path: "plugins/testadata1",
+			Data: []byte("ugede ishde"),
+		},
+		{
+			Path: "plugins/testadata2",
+			Data: []byte("hello world"),
+		},
+	}
+
+	tests := []struct {
+		name    string
+		files   []chunk.File
+		version chunk.FlavorVersion
+		err     error
+	}{
+		{
+			name:  "works",
+			files: files,
+			version: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
+				v.FileHashes = []chunk.FileHash{
+					{
+						Path: "plugins/testadata1",
+						Hash: "1f47515caccc8b7c",
+					},
+					{
+						Path: "plugins/testadata2",
+						Hash: "d447b1ea40e6988b",
+					},
+				}
+			}),
+		},
+		{
+			name:  "hash mismatch - file missing",
+			files: files,
+			version: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
+				v.FileHashes = []chunk.FileHash{
+					{
+						Path: "plugins/testadata1",
+						Hash: "1f47515caccc8b7c",
+					},
+				}
+			}),
+			err: chunk.ErrHashMismatch,
+		},
+		{
+			name:  "hash mismatch - unexpected file",
+			files: files,
+			version: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
+				v.FileHashes = []chunk.FileHash{
+					{
+						Path: "plugins/testadata1",
+						Hash: "1f47515caccc8b7c",
+					},
+					{
+						Path: "plugins/testadata2",
+						Hash: "d447b1ea40e6988b",
+					},
+					{
+						Path: "plugins/testadata3",
+						Hash: "d447b1ea40e6988b",
+					},
+				}
+			}),
+			err: chunk.ErrHashMismatch,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+			)
+
+			fixture.RunControlPlane(t, pg)
+
+			c := fixture.Chunk()
+
+			_, err := pg.DB.CreateChunk(ctx, c)
+			require.NoError(t, err)
+
+			createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
+			require.NoError(t, err)
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+			tt.version.Flavor.ID = createdFlavor.ID
+
+			resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
+				Version: chunk.FlavorVersionToTransport(tt.version),
+			})
+			require.NoError(t, err)
+
+			files := make([]*chunkv1alpha1.File, 0, len(tt.files))
+			for _, file := range tt.files {
+				files = append(files, &chunkv1alpha1.File{
+					Path: &file.Path,
+					Data: file.Data,
+				})
+			}
+
+			_, err = client.SaveFlavorFiles(ctx, &chunkv1alpha1.SaveFlavorFilesRequest{
+				FlavorVersionId: resp.GetVersion().Id,
+				Files:           files,
+			})
+
+			if err != nil {
+				if tt.err != nil {
+					require.ErrorIs(t, err, tt.err)
+					return
+				}
+			}
+
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestSaveFlavorFilesAlreadyUploaded(t *testing.T) {
+	var (
+		ctx   = context.Background()
+		pg    = fixture.NewPostgres()
+		files = []chunk.File{
+			{
+				Path: "plugins/testadata1",
+				Data: []byte("ugede ishde"),
+			},
+			{
+				Path: "plugins/testadata2",
+				Data: []byte("hello world"),
+			},
+		}
+
+		flavorVersion = fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
+			v.FileHashes = []chunk.FileHash{
+				{
+					Path: "plugins/testadata1",
+					Hash: "1f47515caccc8b7c",
+				},
+				{
+					Path: "plugins/testadata2",
+					Hash: "d447b1ea40e6988b",
+				},
+			}
+		})
+	)
+
+	fixture.RunControlPlane(t, pg)
+
+	c := fixture.Chunk()
+
+	_, err := pg.DB.CreateChunk(ctx, c)
+	require.NoError(t, err)
+
+	createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
+	require.NoError(t, err)
+
+	conn, err := grpc.NewClient(
+		fixture.ControlPlaneAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+
+	client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+	flavorVersion.Flavor.ID = createdFlavor.ID
+
+	resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
+		Version: chunk.FlavorVersionToTransport(flavorVersion),
+	})
+	require.NoError(t, err)
+
+	transport := make([]*chunkv1alpha1.File, 0, len(files))
+	for _, file := range files {
+		transport = append(transport, &chunkv1alpha1.File{
+			Path: &file.Path,
+			Data: file.Data,
+		})
+	}
+
+	_, err = client.SaveFlavorFiles(ctx, &chunkv1alpha1.SaveFlavorFilesRequest{
+		FlavorVersionId: resp.GetVersion().Id,
+		Files:           transport,
+	})
+	require.NoError(t, err)
+
+	_, err = client.SaveFlavorFiles(ctx, &chunkv1alpha1.SaveFlavorFilesRequest{
+		FlavorVersionId: resp.GetVersion().Id,
+		Files:           transport,
+	})
+	require.ErrorIs(t, err, chunk.ErrFilesAlreadyExist)
 }

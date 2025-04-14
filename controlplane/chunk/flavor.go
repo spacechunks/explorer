@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"log"
 	"maps"
 	"slices"
 	"sort"
@@ -30,15 +31,17 @@ import (
 	"time"
 
 	"github.com/cbergoon/merkletree"
+	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/zeebo/xxh3"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 var (
-	ErrFlavorNameExists          = status.Error(codes.AlreadyExists, "flavor name already exists")
-	ErrFlavorVersionExists       = status.Error(codes.AlreadyExists, "flavor version already exists")
-	ErrFlavorVersionHashMismatch = status.Error(codes.FailedPrecondition, "flavor hash does not match")
+	ErrFlavorNameExists    = status.Error(codes.AlreadyExists, "flavor name already exists")
+	ErrFlavorVersionExists = status.Error(codes.AlreadyExists, "flavor version already exists")
+	ErrHashMismatch        = status.Error(codes.FailedPrecondition, "hash does not match")
+	ErrFilesAlreadyExist   = status.Error(codes.AlreadyExists, "files already exist")
 )
 
 type ErrFlavorVersionDuplicate struct {
@@ -68,12 +71,19 @@ type FlavorVersionDiff struct {
 }
 
 type FlavorVersion struct {
-	ID         string
-	Flavor     Flavor
-	Version    string
-	Hash       string
-	FileHashes []FileHash
-	CreatedAt  time.Time
+	ID            string
+	Flavor        Flavor
+	Version       string
+	Hash          string
+	ChangeHash    string
+	FileHashes    []FileHash
+	FilesUploaded bool
+	CreatedAt     time.Time
+}
+
+type File struct {
+	Path string
+	Data []byte
 }
 
 type FileHash struct {
@@ -82,7 +92,7 @@ type FileHash struct {
 }
 
 func (f FileHash) CalculateHash() ([]byte, error) {
-	return []byte(fmt.Sprintf("%x", xxh3.HashString(f.Hash))), nil
+	return []byte(f.Hash), nil
 }
 
 func (f FileHash) Equals(other merkletree.Content) (bool, error) {
@@ -167,20 +177,17 @@ func (s *svc) CreateFlavorVersion(
 	}
 
 	var (
-		prevContent, _             = hashTreeContent(prevVersion.FileHashes)
-		newContent, newContentList = hashTreeContent(version.FileHashes)
+		prevContent = contentMap(prevVersion.FileHashes)
+		newContent  = contentMap(version.FileHashes)
 	)
 
-	newContentTree, err := merkletree.NewTreeWithHashStrategy(newContentList, func() hash.Hash {
-		return xxh3.New()
-	})
+	newContentTree, err := tree(version.FileHashes)
 	if err != nil {
-		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("merkle tree: %w", err)
+		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("new content tree: %w", err)
 	}
 
-	computedHash := fmt.Sprintf("%x", string(newContentTree.MerkleRoot()))
-	if computedHash != version.Hash {
-		return FlavorVersion{}, FlavorVersionDiff{}, ErrFlavorVersionHashMismatch
+	if hashString(newContentTree) != version.Hash {
+		return FlavorVersion{}, FlavorVersionDiff{}, ErrHashMismatch
 	}
 
 	var (
@@ -233,6 +240,11 @@ func (s *svc) CreateFlavorVersion(
 			Removed: removed,
 			Changed: changed,
 		}
+		sortByPath = func(sl []FileHash) {
+			sort.Slice(sl, func(i, j int) bool {
+				return strings.Compare(sl[i].Path, sl[j].Path) < 0
+			})
+		}
 	)
 
 	sortByPath(unchanged)
@@ -240,12 +252,27 @@ func (s *svc) CreateFlavorVersion(
 	sortByPath(added)
 	sortByPath(removed)
 
-	all = append(all, unchanged...)
+	changes := make([]FileHash, 0, len(changed)+len(added))
+	changes = append(changes, changed...)
+	changes = append(changes, added...)
+	sortByPath(changes)
+
+	for _, c := range changes {
+		log.Println("change: ", c.Path)
+	}
+
 	all = append(all, changed...)
 	all = append(all, added...)
+	all = append(all, unchanged...)
 
 	sortByPath(all)
 
+	changesTree, err := tree(changes)
+	if err != nil {
+		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("changes tree: %w", err)
+	}
+
+	version.ChangeHash = hashString(changesTree)
 	version.FileHashes = all
 
 	created, err := s.repo.CreateFlavorVersion(ctx, version, prevVersion.ID)
@@ -256,18 +283,76 @@ func (s *svc) CreateFlavorVersion(
 	return created, diff, nil
 }
 
-func sortByPath(sl []FileHash) {
-	sort.Slice(sl, func(i, j int) bool {
-		return strings.Compare(sl[i].Path, sl[j].Path) < 0
+func (s *svc) SaveFlavorFiles(ctx context.Context, versionID string, files []File) error {
+	version, err := s.repo.FlavorVersionByID(ctx, versionID)
+	if err != nil {
+		return fmt.Errorf("flavor version: %w", err)
+	}
+
+	sort.Slice(files, func(i, j int) bool {
+		return strings.Compare(files[i].Path, files[j].Path) < 0
 	})
+
+	objs := make([]blob.Object, 0, len(files))
+	for _, file := range files {
+		fmt.Println("file: ", file.Path)
+		objs = append(objs, blob.Object{
+			Data: file.Data,
+		})
+	}
+
+	// FIXME: at some point refactor file upload to detect directly if
+	//        files have already been uploaded. currently only after
+	//       all files have been uploaded this check will be executed.
+	if version.FilesUploaded {
+		return ErrFilesAlreadyExist
+	}
+
+	tree, err := tree(objs)
+	if err != nil {
+		return fmt.Errorf("tree files: %w", err)
+	}
+
+	fmt.Println("got: " + hashString(tree))
+	fmt.Println("want: " + version.ChangeHash)
+
+	if hashString(tree) != version.ChangeHash {
+		return ErrHashMismatch
+	}
+
+	if err := s.blobStore.Put(ctx, objs); err != nil {
+		return fmt.Errorf("put files: %w", err)
+	}
+
+	if err := s.repo.MarkFlavorVersionFilesUploaded(ctx, versionID); err != nil {
+		return fmt.Errorf("mark flavor version: %w", err)
+	}
+
+	return nil
 }
 
-func hashTreeContent(hashes []FileHash) (map[string]merkletree.Content, []merkletree.Content) {
-	list := make([]merkletree.Content, 0, len(hashes))
+func hashString(tree *merkletree.MerkleTree) string {
+	return fmt.Sprintf("%x", tree.MerkleRoot())
+}
+
+func tree[T merkletree.Content](hashes []T) (*merkletree.MerkleTree, error) {
+	sl := make([]merkletree.Content, 0, len(hashes))
+	for _, h := range hashes {
+		sl = append(sl, h)
+	}
+	tree, err := merkletree.NewTreeWithHashStrategy(sl, func() hash.Hash {
+		return xxh3.New()
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tree, nil
+}
+
+func contentMap(hashes []FileHash) map[string]merkletree.Content {
 	m := make(map[string]merkletree.Content, len(hashes))
 	for _, h := range hashes {
-		list = append(list, h)
 		m[h.Path] = h
 	}
-	return m, list
+	return m
 }

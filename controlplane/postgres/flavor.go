@@ -218,11 +218,12 @@ func (db *DB) CreateFlavorVersion(
 
 	if err := db.doTX(ctx, func(q *query.Queries) error {
 		createParams := query.CreateFlavorVersionParams{
-			ID:        id.String(),
-			FlavorID:  version.Flavor.ID,
-			Hash:      version.Hash,
-			Version:   version.Version,
-			CreatedAt: now,
+			ID:         id.String(),
+			FlavorID:   version.Flavor.ID,
+			Hash:       version.Hash,
+			Version:    version.Version,
+			ChangeHash: version.ChangeHash,
+			CreatedAt:  now,
 		}
 
 		if prevVersionID != "" {
@@ -257,6 +258,66 @@ func (db *DB) CreateFlavorVersion(
 	ret := version
 	ret.ID = id.String()
 	ret.CreatedAt = now
+
+	return ret, nil
+}
+
+func (db *DB) FlavorVersionHashByID(ctx context.Context, id string) (string, error) {
+	var ret string
+	if err := db.do(ctx, func(q *query.Queries) error {
+		hash, err := q.FlavorVersionHashByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		ret = hash
+		return nil
+	}); err != nil {
+		return "", err
+	}
+
+	return ret, nil
+}
+
+func (db *DB) MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error {
+	return db.do(ctx, func(q *query.Queries) error {
+		return q.MarkFlavorVersionFilesUploaded(ctx, flavorVersionID)
+	})
+}
+
+func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVersion, error) {
+	var ret chunk.FlavorVersion
+
+	if err := db.do(ctx, func(q *query.Queries) error {
+		rows, err := q.FlavorVersionByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		hashes := make([]chunk.FileHash, 0, len(rows))
+
+		row := rows[0]
+		ret = chunk.FlavorVersion{
+			ID:            row.ID,
+			Version:       row.Version,
+			Hash:          row.Hash,
+			ChangeHash:    row.ChangeHash,
+			FilesUploaded: row.FilesUploaded,
+			CreatedAt:     row.CreatedAt,
+		}
+
+		for _, r := range rows {
+			hashes = append(hashes, chunk.FileHash{
+				Path: r.FilePath,
+				Hash: r.FileHash.String,
+			})
+		}
+
+		ret.FileHashes = hashes
+
+		return nil
+	}); err != nil {
+		return chunk.FlavorVersion{}, err
+	}
 
 	return ret, nil
 }

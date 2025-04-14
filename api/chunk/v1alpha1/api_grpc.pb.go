@@ -23,6 +23,7 @@ const (
 	ChunkService_CreateFlavor_FullMethodName        = "/chunk.v1alpha1.ChunkService/CreateFlavor"
 	ChunkService_ListFlavors_FullMethodName         = "/chunk.v1alpha1.ChunkService/ListFlavors"
 	ChunkService_CreateFlavorVersion_FullMethodName = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
+	ChunkService_SaveFlavorFiles_FullMethodName     = "/chunk.v1alpha1.ChunkService/SaveFlavorFiles"
 )
 
 // ChunkServiceClient is the client API for ChunkService service.
@@ -42,6 +43,15 @@ type ChunkServiceClient interface {
 	//   - the provided chunk id is invalid
 	//   - the provided flavor name is invalid
 	CreateFlavor(ctx context.Context, in *CreateFlavorRequest, opts ...grpc.CallOption) (*CreateFlavorResponse, error)
+	// ListFlavors lists all the available flavors that belong to a
+	// single chunk.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the chunk for which the flavors are requested does not exist
+	//
+	// - INVALID_ARGUMENT:
+	//   - the provided chunk id is invalid
 	ListFlavors(ctx context.Context, in *ListFlavorsRequest, opts ...grpc.CallOption) (*ListFlavorsResponse, error)
 	// CreateFlavorVersion creates a new flavor version for a
 	// given flavor by determining the added, changed and removed
@@ -57,6 +67,17 @@ type ChunkServiceClient interface {
 	// - FAILED_PRECONDITION:
 	//   - the provided version hash does not match with the provided file hashes
 	CreateFlavorVersion(ctx context.Context, in *CreateFlavorVersionRequest, opts ...grpc.CallOption) (*CreateFlavorVersionResponse, error)
+	// SaveFlavorFiles is used to save the added and changed files that have been
+	// determined by CreateFlavorVersion to the blob store. Note that ONLY the added
+	// and changed files are accepted. If files are missing or unexpected files are
+	// present, the request will fail.
+	//
+	// Defined error codes:
+	// - FAILED_PRECONDITION:
+	//   - the hash of the provided files does not match with the previous determined
+	//     hash of all newly added and changed files. this means that some files have
+	//     changed after creating the flavor version or are missing.
+	SaveFlavorFiles(ctx context.Context, in *SaveFlavorFilesRequest, opts ...grpc.CallOption) (*SaveFlavorFilesResponse, error)
 }
 
 type chunkServiceClient struct {
@@ -97,6 +118,16 @@ func (c *chunkServiceClient) CreateFlavorVersion(ctx context.Context, in *Create
 	return out, nil
 }
 
+func (c *chunkServiceClient) SaveFlavorFiles(ctx context.Context, in *SaveFlavorFilesRequest, opts ...grpc.CallOption) (*SaveFlavorFilesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveFlavorFilesResponse)
+	err := c.cc.Invoke(ctx, ChunkService_SaveFlavorFiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChunkServiceServer is the server API for ChunkService service.
 // All implementations must embed UnimplementedChunkServiceServer
 // for forward compatibility.
@@ -114,6 +145,15 @@ type ChunkServiceServer interface {
 	//   - the provided chunk id is invalid
 	//   - the provided flavor name is invalid
 	CreateFlavor(context.Context, *CreateFlavorRequest) (*CreateFlavorResponse, error)
+	// ListFlavors lists all the available flavors that belong to a
+	// single chunk.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the chunk for which the flavors are requested does not exist
+	//
+	// - INVALID_ARGUMENT:
+	//   - the provided chunk id is invalid
 	ListFlavors(context.Context, *ListFlavorsRequest) (*ListFlavorsResponse, error)
 	// CreateFlavorVersion creates a new flavor version for a
 	// given flavor by determining the added, changed and removed
@@ -129,6 +169,17 @@ type ChunkServiceServer interface {
 	// - FAILED_PRECONDITION:
 	//   - the provided version hash does not match with the provided file hashes
 	CreateFlavorVersion(context.Context, *CreateFlavorVersionRequest) (*CreateFlavorVersionResponse, error)
+	// SaveFlavorFiles is used to save the added and changed files that have been
+	// determined by CreateFlavorVersion to the blob store. Note that ONLY the added
+	// and changed files are accepted. If files are missing or unexpected files are
+	// present, the request will fail.
+	//
+	// Defined error codes:
+	// - FAILED_PRECONDITION:
+	//   - the hash of the provided files does not match with the previous determined
+	//     hash of all newly added and changed files. this means that some files have
+	//     changed after creating the flavor version or are missing.
+	SaveFlavorFiles(context.Context, *SaveFlavorFilesRequest) (*SaveFlavorFilesResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
 
@@ -147,6 +198,9 @@ func (UnimplementedChunkServiceServer) ListFlavors(context.Context, *ListFlavors
 }
 func (UnimplementedChunkServiceServer) CreateFlavorVersion(context.Context, *CreateFlavorVersionRequest) (*CreateFlavorVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateFlavorVersion not implemented")
+}
+func (UnimplementedChunkServiceServer) SaveFlavorFiles(context.Context, *SaveFlavorFilesRequest) (*SaveFlavorFilesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SaveFlavorFiles not implemented")
 }
 func (UnimplementedChunkServiceServer) mustEmbedUnimplementedChunkServiceServer() {}
 func (UnimplementedChunkServiceServer) testEmbeddedByValue()                      {}
@@ -223,6 +277,24 @@ func _ChunkService_CreateFlavorVersion_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChunkService_SaveFlavorFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveFlavorFilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).SaveFlavorFiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_SaveFlavorFiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).SaveFlavorFiles(ctx, req.(*SaveFlavorFilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChunkService_ServiceDesc is the grpc.ServiceDesc for ChunkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -241,6 +313,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateFlavorVersion",
 			Handler:    _ChunkService_CreateFlavorVersion_Handler,
+		},
+		{
+			MethodName: "SaveFlavorFiles",
+			Handler:    _ChunkService_SaveFlavorFiles_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -21,6 +21,8 @@ package chunk
 import (
 	"context"
 	"fmt"
+
+	"github.com/spacechunks/explorer/controlplane/blob"
 )
 
 type Service interface {
@@ -29,15 +31,18 @@ type Service interface {
 	CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error)
 	ListFlavors(ctx context.Context, chunkID string) ([]Flavor, error)
 	CreateFlavorVersion(ctx context.Context, version FlavorVersion) (FlavorVersion, FlavorVersionDiff, error)
+	SaveFlavorFiles(ctx context.Context, versionID string, files []File) error
 }
 
 type svc struct {
-	repo Repository
+	repo      Repository
+	blobStore blob.Store
 }
 
-func NewService(repo Repository) Service {
+func NewService(repo Repository, blobStore blob.Store) Service {
 	return &svc{
-		repo: repo,
+		repo:      repo,
+		blobStore: blobStore,
 	}
 }
 
