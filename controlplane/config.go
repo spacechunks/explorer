@@ -19,6 +19,7 @@
 package controlplane
 
 type Config struct {
-	ListenAddr   string
-	DBConnString string
+	ListenAddr         string
+	DBConnString       string
+	MaxGRPCMessageSize int
 }

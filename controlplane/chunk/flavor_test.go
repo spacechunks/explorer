@@ -67,7 +67,7 @@ func TestCreateFlavor(t *testing.T) {
 			var (
 				ctx      = context.Background()
 				mockRepo = mock.NewMockChunkRepository(t)
-				svc      = chunk.NewService(mockRepo)
+				svc      = chunk.NewService(mockRepo, nil)
 			)
 
 			tt.prep(mockRepo)
@@ -127,7 +127,7 @@ func TestListFlavors(t *testing.T) {
 			var (
 				ctx      = context.Background()
 				mockRepo = mock.NewMockChunkRepository(t)
-				svc      = chunk.NewService(mockRepo)
+				svc      = chunk.NewService(mockRepo, nil)
 			)
 
 			tt.prep(mockRepo, tt.expected)
@@ -174,6 +174,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 						Hash: "hash1",
 					},
 				}
+				v.ChangeHash = "68df46974f6dc5fe"
 			}),
 			expectedDiff: chunk.FlavorVersionDiff{
 				Added: []chunk.FileHash{
@@ -255,7 +256,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).
 					Return(prevVersion, nil)
 			},
-			err: chunk.ErrFlavorVersionHashMismatch,
+			err: chunk.ErrHashMismatch,
 		},
 		{
 			name:        "version already exists",
@@ -297,7 +298,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			var (
 				ctx      = context.Background()
 				mockRepo = mock.NewMockChunkRepository(t)
-				svc      = chunk.NewService(mockRepo)
+				svc      = chunk.NewService(mockRepo, nil)
 			)
 
 			tt.prep(mockRepo, tt.newVersion, tt.prevVersion)

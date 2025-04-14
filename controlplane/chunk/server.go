@@ -110,3 +110,22 @@ func (s *Server) CreateFlavorVersion(
 		AddedFiles:   FileHashSliceToTransport(diff.Added),
 	}, nil
 }
+
+func (s *Server) SaveFlavorFiles(
+	ctx context.Context,
+	req *chunkv1alpha1.SaveFlavorFilesRequest,
+) (*chunkv1alpha1.SaveFlavorFilesResponse, error) {
+	files := make([]File, 0, len(req.Files))
+	for _, f := range req.Files {
+		files = append(files, File{
+			Path: f.GetPath(),
+			Data: f.GetData(),
+		})
+	}
+
+	if err := s.service.SaveFlavorFiles(ctx, req.GetFlavorVersionId(), files); err != nil {
+		return &chunkv1alpha1.SaveFlavorFilesResponse{}, err
+	}
+
+	return &chunkv1alpha1.SaveFlavorFilesResponse{}, nil
+}

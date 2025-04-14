@@ -39,8 +39,9 @@ func RunControlPlane(t *testing.T, pg *Postgres) {
 	var (
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		server = controlplane.NewServer(logger, controlplane.Config{
-			ListenAddr:   ControlPlaneAddr,
-			DBConnString: pg.ConnString,
+			ListenAddr:         ControlPlaneAddr,
+			DBConnString:       pg.ConnString,
+			MaxGRPCMessageSize: 1_000_000_000,
 		})
 	)
 
