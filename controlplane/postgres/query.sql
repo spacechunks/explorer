@@ -51,6 +51,11 @@ SELECT EXISTS(
     WHERE name = $1 AND chunk_id = $2
 );
 
+-- name: FlavorVersionByID :many
+SELECT * FROM flavor_versions v
+    JOIN flavor_version_files f ON f.flavor_version_id = v.id
+WHERE id = $1;
+
 -- name: LatestFlavorVersionByFlavorID :one
 SELECT * FROM flavor_versions WHERE flavor_id = $1
 ORDER BY created_at DESC LIMIT 1;
@@ -69,15 +74,21 @@ SELECT * FROM flavor_version_files WHERE flavor_version_id = $1;
 
 -- name: CreateFlavorVersion :exec
 INSERT INTO flavor_versions
-    (id, flavor_id, hash, version, prev_version_id, created_at)
+    (id, flavor_id, hash, change_hash, version, prev_version_id, created_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6);
+    ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: BulkInsertFlavorFileHashes :batchexec
 INSERT INTO flavor_version_files
     (flavor_version_id, file_hash, file_path)
 VALUES
     ($1, $2, $3);
+
+-- name: FlavorVersionHashByID :one
+SELECT hash FROM flavor_versions WHERE id = $1;
+
+-- name: MarkFlavorVersionFilesUploaded :exec
+UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1;
 
 /*
  * BLOB STORE

@@ -86,7 +86,9 @@ type FlavorVersion struct {
 	ID            string
 	FlavorID      string
 	Hash          string
+	ChangeHash    string
 	Version       string
+	FilesUploaded bool
 	PrevVersionID *string
 	CreatedAt     time.Time
 }

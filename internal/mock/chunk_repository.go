@@ -368,6 +368,63 @@ func (_c *MockChunkRepository_FlavorVersionByHash_Call) RunAndReturn(run func(co
 	return _c
 }
 
+// FlavorVersionByID provides a mock function with given fields: ctx, id
+func (_m *MockChunkRepository) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVersion, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FlavorVersionByID")
+	}
+
+	var r0 chunk.FlavorVersion
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (chunk.FlavorVersion, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) chunk.FlavorVersion); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Get(0).(chunk.FlavorVersion)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockChunkRepository_FlavorVersionByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FlavorVersionByID'
+type MockChunkRepository_FlavorVersionByID_Call struct {
+	*mock.Call
+}
+
+// FlavorVersionByID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockChunkRepository_Expecter) FlavorVersionByID(ctx interface{}, id interface{}) *MockChunkRepository_FlavorVersionByID_Call {
+	return &MockChunkRepository_FlavorVersionByID_Call{Call: _e.mock.On("FlavorVersionByID", ctx, id)}
+}
+
+func (_c *MockChunkRepository_FlavorVersionByID_Call) Run(run func(ctx context.Context, id string)) *MockChunkRepository_FlavorVersionByID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_FlavorVersionByID_Call) Return(_a0 chunk.FlavorVersion, _a1 error) *MockChunkRepository_FlavorVersionByID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockChunkRepository_FlavorVersionByID_Call) RunAndReturn(run func(context.Context, string) (chunk.FlavorVersion, error)) *MockChunkRepository_FlavorVersionByID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FlavorVersionExists provides a mock function with given fields: ctx, flavorID, version
 func (_m *MockChunkRepository) FlavorVersionExists(ctx context.Context, flavorID string, version string) (bool, error) {
 	ret := _m.Called(ctx, flavorID, version)
@@ -422,6 +479,63 @@ func (_c *MockChunkRepository_FlavorVersionExists_Call) Return(_a0 bool, _a1 err
 }
 
 func (_c *MockChunkRepository_FlavorVersionExists_Call) RunAndReturn(run func(context.Context, string, string) (bool, error)) *MockChunkRepository_FlavorVersionExists_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FlavorVersionHashByID provides a mock function with given fields: ctx, id
+func (_m *MockChunkRepository) FlavorVersionHashByID(ctx context.Context, id string) (string, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FlavorVersionHashByID")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockChunkRepository_FlavorVersionHashByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FlavorVersionHashByID'
+type MockChunkRepository_FlavorVersionHashByID_Call struct {
+	*mock.Call
+}
+
+// FlavorVersionHashByID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockChunkRepository_Expecter) FlavorVersionHashByID(ctx interface{}, id interface{}) *MockChunkRepository_FlavorVersionHashByID_Call {
+	return &MockChunkRepository_FlavorVersionHashByID_Call{Call: _e.mock.On("FlavorVersionHashByID", ctx, id)}
+}
+
+func (_c *MockChunkRepository_FlavorVersionHashByID_Call) Run(run func(ctx context.Context, id string)) *MockChunkRepository_FlavorVersionHashByID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_FlavorVersionHashByID_Call) Return(_a0 string, _a1 error) *MockChunkRepository_FlavorVersionHashByID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockChunkRepository_FlavorVersionHashByID_Call) RunAndReturn(run func(context.Context, string) (string, error)) *MockChunkRepository_FlavorVersionHashByID_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -595,6 +709,53 @@ func (_c *MockChunkRepository_ListFlavorsByChunkID_Call) Return(_a0 []chunk.Flav
 }
 
 func (_c *MockChunkRepository_ListFlavorsByChunkID_Call) RunAndReturn(run func(context.Context, string) ([]chunk.Flavor, error)) *MockChunkRepository_ListFlavorsByChunkID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MarkFlavorVersionFilesUploaded provides a mock function with given fields: ctx, flavorVersionID
+func (_m *MockChunkRepository) MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error {
+	ret := _m.Called(ctx, flavorVersionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkFlavorVersionFilesUploaded")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, flavorVersionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockChunkRepository_MarkFlavorVersionFilesUploaded_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkFlavorVersionFilesUploaded'
+type MockChunkRepository_MarkFlavorVersionFilesUploaded_Call struct {
+	*mock.Call
+}
+
+// MarkFlavorVersionFilesUploaded is a helper method to define mock.On call
+//   - ctx context.Context
+//   - flavorVersionID string
+func (_e *MockChunkRepository_Expecter) MarkFlavorVersionFilesUploaded(ctx interface{}, flavorVersionID interface{}) *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call {
+	return &MockChunkRepository_MarkFlavorVersionFilesUploaded_Call{Call: _e.mock.On("MarkFlavorVersionFilesUploaded", ctx, flavorVersionID)}
+}
+
+func (_c *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call) Run(run func(ctx context.Context, flavorVersionID string)) *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call) Return(_a0 error) *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call) RunAndReturn(run func(context.Context, string) error) *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call {
 	_c.Call.Return(run)
 	return _c
 }

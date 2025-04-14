@@ -9,6 +9,8 @@ import (
 	"context"
 	"net/netip"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const chunkExists = `-- name: ChunkExists :one
@@ -100,15 +102,16 @@ func (q *Queries) CreateFlavor(ctx context.Context, arg CreateFlavorParams) erro
 
 const createFlavorVersion = `-- name: CreateFlavorVersion :exec
 INSERT INTO flavor_versions
-    (id, flavor_id, hash, version, prev_version_id, created_at)
+    (id, flavor_id, hash, change_hash, version, prev_version_id, created_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6)
+    ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateFlavorVersionParams struct {
 	ID            string
 	FlavorID      string
 	Hash          string
+	ChangeHash    string
 	Version       string
 	PrevVersionID *string
 	CreatedAt     time.Time
@@ -119,6 +122,7 @@ func (q *Queries) CreateFlavorVersion(ctx context.Context, arg CreateFlavorVersi
 		arg.ID,
 		arg.FlavorID,
 		arg.Hash,
+		arg.ChangeHash,
 		arg.Version,
 		arg.PrevVersionID,
 		arg.CreatedAt,
@@ -190,6 +194,60 @@ func (q *Queries) FlavorVersionByHash(ctx context.Context, hash string) (string,
 	return version, err
 }
 
+const flavorVersionByID = `-- name: FlavorVersionByID :many
+SELECT id, flavor_id, hash, change_hash, version, files_uploaded, prev_version_id, v.created_at, flavor_version_id, file_hash, file_path, f.created_at FROM flavor_versions v
+    JOIN flavor_version_files f ON f.flavor_version_id = v.id
+WHERE id = $1
+`
+
+type FlavorVersionByIDRow struct {
+	ID              string
+	FlavorID        string
+	Hash            string
+	ChangeHash      string
+	Version         string
+	FilesUploaded   bool
+	PrevVersionID   *string
+	CreatedAt       time.Time
+	FlavorVersionID string
+	FileHash        pgtype.Text
+	FilePath        string
+	CreatedAt_2     time.Time
+}
+
+func (q *Queries) FlavorVersionByID(ctx context.Context, id string) ([]FlavorVersionByIDRow, error) {
+	rows, err := q.db.Query(ctx, flavorVersionByID, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FlavorVersionByIDRow
+	for rows.Next() {
+		var i FlavorVersionByIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.FlavorID,
+			&i.Hash,
+			&i.ChangeHash,
+			&i.Version,
+			&i.FilesUploaded,
+			&i.PrevVersionID,
+			&i.CreatedAt,
+			&i.FlavorVersionID,
+			&i.FileHash,
+			&i.FilePath,
+			&i.CreatedAt_2,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const flavorVersionExists = `-- name: FlavorVersionExists :one
 SELECT EXISTS(
     SELECT 1 FROM flavor_versions
@@ -236,6 +294,17 @@ func (q *Queries) FlavorVersionFileHashes(ctx context.Context, flavorVersionID s
 		return nil, err
 	}
 	return items, nil
+}
+
+const flavorVersionHashByID = `-- name: FlavorVersionHashByID :one
+SELECT hash FROM flavor_versions WHERE id = $1
+`
+
+func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, flavorVersionHashByID, id)
+	var hash string
+	err := row.Scan(&hash)
+	return hash, err
 }
 
 const getChunkByID = `-- name: GetChunkByID :many
@@ -444,7 +513,7 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 }
 
 const latestFlavorVersionByFlavorID = `-- name: LatestFlavorVersionByFlavorID :one
-SELECT id, flavor_id, hash, version, prev_version_id, created_at FROM flavor_versions WHERE flavor_id = $1
+SELECT id, flavor_id, hash, change_hash, version, files_uploaded, prev_version_id, created_at FROM flavor_versions WHERE flavor_id = $1
 ORDER BY created_at DESC LIMIT 1
 `
 
@@ -455,7 +524,9 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 		&i.ID,
 		&i.FlavorID,
 		&i.Hash,
+		&i.ChangeHash,
 		&i.Version,
+		&i.FilesUploaded,
 		&i.PrevVersionID,
 		&i.CreatedAt,
 	)
@@ -490,6 +561,15 @@ func (q *Queries) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]F
 		return nil, err
 	}
 	return items, nil
+}
+
+const markFlavorVersionFilesUploaded = `-- name: MarkFlavorVersionFilesUploaded :exec
+UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1
+`
+
+func (q *Queries) MarkFlavorVersionFilesUploaded(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, markFlavorVersionFilesUploaded, id)
+	return err
 }
 
 const updateChunk = `-- name: UpdateChunk :one

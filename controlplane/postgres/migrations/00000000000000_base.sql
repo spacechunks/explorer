@@ -26,7 +26,15 @@ CREATE TABLE IF NOT EXISTS flavor_versions (
     id              UUID          NOT NULL PRIMARY KEY,
     flavor_id       UUID          NOT NULL REFERENCES flavors(id) ON DELETE CASCADE,
     hash            CHAR(16)      NOT NULL,
+
+    -- hash of all changed and new files. this is needed, so we can detect
+    -- if the changed and new files that are sent when uploading flavor files
+    -- are the same that have been used for creating the flavor version in the
+    -- first place. this also detects if files are missing.
+    change_hash     CHAR(16)      NOT NULL,
+
     version         VARCHAR(25)   NOT NULL,
+    files_uploaded  BOOL          NOT NULL DEFAULT FALSE,
     prev_version_id UUID,
     created_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
     UNIQUE (flavor_id, version)

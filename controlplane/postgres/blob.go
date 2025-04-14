@@ -26,7 +26,7 @@ import (
 )
 
 func (db *DB) BulkWriteBlobs(ctx context.Context, objects []blob.Object) error {
-	return db.do(ctx, func(q *query.Queries) error {
+	return db.doTX(ctx, func(q *query.Queries) error {
 		objs := make([]query.BulkInsertBlobDataParams, 0, len(objects))
 		for _, o := range objects {
 			objs = append(objs, query.BulkInsertBlobDataParams{
