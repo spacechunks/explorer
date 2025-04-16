@@ -30,4 +30,3 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/spacechunk/explorer:${{ github.sha }}
-          platforms: linux/amd64,linux/arm64
