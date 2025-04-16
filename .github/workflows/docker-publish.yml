@@ -26,17 +26,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: docker build
         uses: docker/build-push-action@v6
-        if: ${{matrix.os == 'ubuntu-22.04-arm'}}
         with:
           context: .
           push: true
           tags: ghcr.io/spacechunks/explorer:${{ github.sha }}
-          platforms: linux/arm64
-      - name: docker build
-        uses: docker/build-push-action@v6
-        if: ${{matrix.os == 'ubuntu-22.04'}}
-        with:
-          context: .
-          push: true
-          tags: ghcr.io/spacechunks/explorer:${{ github.sha }}
-          platforms: linux/amd64
