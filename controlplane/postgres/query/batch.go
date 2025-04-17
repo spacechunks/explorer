@@ -126,6 +126,7 @@ const bulkInsertBlobData = `-- name: BulkInsertBlobData :batchexec
 INSERT INTO blobs
     (hash, data)
 VALUES ($1, $2)
+ON CONFLICT DO NOTHING
 `
 
 type BulkInsertBlobDataBatchResults struct {

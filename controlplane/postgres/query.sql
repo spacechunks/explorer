@@ -97,7 +97,8 @@ UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1;
 -- name: BulkInsertBlobData :batchexec
 INSERT INTO blobs
     (hash, data)
-VALUES ($1, $2);
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING;
 
 -- name: BulkGetBlobData :batchmany
 SELECT * FROM blobs WHERE hash = $1;
