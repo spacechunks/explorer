@@ -43,12 +43,12 @@ func Migrate(dsn string) error {
 	mate.Log = io.Discard
 	mate.MigrationsDir = []string{"./"}
 
-	if _, err := mate.FindMigrations(); err != nil {
-		return fmt.Errorf("find migrations: %w", err)
-	}
-
 	if err := mate.Wait(); err != nil {
 		return fmt.Errorf("wait migrations: %w", err)
+	}
+
+	if _, err := mate.FindMigrations(); err != nil {
+		return fmt.Errorf("find migrations: %w", err)
 	}
 
 	if err := mate.Migrate(); err != nil {
