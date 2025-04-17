@@ -36,10 +36,11 @@ import (
 
 func main() {
 	var (
-		logger       = slog.New(slog.NewTextHandler(os.Stdout, nil))
-		fs           = flag.NewFlagSet("controlplane", flag.ContinueOnError)
-		listenAddr   = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                //nolint:lll
-		pgConnString = fs.String("postgres-dsn", "", "connection string in the form of postgres://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]") //nolint:lll
+		logger             = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		fs                 = flag.NewFlagSet("controlplane", flag.ContinueOnError)
+		listenAddr         = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                //nolint:lll
+		pgConnString       = fs.String("postgres-dsn", "", "connection string in the form of postgres://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]") //nolint:lll
+		grpcMaxMessageSize = fs.Uint("grpc-max-message-size", 4000000, "maximum grpc message size in bytes")
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
@@ -49,8 +50,9 @@ func main() {
 
 	var (
 		cfg = controlplane.Config{
-			ListenAddr:   *listenAddr,
-			DBConnString: *pgConnString,
+			ListenAddr:         *listenAddr,
+			DBConnString:       *pgConnString,
+			MaxGRPCMessageSize: int(*grpcMaxMessageSize),
 		}
 		ctx, cancel = context.WithCancel(context.Background())
 		server      = controlplane.NewServer(logger, cfg)
