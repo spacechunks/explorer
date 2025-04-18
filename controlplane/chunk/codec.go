@@ -33,7 +33,7 @@ func ChunkToTransport(domain Chunk) *chunkv1alpha1.Chunk {
 		UpdatedAt:   timestamppb.New(domain.UpdatedAt),
 	}
 
-	flavors := make([]*chunkv1alpha1.Flavor, len(domain.Flavors))
+	flavors := make([]*chunkv1alpha1.Flavor, 0, len(domain.Flavors))
 	for _, f := range domain.Flavors {
 		flavors = append(flavors, &chunkv1alpha1.Flavor{
 			Id:   &f.ID,

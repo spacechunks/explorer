@@ -198,6 +198,148 @@ func TestGetChunk(t *testing.T) {
 	}
 }
 
+func TestUpdateChunk(t *testing.T) {
+	tests := []struct {
+		name string
+		req  *chunkv1alpha1.UpdateChunkRequest
+		err  error
+	}{
+		{
+			name: "update all fields",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:          ptr.Pointer(fixture.Chunk().ID),
+				Name:        ptr.Pointer("new-name"),
+				Description: ptr.Pointer("new-description"),
+				Tags:        []string{"new-tags"},
+			},
+		},
+		{
+			name: "update name",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   ptr.Pointer(fixture.Chunk().ID),
+				Name: ptr.Pointer("new-name"),
+			},
+		},
+		{
+			name: "update description",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:          ptr.Pointer(fixture.Chunk().ID),
+				Description: ptr.Pointer("new-description"),
+			},
+		},
+		{
+			name: "update tags",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   ptr.Pointer(fixture.Chunk().ID),
+				Tags: []string{"new-tags"},
+			},
+		},
+		{
+			name: "not found",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:          ptr.Pointer(test.NewUUIDv7(t)),
+				Name:        ptr.Pointer("new-name"),
+				Description: ptr.Pointer("new-description"),
+				Tags:        []string{"new-tags"},
+			},
+			err: chunk.ErrChunkNotFound,
+		},
+		{
+			name: "name too long",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   ptr.Pointer(fixture.Chunk().ID),
+				Name: ptr.Pointer(strings.Repeat("a", chunk.MaxChunkNameChars+1)),
+			},
+			err: chunk.ErrNameTooLong,
+		},
+		{
+			name: "description too long",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:          ptr.Pointer(fixture.Chunk().ID),
+				Description: ptr.Pointer(strings.Repeat("a", chunk.MaxChunkDescriptionChars+1)),
+			},
+			err: chunk.ErrDescriptionTooLong,
+		},
+		{
+			name: "too many tags",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   ptr.Pointer(fixture.Chunk().ID),
+				Tags: slices.Repeat([]string{"a"}, chunk.MaxChunkTags+1),
+			},
+			err: chunk.ErrTooManyTags,
+		},
+		{
+			name: "invalid chunk id",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id: ptr.Pointer(""),
+			},
+			err: chunk.ErrInvalidChunkID,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+				c   = fixture.Chunk()
+			)
+
+			fixture.RunControlPlane(t, pg)
+
+			_, err := pg.DB.CreateChunk(ctx, c)
+			require.NoError(t, err)
+
+			for i, f := range fixture.Chunk().Flavors {
+				created, err := pg.DB.CreateFlavor(ctx, c.ID, f)
+				require.NoError(t, err)
+				c.Flavors[i] = created
+				require.NoError(t, err)
+			}
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+			resp, err := client.UpdateChunk(ctx, tt.req)
+
+			if tt.err != nil {
+				require.ErrorAs(t, err, &tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			expected := chunk.ChunkToTransport(c)
+
+			if tt.req.Name != nil {
+				expected.Name = tt.req.Name
+			}
+
+			if tt.req.Description != nil {
+				expected.Description = tt.req.Description
+			}
+
+			if tt.req.Tags != nil {
+				expected.Tags = tt.req.Tags
+			}
+
+			if d := cmp.Diff(
+				resp.GetChunk(),
+				expected,
+				protocmp.Transform(),
+				test.IgnoredProtoChunkFields,
+				test.IgnoredProtoFlavorFields,
+			); d != "" {
+				t.Fatalf("diff (-want +got):\n%s", d)
+			}
+		})
+	}
+}
+
 func TestCreateFlavor(t *testing.T) {
 	c := fixture.Chunk()
 	tests := []struct {

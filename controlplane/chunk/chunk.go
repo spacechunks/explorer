@@ -21,6 +21,7 @@ package chunk
 import (
 	"context"
 	"fmt"
+	"time"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -41,21 +42,19 @@ const (
 	MaxChunkDescriptionChars = 100
 )
 
+type Chunk struct {
+	ID          string
+	Name        string
+	Description string
+	Tags        []string
+	Flavors     []Flavor
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 func (s *svc) CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error) {
-	// FIXME:
-	//  - flavor limit
-	//  - remove hardcoded limits for tags
-
-	if len(chunk.Tags) > MaxChunkTags {
-		return Chunk{}, ErrTooManyTags
-	}
-
-	if utf8.RuneCountInString(chunk.Name) > MaxChunkNameChars {
-		return Chunk{}, ErrNameTooLong
-	}
-
-	if utf8.RuneCountInString(chunk.Description) > MaxChunkDescriptionChars {
-		return Chunk{}, ErrDescriptionTooLong
+	if err := validateChunkFields(chunk); err != nil {
+		return Chunk{}, err
 	}
 
 	// FIXME: move id generation to repo
@@ -79,4 +78,53 @@ func (s *svc) GetChunk(ctx context.Context, id string) (Chunk, error) {
 		return Chunk{}, err
 	}
 	return c, nil
+}
+
+func (s *svc) UpdateChunk(ctx context.Context, new Chunk) (Chunk, error) {
+	if err := validateChunkFields(new); err != nil {
+		return Chunk{}, err
+	}
+
+	old, err := s.repo.GetChunkByID(ctx, new.ID)
+	if err != nil {
+		return Chunk{}, fmt.Errorf("get chunk: %w", err)
+	}
+
+	if new.Name != "" {
+		old.Name = new.Name
+	}
+
+	if new.Description != "" {
+		old.Description = new.Description
+	}
+
+	if new.Tags != nil {
+		old.Tags = new.Tags
+	}
+
+	ret, err := s.repo.UpdateChunk(ctx, old)
+	if err != nil {
+		return Chunk{}, fmt.Errorf("update chunk: %w", err)
+	}
+
+	return ret, nil
+}
+
+func validateChunkFields(chunk Chunk) error {
+	// FIXME:
+	//  - remove hardcoded limits for tags
+
+	if len(chunk.Tags) > MaxChunkTags {
+		return ErrTooManyTags
+	}
+
+	if utf8.RuneCountInString(chunk.Name) > MaxChunkNameChars {
+		return ErrNameTooLong
+	}
+
+	if utf8.RuneCountInString(chunk.Description) > MaxChunkDescriptionChars {
+		return ErrDescriptionTooLong
+	}
+
+	return nil
 }
