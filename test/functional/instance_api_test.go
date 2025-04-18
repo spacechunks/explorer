@@ -65,13 +65,13 @@ func TestAPIListInstances(t *testing.T) {
 	_, err = pg.DB.CreateChunk(ctx, c)
 	require.NoError(t, err)
 
-	createdFlavor, err := pg.DB.CreateFlavor(ctx, fixture.Chunk().ID, fixture.Chunk().Flavors[0])
+	createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
 	require.NoError(t, err)
 
 	ins := []instance.Instance{
 		fixture.Instance(func(i *instance.Instance) {
 			i.ID = test.NewUUIDv7(t)
-			i.Chunk = fixture.Chunk()
+			i.Chunk = c
 			i.ChunkFlavor = createdFlavor
 			i.Port = nil // port will not be saved when creating
 		}),
