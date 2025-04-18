@@ -113,6 +113,76 @@ func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID 
 	return ret, nil
 }
 
+func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
+	var ret []instance.Instance
+	if err := db.do(ctx, func(q *query.Queries) error {
+		rows, err := q.ListInstances(ctx)
+		if err != nil {
+			return err
+		}
+
+		m := make(map[string][]query.ListInstancesRow)
+		for _, r := range rows {
+			m[r.ID] = append(m[r.ID], r)
+		}
+
+		for _, v := range m {
+			// we retrieve multiple rows when we call GetInstance
+			// chunk data and instance data will stay the same, what
+			// will change is the flavor data. there will be one row
+			// for each flavor the chunk has.
+			//
+			// so it is safe that we use the first row here, because
+			// the data will stay the same.
+			row := v[0]
+
+			// instance port is intentionally left out, because it will not be
+			// known beforehand atm, thus it will always be nil when creating.
+			i := instance.Instance{
+				ID:        row.ID,
+				Address:   row.Address,
+				State:     instance.State(row.State),
+				CreatedAt: row.CreatedAt.UTC(),
+				UpdatedAt: row.UpdatedAt.UTC(),
+				Chunk: chunk.Chunk{
+					ID:          row.ID_3,
+					Name:        row.Name_2,
+					Description: row.Description,
+					Tags:        row.Tags,
+					CreatedAt:   row.CreatedAt_3.UTC(),
+					UpdatedAt:   row.UpdatedAt_3.UTC(),
+				},
+			}
+
+			flavors := make([]chunk.Flavor, 0, len(rows))
+			for _, instanceRow := range v {
+				f := chunk.Flavor{
+					ID:        instanceRow.ID_2,
+					Name:      instanceRow.Name,
+					CreatedAt: instanceRow.CreatedAt_2.UTC(),
+					UpdatedAt: instanceRow.UpdatedAt_2.UTC(),
+				}
+
+				if instanceRow.FlavorID == f.ID {
+					i.ChunkFlavor = f
+				}
+
+				flavors = append(flavors, f)
+			}
+
+			i.Chunk.Flavors = flavors
+
+			ret = append(ret, i)
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
 func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instance.Instance, error) {
 	ret := make([]instance.Instance, 0)
 	if err := db.do(ctx, func(q *query.Queries) error {

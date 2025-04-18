@@ -113,6 +113,12 @@ INSERT INTO instances
 VALUES
     ($1, $2, $3, $4, $5, $6, $7);
 
+-- name: ListInstances :many
+SELECT * FROM instances i
+    JOIN flavors f ON i.chunk_id = f.chunk_id
+    JOIN chunks c ON f.chunk_id = c.id
+    JOIN nodes n ON i.node_id = n.id;
+
 -- name: GetInstance :many
 SELECT * FROM instances i
     JOIN flavors f ON i.chunk_id = f.chunk_id
