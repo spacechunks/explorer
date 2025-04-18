@@ -28,83 +28,29 @@ import (
 	"github.com/spacechunks/explorer/internal/ptr"
 )
 
-type instanceParams struct {
-	create query.CreateInstanceParams
-}
-
-func createInstanceParams(nodeID string, instance instance.Instance) instanceParams {
-	return instanceParams{
-		create: query.CreateInstanceParams{
-			ID:        instance.ID,
-			ChunkID:   instance.Chunk.ID,
-			FlavorID:  instance.ChunkFlavor.ID,
-			NodeID:    nodeID,
-			State:     query.InstanceState(instance.State),
-			CreatedAt: instance.CreatedAt,
-			UpdatedAt: instance.UpdatedAt,
-		},
-	}
-}
-
 func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID string) (instance.Instance, error) {
-	params := createInstanceParams(nodeID, ins)
+	params := query.CreateInstanceParams{
+		ID:        ins.ID,
+		ChunkID:   ins.Chunk.ID,
+		FlavorID:  ins.ChunkFlavor.ID,
+		NodeID:    nodeID,
+		State:     query.InstanceState(ins.State),
+		CreatedAt: ins.CreatedAt,
+		UpdatedAt: ins.UpdatedAt,
+	}
 
 	var ret instance.Instance
 	if err := db.doTX(ctx, func(q *query.Queries) error {
-		if err := q.CreateInstance(ctx, params.create); err != nil {
+		if err := q.CreateInstance(ctx, params); err != nil {
 			return fmt.Errorf("create instance: %w", err)
 		}
 
-		rows, err := q.GetInstance(ctx, params.create.ID)
+		ins, err := db.getInstanceByID(ctx, q, params.ID)
 		if err != nil {
 			return fmt.Errorf("get instance: %w", err)
 		}
 
-		// we retrieve multiple rows when we call GetInstance
-		// chunk data and instance data will stay the same, what
-		// will change is the flavor data. there will be one row
-		// for each flavor the chunk has.
-		//
-		// so it is safe that we use the first row here, because
-		// the data will stay the same.
-		row := rows[0]
-
-		// instance port is intentionally left out, because it will not be
-		// known beforehand atm, thus it will always be nil when creating.
-		ret = instance.Instance{
-			ID:        row.ID,
-			Address:   row.Address,
-			State:     instance.State(row.State),
-			CreatedAt: row.CreatedAt.UTC(),
-			UpdatedAt: row.UpdatedAt.UTC(),
-			Chunk: chunk.Chunk{
-				ID:          row.ID_3,
-				Name:        row.Name_2,
-				Description: row.Description,
-				Tags:        row.Tags,
-				CreatedAt:   row.CreatedAt_3.UTC(),
-				UpdatedAt:   row.UpdatedAt_3.UTC(),
-			},
-		}
-
-		flavors := make([]chunk.Flavor, 0, len(rows))
-		for _, instanceRow := range rows {
-			f := chunk.Flavor{
-				ID:        instanceRow.ID_2,
-				Name:      instanceRow.Name,
-				CreatedAt: instanceRow.CreatedAt_2.UTC(),
-				UpdatedAt: instanceRow.UpdatedAt_2.UTC(),
-			}
-
-			if instanceRow.FlavorID == f.ID {
-				ret.ChunkFlavor = f
-			}
-
-			flavors = append(flavors, f)
-		}
-
-		ret.Chunk.Flavors = flavors
-
+		ret = ins
 		return nil
 	}); err != nil {
 		return instance.Instance{}, err
@@ -178,6 +124,22 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 		return nil
 	}); err != nil {
 		return nil, err
+	}
+
+	return ret, nil
+}
+
+func (db *DB) GetInstanceByID(ctx context.Context, id string) (instance.Instance, error) {
+	var ret instance.Instance
+	if err := db.do(ctx, func(q *query.Queries) error {
+		ins, err := db.getInstanceByID(ctx, q, id)
+		if err != nil {
+			return err
+		}
+		ret = ins
+		return nil
+	}); err != nil {
+		return instance.Instance{}, err
 	}
 
 	return ret, nil
@@ -278,4 +240,70 @@ func (db *DB) ApplyStatusReports(ctx context.Context, reports []instance.StatusR
 	}
 
 	return nil
+}
+
+func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) (instance.Instance, error) {
+	rows, err := q.GetInstance(ctx, id)
+	if err != nil {
+		return instance.Instance{}, err
+	}
+
+	if len(rows) == 0 {
+		return instance.Instance{}, instance.ErrInstanceNotFound
+	}
+
+	ret := instance.Instance{}
+
+	// we retrieve multiple rows when we call GetInstance
+	// chunk data and instance data will stay the same, what
+	// will change is the flavor data. there will be one row
+	// for each flavor the chunk has.
+	//
+	// so it is safe that we use the first row here, because
+	// the data will stay the same.
+	row := rows[0]
+
+	// instance port is intentionally left out, because it will not be
+	// known beforehand atm, thus it will always be nil when creating.
+	ret = instance.Instance{
+		ID:        row.ID,
+		Address:   row.Address,
+		State:     instance.State(row.State),
+		CreatedAt: row.CreatedAt.UTC(),
+		UpdatedAt: row.UpdatedAt.UTC(),
+		Chunk: chunk.Chunk{
+			ID:          row.ID_3,
+			Name:        row.Name_2,
+			Description: row.Description,
+			Tags:        row.Tags,
+			CreatedAt:   row.CreatedAt_3.UTC(),
+			UpdatedAt:   row.UpdatedAt_3.UTC(),
+		},
+	}
+
+	var port *uint16
+	if row.Port != nil {
+		port = ptr.Pointer(uint16(*row.Port))
+	}
+
+	ret.Port = port
+
+	flavors := make([]chunk.Flavor, 0, len(rows))
+	for _, instanceRow := range rows {
+		f := chunk.Flavor{
+			ID:        instanceRow.ID_2,
+			Name:      instanceRow.Name,
+			CreatedAt: instanceRow.CreatedAt_2.UTC(),
+			UpdatedAt: instanceRow.UpdatedAt_2.UTC(),
+		}
+
+		if instanceRow.FlavorID == f.ID {
+			ret.ChunkFlavor = f
+		}
+
+		flavors = append(flavors, f)
+	}
+
+	ret.Chunk.Flavors = flavors
+	return ret, nil
 }

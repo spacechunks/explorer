@@ -140,6 +140,83 @@ func TestDBListInstances(t *testing.T) {
 	}
 }
 
+func TestGetInstanceByID(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected instance.Instance
+		create   bool
+		err      error
+	}{
+		{
+			name:     "works",
+			create:   true,
+			expected: fixture.Instance(),
+		},
+		{
+			name:     "not found",
+			expected: fixture.Instance(),
+			err:      instance.ErrInstanceNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx    = context.Background()
+				pg     = fixture.NewPostgres()
+				nodeID = test.NewUUIDv7(t)
+			)
+
+			pg.Run(t, ctx)
+
+			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
+			require.NoError(t, err)
+
+			if tt.create {
+				_, err = pg.DB.CreateChunk(ctx, tt.expected.Chunk)
+				require.NoError(t, err)
+
+				for i, f := range tt.expected.Chunk.Flavors {
+					created, err := pg.DB.CreateFlavor(ctx, tt.expected.Chunk.ID, f)
+					require.NoError(t, err)
+					tt.expected.Chunk.Flavors[i] = created
+				}
+
+				tt.expected.ChunkFlavor = tt.expected.Chunk.Flavors[0]
+
+				_, err = pg.DB.CreateInstance(ctx, tt.expected, nodeID)
+				require.NoError(t, err)
+
+				_, err = pg.Pool.Exec(
+					ctx,
+					`UPDATE instances SET port = $1 WHERE id = $2`,
+					tt.expected.Port,
+					tt.expected.ID,
+				)
+				require.NoError(t, err)
+			}
+
+			actual, err := pg.DB.GetInstanceByID(ctx, tt.expected.ID)
+
+			if !tt.create {
+				require.ErrorIs(t, err, tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			if d := cmp.Diff(
+				tt.expected,
+				actual,
+				test.IgnoreFields(test.IgnoredInstanceFields...),
+				cmpopts.EquateComparable(netip.Addr{}),
+			); d != "" {
+				t.Fatalf("GetInstaceByID() mismatch (-want +got):\n%s", d)
+			}
+		})
+	}
+}
+
 func TestGetInstancesByNodeID(t *testing.T) {
 	var (
 		ctx    = context.Background()
