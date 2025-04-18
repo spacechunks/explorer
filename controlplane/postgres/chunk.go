@@ -20,6 +20,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
@@ -105,19 +106,17 @@ func (db *DB) UpdateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 	}
 
 	var ret chunk.Chunk
-	if err := db.do(ctx, func(q *query.Queries) error {
-		c, err := q.UpdateChunk(ctx, params)
+	if err := db.doTX(ctx, func(q *query.Queries) error {
+		if err := q.UpdateChunk(ctx, params); err != nil {
+			return fmt.Errorf("update chunk: %w", err)
+		}
+
+		c, err := db.getChunkByID(ctx, q, params.ID)
 		if err != nil {
-			return err
+			return fmt.Errorf("get chunk: %w", err)
 		}
-		ret = chunk.Chunk{
-			ID:          c.ID,
-			Name:        c.Name,
-			Description: c.Description,
-			Tags:        c.Tags,
-			CreatedAt:   c.CreatedAt.UTC(),
-			UpdatedAt:   c.UpdatedAt.UTC(),
-		}
+
+		ret = c
 		return nil
 	}); err != nil {
 		return chunk.Chunk{}, err
@@ -141,4 +140,40 @@ func (db *DB) ChunkExists(ctx context.Context, id string) (bool, error) {
 	}
 
 	return ret, nil
+}
+
+func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (chunk.Chunk, error) {
+	rows, err := q.GetChunkByID(ctx, id)
+	if err != nil {
+		return chunk.Chunk{}, err
+	}
+
+	if len(rows) == 0 {
+		return chunk.Chunk{}, chunk.ErrChunkNotFound
+	}
+
+	var (
+		row     = rows[0]
+		flavors = make([]chunk.Flavor, 0, len(rows))
+		c       = chunk.Chunk{
+			ID:          row.ID,
+			Name:        row.Name,
+			Description: row.Description,
+			Tags:        row.Tags,
+			CreatedAt:   row.CreatedAt.UTC(),
+			UpdatedAt:   row.UpdatedAt.UTC(),
+		}
+	)
+
+	for _, r := range rows {
+		flavors = append(flavors, chunk.Flavor{
+			ID:        r.ID_2,
+			Name:      r.Name_2,
+			CreatedAt: r.CreatedAt_2.UTC(),
+			UpdatedAt: r.UpdatedAt_2.UTC(),
+		})
+	}
+
+	c.Flavors = flavors
+	return c, nil
 }

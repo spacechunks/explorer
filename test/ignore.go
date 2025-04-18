@@ -21,6 +21,7 @@ package test
 import (
 	"github.com/google/go-cmp/cmp"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
@@ -46,6 +47,12 @@ var (
 		"id",
 		"created_at",
 		"updated_at",
+	)
+
+	IgnoredProtoInstanceFields = protocmp.IgnoreFields(
+		&instancev1alpha1.Instance{},
+		// created dynamically
+		"id",
 	)
 
 	IgnoredInstanceFields = []string{

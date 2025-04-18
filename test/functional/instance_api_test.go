@@ -198,6 +198,7 @@ func TestAPIListInstances(t *testing.T) {
 		protocmp.Transform(),
 		test.IgnoredProtoFlavorFields,
 		test.IgnoredProtoChunkFields,
+		test.IgnoredProtoInstanceFields,
 	); d != "" {
 		t.Fatalf("diff (-want +got):\n%s", d)
 	}

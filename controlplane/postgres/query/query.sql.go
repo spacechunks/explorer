@@ -637,7 +637,7 @@ func (q *Queries) MarkFlavorVersionFilesUploaded(ctx context.Context, id string)
 	return err
 }
 
-const updateChunk = `-- name: UpdateChunk :one
+const updateChunk = `-- name: UpdateChunk :exec
 UPDATE chunks
 SET
     name = $1,
@@ -645,7 +645,6 @@ SET
     tags = $3,
     updated_at = now()
 WHERE id = $4
-RETURNING id, name, description, tags, created_at, updated_at
 `
 
 type UpdateChunkParams struct {
@@ -655,21 +654,12 @@ type UpdateChunkParams struct {
 	ID          string
 }
 
-func (q *Queries) UpdateChunk(ctx context.Context, arg UpdateChunkParams) (Chunk, error) {
-	row := q.db.QueryRow(ctx, updateChunk,
+func (q *Queries) UpdateChunk(ctx context.Context, arg UpdateChunkParams) error {
+	_, err := q.db.Exec(ctx, updateChunk,
 		arg.Name,
 		arg.Description,
 		arg.Tags,
 		arg.ID,
 	)
-	var i Chunk
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.Tags,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+	return err
 }

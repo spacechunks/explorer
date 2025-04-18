@@ -14,15 +14,14 @@ SELECT * FROM chunks c
     JOIN flavors f ON f.chunk_id = c.id
 WHERE c.id = $1;
 
--- name: UpdateChunk :one
+-- name: UpdateChunk :exec
 UPDATE chunks
 SET
     name = $1,
     description = $2,
     tags = $3,
     updated_at = now()
-WHERE id = $4
-RETURNING *;
+WHERE id = $4;
 
 -- name: ChunkExists :one
 SELECT EXISTS(

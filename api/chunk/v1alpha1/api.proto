@@ -48,6 +48,21 @@ service ChunkService {
   //   - id is invalid
   rpc GetChunk(GetChunkRequest) returns (GetChunkResponse);
 
+  // UpdateChunk updates the fields of the given chunk.
+  // Note that tags will be completely replaced with the
+  // provided ones.
+  //
+  // Defined error codes:
+  // - NOT_FOUND:
+  //   - chunk with the provided id does not exist
+  // - INVALID_ARGUMENT:
+  //   - chunk id is invalid
+  //   - name is invalid
+  //   - too many tags have been provided
+  //   - name exceeds the maximum amount of allowed chars
+  //   - description exceeds the maximum amount of allowed chars.
+  rpc UpdateChunk(UpdateChunkRequest) returns (UpdateChunkResponse);
+
   // CreateFlavor creates a new flavor for a given chunk.
   //
   // Defined error codes:
@@ -114,6 +129,10 @@ message CreateChunkRequest {
   // User owner = 4;
 }
 
+message CreateChunkResponse {
+  Chunk chunk = 1;
+}
+
 message GetChunkRequest {
   string id = 1;
 }
@@ -122,7 +141,14 @@ message GetChunkResponse {
   Chunk chunk = 1;
 }
 
-message CreateChunkResponse {
+message UpdateChunkRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated string tags = 4;
+}
+
+message UpdateChunkResponse {
   Chunk chunk = 1;
 }
 

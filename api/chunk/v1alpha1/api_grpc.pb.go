@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	ChunkService_CreateChunk_FullMethodName         = "/chunk.v1alpha1.ChunkService/CreateChunk"
 	ChunkService_GetChunk_FullMethodName            = "/chunk.v1alpha1.ChunkService/GetChunk"
+	ChunkService_UpdateChunk_FullMethodName         = "/chunk.v1alpha1.ChunkService/UpdateChunk"
 	ChunkService_CreateFlavor_FullMethodName        = "/chunk.v1alpha1.ChunkService/CreateFlavor"
 	ChunkService_ListFlavors_FullMethodName         = "/chunk.v1alpha1.ChunkService/ListFlavors"
 	ChunkService_CreateFlavorVersion_FullMethodName = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
@@ -46,7 +47,16 @@ type ChunkServiceClient interface {
 	//   - name exceeds the maximum amount of allowed chars
 	//   - description exceeds the maximum amount of allowed chars.
 	CreateChunk(ctx context.Context, in *CreateChunkRequest, opts ...grpc.CallOption) (*CreateChunkResponse, error)
+	// GetChunk returns the chunk specified by the provided id.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - chunk with the provided id does not exist
+	//
+	// - INVALID_ARGUMENT:
+	//   - id is invalid
 	GetChunk(ctx context.Context, in *GetChunkRequest, opts ...grpc.CallOption) (*GetChunkResponse, error)
+	UpdateChunk(ctx context.Context, in *UpdateChunkRequest, opts ...grpc.CallOption) (*UpdateChunkResponse, error)
 	// CreateFlavor creates a new flavor for a given chunk.
 	//
 	// Defined error codes:
@@ -125,6 +135,16 @@ func (c *chunkServiceClient) GetChunk(ctx context.Context, in *GetChunkRequest, 
 	return out, nil
 }
 
+func (c *chunkServiceClient) UpdateChunk(ctx context.Context, in *UpdateChunkRequest, opts ...grpc.CallOption) (*UpdateChunkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateChunkResponse)
+	err := c.cc.Invoke(ctx, ChunkService_UpdateChunk_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chunkServiceClient) CreateFlavor(ctx context.Context, in *CreateFlavorRequest, opts ...grpc.CallOption) (*CreateFlavorResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateFlavorResponse)
@@ -183,7 +203,16 @@ type ChunkServiceServer interface {
 	//   - name exceeds the maximum amount of allowed chars
 	//   - description exceeds the maximum amount of allowed chars.
 	CreateChunk(context.Context, *CreateChunkRequest) (*CreateChunkResponse, error)
+	// GetChunk returns the chunk specified by the provided id.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - chunk with the provided id does not exist
+	//
+	// - INVALID_ARGUMENT:
+	//   - id is invalid
 	GetChunk(context.Context, *GetChunkRequest) (*GetChunkResponse, error)
+	UpdateChunk(context.Context, *UpdateChunkRequest) (*UpdateChunkResponse, error)
 	// CreateFlavor creates a new flavor for a given chunk.
 	//
 	// Defined error codes:
@@ -247,6 +276,9 @@ func (UnimplementedChunkServiceServer) CreateChunk(context.Context, *CreateChunk
 }
 func (UnimplementedChunkServiceServer) GetChunk(context.Context, *GetChunkRequest) (*GetChunkResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetChunk not implemented")
+}
+func (UnimplementedChunkServiceServer) UpdateChunk(context.Context, *UpdateChunkRequest) (*UpdateChunkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateChunk not implemented")
 }
 func (UnimplementedChunkServiceServer) CreateFlavor(context.Context, *CreateFlavorRequest) (*CreateFlavorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateFlavor not implemented")
@@ -313,6 +345,24 @@ func _ChunkService_GetChunk_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChunkServiceServer).GetChunk(ctx, req.(*GetChunkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChunkService_UpdateChunk_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateChunkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).UpdateChunk(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_UpdateChunk_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).UpdateChunk(ctx, req.(*UpdateChunkRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -403,6 +453,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetChunk",
 			Handler:    _ChunkService_GetChunk_Handler,
+		},
+		{
+			MethodName: "UpdateChunk",
+			Handler:    _ChunkService_UpdateChunk_Handler,
 		},
 		{
 			MethodName: "CreateFlavor",
