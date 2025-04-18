@@ -198,6 +198,72 @@ func TestGetChunk(t *testing.T) {
 	}
 }
 
+func TestListChunks(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	fixture.RunControlPlane(t, pg)
+
+	chunks := []chunk.Chunk{
+		fixture.Chunk(func(c *chunk.Chunk) {
+			c.ID = test.NewUUIDv7(t)
+			c.Flavors = []chunk.Flavor{
+				fixture.Flavor(func(f *chunk.Flavor) {
+					f.ID = test.NewUUIDv7(t)
+					f.Name = "ddddawq31423452"
+				}),
+			}
+		}),
+		fixture.Chunk(func(c *chunk.Chunk) {
+			c.ID = test.NewUUIDv7(t)
+			c.Flavors = []chunk.Flavor{
+				fixture.Flavor(func(f *chunk.Flavor) {
+					f.ID = test.NewUUIDv7(t)
+					f.Name = "dawdawdawd"
+				}),
+			}
+		}),
+	}
+
+	for _, c := range chunks {
+		_, err := pg.DB.CreateChunk(ctx, c)
+		require.NoError(t, err)
+
+		for _, f := range c.Flavors {
+			_, err := pg.DB.CreateFlavor(ctx, c.ID, f)
+			require.NoError(t, err)
+		}
+	}
+
+	conn, err := grpc.NewClient(
+		fixture.ControlPlaneAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+
+	client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+	resp, err := client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{})
+	require.NoError(t, err)
+
+	expected := make([]*chunkv1alpha1.Chunk, 0, len(chunks))
+	for _, c := range chunks {
+		expected = append(expected, chunk.ChunkToTransport(c))
+	}
+
+	if d := cmp.Diff(
+		expected,
+		resp.GetChunks(),
+		protocmp.Transform(),
+		test.IgnoredProtoChunkFields,
+		test.IgnoredProtoFlavorFields,
+	); d != "" {
+		t.Fatalf("diff (-want +got):\n%s", d)
+	}
+}
+
 func TestUpdateChunk(t *testing.T) {
 	tests := []struct {
 		name string

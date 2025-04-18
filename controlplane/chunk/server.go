@@ -114,6 +114,25 @@ func (s *Server) UpdateChunk(
 	}, nil
 }
 
+func (s *Server) ListChunks(
+	ctx context.Context,
+	_ *chunkv1alpha1.ListChunksRequest,
+) (*chunkv1alpha1.ListChunksResponse, error) {
+	ret, err := s.service.ListChunks(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	transport := make([]*chunkv1alpha1.Chunk, 0, len(ret))
+	for _, c := range ret {
+		transport = append(transport, ChunkToTransport(c))
+	}
+
+	return &chunkv1alpha1.ListChunksResponse{
+		Chunks: transport,
+	}, nil
+}
+
 func (s *Server) CreateFlavor(
 	ctx context.Context,
 	req *chunkv1alpha1.CreateFlavorRequest,

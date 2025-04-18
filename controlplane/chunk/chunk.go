@@ -110,6 +110,14 @@ func (s *svc) UpdateChunk(ctx context.Context, new Chunk) (Chunk, error) {
 	return ret, nil
 }
 
+func (s *svc) ListChunks(ctx context.Context) ([]Chunk, error) {
+	ret, err := s.repo.ListChunks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
 func validateChunkFields(chunk Chunk) error {
 	// FIXME:
 	//  - remove hardcoded limits for tags

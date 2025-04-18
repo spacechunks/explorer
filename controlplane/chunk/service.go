@@ -28,6 +28,7 @@ type Service interface {
 	CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
 	GetChunk(ctx context.Context, id string) (Chunk, error)
 	UpdateChunk(ctx context.Context, new Chunk) (Chunk, error)
+	ListChunks(ctx context.Context) ([]Chunk, error)
 	CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error)
 	ListFlavors(ctx context.Context, chunkID string) ([]Flavor, error)
 	CreateFlavorVersion(ctx context.Context, version FlavorVersion) (FlavorVersion, FlavorVersionDiff, error)
