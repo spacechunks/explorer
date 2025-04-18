@@ -30,6 +30,7 @@ import (
 )
 
 type Service interface {
+	ListInstances(ctx context.Context) ([]Instance, error)
 	RunChunk(ctx context.Context, chunkID string, flavorID string) (Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]Instance, error)
 	ReceiveInstanceStatusReports(ctx context.Context, reports []StatusReport) error
@@ -47,6 +48,14 @@ func NewService(logger *slog.Logger, repo Repository, chunkService chunk.Service
 		repo:         repo,
 		chunkService: chunkService,
 	}
+}
+
+func (s *svc) ListInstances(ctx context.Context) ([]Instance, error) {
+	l, err := s.repo.ListInstances(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return l, nil
 }
 
 func (s *svc) RunChunk(ctx context.Context, chunkID string, flavorID string) (Instance, error) {

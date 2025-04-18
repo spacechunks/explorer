@@ -44,6 +44,76 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func TestAPIListInstances(t *testing.T) {
+	var (
+		ctx    = context.Background()
+		pg     = fixture.NewPostgres()
+		nodeID = "0195c2f6-f40c-72df-a0f1-e468f1be77b1"
+		c      = fixture.Chunk()
+	)
+
+	fixture.RunControlPlane(t, pg)
+
+	// FIXME: find better way to seed nodes
+	_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
+	require.NoError(t, err)
+
+	// make sure we only have one flavor, the fixture has 2 configured by default
+	// but for this test we only we need one.
+	c.Flavors = []chunk.Flavor{c.Flavors[0]}
+
+	_, err = pg.DB.CreateChunk(ctx, c)
+	require.NoError(t, err)
+
+	createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
+	require.NoError(t, err)
+
+	ins := []instance.Instance{
+		fixture.Instance(func(i *instance.Instance) {
+			i.ID = test.NewUUIDv7(t)
+			i.Chunk = c
+			i.ChunkFlavor = createdFlavor
+			i.Port = nil // port will not be saved when creating
+		}),
+		fixture.Instance(func(i *instance.Instance) {
+			i.ID = test.NewUUIDv7(t)
+			i.Chunk = c
+			i.ChunkFlavor = createdFlavor
+			i.Port = nil // port will not be saved when creating
+		}),
+	}
+
+	for _, i := range ins {
+		_, err := pg.DB.CreateInstance(ctx, i, nodeID)
+		require.NoError(t, err)
+	}
+
+	conn, err := grpc.NewClient(
+		fixture.ControlPlaneAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+
+	client := instancev1alpha1.NewInstanceServiceClient(conn)
+
+	expected := make([]*instancev1alpha1.Instance, 0, len(ins))
+	for _, i := range ins {
+		expected = append(expected, instance.ToTransport(i))
+	}
+
+	resp, err := client.ListInstances(ctx, &instancev1alpha1.ListInstancesRequest{})
+	require.NoError(t, err)
+
+	if d := cmp.Diff(
+		expected,
+		resp.GetInstances(),
+		protocmp.Transform(),
+		test.IgnoredProtoFlavorFields,
+	); d != "" {
+		t.Fatalf("diff (-want +got):\n%s", d)
+	}
+}
+
 func TestRunChunk(t *testing.T) {
 	tests := []struct {
 		name     string

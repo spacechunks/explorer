@@ -73,6 +73,9 @@ type ChunkServiceClient interface {
 	// present, the request will fail.
 	//
 	// Defined error codes:
+	// - ALREADY_EXISTS:
+	//   - files have already been uploaded
+	//
 	// - FAILED_PRECONDITION:
 	//   - the hash of the provided files does not match with the previous determined
 	//     hash of all newly added and changed files. this means that some files have
@@ -175,6 +178,9 @@ type ChunkServiceServer interface {
 	// present, the request will fail.
 	//
 	// Defined error codes:
+	// - ALREADY_EXISTS:
+	//   - files have already been uploaded
+	//
 	// - FAILED_PRECONDITION:
 	//   - the hash of the provided files does not match with the previous determined
 	//     hash of all newly added and changed files. this means that some files have

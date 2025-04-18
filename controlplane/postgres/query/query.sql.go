@@ -563,6 +563,81 @@ func (q *Queries) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]F
 	return items, nil
 }
 
+const listInstances = `-- name: ListInstances :many
+SELECT i.id, i.chunk_id, flavor_id, node_id, port, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
+    JOIN flavors f ON i.chunk_id = f.chunk_id
+    JOIN chunks c ON f.chunk_id = c.id
+    JOIN nodes n ON i.node_id = n.id
+`
+
+type ListInstancesRow struct {
+	ID          string
+	ChunkID     string
+	FlavorID    string
+	NodeID      string
+	Port        *int32
+	State       InstanceState
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	ID_2        string
+	ChunkID_2   string
+	Name        string
+	CreatedAt_2 time.Time
+	UpdatedAt_2 time.Time
+	ID_3        string
+	Name_2      string
+	Description string
+	Tags        []string
+	CreatedAt_3 time.Time
+	UpdatedAt_3 time.Time
+	ID_4        string
+	Address     netip.Addr
+	CreatedAt_4 time.Time
+}
+
+func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error) {
+	rows, err := q.db.Query(ctx, listInstances)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListInstancesRow
+	for rows.Next() {
+		var i ListInstancesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ChunkID,
+			&i.FlavorID,
+			&i.NodeID,
+			&i.Port,
+			&i.State,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ID_2,
+			&i.ChunkID_2,
+			&i.Name,
+			&i.CreatedAt_2,
+			&i.UpdatedAt_2,
+			&i.ID_3,
+			&i.Name_2,
+			&i.Description,
+			&i.Tags,
+			&i.CreatedAt_3,
+			&i.UpdatedAt_3,
+			&i.ID_4,
+			&i.Address,
+			&i.CreatedAt_4,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markFlavorVersionFilesUploaded = `-- name: MarkFlavorVersionFilesUploaded :exec
 UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1
 `

@@ -26,6 +26,8 @@ import "instance/v1alpha1/types.proto";
 import "google/protobuf/timestamp.proto";
 
 service InstanceService {
+  // ListInstances returns all created instances.
+  rpc ListInstances(ListInstancesRequest) returns (ListInstancesResponse);
 
   // RunChunk creates an instance for a specific flavor of a chunk
   // and schedules it to be run on a node. The connection information
@@ -44,7 +46,16 @@ service InstanceService {
 
   // GetInstance
   // stop instance
-  // list instances
+}
+
+message ListInstancesRequest {
+  // at the moment just return all instances
+  // later add filter for things like a specific
+  // chunk, state etc.
+}
+
+message ListInstancesResponse {
+  repeated Instance instances = 1;
 }
 
 message RunChunkRequest {
