@@ -44,6 +44,93 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func TestGetInstance(t *testing.T) {
+	tests := []struct {
+		name     string
+		instance instance.Instance
+		create   bool
+		err      error
+	}{
+		{
+			name:     "works",
+			create:   true,
+			instance: fixture.Instance(),
+		},
+		{
+			name:     "not found",
+			instance: fixture.Instance(),
+			err:      instance.ErrInstanceNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx    = context.Background()
+				pg     = fixture.NewPostgres()
+				nodeID = "0195c2f6-f40c-72df-a0f1-e468f1be77b1"
+			)
+
+			fixture.RunControlPlane(t, pg)
+
+			// FIXME: find better way to seed nodes
+			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
+			require.NoError(t, err)
+
+			if tt.create {
+				_, err = pg.DB.CreateChunk(ctx, tt.instance.Chunk)
+				require.NoError(t, err)
+
+				for i, f := range tt.instance.Chunk.Flavors {
+					created, err := pg.DB.CreateFlavor(ctx, tt.instance.Chunk.ID, f)
+					require.NoError(t, err)
+					tt.instance.Chunk.Flavors[i] = created
+				}
+
+				tt.instance.ChunkFlavor = tt.instance.Chunk.Flavors[0]
+
+				_, err = pg.DB.CreateInstance(ctx, tt.instance, nodeID)
+				require.NoError(t, err)
+
+				_, err = pg.Pool.Exec(
+					ctx,
+					`UPDATE instances SET port = $1 WHERE id = $2`,
+					tt.instance.Port,
+					tt.instance.ID,
+				)
+				require.NoError(t, err)
+			}
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := instancev1alpha1.NewInstanceServiceClient(conn)
+
+			resp, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
+				Id: &tt.instance.ID,
+			})
+
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			if d := cmp.Diff(
+				instance.ToTransport(tt.instance),
+				resp.GetInstance(),
+				protocmp.Transform(),
+				test.IgnoredProtoFlavorFields,
+			); d != "" {
+				t.Fatalf("diff (-want +got):\n%s", d)
+			}
+		})
+	}
+}
+
 func TestAPIListInstances(t *testing.T) {
 	var (
 		ctx    = context.Background()

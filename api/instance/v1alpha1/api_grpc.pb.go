@@ -20,6 +20,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	InstanceService_GetInstance_FullMethodName                  = "/instance.v1alpha1.InstanceService/GetInstance"
 	InstanceService_ListInstances_FullMethodName                = "/instance.v1alpha1.InstanceService/ListInstances"
 	InstanceService_RunChunk_FullMethodName                     = "/instance.v1alpha1.InstanceService/RunChunk"
 	InstanceService_DiscoverInstances_FullMethodName            = "/instance.v1alpha1.InstanceService/DiscoverInstances"
@@ -30,6 +31,12 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type InstanceServiceClient interface {
+	// GetInstance returns an instance by its id.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - instance with the specified id could not be found
+	GetInstance(ctx context.Context, in *GetInstanceRequest, opts ...grpc.CallOption) (*GetInstanceResponse, error)
 	// ListInstances returns all created instances.
 	ListInstances(ctx context.Context, in *ListInstancesRequest, opts ...grpc.CallOption) (*ListInstancesResponse, error)
 	// RunChunk creates an instance for a specific flavor of a chunk
@@ -52,6 +59,16 @@ type instanceServiceClient struct {
 
 func NewInstanceServiceClient(cc grpc.ClientConnInterface) InstanceServiceClient {
 	return &instanceServiceClient{cc}
+}
+
+func (c *instanceServiceClient) GetInstance(ctx context.Context, in *GetInstanceRequest, opts ...grpc.CallOption) (*GetInstanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetInstanceResponse)
+	err := c.cc.Invoke(ctx, InstanceService_GetInstance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *instanceServiceClient) ListInstances(ctx context.Context, in *ListInstancesRequest, opts ...grpc.CallOption) (*ListInstancesResponse, error) {
@@ -98,6 +115,12 @@ func (c *instanceServiceClient) ReceiveInstanceStatusReports(ctx context.Context
 // All implementations must embed UnimplementedInstanceServiceServer
 // for forward compatibility.
 type InstanceServiceServer interface {
+	// GetInstance returns an instance by its id.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - instance with the specified id could not be found
+	GetInstance(context.Context, *GetInstanceRequest) (*GetInstanceResponse, error)
 	// ListInstances returns all created instances.
 	ListInstances(context.Context, *ListInstancesRequest) (*ListInstancesResponse, error)
 	// RunChunk creates an instance for a specific flavor of a chunk
@@ -122,6 +145,9 @@ type InstanceServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedInstanceServiceServer struct{}
 
+func (UnimplementedInstanceServiceServer) GetInstance(context.Context, *GetInstanceRequest) (*GetInstanceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetInstance not implemented")
+}
 func (UnimplementedInstanceServiceServer) ListInstances(context.Context, *ListInstancesRequest) (*ListInstancesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListInstances not implemented")
 }
@@ -153,6 +179,24 @@ func RegisterInstanceServiceServer(s grpc.ServiceRegistrar, srv InstanceServiceS
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&InstanceService_ServiceDesc, srv)
+}
+
+func _InstanceService_GetInstance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInstanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).GetInstance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_GetInstance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).GetInstance(ctx, req.(*GetInstanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _InstanceService_ListInstances_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -234,6 +278,10 @@ var InstanceService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "instance.v1alpha1.InstanceService",
 	HandlerType: (*InstanceServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetInstance",
+			Handler:    _InstanceService_GetInstance_Handler,
+		},
 		{
 			MethodName: "ListInstances",
 			Handler:    _InstanceService_ListInstances_Handler,
