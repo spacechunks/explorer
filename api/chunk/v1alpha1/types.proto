@@ -29,15 +29,21 @@ import "google/protobuf/timestamp.proto";
 // from a minigame to a freebuild server.
 message Chunk {
   string id = 1;
+
+  // Name of the chunk. can be up to 50 chars.
   string name = 2;
 
   // Description briefly describes what the user can
-  // expect when running the Chunk.
+  // expect when running the Chunk. can be up to 100
+  // chars.
   string description = 3;
 
   // Tags categorize the chunk. Possible values could
   // be: pvp, adventure, single-player
+  // Note that the limit is currently 4.
   repeated string tags = 4;
+
+  repeated Flavor flavors = 5;
 
   // User owner = 5;
 

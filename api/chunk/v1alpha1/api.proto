@@ -27,6 +27,18 @@ import "chunk/v1alpha1/types.proto";
 // ChunkService provides the public api for interacting with Chunks
 // and flavors of Chunks.
 service ChunkService {
+  // CreateChunk creates a new chunk without any flavors.
+  // chunks that do not have any flavors will be deleted
+  // after some time.
+  //
+  // Defined error codes:
+  // - INVALID_ARGUMENT:
+  //   - name is invalid
+  //   - too many tags have been provided
+  //   - name exceeds the maximum amount of allowed chars
+  //   - description exceeds the maximum amount of allowed chars.
+  rpc CreateChunk(CreateChunkRequest) returns (CreateChunkResponse);
+
   // CreateFlavor creates a new flavor for a given chunk.
   //
   // Defined error codes:
@@ -74,6 +86,27 @@ service ChunkService {
   //     hash of all newly added and changed files. this means that some files have
   //     changed after creating the flavor version or are missing.
   rpc SaveFlavorFiles(SaveFlavorFilesRequest) returns (SaveFlavorFilesResponse);
+}
+
+message CreateChunkRequest {
+  // Name of the chunk. can be up to 50 chars.
+  string name = 1;
+
+  // Description briefly describes what the user can
+  // expect when running the Chunk. can be up to 100
+  // chars.
+  string description = 2;
+
+  // Tags categorize the chunk. Possible values could
+  // be: pvp, adventure, single-player
+  // Note that the limit is currently 4.
+  repeated string tags = 3;
+
+  // User owner = 4;
+}
+
+message CreateChunkResponse {
+  Chunk chunk = 1;
 }
 
 message CreateFlavorRequest {
