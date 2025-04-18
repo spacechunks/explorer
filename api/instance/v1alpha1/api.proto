@@ -26,6 +26,15 @@ import "instance/v1alpha1/types.proto";
 import "google/protobuf/timestamp.proto";
 
 service InstanceService {
+  // GetInstance returns an instance by its id.
+  //
+  // Defined error codes:
+  // - NOT_FOUND:
+  //   - instance with the specified id could not be found
+  // - INVALID_ARGUMENT:
+  //   - the provided instance id is invalid
+  rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse);
+
   // ListInstances returns all created instances.
   rpc ListInstances(ListInstancesRequest) returns (ListInstancesResponse);
 
@@ -43,9 +52,6 @@ service InstanceService {
   // ReceiveInstanceStatusReports is intended to be called by platformd in order to report
   // status updates back to the control plane.
   rpc ReceiveInstanceStatusReports(ReceiveInstanceStatusReportsRequest) returns (ReceiveInstanceStatusReportsResponse);
-
-  // GetInstance
-  // stop instance
 }
 
 message ListInstancesRequest {
