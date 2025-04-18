@@ -62,7 +62,7 @@ func TestAPIListInstances(t *testing.T) {
 	// but for this test we only we need one.
 	c.Flavors = []chunk.Flavor{c.Flavors[0]}
 
-	_, err = pg.DB.CreateChunk(ctx, fixture.Chunk())
+	_, err = pg.DB.CreateChunk(ctx, c)
 	require.NoError(t, err)
 
 	createdFlavor, err := pg.DB.CreateFlavor(ctx, fixture.Chunk().ID, fixture.Chunk().Flavors[0])
