@@ -61,7 +61,7 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 		}
 
 		if len(rows) == 0 {
-			return ErrNotFound
+			return chunk.ErrChunkNotFound
 		}
 
 		var (

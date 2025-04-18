@@ -39,6 +39,15 @@ service ChunkService {
   //   - description exceeds the maximum amount of allowed chars.
   rpc CreateChunk(CreateChunkRequest) returns (CreateChunkResponse);
 
+  // GetChunk returns the chunk specified by the provided id.
+  //
+  // Defined error codes:
+  // - NOT_FOUND:
+  //   - chunk with the provided id does not exist
+  // - INVALID_ARGUMENT:
+  //   - id is invalid
+  rpc GetChunk(GetChunkRequest) returns (GetChunkResponse);
+
   // CreateFlavor creates a new flavor for a given chunk.
   //
   // Defined error codes:
@@ -103,6 +112,14 @@ message CreateChunkRequest {
   repeated string tags = 3;
 
   // User owner = 4;
+}
+
+message GetChunkRequest {
+  string id = 1;
+}
+
+message GetChunkResponse {
+  Chunk chunk = 1;
 }
 
 message CreateChunkResponse {

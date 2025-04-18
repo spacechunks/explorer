@@ -119,6 +119,85 @@ func TestAPICreateChunk(t *testing.T) {
 	}
 }
 
+func TestGetChunk(t *testing.T) {
+	tests := []struct {
+		name   string
+		create bool
+		err    error
+	}{
+		{
+			name:   "works",
+			create: true,
+		},
+		{
+			name: "not found",
+			err:  chunk.ErrChunkNotFound,
+		},
+		{
+			name: "invalid id",
+			err:  chunk.ErrInvalidChunkID,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+				c   = fixture.Chunk()
+			)
+
+			fixture.RunControlPlane(t, pg)
+
+			if tt.create {
+				_, err := pg.DB.CreateChunk(ctx, c)
+				require.NoError(t, err)
+
+				for _, f := range fixture.Chunk().Flavors {
+					_, err := pg.DB.CreateFlavor(ctx, c.ID, f)
+					require.NoError(t, err)
+				}
+			}
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+			if tt.err == chunk.ErrChunkNotFound {
+				c.ID = test.NewUUIDv7(t)
+			}
+
+			if tt.err == chunk.ErrInvalidChunkID {
+				c.ID = ""
+			}
+
+			resp, err := client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
+				Id: &c.ID,
+			})
+
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			if d := cmp.Diff(
+				chunk.ChunkToTransport(c),
+				resp.GetChunk(),
+				protocmp.Transform(),
+				test.IgnoredProtoChunkFields,
+				test.IgnoredProtoFlavorFields,
+			); d != "" {
+				t.Fatalf("diff (-want +got):\n%s", d)
+			}
+		})
+	}
+}
+
 func TestCreateFlavor(t *testing.T) {
 	c := fixture.Chunk()
 	tests := []struct {
