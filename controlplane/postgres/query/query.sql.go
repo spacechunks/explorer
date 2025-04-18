@@ -27,7 +27,7 @@ func (q *Queries) ChunkExists(ctx context.Context, id string) (bool, error) {
 	return exists, err
 }
 
-const createChunk = `-- name: CreateChunk :one
+const createChunk = `-- name: CreateChunk :exec
 /*
  * CHUNKS
  */
@@ -36,7 +36,6 @@ INSERT INTO chunks
     (id, name, description, tags, created_at, updated_at)
 VALUES
     ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, description, tags, created_at, updated_at
 `
 
 type CreateChunkParams struct {
@@ -48,8 +47,8 @@ type CreateChunkParams struct {
 	UpdatedAt   time.Time
 }
 
-func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) (Chunk, error) {
-	row := q.db.QueryRow(ctx, createChunk,
+func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) error {
+	_, err := q.db.Exec(ctx, createChunk,
 		arg.ID,
 		arg.Name,
 		arg.Description,
@@ -57,16 +56,7 @@ func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) (Chunk
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	var i Chunk
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.Tags,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+	return err
 }
 
 const createFlavor = `-- name: CreateFlavor :exec

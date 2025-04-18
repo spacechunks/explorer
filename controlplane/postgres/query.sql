@@ -2,12 +2,11 @@
  * CHUNKS
  */
 
--- name: CreateChunk :one
+-- name: CreateChunk :exec
 INSERT INTO chunks
     (id, name, description, tags, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6)
-RETURNING *;
+    ($1, $2, $3, $4, $5, $6);
 
 -- TODO: read multiple
 -- name: GetChunkByID :many
