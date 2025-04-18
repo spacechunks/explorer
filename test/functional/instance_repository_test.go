@@ -80,6 +80,66 @@ func TestCreateInstance(t *testing.T) {
 	}
 }
 
+func TestDBListInstances(t *testing.T) {
+	// TODO: at some point test that we are returning an empty array
+	//       and not a nil one
+	var (
+		ctx    = context.Background()
+		pg     = fixture.NewPostgres()
+		nodeID = test.NewUUIDv7(t)
+		c      = fixture.Chunk()
+	)
+
+	pg.Run(t, ctx)
+
+	_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
+	require.NoError(t, err)
+
+	// make sure we only have one flavor, the fixture has 2 configured by default
+	// but for this test we only we need one.
+	c.Flavors = []chunk.Flavor{c.Flavors[0]}
+
+	_, err = pg.DB.CreateChunk(ctx, c)
+	require.NoError(t, err)
+
+	createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
+	require.NoError(t, err)
+
+	// ^ above are prerequisites
+
+	expected := []instance.Instance{
+		fixture.Instance(func(i *instance.Instance) {
+			i.ID = test.NewUUIDv7(t)
+			i.Chunk = c
+			i.ChunkFlavor = createdFlavor
+			i.Port = nil // port will not be saved when creating
+		}),
+		fixture.Instance(func(i *instance.Instance) {
+			i.ID = test.NewUUIDv7(t)
+			i.Chunk = c
+			i.ChunkFlavor = createdFlavor
+			i.Port = nil // port will not be saved when creating
+		}),
+	}
+
+	for _, i := range expected {
+		_, err := pg.DB.CreateInstance(ctx, i, nodeID)
+		require.NoError(t, err)
+	}
+
+	actual, err := pg.DB.ListInstances(ctx)
+	require.NoError(t, err)
+
+	if d := cmp.Diff(
+		expected,
+		actual,
+		test.IgnoreFields(test.IgnoredInstanceFields...),
+		cmpopts.EquateComparable(netip.Addr{}),
+	); d != "" {
+		t.Fatalf("ListInstances() mismatch (-want +got):\n%s", d)
+	}
+}
+
 func TestGetInstancesByNodeID(t *testing.T) {
 	var (
 		ctx    = context.Background()
