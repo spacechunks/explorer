@@ -20,6 +20,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	InstanceService_ListInstances_FullMethodName                = "/instance.v1alpha1.InstanceService/ListInstances"
 	InstanceService_RunChunk_FullMethodName                     = "/instance.v1alpha1.InstanceService/RunChunk"
 	InstanceService_DiscoverInstances_FullMethodName            = "/instance.v1alpha1.InstanceService/DiscoverInstances"
 	InstanceService_ReceiveInstanceStatusReports_FullMethodName = "/instance.v1alpha1.InstanceService/ReceiveInstanceStatusReports"
@@ -29,6 +30,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type InstanceServiceClient interface {
+	// ListInstances returns all created instances.
+	ListInstances(ctx context.Context, in *ListInstancesRequest, opts ...grpc.CallOption) (*ListInstancesResponse, error)
 	// RunChunk creates an instance for a specific flavor of a chunk
 	// and schedules it to be run on a node. The connection information
 	// of the returned instance will only be partially set, because the
@@ -49,6 +52,16 @@ type instanceServiceClient struct {
 
 func NewInstanceServiceClient(cc grpc.ClientConnInterface) InstanceServiceClient {
 	return &instanceServiceClient{cc}
+}
+
+func (c *instanceServiceClient) ListInstances(ctx context.Context, in *ListInstancesRequest, opts ...grpc.CallOption) (*ListInstancesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListInstancesResponse)
+	err := c.cc.Invoke(ctx, InstanceService_ListInstances_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *instanceServiceClient) RunChunk(ctx context.Context, in *RunChunkRequest, opts ...grpc.CallOption) (*RunChunkResponse, error) {
@@ -85,6 +98,8 @@ func (c *instanceServiceClient) ReceiveInstanceStatusReports(ctx context.Context
 // All implementations must embed UnimplementedInstanceServiceServer
 // for forward compatibility.
 type InstanceServiceServer interface {
+	// ListInstances returns all created instances.
+	ListInstances(context.Context, *ListInstancesRequest) (*ListInstancesResponse, error)
 	// RunChunk creates an instance for a specific flavor of a chunk
 	// and schedules it to be run on a node. The connection information
 	// of the returned instance will only be partially set, because the
@@ -107,6 +122,9 @@ type InstanceServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedInstanceServiceServer struct{}
 
+func (UnimplementedInstanceServiceServer) ListInstances(context.Context, *ListInstancesRequest) (*ListInstancesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListInstances not implemented")
+}
 func (UnimplementedInstanceServiceServer) RunChunk(context.Context, *RunChunkRequest) (*RunChunkResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RunChunk not implemented")
 }
@@ -135,6 +153,24 @@ func RegisterInstanceServiceServer(s grpc.ServiceRegistrar, srv InstanceServiceS
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&InstanceService_ServiceDesc, srv)
+}
+
+func _InstanceService_ListInstances_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListInstancesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).ListInstances(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_ListInstances_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).ListInstances(ctx, req.(*ListInstancesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _InstanceService_RunChunk_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -198,6 +234,10 @@ var InstanceService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "instance.v1alpha1.InstanceService",
 	HandlerType: (*InstanceServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ListInstances",
+			Handler:    _InstanceService_ListInstances_Handler,
+		},
 		{
 			MethodName: "RunChunk",
 			Handler:    _InstanceService_RunChunk_Handler,
