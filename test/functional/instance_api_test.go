@@ -124,6 +124,7 @@ func TestGetInstance(t *testing.T) {
 				resp.GetInstance(),
 				protocmp.Transform(),
 				test.IgnoredProtoFlavorFields,
+				test.IgnoredProtoChunkFields,
 			); d != "" {
 				t.Fatalf("diff (-want +got):\n%s", d)
 			}
@@ -196,6 +197,7 @@ func TestAPIListInstances(t *testing.T) {
 		resp.GetInstances(),
 		protocmp.Transform(),
 		test.IgnoredProtoFlavorFields,
+		test.IgnoredProtoChunkFields,
 	); d != "" {
 		t.Fatalf("diff (-want +got):\n%s", d)
 	}
@@ -279,6 +281,7 @@ func TestRunChunk(t *testing.T) {
 					resp.GetInstance(),
 					protocmp.Transform(),
 					test.IgnoredProtoFlavorFields,
+					test.IgnoredProtoChunkFields,
 				); d != "" {
 					t.Fatalf("diff (-want +got):\n%s", d)
 				}
@@ -413,6 +416,7 @@ func TestDiscoverInstances(t *testing.T) {
 					resp.Instances,
 					protocmp.Transform(),
 					test.IgnoredProtoFlavorFields,
+					test.IgnoredProtoChunkFields,
 				); d != "" {
 					t.Fatalf("diff (-want +got):\n%s", d)
 				}
@@ -509,7 +513,13 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 				}
 			}
 
-			if d := cmp.Diff(resp.Instances, expected, protocmp.Transform(), test.IgnoredProtoFlavorFields); d != "" {
+			if d := cmp.Diff(
+				resp.Instances,
+				expected,
+				protocmp.Transform(),
+				test.IgnoredProtoFlavorFields,
+				test.IgnoredProtoChunkFields,
+			); d != "" {
 				t.Fatalf("diff (-want +got):\n%s", d)
 			}
 		})

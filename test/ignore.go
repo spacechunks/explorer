@@ -56,6 +56,9 @@ var (
 		"Chunk.Flavors.ID",
 		"Chunk.Flavors.CreatedAt",
 		"Chunk.Flavors.UpdatedAt",
+		"Chunk.ID",
+		"Chunk.CreatedAt",
+		"Chunk.UpdatedAt",
 	}
 )
 
