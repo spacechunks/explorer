@@ -20,7 +20,6 @@ package chunk
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spacechunks/explorer/controlplane/blob"
 )
@@ -44,20 +43,4 @@ func NewService(repo Repository, blobStore blob.Store) Service {
 		repo:      repo,
 		blobStore: blobStore,
 	}
-}
-
-func (s *svc) CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error) {
-	ret, err := s.repo.CreateChunk(ctx, chunk)
-	if err != nil {
-		return Chunk{}, fmt.Errorf("create chunk: %w", err)
-	}
-	return ret, nil
-}
-
-func (s *svc) GetChunk(ctx context.Context, id string) (Chunk, error) {
-	c, err := s.repo.GetChunkByID(ctx, id)
-	if err != nil {
-		return Chunk{}, err
-	}
-	return c, nil
 }

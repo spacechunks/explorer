@@ -23,6 +23,29 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+func ChunkToTransport(domain Chunk) *chunkv1alpha1.Chunk {
+	c := &chunkv1alpha1.Chunk{
+		Id:          &domain.ID,
+		Name:        &domain.Name,
+		Description: &domain.Description,
+		Tags:        domain.Tags,
+		CreatedAt:   timestamppb.New(domain.CreatedAt),
+		UpdatedAt:   timestamppb.New(domain.UpdatedAt),
+	}
+
+	flavors := make([]*chunkv1alpha1.Flavor, len(domain.Flavors))
+	for _, f := range domain.Flavors {
+		flavors = append(flavors, &chunkv1alpha1.Flavor{
+			Id:   &f.ID,
+			Name: &f.Name,
+		})
+	}
+
+	c.Flavors = flavors
+
+	return c
+}
+
 func FlavorToTransport(domain Flavor) *chunkv1alpha1.Flavor {
 	return &chunkv1alpha1.Flavor{
 		Id:        &domain.ID,

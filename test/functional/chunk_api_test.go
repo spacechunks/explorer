@@ -20,6 +20,8 @@ package functional
 
 import (
 	"context"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -33,6 +35,89 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/testing/protocmp"
 )
+
+func TestAPICreateChunk(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected chunk.Chunk
+		err      error
+	}{
+		{
+			name: "works",
+			expected: fixture.Chunk(func(c *chunk.Chunk) {
+				c.Flavors = nil
+			}),
+		},
+		{
+			name: "name too long",
+			expected: fixture.Chunk(func(c *chunk.Chunk) {
+				c.Name = strings.Repeat("a", chunk.MaxChunkNameChars+1)
+			}),
+			err: chunk.ErrNameTooLong,
+		},
+		{
+			name: "description too long",
+			expected: fixture.Chunk(func(c *chunk.Chunk) {
+				c.Description = strings.Repeat("a", chunk.MaxChunkDescriptionChars+1)
+			}),
+			err: chunk.ErrDescriptionTooLong,
+		},
+		{
+			name: "too many tags",
+			expected: fixture.Chunk(func(c *chunk.Chunk) {
+				c.Tags = slices.Repeat([]string{"a"}, chunk.MaxChunkTags+1)
+			}),
+			err: chunk.ErrTooManyTags,
+		},
+		{
+			name: "invalid name",
+			expected: fixture.Chunk(func(c *chunk.Chunk) {
+				c.Name = ""
+			}),
+			err: chunk.ErrInvalidName,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+			)
+
+			fixture.RunControlPlane(t, pg)
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+			resp, err := client.CreateChunk(ctx, &chunkv1alpha1.CreateChunkRequest{
+				Name:        &tt.expected.Name,
+				Description: &tt.expected.Description,
+				Tags:        tt.expected.Tags,
+			})
+
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			if d := cmp.Diff(
+				chunk.ChunkToTransport(tt.expected),
+				resp.GetChunk(),
+				protocmp.Transform(),
+				test.IgnoredProtoChunkFields,
+			); d != "" {
+				t.Fatalf("diff (-want +got):\n%s", d)
+			}
+		})
+	}
+}
 
 func TestCreateFlavor(t *testing.T) {
 	c := fixture.Chunk()
@@ -70,7 +155,7 @@ func TestCreateFlavor(t *testing.T) {
 			req: &chunkv1alpha1.CreateFlavorRequest{
 				ChunkId: &c.ID,
 			},
-			err: chunk.ErrInvalidFlavorName,
+			err: chunk.ErrInvalidName,
 		},
 	}
 	for _, tt := range tests {
