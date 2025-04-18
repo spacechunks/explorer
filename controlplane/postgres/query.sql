@@ -29,6 +29,11 @@ SELECT EXISTS(
     WHERE id = $1
 );
 
+-- name: ListChunks :many
+SELECT * FROM chunks c
+    JOIN flavors f ON f.chunk_id = c.id;
+
+
 /*
  * FLAVORS
  */

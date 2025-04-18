@@ -523,6 +523,57 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 	return i, err
 }
 
+const listChunks = `-- name: ListChunks :many
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at FROM chunks c
+    JOIN flavors f ON f.chunk_id = c.id
+`
+
+type ListChunksRow struct {
+	ID          string
+	Name        string
+	Description string
+	Tags        []string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	ID_2        string
+	ChunkID     string
+	Name_2      string
+	CreatedAt_2 time.Time
+	UpdatedAt_2 time.Time
+}
+
+func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
+	rows, err := q.db.Query(ctx, listChunks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListChunksRow
+	for rows.Next() {
+		var i ListChunksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Tags,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ID_2,
+			&i.ChunkID,
+			&i.Name_2,
+			&i.CreatedAt_2,
+			&i.UpdatedAt_2,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFlavorsByChunkID = `-- name: ListFlavorsByChunkID :many
 SELECT id, chunk_id, name, created_at, updated_at FROM flavors WHERE chunk_id = $1
 `

@@ -654,6 +654,64 @@ func (_c *MockChunkRepository_LatestFlavorVersion_Call) RunAndReturn(run func(co
 	return _c
 }
 
+// ListChunks provides a mock function with given fields: ctx
+func (_m *MockChunkRepository) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListChunks")
+	}
+
+	var r0 []chunk.Chunk
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]chunk.Chunk, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []chunk.Chunk); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]chunk.Chunk)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockChunkRepository_ListChunks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListChunks'
+type MockChunkRepository_ListChunks_Call struct {
+	*mock.Call
+}
+
+// ListChunks is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockChunkRepository_Expecter) ListChunks(ctx interface{}) *MockChunkRepository_ListChunks_Call {
+	return &MockChunkRepository_ListChunks_Call{Call: _e.mock.On("ListChunks", ctx)}
+}
+
+func (_c *MockChunkRepository_ListChunks_Call) Run(run func(ctx context.Context)) *MockChunkRepository_ListChunks_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_ListChunks_Call) Return(_a0 []chunk.Chunk, _a1 error) *MockChunkRepository_ListChunks_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockChunkRepository_ListChunks_Call) RunAndReturn(run func(context.Context) ([]chunk.Chunk, error)) *MockChunkRepository_ListChunks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListFlavorsByChunkID provides a mock function with given fields: ctx, chunkID
 func (_m *MockChunkRepository) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]chunk.Flavor, error) {
 	ret := _m.Called(ctx, chunkID)

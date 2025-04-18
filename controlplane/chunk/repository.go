@@ -26,6 +26,7 @@ type Repository interface {
 	CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
 	GetChunkByID(ctx context.Context, id string) (Chunk, error)
 	UpdateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
+	ListChunks(ctx context.Context) ([]Chunk, error)
 	ChunkExists(ctx context.Context, id string) (bool, error)
 	CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error)
 	ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]Flavor, error)

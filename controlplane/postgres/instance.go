@@ -72,6 +72,8 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 			m[r.ID] = append(m[r.ID], r)
 		}
 
+		ret = make([]instance.Instance, 0, len(m))
+
 		for _, v := range m {
 			// we retrieve multiple rows when we call GetInstance
 			// chunk data and instance data will stay the same, what
@@ -117,7 +119,6 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 			}
 
 			i.Chunk.Flavors = flavors
-
 			ret = append(ret, i)
 		}
 
