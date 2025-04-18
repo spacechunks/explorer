@@ -20,63 +20,34 @@ package postgres
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
-type chunkParams struct {
-	create query.CreateChunkParams
-	update query.UpdateChunkParams
-}
-
-func createChunkParams(c chunk.Chunk) chunkParams {
-	return chunkParams{
-		create: query.CreateChunkParams{
-			ID:          c.ID,
-			Name:        c.Name,
-			Description: c.Description,
-			Tags:        c.Tags,
-			CreatedAt:   c.CreatedAt,
-			UpdatedAt:   c.UpdatedAt,
-		},
-		update: query.UpdateChunkParams{
-			Name:        c.Name,
-			Description: c.Description,
-			Tags:        c.Tags,
-			ID:          c.ID,
-		},
-	}
-}
-
-func rowToChunk(c query.Chunk) chunk.Chunk {
-	return chunk.Chunk{
+func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, error) {
+	params := query.CreateChunkParams{
 		ID:          c.ID,
 		Name:        c.Name,
 		Description: c.Description,
 		Tags:        c.Tags,
-		CreatedAt:   c.CreatedAt.UTC(),
-		UpdatedAt:   c.UpdatedAt.UTC(),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
-}
 
-func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, error) {
-	params := createChunkParams(c)
-
-	var ret chunk.Chunk
 	if err := db.do(ctx, func(q *query.Queries) error {
-		c, err := q.CreateChunk(ctx, params.create)
-		if err != nil {
-			return fmt.Errorf("create chunk: %w", err)
+		if err := q.CreateChunk(ctx, params); err != nil {
+			return err
 		}
-		ret = rowToChunk(c)
 		return nil
 	}); err != nil {
 		return chunk.Chunk{}, err
 	}
 
-	return ret, nil
+	c.CreatedAt = params.CreatedAt
+	c.UpdatedAt = params.UpdatedAt
+	return c, nil
 }
 
 func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) {
@@ -126,15 +97,27 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 }
 
 func (db *DB) UpdateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, error) {
-	params := createChunkParams(c)
+	params := query.UpdateChunkParams{
+		Name:        c.Name,
+		Description: c.Description,
+		Tags:        c.Tags,
+		ID:          c.ID,
+	}
 
 	var ret chunk.Chunk
 	if err := db.do(ctx, func(q *query.Queries) error {
-		c, err := q.UpdateChunk(ctx, params.update)
+		c, err := q.UpdateChunk(ctx, params)
 		if err != nil {
-			return fmt.Errorf("update chunk: %w", err)
+			return err
 		}
-		ret = rowToChunk(c)
+		ret = chunk.Chunk{
+			ID:          c.ID,
+			Name:        c.Name,
+			Description: c.Description,
+			Tags:        c.Tags,
+			CreatedAt:   c.CreatedAt.UTC(),
+			UpdatedAt:   c.UpdatedAt.UTC(),
+		}
 		return nil
 	}); err != nil {
 		return chunk.Chunk{}, err

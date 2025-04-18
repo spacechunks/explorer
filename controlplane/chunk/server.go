@@ -28,8 +28,8 @@ import (
 )
 
 var (
-	ErrInvalidChunkID    = status.Errorf(codes.InvalidArgument, "provided chunk id is invalid")
-	ErrInvalidFlavorName = status.Errorf(codes.InvalidArgument, "provided flavor name is invalid")
+	ErrInvalidChunkID = status.Errorf(codes.InvalidArgument, "chunk id is invalid")
+	ErrInvalidName    = status.Errorf(codes.InvalidArgument, "name is invalid")
 )
 
 type Server struct {
@@ -43,6 +43,34 @@ func NewServer(service Service) *Server {
 	}
 }
 
+func (s *Server) CreateChunk(
+	ctx context.Context,
+	req *chunkv1alpha1.CreateChunkRequest,
+) (*chunkv1alpha1.CreateChunkResponse, error) {
+	if req.GetName() == "" {
+		return nil, ErrInvalidName
+	}
+
+	// we allow the description to be empty, because
+	// some things like bedwars for example do not
+	// need a description.
+
+	c := Chunk{
+		Name:        req.GetName(),
+		Description: req.GetDescription(),
+		Tags:        req.GetTags(),
+	}
+
+	ret, err := s.service.CreateChunk(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &chunkv1alpha1.CreateChunkResponse{
+		Chunk: ChunkToTransport(ret),
+	}, nil
+}
+
 func (s *Server) CreateFlavor(
 	ctx context.Context,
 	req *chunkv1alpha1.CreateFlavorRequest,
@@ -52,7 +80,7 @@ func (s *Server) CreateFlavor(
 	}
 
 	if req.GetName() == "" {
-		return nil, ErrInvalidFlavorName
+		return nil, ErrInvalidName
 	}
 
 	domain := Flavor{

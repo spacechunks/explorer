@@ -25,6 +25,14 @@ import (
 )
 
 var (
+	IgnoredProtoChunkFields = protocmp.IgnoreFields(
+		&chunkv1alpha1.Chunk{},
+		// created dynamically
+		"id",
+		"created_at",
+		"updated_at",
+	)
+
 	IgnoredProtoFlavorVersionFields = protocmp.IgnoreFields(
 		&chunkv1alpha1.FlavorVersion{},
 		// created dynamically
@@ -42,12 +50,16 @@ var (
 
 	IgnoredInstanceFields = []string{
 		// created dynamically
+		"ID",
 		"ChunkFlavor.ID",
 		"ChunkFlavor.CreatedAt",
 		"ChunkFlavor.UpdatedAt",
 		"Chunk.Flavors.ID",
 		"Chunk.Flavors.CreatedAt",
 		"Chunk.Flavors.UpdatedAt",
+		"Chunk.ID",
+		"Chunk.CreatedAt",
+		"Chunk.UpdatedAt",
 	}
 )
 

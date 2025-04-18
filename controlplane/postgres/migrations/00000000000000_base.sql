@@ -1,8 +1,8 @@
 -- migrate:up
 CREATE TABLE IF NOT EXISTS chunks (
     id          UUID             NOT NULL PRIMARY KEY,
-    name        VARCHAR(25)      NOT NULL,
-    description VARCHAR(50)      NOT NULL,
+    name        VARCHAR(50)      NOT NULL,
+    description VARCHAR(100)     NOT NULL,
     tags        VARCHAR(25)[]    NOT NULL,
 --  owner       UUID             NOT NULL,
     created_at  TIMESTAMPTZ      NOT NULL DEFAULT now(),

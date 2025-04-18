@@ -36,6 +36,9 @@ type InstanceServiceClient interface {
 	// Defined error codes:
 	// - NOT_FOUND:
 	//   - instance with the specified id could not be found
+	//
+	// - INVALID_ARGUMENT:
+	//   - the provided instance id is invalid
 	GetInstance(ctx context.Context, in *GetInstanceRequest, opts ...grpc.CallOption) (*GetInstanceResponse, error)
 	// ListInstances returns all created instances.
 	ListInstances(ctx context.Context, in *ListInstancesRequest, opts ...grpc.CallOption) (*ListInstancesResponse, error)
@@ -120,6 +123,9 @@ type InstanceServiceServer interface {
 	// Defined error codes:
 	// - NOT_FOUND:
 	//   - instance with the specified id could not be found
+	//
+	// - INVALID_ARGUMENT:
+	//   - the provided instance id is invalid
 	GetInstance(context.Context, *GetInstanceRequest) (*GetInstanceResponse, error)
 	// ListInstances returns all created instances.
 	ListInstances(context.Context, *ListInstancesRequest) (*ListInstancesResponse, error)
