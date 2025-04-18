@@ -27,6 +27,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var ErrInvalidInstanceID = status.Errorf(codes.InvalidArgument, "invalid instance id")
+
 type Server struct {
 	instancev1alpha1.UnimplementedInstanceServiceServer
 	service Service
@@ -36,6 +38,20 @@ func NewServer(service Service) *Server {
 	return &Server{
 		service: service,
 	}
+}
+
+func (s *Server) GetInstance(ctx context.Context, req *instancev1alpha1.GetInstanceRequest) (*instancev1alpha1.GetInstanceResponse, error) {
+	if req.GetId() == "" {
+		return nil, ErrInvalidInstanceID
+	}
+
+	ins, err := s.service.GetInstance(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return &instancev1alpha1.GetInstanceResponse{
+		Instance: ToTransport(ins),
+	}, nil
 }
 
 func (s *Server) ListInstances(

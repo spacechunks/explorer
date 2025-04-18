@@ -27,9 +27,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
+var ErrInstanceNotFound = status.Errorf(codes.NotFound, "instance not found")
+
 type Service interface {
+	GetInstance(ctx context.Context, id string) (Instance, error)
 	ListInstances(ctx context.Context) ([]Instance, error)
 	RunChunk(ctx context.Context, chunkID string, flavorID string) (Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]Instance, error)
@@ -48,6 +53,14 @@ func NewService(logger *slog.Logger, repo Repository, chunkService chunk.Service
 		repo:         repo,
 		chunkService: chunkService,
 	}
+}
+
+func (s *svc) GetInstance(ctx context.Context, id string) (Instance, error) {
+	ins, err := s.repo.GetInstanceByID(ctx, id)
+	if err != nil {
+		return Instance{}, err
+	}
+	return ins, nil
 }
 
 func (s *svc) ListInstances(ctx context.Context) ([]Instance, error) {
