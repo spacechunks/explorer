@@ -40,7 +40,10 @@ func NewServer(service Service) *Server {
 	}
 }
 
-func (s *Server) GetInstance(ctx context.Context, req *instancev1alpha1.GetInstanceRequest) (*instancev1alpha1.GetInstanceResponse, error) {
+func (s *Server) GetInstance(
+	ctx context.Context,
+	req *instancev1alpha1.GetInstanceRequest,
+) (*instancev1alpha1.GetInstanceResponse, error) {
 	if req.GetId() == "" {
 		return nil, ErrInvalidInstanceID
 	}

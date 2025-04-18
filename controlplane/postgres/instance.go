@@ -252,8 +252,6 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 		return instance.Instance{}, instance.ErrInstanceNotFound
 	}
 
-	ret := instance.Instance{}
-
 	// we retrieve multiple rows when we call GetInstance
 	// chunk data and instance data will stay the same, what
 	// will change is the flavor data. there will be one row
@@ -265,7 +263,7 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 
 	// instance port is intentionally left out, because it will not be
 	// known beforehand atm, thus it will always be nil when creating.
-	ret = instance.Instance{
+	ret := instance.Instance{
 		ID:        row.ID,
 		Address:   row.Address,
 		State:     instance.State(row.State),

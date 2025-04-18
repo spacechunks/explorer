@@ -97,6 +97,7 @@ func TestGetInstance(t *testing.T) {
 					tt.instance.Port,
 					tt.instance.ID,
 				)
+				require.NoError(t, err)
 			}
 
 			conn, err := grpc.NewClient(
