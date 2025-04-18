@@ -142,6 +142,56 @@ func (db *DB) ChunkExists(ctx context.Context, id string) (bool, error) {
 	return ret, nil
 }
 
+func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
+	var ret []chunk.Chunk
+	if err := db.do(ctx, func(q *query.Queries) error {
+		rows, err := q.ListChunks(ctx)
+		if err != nil {
+			return err
+		}
+
+		m := make(map[string][]query.ListChunksRow)
+		for _, r := range rows {
+			m[r.ID] = append(m[r.ID], r)
+		}
+
+		ret = make([]chunk.Chunk, 0, len(m))
+
+		for _, v := range m {
+			var (
+				row     = v[0]
+				flavors = make([]chunk.Flavor, 0, len(rows))
+				c       = chunk.Chunk{
+					ID:          row.ID,
+					Name:        row.Name,
+					Description: row.Description,
+					Tags:        row.Tags,
+					CreatedAt:   row.CreatedAt.UTC(),
+					UpdatedAt:   row.UpdatedAt.UTC(),
+				}
+			)
+
+			for _, r := range v {
+				flavors = append(flavors, chunk.Flavor{
+					ID:        r.ID_2,
+					Name:      r.Name_2,
+					CreatedAt: r.CreatedAt_2.UTC(),
+					UpdatedAt: r.UpdatedAt_2.UTC(),
+				})
+			}
+
+			c.Flavors = flavors
+			ret = append(ret, c)
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
 func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (chunk.Chunk, error) {
 	rows, err := q.GetChunkByID(ctx, id)
 	if err != nil {

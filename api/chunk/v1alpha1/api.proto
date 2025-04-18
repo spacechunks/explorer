@@ -63,6 +63,9 @@ service ChunkService {
   //   - description exceeds the maximum amount of allowed chars.
   rpc UpdateChunk(UpdateChunkRequest) returns (UpdateChunkResponse);
 
+  // ListChunks lists all available Chunks.
+  rpc ListChunks(ListChunksRequest) returns (ListChunksResponse);
+
   // CreateFlavor creates a new flavor for a given chunk.
   //
   // Defined error codes:
@@ -150,6 +153,14 @@ message UpdateChunkRequest {
 
 message UpdateChunkResponse {
   Chunk chunk = 1;
+}
+
+message ListChunksRequest {
+
+}
+
+message ListChunksResponse {
+  repeated Chunk chunks = 1;
 }
 
 message CreateFlavorRequest {

@@ -23,6 +23,7 @@ const (
 	ChunkService_CreateChunk_FullMethodName         = "/chunk.v1alpha1.ChunkService/CreateChunk"
 	ChunkService_GetChunk_FullMethodName            = "/chunk.v1alpha1.ChunkService/GetChunk"
 	ChunkService_UpdateChunk_FullMethodName         = "/chunk.v1alpha1.ChunkService/UpdateChunk"
+	ChunkService_ListChunks_FullMethodName          = "/chunk.v1alpha1.ChunkService/ListChunks"
 	ChunkService_CreateFlavor_FullMethodName        = "/chunk.v1alpha1.ChunkService/CreateFlavor"
 	ChunkService_ListFlavors_FullMethodName         = "/chunk.v1alpha1.ChunkService/ListFlavors"
 	ChunkService_CreateFlavorVersion_FullMethodName = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
@@ -56,7 +57,22 @@ type ChunkServiceClient interface {
 	// - INVALID_ARGUMENT:
 	//   - id is invalid
 	GetChunk(ctx context.Context, in *GetChunkRequest, opts ...grpc.CallOption) (*GetChunkResponse, error)
+	// UpdateChunk updates the fields of the given chunk.
+	// Note that tags will be completely replaced with the
+	// provided ones.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - chunk with the provided id does not exist
+	//
+	// - INVALID_ARGUMENT:
+	//   - chunk id is invalid
+	//   - name is invalid
+	//   - too many tags have been provided
+	//   - name exceeds the maximum amount of allowed chars
+	//   - description exceeds the maximum amount of allowed chars.
 	UpdateChunk(ctx context.Context, in *UpdateChunkRequest, opts ...grpc.CallOption) (*UpdateChunkResponse, error)
+	ListChunks(ctx context.Context, in *ListChunksRequest, opts ...grpc.CallOption) (*ListChunksResponse, error)
 	// CreateFlavor creates a new flavor for a given chunk.
 	//
 	// Defined error codes:
@@ -145,6 +161,16 @@ func (c *chunkServiceClient) UpdateChunk(ctx context.Context, in *UpdateChunkReq
 	return out, nil
 }
 
+func (c *chunkServiceClient) ListChunks(ctx context.Context, in *ListChunksRequest, opts ...grpc.CallOption) (*ListChunksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListChunksResponse)
+	err := c.cc.Invoke(ctx, ChunkService_ListChunks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chunkServiceClient) CreateFlavor(ctx context.Context, in *CreateFlavorRequest, opts ...grpc.CallOption) (*CreateFlavorResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateFlavorResponse)
@@ -212,7 +238,22 @@ type ChunkServiceServer interface {
 	// - INVALID_ARGUMENT:
 	//   - id is invalid
 	GetChunk(context.Context, *GetChunkRequest) (*GetChunkResponse, error)
+	// UpdateChunk updates the fields of the given chunk.
+	// Note that tags will be completely replaced with the
+	// provided ones.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - chunk with the provided id does not exist
+	//
+	// - INVALID_ARGUMENT:
+	//   - chunk id is invalid
+	//   - name is invalid
+	//   - too many tags have been provided
+	//   - name exceeds the maximum amount of allowed chars
+	//   - description exceeds the maximum amount of allowed chars.
 	UpdateChunk(context.Context, *UpdateChunkRequest) (*UpdateChunkResponse, error)
+	ListChunks(context.Context, *ListChunksRequest) (*ListChunksResponse, error)
 	// CreateFlavor creates a new flavor for a given chunk.
 	//
 	// Defined error codes:
@@ -279,6 +320,9 @@ func (UnimplementedChunkServiceServer) GetChunk(context.Context, *GetChunkReques
 }
 func (UnimplementedChunkServiceServer) UpdateChunk(context.Context, *UpdateChunkRequest) (*UpdateChunkResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateChunk not implemented")
+}
+func (UnimplementedChunkServiceServer) ListChunks(context.Context, *ListChunksRequest) (*ListChunksResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListChunks not implemented")
 }
 func (UnimplementedChunkServiceServer) CreateFlavor(context.Context, *CreateFlavorRequest) (*CreateFlavorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateFlavor not implemented")
@@ -363,6 +407,24 @@ func _ChunkService_UpdateChunk_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChunkServiceServer).UpdateChunk(ctx, req.(*UpdateChunkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChunkService_ListChunks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListChunksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).ListChunks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_ListChunks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).ListChunks(ctx, req.(*ListChunksRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -457,6 +519,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateChunk",
 			Handler:    _ChunkService_UpdateChunk_Handler,
+		},
+		{
+			MethodName: "ListChunks",
+			Handler:    _ChunkService_ListChunks_Handler,
 		},
 		{
 			MethodName: "CreateFlavor",
