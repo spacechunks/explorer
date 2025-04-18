@@ -71,6 +71,24 @@ func (s *Server) CreateChunk(
 	}, nil
 }
 
+func (s *Server) GetChunk(
+	ctx context.Context,
+	req *chunkv1alpha1.GetChunkRequest,
+) (*chunkv1alpha1.GetChunkResponse, error) {
+	if req.GetId() == "" {
+		return nil, ErrInvalidChunkID
+	}
+
+	c, err := s.service.GetChunk(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	return &chunkv1alpha1.GetChunkResponse{
+		Chunk: ChunkToTransport(c),
+	}, nil
+}
+
 func (s *Server) CreateFlavor(
 	ctx context.Context,
 	req *chunkv1alpha1.CreateFlavorRequest,
