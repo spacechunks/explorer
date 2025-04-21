@@ -30,7 +30,6 @@ import (
 	"github.com/spacechunks/explorer/cni"
 	"github.com/spacechunks/explorer/internal/datapath"
 	"github.com/spacechunks/explorer/internal/mock"
-	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/stretchr/testify/assert"
 	mocky "github.com/stretchr/testify/mock"
 )
@@ -117,11 +116,11 @@ func TestExecAdd(t *testing.T) {
 
 				wlc.EXPECT().
 					WorkloadStatus(mocky.Anything, &workloadv1alpha2.WorkloadStatusRequest{
-						Id: ptr.Pointer("uuidv7"),
+						Id: "uuidv7",
 					}).
 					Return(&workloadv1alpha2.WorkloadStatusResponse{
 						Status: &workloadv1alpha2.WorkloadStatus{
-							Port: ptr.Pointer(port),
+							Port: port,
 						},
 					}, nil)
 
@@ -201,7 +200,7 @@ func TestExecAdd(t *testing.T) {
 
 				wlc.EXPECT().
 					WorkloadStatus(mocky.Anything, &workloadv1alpha2.WorkloadStatusRequest{
-						Id: ptr.Pointer("uuidv7"),
+						Id: "uuidv7",
 					}).
 					Return(&workloadv1alpha2.WorkloadStatusResponse{
 						Status: &workloadv1alpha2.WorkloadStatus{},

@@ -246,7 +246,7 @@ func getHostPort(
 	wlClient workloadv1alpha2.WorkloadServiceClient,
 ) (uint16, error) {
 	resp, err := wlClient.WorkloadStatus(ctx, &workloadv1alpha2.WorkloadStatusRequest{
-		Id: &workloadID,
+		Id: workloadID,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("get workload status: %w", err)

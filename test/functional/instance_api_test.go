@@ -109,7 +109,7 @@ func TestGetInstance(t *testing.T) {
 			client := instancev1alpha1.NewInstanceServiceClient(conn)
 
 			resp, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
-				Id: &tt.instance.ID,
+				Id: tt.instance.ID,
 			})
 
 			if tt.err != nil {
@@ -215,20 +215,20 @@ func TestRunChunk(t *testing.T) {
 			name:    "can run chunk",
 			chunkID: fixture.Chunk().ID,
 			expected: &instancev1alpha1.Instance{
-				Id: nil,
+				Id: "",
 				Chunk: &chunkv1alpha1.Chunk{
-					Id:          ptr.Pointer(fixture.Chunk().ID),
-					Name:        ptr.Pointer(fixture.Chunk().Name),
-					Description: ptr.Pointer(fixture.Chunk().Description),
+					Id:          fixture.Chunk().ID,
+					Name:        fixture.Chunk().Name,
+					Description: fixture.Chunk().Description,
 					Tags:        fixture.Chunk().Tags,
 					CreatedAt:   timestamppb.New(fixture.Chunk().CreatedAt),
 					UpdatedAt:   timestamppb.New(fixture.Chunk().UpdatedAt),
 				},
 				Flavor: &chunkv1alpha1.Flavor{
-					Name: ptr.Pointer(fixture.Chunk().Flavors[0].Name),
+					Name: fixture.Chunk().Flavors[0].Name,
 				},
-				Ip:    ptr.Pointer("198.51.100.1"),
-				State: ptr.Pointer(instancev1alpha1.InstanceState_PENDING),
+				Ip:    "198.51.100.1",
+				State: instancev1alpha1.InstanceState_PENDING,
 			},
 		},
 		{
@@ -270,8 +270,8 @@ func TestRunChunk(t *testing.T) {
 			client := instancev1alpha1.NewInstanceServiceClient(conn)
 
 			resp, err := client.RunChunk(ctx, &instancev1alpha1.RunChunkRequest{
-				ChunkId:  &tt.chunkID,
-				FlavorId: &createdFlavor.ID,
+				ChunkId:  tt.chunkID,
+				FlavorId: createdFlavor.ID,
 			})
 
 			if tt.err == nil {
@@ -403,7 +403,7 @@ func TestDiscoverInstances(t *testing.T) {
 			)
 
 			resp, err := client.DiscoverInstances(ctx, &instancev1alpha1.DiscoverInstanceRequest{
-				NodeKey: &tt.nodeID,
+				NodeKey: tt.nodeID,
 			})
 
 			if tt.err == nil {
@@ -503,7 +503,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			require.NoError(t, err)
 
 			resp, err := client.DiscoverInstances(ctx, &instancev1alpha1.DiscoverInstanceRequest{
-				NodeKey: &nodeID,
+				NodeKey: nodeID,
 			})
 			require.NoError(t, err)
 

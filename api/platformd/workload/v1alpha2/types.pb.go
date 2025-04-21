@@ -7,11 +7,10 @@
 package v1alpha2
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -86,25 +85,25 @@ type Workload struct {
 
 	// id is a universally unique value identifying the workload.
 	// currently this is in UUIDv7 format.
-	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// name of the workload.
-	Name *string `protobuf:"bytes,2,opt,name=name" json:"name,omitempty"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// base_image_url points to the image that was used to create the checkpoint
 	// provided by checkpoint_image_url.
-	BaseImageUrl *string `protobuf:"bytes,3,opt,name=base_image_url,json=baseImageUrl" json:"base_image_url,omitempty"`
+	BaseImageUrl string `protobuf:"bytes,3,opt,name=base_image_url,json=baseImageUrl,proto3" json:"base_image_url,omitempty"`
 	// checkpoint_image_url points to a checkpoint living in an oci compatible
 	// registry.
-	CheckpointImageUrl *string `protobuf:"bytes,4,opt,name=checkpoint_image_url,json=checkpointImageUrl" json:"checkpoint_image_url,omitempty"`
+	CheckpointImageUrl string `protobuf:"bytes,4,opt,name=checkpoint_image_url,json=checkpointImageUrl,proto3" json:"checkpoint_image_url,omitempty"`
 	// namespace the workload is be created in.
-	Namespace *string `protobuf:"bytes,5,opt,name=namespace" json:"namespace,omitempty"`
+	Namespace string `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// hostname of the pod.
-	Hostname *string `protobuf:"bytes,6,opt,name=hostname" json:"hostname,omitempty"`
+	Hostname string `protobuf:"bytes,6,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	// labels applied to the pod.
-	Labels map[string]string `protobuf:"bytes,7,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Labels map[string]string `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// the network namespace' mode as per [runtimev1.NamespaceMode].
-	NetworkNamespaceMode *int32 `protobuf:"varint,8,opt,name=network_namespace_mode,json=networkNamespaceMode" json:"network_namespace_mode,omitempty"`
+	NetworkNamespaceMode int32 `protobuf:"varint,8,opt,name=network_namespace_mode,json=networkNamespaceMode,proto3" json:"network_namespace_mode,omitempty"`
 	// status
-	State *WorkloadState `protobuf:"varint,9,opt,name=state,enum=platformd.workload.v1alpha2.WorkloadState" json:"state,omitempty"`
+	State WorkloadState `protobuf:"varint,9,opt,name=state,proto3,enum=platformd.workload.v1alpha2.WorkloadState" json:"state,omitempty"`
 }
 
 func (x *Workload) Reset() {
@@ -138,43 +137,43 @@ func (*Workload) Descriptor() ([]byte, []int) {
 }
 
 func (x *Workload) GetId() string {
-	if x != nil && x.Id != nil {
-		return *x.Id
+	if x != nil {
+		return x.Id
 	}
 	return ""
 }
 
 func (x *Workload) GetName() string {
-	if x != nil && x.Name != nil {
-		return *x.Name
+	if x != nil {
+		return x.Name
 	}
 	return ""
 }
 
 func (x *Workload) GetBaseImageUrl() string {
-	if x != nil && x.BaseImageUrl != nil {
-		return *x.BaseImageUrl
+	if x != nil {
+		return x.BaseImageUrl
 	}
 	return ""
 }
 
 func (x *Workload) GetCheckpointImageUrl() string {
-	if x != nil && x.CheckpointImageUrl != nil {
-		return *x.CheckpointImageUrl
+	if x != nil {
+		return x.CheckpointImageUrl
 	}
 	return ""
 }
 
 func (x *Workload) GetNamespace() string {
-	if x != nil && x.Namespace != nil {
-		return *x.Namespace
+	if x != nil {
+		return x.Namespace
 	}
 	return ""
 }
 
 func (x *Workload) GetHostname() string {
-	if x != nil && x.Hostname != nil {
-		return *x.Hostname
+	if x != nil {
+		return x.Hostname
 	}
 	return ""
 }
@@ -187,15 +186,15 @@ func (x *Workload) GetLabels() map[string]string {
 }
 
 func (x *Workload) GetNetworkNamespaceMode() int32 {
-	if x != nil && x.NetworkNamespaceMode != nil {
-		return *x.NetworkNamespaceMode
+	if x != nil {
+		return x.NetworkNamespaceMode
 	}
 	return 0
 }
 
 func (x *Workload) GetState() WorkloadState {
-	if x != nil && x.State != nil {
-		return *x.State
+	if x != nil {
+		return x.State
 	}
 	return WorkloadState_UNKNOWN
 }
@@ -205,10 +204,10 @@ type WorkloadStatus struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	State *WorkloadState `protobuf:"varint,2,opt,name=state,enum=platformd.workload.v1alpha2.WorkloadState" json:"state,omitempty"`
+	State WorkloadState `protobuf:"varint,2,opt,name=state,proto3,enum=platformd.workload.v1alpha2.WorkloadState" json:"state,omitempty"`
 	// port allocated for the workload. programs binding
 	// to this port will be reachable from the internet.
-	Port *uint32 `protobuf:"varint,3,opt,name=port" json:"port,omitempty"`
+	Port uint32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
 }
 
 func (x *WorkloadStatus) Reset() {
@@ -242,15 +241,15 @@ func (*WorkloadStatus) Descriptor() ([]byte, []int) {
 }
 
 func (x *WorkloadStatus) GetState() WorkloadState {
-	if x != nil && x.State != nil {
-		return *x.State
+	if x != nil {
+		return x.State
 	}
 	return WorkloadState_UNKNOWN
 }
 
 func (x *WorkloadStatus) GetPort() uint32 {
-	if x != nil && x.Port != nil {
-		return *x.Port
+	if x != nil {
+		return x.Port
 	}
 	return 0
 }
@@ -307,8 +306,8 @@ var file_platformd_workload_v1alpha2_types_proto_rawDesc = []byte{
 	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x73, 0x70, 0x61, 0x63, 0x65, 0x63, 0x68, 0x75, 0x6e,
 	0x6b, 0x73, 0x2f, 0x65, 0x78, 0x70, 0x6c, 0x6f, 0x72, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f,
 	0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d, 0x64, 0x2f, 0x77, 0x6f, 0x72, 0x6b, 0x6c, 0x6f,
-	0x61, 0x64, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x32, 0x62, 0x08, 0x65, 0x64, 0x69,
-	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x70, 0xe8, 0x07,
+	0x61, 0x64, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x32, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (

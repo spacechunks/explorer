@@ -30,7 +30,6 @@ import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/internal/mock"
-	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"github.com/spacechunks/explorer/test"
 	mocky "github.com/stretchr/testify/mock"
@@ -390,9 +389,9 @@ func TestReconciler(t *testing.T) {
 					mocky.Anything, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
 						Reports: []*instancev1alpha1.InstanceStatusReport{
 							{
-								InstanceId: ptr.Pointer(ins.GetId()),
-								State:      ptr.Pointer(instancev1alpha1.InstanceState_DELETED),
-								Port:       ptr.Pointer(uint32(0)),
+								InstanceId: ins.GetId(),
+								State:      instancev1alpha1.InstanceState_DELETED,
+								Port:       uint32(0),
 							},
 						},
 					}).
@@ -447,19 +446,19 @@ func discoverInstance(
 	state instancev1alpha1.InstanceState,
 ) *instancev1alpha1.Instance {
 	ins := &instancev1alpha1.Instance{
-		Id: ptr.Pointer(test.NewUUIDv7(t)),
+		Id: test.NewUUIDv7(t),
 		Chunk: &chunkv1alpha1.Chunk{
-			Name: ptr.Pointer("test-chunk"),
+			Name: "test-chunk",
 		},
 		Flavor: &chunkv1alpha1.Flavor{
-			Name: ptr.Pointer("test-flavor"),
+			Name: "test-flavor",
 		},
-		State: ptr.Pointer(state),
+		State: state,
 	}
 
 	insClient.EXPECT().
 		DiscoverInstances(mocky.Anything, &instancev1alpha1.DiscoverInstanceRequest{
-			NodeKey: &nodeKey,
+			NodeKey: nodeKey,
 		}).
 		Return(&instancev1alpha1.DiscoverInstanceResponse{
 			Instances: []*instancev1alpha1.Instance{
@@ -480,9 +479,9 @@ func expectReportedStatus(
 		mocky.Anything, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
 			Reports: []*instancev1alpha1.InstanceStatusReport{
 				{
-					InstanceId: ptr.Pointer(id),
-					State:      ptr.Pointer(state),
-					Port:       ptr.Pointer(port),
+					InstanceId: id,
+					State:      state,
+					Port:       port,
 				},
 			},
 		}).

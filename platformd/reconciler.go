@@ -28,7 +28,6 @@ import (
 	"time"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
-	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
@@ -129,7 +128,7 @@ func (r *reconciler) Stop() {
 
 func (r *reconciler) tick(ctx context.Context) {
 	discResp, err := r.insClient.DiscoverInstances(ctx, &instancev1alpha1.DiscoverInstanceRequest{
-		NodeKey: &r.cfg.NodeID,
+		NodeKey: r.cfg.NodeID,
 	})
 	if err != nil {
 		r.logger.ErrorContext(ctx, "discover instances failed", "node_id", r.cfg.NodeID, "err", err)
@@ -192,11 +191,9 @@ func (r *reconciler) tick(ctx context.Context) {
 	for k, v := range statuses {
 		r.logger.InfoContext(ctx, "instance status", "instance_id", k, "state", v.State, "port", v.Port)
 		items = append(items, &instancev1alpha1.InstanceStatusReport{
-			InstanceId: &k,
-			Port:       ptr.Pointer(uint32(v.Port)),
-			State: ptr.Pointer(
-				instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(v.State)]),
-			),
+			InstanceId: k,
+			Port:       uint32(v.Port),
+			State:      instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(v.State)]),
 		})
 	}
 
