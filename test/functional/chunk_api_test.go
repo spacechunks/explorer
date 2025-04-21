@@ -95,8 +95,8 @@ func TestAPICreateChunk(t *testing.T) {
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
 			resp, err := client.CreateChunk(ctx, &chunkv1alpha1.CreateChunkRequest{
-				Name:        &tt.expected.Name,
-				Description: &tt.expected.Description,
+				Name:        tt.expected.Name,
+				Description: tt.expected.Description,
 				Tags:        tt.expected.Tags,
 			})
 
@@ -175,7 +175,7 @@ func TestGetChunk(t *testing.T) {
 			}
 
 			resp, err := client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
-				Id: &c.ID,
+				Id: c.ID,
 			})
 
 			if tt.err != nil {
@@ -273,39 +273,39 @@ func TestUpdateChunk(t *testing.T) {
 		{
 			name: "update all fields",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:          ptr.Pointer(fixture.Chunk().ID),
-				Name:        ptr.Pointer("new-name"),
-				Description: ptr.Pointer("new-description"),
+				Id:          fixture.Chunk().ID,
+				Name:        "new-name",
+				Description: "new-description",
 				Tags:        []string{"new-tags"},
 			},
 		},
 		{
 			name: "update name",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:   ptr.Pointer(fixture.Chunk().ID),
-				Name: ptr.Pointer("new-name"),
+				Id:   fixture.Chunk().ID,
+				Name: "new-name",
 			},
 		},
 		{
 			name: "update description",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:          ptr.Pointer(fixture.Chunk().ID),
-				Description: ptr.Pointer("new-description"),
+				Id:          fixture.Chunk().ID,
+				Description: "new-description",
 			},
 		},
 		{
 			name: "update tags",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:   ptr.Pointer(fixture.Chunk().ID),
+				Id:   fixture.Chunk().ID,
 				Tags: []string{"new-tags"},
 			},
 		},
 		{
 			name: "not found",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:          ptr.Pointer(test.NewUUIDv7(t)),
-				Name:        ptr.Pointer("new-name"),
-				Description: ptr.Pointer("new-description"),
+				Id:          test.NewUUIDv7(t),
+				Name:        "new-name",
+				Description: "new-description",
 				Tags:        []string{"new-tags"},
 			},
 			err: chunk.ErrChunkNotFound,
@@ -313,23 +313,23 @@ func TestUpdateChunk(t *testing.T) {
 		{
 			name: "name too long",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:   ptr.Pointer(fixture.Chunk().ID),
-				Name: ptr.Pointer(strings.Repeat("a", chunk.MaxChunkNameChars+1)),
+				Id:   fixture.Chunk().ID,
+				Name: strings.Repeat("a", chunk.MaxChunkNameChars+1),
 			},
 			err: chunk.ErrNameTooLong,
 		},
 		{
 			name: "description too long",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:          ptr.Pointer(fixture.Chunk().ID),
-				Description: ptr.Pointer(strings.Repeat("a", chunk.MaxChunkDescriptionChars+1)),
+				Id:          fixture.Chunk().ID,
+				Description: strings.Repeat("a", chunk.MaxChunkDescriptionChars+1),
 			},
 			err: chunk.ErrDescriptionTooLong,
 		},
 		{
 			name: "too many tags",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:   ptr.Pointer(fixture.Chunk().ID),
+				Id:   fixture.Chunk().ID,
 				Tags: slices.Repeat([]string{"a"}, chunk.MaxChunkTags+1),
 			},
 			err: chunk.ErrTooManyTags,
@@ -337,7 +337,7 @@ func TestUpdateChunk(t *testing.T) {
 		{
 			name: "invalid chunk id",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id: ptr.Pointer(""),
+				Id: "",
 			},
 			err: chunk.ErrInvalidChunkID,
 		},
@@ -381,11 +381,11 @@ func TestUpdateChunk(t *testing.T) {
 
 			expected := chunk.ChunkToTransport(c)
 
-			if tt.req.Name != nil {
+			if tt.req.Name != "" {
 				expected.Name = tt.req.Name
 			}
 
-			if tt.req.Description != nil {
+			if tt.req.Description != "" {
 				expected.Description = tt.req.Description
 			}
 
@@ -417,15 +417,15 @@ func TestCreateFlavor(t *testing.T) {
 		{
 			name: "works",
 			req: &chunkv1alpha1.CreateFlavorRequest{
-				ChunkId: &c.ID,
-				Name:    ptr.Pointer(fixture.Flavor().Name),
+				ChunkId: c.ID,
+				Name:    fixture.Flavor().Name,
 			},
 		},
 		{
 			name: "flavor already exists",
 			req: &chunkv1alpha1.CreateFlavorRequest{
-				ChunkId: &c.ID,
-				Name:    ptr.Pointer(fixture.Flavor().Name),
+				ChunkId: c.ID,
+				Name:    fixture.Flavor().Name,
 			},
 			other: ptr.Pointer(fixture.Flavor()),
 			err:   chunk.ErrFlavorNameExists,
@@ -433,14 +433,14 @@ func TestCreateFlavor(t *testing.T) {
 		{
 			name: "invalid chunk id",
 			req: &chunkv1alpha1.CreateFlavorRequest{
-				Name: ptr.Pointer("adawdaw"),
+				Name: "adawdaw",
 			},
 			err: chunk.ErrInvalidChunkID,
 		},
 		{
 			name: "invalid flavor name",
 			req: &chunkv1alpha1.CreateFlavorRequest{
-				ChunkId: &c.ID,
+				ChunkId: c.ID,
 			},
 			err: chunk.ErrInvalidName,
 		},
@@ -515,7 +515,7 @@ func TestListFlavors(t *testing.T) {
 				}),
 			},
 			req: &chunkv1alpha1.ListFlavorsRequest{
-				ChunkId: ptr.Pointer(fixture.Chunk().ID),
+				ChunkId: fixture.Chunk().ID,
 			},
 		},
 		{
@@ -850,7 +850,7 @@ func TestSaveFlavorFiles(t *testing.T) {
 			files := make([]*chunkv1alpha1.File, 0, len(tt.files))
 			for _, file := range tt.files {
 				files = append(files, &chunkv1alpha1.File{
-					Path: &file.Path,
+					Path: file.Path,
 					Data: file.Data,
 				})
 			}
@@ -929,7 +929,7 @@ func TestSaveFlavorFilesAlreadyUploaded(t *testing.T) {
 	transport := make([]*chunkv1alpha1.File, 0, len(files))
 	for _, file := range files {
 		transport = append(transport, &chunkv1alpha1.File{
-			Path: &file.Path,
+			Path: file.Path,
 			Data: file.Data,
 		})
 	}

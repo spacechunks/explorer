@@ -21,40 +21,39 @@ package instance
 import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
-	"github.com/spacechunks/explorer/internal/ptr"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // ToTransport converts the domain object to a transport layer object
 func ToTransport(ins Instance) *instancev1alpha1.Instance {
 	var (
-		port  *uint32
-		state = instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(ins.State)])
+		port  uint32 = 0
+		state        = instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(ins.State)])
 	)
 
 	if ins.Port != nil {
-		port = ptr.Pointer(uint32(*ins.Port))
+		port = uint32(*ins.Port)
 	}
 
 	return &instancev1alpha1.Instance{
-		Id: &ins.ID,
+		Id: ins.ID,
 		Chunk: &chunkv1alpha1.Chunk{
-			Id:          &ins.Chunk.ID,
-			Name:        &ins.Chunk.Name,
-			Description: &ins.Chunk.Description,
+			Id:          ins.Chunk.ID,
+			Name:        ins.Chunk.Name,
+			Description: ins.Chunk.Description,
 			Tags:        ins.Chunk.Tags,
 			CreatedAt:   timestamppb.New(ins.Chunk.CreatedAt),
 			UpdatedAt:   timestamppb.New(ins.Chunk.UpdatedAt),
 		},
 		Flavor: &chunkv1alpha1.Flavor{
-			Id:        &ins.ChunkFlavor.ID,
-			Name:      &ins.ChunkFlavor.Name,
+			Id:        ins.ChunkFlavor.ID,
+			Name:      ins.ChunkFlavor.Name,
 			CreatedAt: timestamppb.New(ins.ChunkFlavor.CreatedAt),
 			UpdatedAt: timestamppb.New(ins.ChunkFlavor.UpdatedAt),
 		},
-		Ip:    ptr.Pointer(ins.Address.String()),
+		Ip:    ins.Address.String(),
 		Port:  port,
-		State: &state,
+		State: state,
 	}
 }
 
@@ -68,11 +67,9 @@ func StatusReportToDomain(report *instancev1alpha1.InstanceStatusReport) StatusR
 
 func StatusReportToTransport(report StatusReport) *instancev1alpha1.InstanceStatusReport {
 	return &instancev1alpha1.InstanceStatusReport{
-		InstanceId: &report.InstanceID,
-		Port:       ptr.Pointer(uint32(report.Port)),
-		State: ptr.Pointer(
-			instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(report.State)]),
-		),
+		InstanceId: report.InstanceID,
+		Port:       uint32(report.Port),
+		State:      instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(report.State)]),
 	}
 }
 

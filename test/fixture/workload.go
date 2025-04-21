@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
-	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -32,12 +31,12 @@ import (
 
 func Workload() workloadv1alpha2.Workload {
 	return workloadv1alpha2.Workload{
-		Name:                 ptr.Pointer("my-chunk"),
-		BaseImageUrl:         ptr.Pointer("my-image"),
-		Namespace:            ptr.Pointer("chunk-ns"),
-		Hostname:             ptr.Pointer("my-chunk"),
+		Name:                 "my-chunk",
+		BaseImageUrl:         "my-image",
+		Namespace:            "chunk-ns",
+		Hostname:             "my-chunk",
 		Labels:               map[string]string{"k": "v"},
-		NetworkNamespaceMode: ptr.Pointer(int32(2)),
+		NetworkNamespaceMode: int32(2),
 	}
 }
 

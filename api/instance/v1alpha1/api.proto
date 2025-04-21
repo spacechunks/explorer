@@ -16,7 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-edition = "2023";
+syntax = "proto3";
 
 package instance.v1alpha1;
 

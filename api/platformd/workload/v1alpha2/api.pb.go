@@ -7,11 +7,10 @@
 package v1alpha2
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -26,7 +25,7 @@ type WorkloadStatusRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id *string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
 func (x *WorkloadStatusRequest) Reset() {
@@ -60,8 +59,8 @@ func (*WorkloadStatusRequest) Descriptor() ([]byte, []int) {
 }
 
 func (x *WorkloadStatusRequest) GetId() string {
-	if x != nil && x.Id != nil {
-		return *x.Id
+	if x != nil {
+		return x.Id
 	}
 	return ""
 }
@@ -71,7 +70,7 @@ type WorkloadStatusResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Status *WorkloadStatus `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
+	Status *WorkloadStatus `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
 }
 
 func (x *WorkloadStatusResponse) Reset() {
@@ -142,8 +141,7 @@ var file_platformd_workload_v1alpha2_api_proto_rawDesc = []byte{
 	0x6f, 0x6d, 0x2f, 0x73, 0x70, 0x61, 0x63, 0x65, 0x63, 0x68, 0x75, 0x6e, 0x6b, 0x73, 0x2f, 0x65,
 	0x78, 0x70, 0x6c, 0x6f, 0x72, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x70, 0x6c, 0x61, 0x74,
 	0x66, 0x6f, 0x72, 0x6d, 0x64, 0x2f, 0x77, 0x6f, 0x72, 0x6b, 0x6c, 0x6f, 0x61, 0x64, 0x2f, 0x76,
-	0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x32, 0x62, 0x08, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e,
-	0x73, 0x70, 0xe8, 0x07,
+	0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x32, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
