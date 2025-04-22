@@ -133,10 +133,11 @@ func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.Flav
 }
 
 func Instance(mod ...func(i *instance.Instance)) instance.Instance {
+	c := Chunk()
 	ins := instance.Instance{
 		ID:          "019533f6-a770-7903-8f99-88ae6b271663",
-		Chunk:       Chunk(),
-		ChunkFlavor: Chunk().Flavors[0],
+		Chunk:       c,
+		ChunkFlavor: c.Flavors[0],
 		Address:     netip.MustParseAddr("198.51.100.1"),
 		State:       instance.StatePending,
 		Port:        ptr.Pointer(uint16(1337)),
@@ -149,4 +150,17 @@ func Instance(mod ...func(i *instance.Instance)) instance.Instance {
 	}
 
 	return ins
+}
+
+func Node() struct {
+	ID   string
+	Addr string
+} {
+	return struct {
+		ID   string
+		Addr string
+	}{
+		ID:   "0195c2f6-f40c-72df-a0f1-e468f1be77b1",
+		Addr: "198.51.100.1",
+	}
 }
