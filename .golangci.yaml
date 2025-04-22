@@ -33,6 +33,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - vendor$
 formatters:
   enable:
     - gofmt
@@ -48,3 +49,4 @@ formatters:
       - third_party$
       - builtin$
       - examples$
+      - vendor$
