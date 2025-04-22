@@ -126,7 +126,6 @@ func TestAPIListInstances(t *testing.T) {
 	pg.InsertNode(t)
 
 	ins := []instance.Instance{
-
 		fixture.Instance(func(i *instance.Instance) {
 			i.ID = test.NewUUIDv7(t)
 			i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
@@ -174,6 +173,14 @@ func TestAPIListInstances(t *testing.T) {
 
 	resp, err := client.ListInstances(ctx, &instancev1alpha1.ListInstancesRequest{})
 	require.NoError(t, err)
+
+	sort.Slice(expected, func(i, j int) bool {
+		return strings.Compare(expected[i].GetId(), expected[j].GetId()) < 0
+	})
+
+	sort.Slice(resp.GetInstances(), func(i, j int) bool {
+		return strings.Compare(resp.GetInstances()[i].GetId(), resp.GetInstances()[j].GetId()) < 0
+	})
 
 	if d := cmp.Diff(
 		expected,
@@ -292,7 +299,6 @@ func TestDiscoverInstances(t *testing.T) {
 			name:   "can discover instances",
 			nodeID: fixture.Node().ID,
 			input: []instance.Instance{
-
 				fixture.Instance(func(i *instance.Instance) {
 					i.ID = test.NewUUIDv7(t)
 					i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
