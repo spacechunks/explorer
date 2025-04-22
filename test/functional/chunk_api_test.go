@@ -388,6 +388,7 @@ func TestCreateFlavor(t *testing.T) {
 	tests := []struct {
 		name       string
 		flavorName string
+		chunkID    string
 		other      *chunk.Flavor
 		err        error
 	}{
@@ -403,7 +404,8 @@ func TestCreateFlavor(t *testing.T) {
 		},
 		{
 			name:       "invalid chunk id",
-			flavorName: "awdawdawd",
+			flavorName: fixture.Flavor().Name,
+			chunkID:    "invalid",
 			err:        chunk.ErrInvalidChunkID,
 		},
 		{
@@ -435,8 +437,12 @@ func TestCreateFlavor(t *testing.T) {
 
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
+			if tt.chunkID == "" {
+				tt.chunkID = c.ID
+			}
+
 			resp, err := client.CreateFlavor(ctx, &chunkv1alpha1.CreateFlavorRequest{
-				ChunkId: c.ID,
+				ChunkId: tt.chunkID,
 				Name:    tt.flavorName,
 			})
 
