@@ -149,13 +149,7 @@ func TestGetChunk(t *testing.T) {
 			fixture.RunControlPlane(t, pg)
 
 			if tt.create {
-				_, err := pg.DB.CreateChunk(ctx, c)
-				require.NoError(t, err)
-
-				for _, f := range fixture.Chunk().Flavors {
-					_, err := pg.DB.CreateFlavor(ctx, c.ID, f)
-					require.NoError(t, err)
-				}
+				pg.CreateChunk(t, &c)
 			}
 
 			conn, err := grpc.NewClient(
@@ -227,14 +221,8 @@ func TestListChunks(t *testing.T) {
 		}),
 	}
 
-	for _, c := range chunks {
-		_, err := pg.DB.CreateChunk(ctx, c)
-		require.NoError(t, err)
-
-		for _, f := range c.Flavors {
-			_, err := pg.DB.CreateFlavor(ctx, c.ID, f)
-			require.NoError(t, err)
-		}
+	for i := range chunks {
+		pg.CreateChunk(t, &chunks[i])
 	}
 
 	conn, err := grpc.NewClient(
@@ -273,7 +261,6 @@ func TestUpdateChunk(t *testing.T) {
 		{
 			name: "update all fields",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:          fixture.Chunk().ID,
 				Name:        "new-name",
 				Description: "new-description",
 				Tags:        []string{"new-tags"},
@@ -282,21 +269,18 @@ func TestUpdateChunk(t *testing.T) {
 		{
 			name: "update name",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:   fixture.Chunk().ID,
 				Name: "new-name",
 			},
 		},
 		{
 			name: "update description",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:          fixture.Chunk().ID,
 				Description: "new-description",
 			},
 		},
 		{
 			name: "update tags",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:   fixture.Chunk().ID,
 				Tags: []string{"new-tags"},
 			},
 		},
@@ -313,7 +297,6 @@ func TestUpdateChunk(t *testing.T) {
 		{
 			name: "name too long",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:   fixture.Chunk().ID,
 				Name: strings.Repeat("a", chunk.MaxChunkNameChars+1),
 			},
 			err: chunk.ErrNameTooLong,
@@ -321,7 +304,6 @@ func TestUpdateChunk(t *testing.T) {
 		{
 			name: "description too long",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:          fixture.Chunk().ID,
 				Description: strings.Repeat("a", chunk.MaxChunkDescriptionChars+1),
 			},
 			err: chunk.ErrDescriptionTooLong,
@@ -329,7 +311,6 @@ func TestUpdateChunk(t *testing.T) {
 		{
 			name: "too many tags",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id:   fixture.Chunk().ID,
 				Tags: slices.Repeat([]string{"a"}, chunk.MaxChunkTags+1),
 			},
 			err: chunk.ErrTooManyTags,
@@ -337,7 +318,7 @@ func TestUpdateChunk(t *testing.T) {
 		{
 			name: "invalid chunk id",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Id: "",
+				Id: "invalid",
 			},
 			err: chunk.ErrInvalidChunkID,
 		},
@@ -352,15 +333,7 @@ func TestUpdateChunk(t *testing.T) {
 
 			fixture.RunControlPlane(t, pg)
 
-			_, err := pg.DB.CreateChunk(ctx, c)
-			require.NoError(t, err)
-
-			for i, f := range fixture.Chunk().Flavors {
-				created, err := pg.DB.CreateFlavor(ctx, c.ID, f)
-				require.NoError(t, err)
-				c.Flavors[i] = created
-				require.NoError(t, err)
-			}
+			pg.CreateChunk(t, &c)
 
 			conn, err := grpc.NewClient(
 				fixture.ControlPlaneAddr,
@@ -369,6 +342,10 @@ func TestUpdateChunk(t *testing.T) {
 			require.NoError(t, err)
 
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+			if tt.req.Id == "" {
+				tt.req.Id = c.ID
+			}
 
 			resp, err := client.UpdateChunk(ctx, tt.req)
 
@@ -409,40 +386,29 @@ func TestUpdateChunk(t *testing.T) {
 func TestCreateFlavor(t *testing.T) {
 	c := fixture.Chunk()
 	tests := []struct {
-		name  string
-		req   *chunkv1alpha1.CreateFlavorRequest
-		other *chunk.Flavor
-		err   error
+		name       string
+		flavorName string
+		other      *chunk.Flavor
+		err        error
 	}{
 		{
-			name: "works",
-			req: &chunkv1alpha1.CreateFlavorRequest{
-				ChunkId: c.ID,
-				Name:    fixture.Flavor().Name,
-			},
+			name:       "works",
+			flavorName: fixture.Flavor().Name,
 		},
 		{
-			name: "flavor already exists",
-			req: &chunkv1alpha1.CreateFlavorRequest{
-				ChunkId: c.ID,
-				Name:    fixture.Flavor().Name,
-			},
-			other: ptr.Pointer(fixture.Flavor()),
-			err:   chunk.ErrFlavorNameExists,
+			name:       "flavor already exists",
+			flavorName: fixture.Flavor().Name,
+			other:      ptr.Pointer(fixture.Flavor()),
+			err:        chunk.ErrFlavorNameExists,
 		},
 		{
-			name: "invalid chunk id",
-			req: &chunkv1alpha1.CreateFlavorRequest{
-				Name: "adawdaw",
-			},
-			err: chunk.ErrInvalidChunkID,
+			name:       "invalid chunk id",
+			flavorName: "awdawdawd",
+			err:        chunk.ErrInvalidChunkID,
 		},
 		{
 			name: "invalid flavor name",
-			req: &chunkv1alpha1.CreateFlavorRequest{
-				ChunkId: c.ID,
-			},
-			err: chunk.ErrInvalidName,
+			err:  chunk.ErrInvalidName,
 		},
 	}
 	for _, tt := range tests {
@@ -454,8 +420,7 @@ func TestCreateFlavor(t *testing.T) {
 
 			fixture.RunControlPlane(t, pg)
 
-			_, err := pg.DB.CreateChunk(ctx, c)
-			require.NoError(t, err)
+			pg.CreateChunk(t, &c)
 
 			if tt.other != nil {
 				_, err := pg.DB.CreateFlavor(ctx, c.ID, *tt.other)
@@ -470,7 +435,10 @@ func TestCreateFlavor(t *testing.T) {
 
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
-			resp, err := client.CreateFlavor(ctx, tt.req)
+			resp, err := client.CreateFlavor(ctx, &chunkv1alpha1.CreateFlavorRequest{
+				ChunkId: c.ID,
+				Name:    tt.flavorName,
+			})
 
 			if tt.err != nil {
 				require.ErrorAs(t, err, &tt.err)
@@ -479,8 +447,8 @@ func TestCreateFlavor(t *testing.T) {
 
 			require.NoError(t, err)
 			expected := &chunkv1alpha1.Flavor{
-				Id:   tt.req.ChunkId,
-				Name: tt.req.Name,
+				Id:   c.ID,
+				Name: tt.flavorName,
 			}
 
 			if d := cmp.Diff(
@@ -497,35 +465,19 @@ func TestCreateFlavor(t *testing.T) {
 
 func TestListFlavors(t *testing.T) {
 	tests := []struct {
-		name     string
-		req      *chunkv1alpha1.ListFlavorsRequest
-		expected []chunk.Flavor
-		c        *chunk.Chunk
-		err      error
+		name    string
+		chunkID string
+		err     error
 	}{
 		{
 			name: "works",
-			c:    ptr.Pointer(fixture.Chunk()),
-			expected: []chunk.Flavor{
-				fixture.Flavor(func(f *chunk.Flavor) {
-					f.Name = "f1"
-				}),
-				fixture.Flavor(func(f *chunk.Flavor) {
-					f.Name = "f2"
-				}),
-			},
-			req: &chunkv1alpha1.ListFlavorsRequest{
-				ChunkId: fixture.Chunk().ID,
-			},
 		},
 		{
 			name: "invalid chunk id",
-			req:  &chunkv1alpha1.ListFlavorsRequest{},
 			err:  chunk.ErrInvalidChunkID,
 		},
 		{
 			name: "chunk not found",
-			req:  &chunkv1alpha1.ListFlavorsRequest{},
 			err:  chunk.ErrChunkNotFound,
 		},
 	}
@@ -534,21 +486,25 @@ func TestListFlavors(t *testing.T) {
 			var (
 				ctx = context.Background()
 				pg  = fixture.NewPostgres()
+				c   = fixture.Chunk(func(c *chunk.Chunk) {
+					c.Flavors = []chunk.Flavor{
+						fixture.Flavor(func(f *chunk.Flavor) {
+							f.Name = "f1"
+						}),
+						fixture.Flavor(func(f *chunk.Flavor) {
+							f.Name = "f2"
+						}),
+					}
+				})
 			)
 
 			fixture.RunControlPlane(t, pg)
 
 			var expected []*chunkv1alpha1.Flavor
 
-			if tt.c != nil {
-				_, err := pg.DB.CreateChunk(ctx, *tt.c)
-				require.NoError(t, err)
-
-				for _, f := range tt.expected {
-					_, err := pg.DB.CreateFlavor(ctx, tt.c.ID, f)
-					expected = append(expected, chunk.FlavorToTransport(f))
-					require.NoError(t, err)
-				}
+			pg.CreateChunk(t, &c)
+			for _, f := range c.Flavors {
+				expected = append(expected, chunk.FlavorToTransport(f))
 			}
 
 			conn, err := grpc.NewClient(
@@ -559,7 +515,13 @@ func TestListFlavors(t *testing.T) {
 
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
-			resp, err := client.ListFlavors(ctx, tt.req)
+			if tt.err == nil {
+				tt.chunkID = c.ID
+			}
+
+			resp, err := client.ListFlavors(ctx, &chunkv1alpha1.ListFlavorsRequest{
+				ChunkId: tt.chunkID,
+			})
 
 			if tt.err != nil {
 				require.ErrorAs(t, err, &tt.err)
@@ -690,11 +652,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 
 			fixture.RunControlPlane(t, pg)
 
-			_, err := pg.DB.CreateChunk(ctx, c)
-			require.NoError(t, err)
-
-			createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, flavor)
-			require.NoError(t, err)
+			pg.CreateChunk(t, &c)
 
 			conn, err := grpc.NewClient(
 				fixture.ControlPlaneAddr,
@@ -705,14 +663,14 @@ func TestCreateFlavorVersion(t *testing.T) {
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
 			if tt.prevVersion != nil {
-				tt.prevVersion.Flavor.ID = createdFlavor.ID
+				tt.prevVersion.Flavor.ID = c.Flavors[0].ID
 				_, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
 					Version: chunk.FlavorVersionToTransport(*tt.prevVersion),
 				})
 				require.NoError(t, err)
 			}
 
-			tt.newVersion.Flavor.ID = createdFlavor.ID
+			tt.newVersion.Flavor.ID = c.Flavors[0].ID
 			version := chunk.FlavorVersionToTransport(tt.newVersion)
 
 			resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
@@ -740,7 +698,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 				protocmp.Transform(),
 				test.IgnoredProtoFlavorVersionFields,
 			); d != "" {
-				t.Fatalf("CreateFlavorVersionResponse mismatch (-want +got):\n%s", d)
+				t.Fatalf("diff (-want +got):\n%s", d)
 			}
 		})
 	}
@@ -825,12 +783,7 @@ func TestSaveFlavorFiles(t *testing.T) {
 			fixture.RunControlPlane(t, pg)
 
 			c := fixture.Chunk()
-
-			_, err := pg.DB.CreateChunk(ctx, c)
-			require.NoError(t, err)
-
-			createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
-			require.NoError(t, err)
+			pg.CreateChunk(t, &c)
 
 			conn, err := grpc.NewClient(
 				fixture.ControlPlaneAddr,
@@ -840,7 +793,7 @@ func TestSaveFlavorFiles(t *testing.T) {
 
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
-			tt.version.Flavor.ID = createdFlavor.ID
+			tt.version.Flavor.ID = c.Flavors[0].ID
 
 			resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
 				Version: chunk.FlavorVersionToTransport(tt.version),
@@ -904,12 +857,7 @@ func TestSaveFlavorFilesAlreadyUploaded(t *testing.T) {
 	fixture.RunControlPlane(t, pg)
 
 	c := fixture.Chunk()
-
-	_, err := pg.DB.CreateChunk(ctx, c)
-	require.NoError(t, err)
-
-	createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
-	require.NoError(t, err)
+	pg.CreateChunk(t, &c)
 
 	conn, err := grpc.NewClient(
 		fixture.ControlPlaneAddr,
@@ -919,7 +867,7 @@ func TestSaveFlavorFilesAlreadyUploaded(t *testing.T) {
 
 	client := chunkv1alpha1.NewChunkServiceClient(conn)
 
-	flavorVersion.Flavor.ID = createdFlavor.ID
+	flavorVersion.Flavor.ID = c.Flavors[0].ID
 
 	resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
 		Version: chunk.FlavorVersionToTransport(flavorVersion),
