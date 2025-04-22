@@ -104,7 +104,7 @@ func (p *Postgres) CreateChunk(t *testing.T, c *chunk.Chunk) {
 	createdChunk, err := p.DB.CreateChunk(ctx, *c)
 	require.NoError(t, err)
 
-	for i, _ := range c.Flavors {
+	for i := range c.Flavors {
 		p.CreateFlavor(t, createdChunk.ID, &createdChunk.Flavors[i])
 	}
 
@@ -146,5 +146,4 @@ func (p *Postgres) InsertNode(t *testing.T) {
 	ctx := context.Background()
 	_, err := p.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, Node().ID, Node().Addr)
 	require.NoError(t, err)
-
 }

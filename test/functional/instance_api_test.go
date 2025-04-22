@@ -46,56 +46,39 @@ import (
 
 func TestGetInstance(t *testing.T) {
 	tests := []struct {
-		name     string
-		instance instance.Instance
-		create   bool
-		err      error
+		name   string
+		create bool
+		err    error
 	}{
 		{
-			name:     "works",
-			create:   true,
-			instance: fixture.Instance(),
+			name:   "works",
+			create: true,
 		},
 		{
-			name:     "not found",
-			instance: fixture.Instance(),
-			err:      instance.ErrInstanceNotFound,
+			name: "not found",
+			err:  instance.ErrInstanceNotFound,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ctx    = context.Background()
-				pg     = fixture.NewPostgres()
-				nodeID = "0195c2f6-f40c-72df-a0f1-e468f1be77b1"
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+				ins = fixture.Instance()
 			)
 
 			fixture.RunControlPlane(t, pg)
 
-			// FIXME: find better way to seed nodes
-			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
-			require.NoError(t, err)
+			pg.InsertNode(t)
 
 			if tt.create {
-				_, err = pg.DB.CreateChunk(ctx, tt.instance.Chunk)
-				require.NoError(t, err)
-
-				for i, f := range tt.instance.Chunk.Flavors {
-					created, err := pg.DB.CreateFlavor(ctx, tt.instance.Chunk.ID, f)
-					require.NoError(t, err)
-					tt.instance.Chunk.Flavors[i] = created
-				}
-
-				tt.instance.ChunkFlavor = tt.instance.Chunk.Flavors[0]
-
-				_, err = pg.DB.CreateInstance(ctx, tt.instance, nodeID)
-				require.NoError(t, err)
-
-				_, err = pg.Pool.Exec(
+				ins = fixture.Instance()
+				pg.CreateInstance(t, fixture.Node().ID, &ins)
+				_, err := pg.Pool.Exec(
 					ctx,
 					`UPDATE instances SET port = $1 WHERE id = $2`,
-					tt.instance.Port,
-					tt.instance.ID,
+					ins.Port,
+					ins.ID,
 				)
 				require.NoError(t, err)
 			}
@@ -109,7 +92,7 @@ func TestGetInstance(t *testing.T) {
 			client := instancev1alpha1.NewInstanceServiceClient(conn)
 
 			resp, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
-				Id: tt.instance.ID,
+				Id: ins.ID,
 			})
 
 			if tt.err != nil {
@@ -120,7 +103,7 @@ func TestGetInstance(t *testing.T) {
 			require.NoError(t, err)
 
 			if d := cmp.Diff(
-				instance.ToTransport(tt.instance),
+				instance.ToTransport(ins),
 				resp.GetInstance(),
 				protocmp.Transform(),
 				test.IgnoredProtoFlavorFields,
@@ -134,46 +117,46 @@ func TestGetInstance(t *testing.T) {
 
 func TestAPIListInstances(t *testing.T) {
 	var (
-		ctx    = context.Background()
-		pg     = fixture.NewPostgres()
-		nodeID = "0195c2f6-f40c-72df-a0f1-e468f1be77b1"
-		c      = fixture.Chunk()
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
 	)
 
 	fixture.RunControlPlane(t, pg)
 
-	// FIXME: find better way to seed nodes
-	_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
-	require.NoError(t, err)
-
-	// make sure we only have one flavor, the fixture has 2 configured by default
-	// but for this test we only we need one.
-	c.Flavors = []chunk.Flavor{c.Flavors[0]}
-
-	_, err = pg.DB.CreateChunk(ctx, c)
-	require.NoError(t, err)
-
-	createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
-	require.NoError(t, err)
+	pg.InsertNode(t)
 
 	ins := []instance.Instance{
+
 		fixture.Instance(func(i *instance.Instance) {
 			i.ID = test.NewUUIDv7(t)
-			i.Chunk = c
-			i.ChunkFlavor = createdFlavor
+			i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
+				c.ID = test.NewUUIDv7(t)
+				c.Flavors = []chunk.Flavor{
+					fixture.Flavor(func(f *chunk.Flavor) {
+						f.Name = "f1"
+					}),
+				}
+			})
+			i.ChunkFlavor = i.Chunk.Flavors[0]
 			i.Port = nil // port will not be saved when creating
 		}),
 		fixture.Instance(func(i *instance.Instance) {
 			i.ID = test.NewUUIDv7(t)
-			i.Chunk = c
-			i.ChunkFlavor = createdFlavor
+			i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
+				c.ID = test.NewUUIDv7(t)
+				c.Flavors = []chunk.Flavor{
+					fixture.Flavor(func(f *chunk.Flavor) {
+						f.Name = "f2"
+					}),
+				}
+			})
+			i.ChunkFlavor = i.Chunk.Flavors[0]
 			i.Port = nil // port will not be saved when creating
 		}),
 	}
 
 	for _, i := range ins {
-		_, err := pg.DB.CreateInstance(ctx, i, nodeID)
-		require.NoError(t, err)
+		pg.CreateInstance(t, fixture.Node().ID, &i)
 	}
 
 	conn, err := grpc.NewClient(
@@ -208,28 +191,11 @@ func TestRunChunk(t *testing.T) {
 	tests := []struct {
 		name     string
 		chunkID  string
-		expected *instancev1alpha1.Instance
+		flavorID string
 		err      error
 	}{
 		{
-			name:    "can run chunk",
-			chunkID: fixture.Chunk().ID,
-			expected: &instancev1alpha1.Instance{
-				Id: "",
-				Chunk: &chunkv1alpha1.Chunk{
-					Id:          fixture.Chunk().ID,
-					Name:        fixture.Chunk().Name,
-					Description: fixture.Chunk().Description,
-					Tags:        fixture.Chunk().Tags,
-					CreatedAt:   timestamppb.New(fixture.Chunk().CreatedAt),
-					UpdatedAt:   timestamppb.New(fixture.Chunk().UpdatedAt),
-				},
-				Flavor: &chunkv1alpha1.Flavor{
-					Name: fixture.Chunk().Flavors[0].Name,
-				},
-				Ip:    "198.51.100.1",
-				State: instancev1alpha1.InstanceState_PENDING,
-			},
+			name: "can run chunk",
 		},
 		{
 			name:    "chunk not found",
@@ -237,29 +203,48 @@ func TestRunChunk(t *testing.T) {
 			err:     postgres.ErrNotFound,
 		},
 		{
-			name: "flavor not found",
-			err:  errors.New("flavor not found"), // FIXME: better error handling
+			name:     "flavor not found",
+			flavorID: "NOTFOUND",
+			err:      errors.New("flavor not found"), // FIXME: better error handling
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ctx    = context.Background()
-				pg     = fixture.NewPostgres()
-				nodeID = "0195c2f6-f40c-72df-a0f1-e468f1be77b1"
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+				c   = fixture.Chunk()
 			)
 
 			fixture.RunControlPlane(t, pg)
 
-			// FIXME: find better way to seed nodes
-			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
-			require.NoError(t, err)
+			pg.InsertNode(t)
+			pg.CreateChunk(t, &c)
 
-			_, err = pg.DB.CreateChunk(ctx, fixture.Chunk())
-			require.NoError(t, err)
+			expected := &instancev1alpha1.Instance{
+				Id: "",
+				Chunk: &chunkv1alpha1.Chunk{
+					Id:          c.ID,
+					Name:        c.Name,
+					Description: c.Description,
+					Tags:        c.Tags,
+					CreatedAt:   timestamppb.New(c.CreatedAt),
+					UpdatedAt:   timestamppb.New(c.UpdatedAt),
+				},
+				Flavor: &chunkv1alpha1.Flavor{
+					Name: c.Flavors[0].Name,
+				},
+				Ip:    fixture.Node().Addr,
+				State: instancev1alpha1.InstanceState_PENDING,
+			}
 
-			createdFlavor, err := pg.DB.CreateFlavor(ctx, fixture.Chunk().ID, fixture.Chunk().Flavors[0])
-			require.NoError(t, err)
+			if tt.chunkID == "" {
+				tt.chunkID = c.ID
+			}
+
+			if tt.flavorID == "" {
+				tt.flavorID = c.Flavors[0].ID
+			}
 
 			conn, err := grpc.NewClient(
 				fixture.ControlPlaneAddr,
@@ -271,32 +256,31 @@ func TestRunChunk(t *testing.T) {
 
 			resp, err := client.RunChunk(ctx, &instancev1alpha1.RunChunkRequest{
 				ChunkId:  tt.chunkID,
-				FlavorId: createdFlavor.ID,
+				FlavorId: tt.flavorID,
 			})
 
-			if tt.err == nil {
-				require.NoError(t, err)
-				tt.expected.Id = resp.GetInstance().Id
-				if d := cmp.Diff(
-					tt.expected,
-					resp.GetInstance(),
-					protocmp.Transform(),
-					test.IgnoredProtoFlavorFields,
-					test.IgnoredProtoChunkFields,
-				); d != "" {
-					t.Fatalf("diff (-want +got):\n%s", d)
-				}
+			if tt.err != nil {
+				require.ErrorAs(t, err, &tt.err)
 				return
 			}
 
-			require.ErrorAs(t, err, &tt.err)
+			require.NoError(t, err)
+
+			if d := cmp.Diff(
+				expected,
+				resp.GetInstance(),
+				protocmp.Transform(),
+				test.IgnoredProtoInstanceFields,
+				test.IgnoredProtoFlavorFields,
+				test.IgnoredProtoChunkFields,
+			); d != "" {
+				t.Fatalf("diff (-want +got):\n%s", d)
+			}
 		})
 	}
 }
 
 func TestDiscoverInstances(t *testing.T) {
-	nodeID := test.NewUUIDv7(t)
-
 	tests := []struct {
 		name        string
 		nodeID      string
@@ -306,33 +290,32 @@ func TestDiscoverInstances(t *testing.T) {
 	}{
 		{
 			name:   "can discover instances",
-			nodeID: nodeID,
+			nodeID: fixture.Node().ID,
 			input: []instance.Instance{
+
 				fixture.Instance(func(i *instance.Instance) {
-					flavor := fixture.Flavor(func(f *chunk.Flavor) {
-						f.ID = test.NewUUIDv7(t)
-					})
-					i.ID = "6566d325-8146-4532-b014-e13d7069af77"
-					i.State = instance.StateRunning
-					i.ChunkFlavor = flavor
-					i.ChunkFlavor.Name = "f1"
+					i.ID = test.NewUUIDv7(t)
 					i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
 						c.ID = test.NewUUIDv7(t)
-						c.Flavors = []chunk.Flavor{flavor}
+						c.Flavors = []chunk.Flavor{
+							fixture.Flavor(func(f *chunk.Flavor) {
+								f.Name = "f1"
+							}),
+						}
 					})
+					i.ChunkFlavor = i.Chunk.Flavors[0]
 				}),
 				fixture.Instance(func(i *instance.Instance) {
-					flavor := fixture.Flavor(func(f *chunk.Flavor) {
-						f.ID = test.NewUUIDv7(t)
-					})
-					i.ID = "43fc4528-30ae-4003-9edf-8ab3bdae6c69"
-					i.State = instance.StatePending
-					i.ChunkFlavor = flavor
-					i.ChunkFlavor.Name = "f2"
+					i.ID = test.NewUUIDv7(t)
 					i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
 						c.ID = test.NewUUIDv7(t)
-						c.Flavors = []chunk.Flavor{flavor}
+						c.Flavors = []chunk.Flavor{
+							fixture.Flavor(func(f *chunk.Flavor) {
+								f.Name = "f2"
+							}),
+						}
 					})
+					i.ChunkFlavor = i.Chunk.Flavors[0]
 				}),
 			},
 			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
@@ -374,21 +357,10 @@ func TestDiscoverInstances(t *testing.T) {
 
 			fixture.RunControlPlane(t, pg)
 
-			// FIXME: find better way to seed nodes
-			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
-			require.NoError(t, err)
+			pg.InsertNode(t)
 
 			for _, i := range tt.input {
-				_, err = pg.DB.CreateChunk(ctx, i.Chunk)
-				require.NoError(t, err)
-
-				createdFlavor, err := pg.DB.CreateFlavor(ctx, i.Chunk.ID, i.ChunkFlavor)
-				require.NoError(t, err)
-
-				i.ChunkFlavor = createdFlavor
-
-				_, err = pg.DB.CreateInstance(ctx, i, nodeID)
-				require.NoError(t, err)
+				pg.CreateInstance(t, fixture.Node().ID, &i)
 			}
 
 			conn, err := grpc.NewClient(
@@ -416,6 +388,7 @@ func TestDiscoverInstances(t *testing.T) {
 					expected,
 					resp.Instances,
 					protocmp.Transform(),
+					test.IgnoredProtoInstanceFields,
 					test.IgnoredProtoFlavorFields,
 					test.IgnoredProtoChunkFields,
 				); d != "" {
@@ -463,29 +436,15 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ctx    = context.Background()
-				pg     = fixture.NewPostgres()
-				nodeID = test.NewUUIDv7(t)
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+				ins = fixture.Instance()
 			)
 
 			fixture.RunControlPlane(t, pg)
 
-			ins := fixture.Instance()
-
-			// FIXME: find better way to seed nodes
-			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
-			require.NoError(t, err)
-
-			_, err = pg.DB.CreateChunk(ctx, ins.Chunk)
-			require.NoError(t, err)
-
-			createdFlavor, err := pg.DB.CreateFlavor(ctx, ins.Chunk.ID, ins.ChunkFlavor)
-			require.NoError(t, err)
-
-			ins.ChunkFlavor = createdFlavor
-
-			_, err = pg.DB.CreateInstance(ctx, ins, nodeID)
-			require.NoError(t, err)
+			pg.InsertNode(t)
+			pg.CreateInstance(t, fixture.Node().ID, &ins)
 
 			conn, err := grpc.NewClient(
 				fixture.ControlPlaneAddr,
@@ -503,7 +462,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			require.NoError(t, err)
 
 			resp, err := client.DiscoverInstances(ctx, &instancev1alpha1.DiscoverInstanceRequest{
-				NodeKey: nodeID,
+				NodeKey: fixture.Node().ID,
 			})
 			require.NoError(t, err)
 
