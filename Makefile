@@ -27,6 +27,10 @@ dbschema: export DATABASE_URL := $(DATABASE_URL)
 testdb: export DATABASE_URL := $(DATABASE_URL)
 dbgen: dbschema sqlc
 
+.PHONY: goimports
+formatimports:
+	@goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*")
+
 .PHONY: setup
 setup:
 	$(RUN) $(SUDO) apt update
