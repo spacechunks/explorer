@@ -21,6 +21,7 @@ package functional
 import (
 	"context"
 	"slices"
+	"sort"
 	"strings"
 	"testing"
 
@@ -240,6 +241,14 @@ func TestListChunks(t *testing.T) {
 	for _, c := range chunks {
 		expected = append(expected, chunk.ChunkToTransport(c))
 	}
+
+	sort.Slice(expected, func(i, j int) bool {
+		return strings.Compare(expected[i].GetId(), expected[j].GetId()) < 0
+	})
+
+	sort.Slice(resp.GetChunks(), func(i, j int) bool {
+		return strings.Compare(resp.GetChunks()[i].GetId(), resp.GetChunks()[j].GetId()) < 0
+	})
 
 	if d := cmp.Diff(
 		expected,
