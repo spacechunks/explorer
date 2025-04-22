@@ -41,33 +41,23 @@ func TestCreateInstance(t *testing.T) {
 	// * check that creating does not work if no node is present
 
 	var (
-		ctx    = context.Background()
-		pg     = fixture.NewPostgres()
-		nodeID = test.NewUUIDv7(t)
-		c      = fixture.Chunk()
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
 	)
 
 	pg.Run(t, ctx)
-
-	_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
-	require.NoError(t, err)
+	pg.InsertNode(t)
 
 	c.Flavors = []chunk.Flavor{c.Flavors[0]}
-
-	_, err = pg.DB.CreateChunk(ctx, c)
-	require.NoError(t, err)
-
-	createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
-	require.NoError(t, err)
-
-	// ^ above are prerequisites
+	pg.CreateChunk(t, &c)
 
 	expected := fixture.Instance()
 	expected.Chunk = c
-	expected.ChunkFlavor = createdFlavor
+	expected.ChunkFlavor = c.Flavors[0]
 	expected.Port = nil // port will not be saved when creating
 
-	actual, err := pg.DB.CreateInstance(ctx, expected, nodeID)
+	actual, err := pg.DB.CreateInstance(ctx, expected, fixture.Node().ID)
 	require.NoError(t, err)
 
 	if d := cmp.Diff(
@@ -76,7 +66,7 @@ func TestCreateInstance(t *testing.T) {
 		test.IgnoreFields(test.IgnoredInstanceFields...),
 		cmpopts.EquateComparable(netip.Addr{}),
 	); d != "" {
-		t.Fatalf("CreateInstance() mismatch (-want +got):\n%s", d)
+		t.Fatalf("diff (-want +got):\n%s", d)
 	}
 }
 
@@ -84,46 +74,37 @@ func TestDBListInstances(t *testing.T) {
 	// TODO: at some point test that we are returning an empty array
 	//       and not a nil one
 	var (
-		ctx    = context.Background()
-		pg     = fixture.NewPostgres()
-		nodeID = test.NewUUIDv7(t)
-		c      = fixture.Chunk()
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
 	)
 
 	pg.Run(t, ctx)
 
-	_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
-	require.NoError(t, err)
+	pg.InsertNode(t)
 
 	// make sure we only have one flavor, the fixture has 2 configured by default
 	// but for this test we only we need one.
 	c.Flavors = []chunk.Flavor{c.Flavors[0]}
-
-	_, err = pg.DB.CreateChunk(ctx, c)
-	require.NoError(t, err)
-
-	createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
-	require.NoError(t, err)
-
-	// ^ above are prerequisites
+	pg.CreateChunk(t, &c)
 
 	expected := []instance.Instance{
 		fixture.Instance(func(i *instance.Instance) {
 			i.ID = test.NewUUIDv7(t)
 			i.Chunk = c
-			i.ChunkFlavor = createdFlavor
+			i.ChunkFlavor = c.Flavors[0]
 			i.Port = nil // port will not be saved when creating
 		}),
 		fixture.Instance(func(i *instance.Instance) {
 			i.ID = test.NewUUIDv7(t)
 			i.Chunk = c
-			i.ChunkFlavor = createdFlavor
+			i.ChunkFlavor = c.Flavors[0]
 			i.Port = nil // port will not be saved when creating
 		}),
 	}
 
 	for _, i := range expected {
-		_, err := pg.DB.CreateInstance(ctx, i, nodeID)
+		_, err := pg.DB.CreateInstance(ctx, i, fixture.Node().ID)
 		require.NoError(t, err)
 	}
 
@@ -162,29 +143,18 @@ func TestGetInstanceByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ctx    = context.Background()
-				pg     = fixture.NewPostgres()
-				nodeID = test.NewUUIDv7(t)
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
 			)
 
 			pg.Run(t, ctx)
-
-			_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
-			require.NoError(t, err)
+			pg.InsertNode(t)
 
 			if tt.create {
-				_, err = pg.DB.CreateChunk(ctx, tt.expected.Chunk)
-				require.NoError(t, err)
-
-				for i, f := range tt.expected.Chunk.Flavors {
-					created, err := pg.DB.CreateFlavor(ctx, tt.expected.Chunk.ID, f)
-					require.NoError(t, err)
-					tt.expected.Chunk.Flavors[i] = created
-				}
-
+				pg.CreateChunk(t, &tt.expected.Chunk)
 				tt.expected.ChunkFlavor = tt.expected.Chunk.Flavors[0]
 
-				_, err = pg.DB.CreateInstance(ctx, tt.expected, nodeID)
+				_, err := pg.DB.CreateInstance(ctx, tt.expected, fixture.Node().ID)
 				require.NoError(t, err)
 
 				_, err = pg.Pool.Exec(
@@ -211,7 +181,7 @@ func TestGetInstanceByID(t *testing.T) {
 				test.IgnoreFields(test.IgnoredInstanceFields...),
 				cmpopts.EquateComparable(netip.Addr{}),
 			); d != "" {
-				t.Fatalf("GetInstaceByID() mismatch (-want +got):\n%s", d)
+				t.Fatalf("diff (-want +got):\n%s", d)
 			}
 		})
 	}
@@ -221,13 +191,11 @@ func TestGetInstancesByNodeID(t *testing.T) {
 	var (
 		ctx    = context.Background()
 		pg     = fixture.NewPostgres()
-		nodeID = test.NewUUIDv7(t)
+		nodeID = fixture.Node().ID
 	)
 
 	pg.Run(t, ctx)
-
-	_, err := pg.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, nodeID, "198.51.100.1")
-	require.NoError(t, err)
+	pg.InsertNode(t)
 
 	chunks := []chunk.Chunk{
 		fixture.Chunk(func(c *chunk.Chunk) {
@@ -254,27 +222,23 @@ func TestGetInstancesByNodeID(t *testing.T) {
 
 	var expected []instance.Instance
 
-	for _, c := range chunks {
-		_, err = pg.DB.CreateChunk(ctx, c)
-		require.NoError(t, err)
-
-		createdFlavor, err := pg.DB.CreateFlavor(ctx, c.ID, c.Flavors[0])
-		require.NoError(t, err)
+	for i := range chunks {
+		pg.CreateChunk(t, &chunks[i])
 
 		ins := instance.Instance{
 			ID:          test.NewUUIDv7(t),
-			Chunk:       c,
-			ChunkFlavor: createdFlavor,
-			Address:     netip.MustParseAddr("198.51.100.1"),
+			Chunk:       chunks[i],
+			ChunkFlavor: chunks[i].Flavors[0],
+			Address:     netip.MustParseAddr(fixture.Node().Addr),
 			State:       instance.StatePending,
-			CreatedAt:   c.CreatedAt,
-			UpdatedAt:   c.UpdatedAt,
+			CreatedAt:   chunks[i].CreatedAt,
+			UpdatedAt:   chunks[i].UpdatedAt,
 		}
 
 		// see FIXME in GetInstancesByNodeID
 		ins.Chunk.Flavors = nil
 
-		_, err = pg.DB.CreateInstance(ctx, ins, nodeID)
+		_, err := pg.DB.CreateInstance(ctx, ins, nodeID)
 		require.NoError(t, err)
 
 		expected = append(expected, ins)

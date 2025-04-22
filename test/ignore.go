@@ -58,6 +58,8 @@ var (
 	IgnoredInstanceFields = []string{
 		// created dynamically
 		"ID",
+		"CreatedAt",
+		"UpdatedAt",
 		"ChunkFlavor.ID",
 		"ChunkFlavor.CreatedAt",
 		"ChunkFlavor.UpdatedAt",
