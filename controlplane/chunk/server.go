@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -75,7 +76,7 @@ func (s *Server) GetChunk(
 	ctx context.Context,
 	req *chunkv1alpha1.GetChunkRequest,
 ) (*chunkv1alpha1.GetChunkResponse, error) {
-	if req.GetId() == "" {
+	if _, err := uuid.Parse(req.GetId()); err != nil {
 		return nil, ErrInvalidChunkID
 	}
 
@@ -93,7 +94,7 @@ func (s *Server) UpdateChunk(
 	ctx context.Context,
 	req *chunkv1alpha1.UpdateChunkRequest,
 ) (*chunkv1alpha1.UpdateChunkResponse, error) {
-	if req.GetId() == "" {
+	if _, err := uuid.Parse(req.GetId()); err != nil {
 		return nil, ErrInvalidChunkID
 	}
 
@@ -137,7 +138,7 @@ func (s *Server) CreateFlavor(
 	ctx context.Context,
 	req *chunkv1alpha1.CreateFlavorRequest,
 ) (*chunkv1alpha1.CreateFlavorResponse, error) {
-	if req.GetChunkId() == "" {
+	if _, err := uuid.Parse(req.GetChunkId()); err != nil {
 		return nil, ErrInvalidChunkID
 	}
 
@@ -163,7 +164,7 @@ func (s *Server) ListFlavors(
 	ctx context.Context,
 	req *chunkv1alpha1.ListFlavorsRequest,
 ) (*chunkv1alpha1.ListFlavorsResponse, error) {
-	if req.GetChunkId() == "" {
+	if _, err := uuid.Parse(req.GetChunkId()); err != nil {
 		return nil, ErrInvalidChunkID
 	}
 
