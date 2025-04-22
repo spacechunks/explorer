@@ -29,6 +29,8 @@ import (
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
 	"github.com/docker/docker/api/types/container"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
@@ -92,4 +94,56 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 
 	p.Pool = pool
 	p.DB = postgres.NewDB(slog.New(slog.NewTextHandler(os.Stdout, nil)), pool)
+}
+
+// CreateChunk inserts a chunk and all flavors. it also updates
+// the passed object so that dynamically generated values of fields
+// like id or created_at have the correct value.
+func (p *Postgres) CreateChunk(t *testing.T, c *chunk.Chunk) {
+	ctx := context.Background()
+	createdChunk, err := p.DB.CreateChunk(ctx, *c)
+	require.NoError(t, err)
+
+	for i := range c.Flavors {
+		p.CreateFlavor(t, createdChunk.ID, &createdChunk.Flavors[i])
+	}
+
+	*c = createdChunk
+}
+
+// CreateFlavor inserts a flavor. it also updates the passed object
+// so that dynamically generated values of fields like id or created_at
+// have the correct value.
+func (p *Postgres) CreateFlavor(t *testing.T, chunkID string, f *chunk.Flavor) {
+	ctx := context.Background()
+	createdFlavor, err := p.DB.CreateFlavor(ctx, chunkID, *f)
+	require.NoError(t, err)
+
+	*f = createdFlavor
+}
+
+// CreateInstance inserts an instance and the chunk as well as all flavors
+// belonging to the chunk. it also updates the passed object so that dynamically
+// generated values of fields like id or created_at have the correct value.
+func (p *Postgres) CreateInstance(t *testing.T, nodeID string, ins *instance.Instance) {
+	ctx := context.Background()
+	p.CreateChunk(t, &ins.Chunk)
+
+	for _, f := range ins.Chunk.Flavors {
+		// flavor names for a chunk are unique
+		if ins.ChunkFlavor.Name == f.Name {
+			ins.ChunkFlavor = f
+		}
+	}
+
+	created, err := p.DB.CreateInstance(ctx, *ins, nodeID)
+	require.NoError(t, err)
+
+	*ins = created
+}
+
+func (p *Postgres) InsertNode(t *testing.T) {
+	ctx := context.Background()
+	_, err := p.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, Node().ID, Node().Addr)
+	require.NoError(t, err)
 }
