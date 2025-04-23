@@ -24,7 +24,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -56,14 +55,6 @@ func (s *svc) CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error) {
 	if err := validateChunkFields(chunk); err != nil {
 		return Chunk{}, err
 	}
-
-	// FIXME: move id generation to repo
-	id, err := uuid.NewV7()
-	if err != nil {
-		return Chunk{}, fmt.Errorf("generate id: %w", err)
-	}
-
-	chunk.ID = id.String()
 
 	ret, err := s.repo.CreateChunk(ctx, chunk)
 	if err != nil {

@@ -23,13 +23,19 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
 func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return chunk.Chunk{}, fmt.Errorf("generate id: %w", err)
+	}
+
 	params := query.CreateChunkParams{
-		ID:          c.ID,
+		ID:          id.String(),
 		Name:        c.Name,
 		Description: c.Description,
 		Tags:        c.Tags,
@@ -46,6 +52,7 @@ func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 		return chunk.Chunk{}, err
 	}
 
+	c.ID = id.String()
 	c.CreatedAt = params.CreatedAt
 	c.UpdatedAt = params.UpdatedAt
 	return c, nil
