@@ -64,9 +64,12 @@ nav:
             - Log: features/wait/log.md
             - Multi: features/wait/multi.md
             - SQL: features/wait/sql.md
+            - TLS: features/wait/tls.md
+            - Walk: features/wait/walk.md
     - Modules:
         - modules/index.md
         - modules/artemis.md
+        - modules/azure.md
         - modules/azurite.md
         - modules/cassandra.md
         - modules/chroma.md
@@ -75,6 +78,7 @@ nav:
         - modules/consul.md
         - modules/couchbase.md
         - modules/databend.md
+        - modules/dind.md
         - modules/dolt.md
         - modules/dynamodb.md
         - modules/elasticsearch.md
@@ -101,6 +105,7 @@ nav:
         - modules/openfga.md
         - modules/openldap.md
         - modules/opensearch.md
+        - modules/pinecone.md
         - modules/postgres.md
         - modules/pulsar.md
         - modules/qdrant.md
@@ -108,6 +113,7 @@ nav:
         - modules/redis.md
         - modules/redpanda.md
         - modules/registry.md
+        - modules/scylladb.md
         - modules/surrealdb.md
         - modules/valkey.md
         - modules/vault.md
@@ -134,10 +140,8 @@ nav:
         - system_requirements/using_colima.md
         - system_requirements/using_podman.md
         - system_requirements/rancher.md
-    - Contributing:
-        - contributing.md
-        - contributing_docs.md
+    - Contributing: contributing.md
     - Getting help: getting_help.md
 edit_uri: edit/main/docs/
 extra:
-    latest_version: v0.34.0
+    latest_version: v0.36.0
