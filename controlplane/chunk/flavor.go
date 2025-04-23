@@ -32,26 +32,9 @@ import (
 
 	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/blob"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/zeebo/xxh3"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
-
-var (
-	ErrFlavorNameExists    = status.Error(codes.AlreadyExists, "flavor name already exists")
-	ErrFlavorVersionExists = status.Error(codes.AlreadyExists, "flavor version already exists")
-	ErrHashMismatch        = status.Error(codes.FailedPrecondition, "hash does not match")
-	ErrFilesAlreadyExist   = status.Error(codes.AlreadyExists, "files already exist")
-)
-
-type ErrFlavorVersionDuplicate struct {
-	// the flavor version that contains the duplicated files
-	Version string
-}
-
-func (e ErrFlavorVersionDuplicate) Error() string {
-	return fmt.Sprintf("flavor version is duplicate of: %s", e.Version)
-}
 
 /*
  * flavor types
@@ -114,12 +97,12 @@ func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (
 	}
 
 	if exists {
-		return Flavor{}, ErrFlavorNameExists
+		return Flavor{}, apierrs.ErrFlavorNameExists
 	}
 
 	ret, err := s.repo.CreateFlavor(ctx, chunkID, flavor)
 	if err != nil {
-		return Flavor{}, err
+		return Flavor{}, fmt.Errorf("create flavor: %w", err)
 	}
 
 	return ret, nil
@@ -136,7 +119,7 @@ func (s *svc) ListFlavors(ctx context.Context, chunkID string) ([]Flavor, error)
 	}
 
 	if !exists {
-		return nil, ErrChunkNotFound
+		return nil, apierrs.ErrChunkNotFound
 	}
 
 	flavors, err := s.repo.ListFlavorsByChunkID(ctx, chunkID)
@@ -157,7 +140,7 @@ func (s *svc) CreateFlavorVersion(
 	}
 
 	if exists {
-		return FlavorVersion{}, FlavorVersionDiff{}, ErrFlavorVersionExists
+		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrFlavorVersionExists
 	}
 
 	dupVersion, err := s.repo.FlavorVersionByHash(ctx, version.Hash)
@@ -166,9 +149,7 @@ func (s *svc) CreateFlavorVersion(
 	}
 
 	if dupVersion != "" {
-		return FlavorVersion{}, FlavorVersionDiff{}, ErrFlavorVersionDuplicate{
-			Version: dupVersion,
-		}
+		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.FlavorVersionDuplicate(dupVersion)
 	}
 
 	prevVersion, err := s.repo.LatestFlavorVersion(ctx, version.Flavor.ID)
@@ -187,7 +168,7 @@ func (s *svc) CreateFlavorVersion(
 	}
 
 	if hashString(newContentTree) != version.Hash {
-		return FlavorVersion{}, FlavorVersionDiff{}, ErrHashMismatch
+		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrHashMismatch
 	}
 
 	var (
@@ -305,7 +286,7 @@ func (s *svc) SaveFlavorFiles(ctx context.Context, versionID string, files []Fil
 	//        files have already been uploaded. currently only after
 	//       all files have been uploaded this check will be executed.
 	if version.FilesUploaded {
-		return ErrFilesAlreadyExist
+		return apierrs.ErrFilesAlreadyExist
 	}
 
 	tree, err := tree(objs)
@@ -317,7 +298,7 @@ func (s *svc) SaveFlavorFiles(ctx context.Context, versionID string, files []Fil
 	fmt.Println("want: " + version.ChangeHash)
 
 	if hashString(tree) != version.ChangeHash {
-		return ErrHashMismatch
+		return apierrs.ErrHashMismatch
 	}
 
 	if err := s.blobStore.Put(ctx, objs); err != nil {

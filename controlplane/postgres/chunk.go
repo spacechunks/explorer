@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
@@ -69,7 +70,7 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 		}
 
 		if len(rows) == 0 {
-			return chunk.ErrChunkNotFound
+			return apierrs.ErrChunkNotFound
 		}
 
 		var (
@@ -206,7 +207,7 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 	}
 
 	if len(rows) == 0 {
-		return chunk.Chunk{}, chunk.ErrChunkNotFound
+		return chunk.Chunk{}, apierrs.ErrChunkNotFound
 	}
 
 	var (

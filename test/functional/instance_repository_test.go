@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
@@ -136,7 +137,7 @@ func TestGetInstanceByID(t *testing.T) {
 		{
 			name:     "not found",
 			expected: fixture.Instance(),
-			err:      instance.ErrInstanceNotFound,
+			err:      apierrs.ErrInstanceNotFound,
 		},
 	}
 

@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/test/fixture"
 	mocky "github.com/stretchr/testify/mock"
@@ -53,7 +54,7 @@ func TestCreateFlavor(t *testing.T) {
 		},
 		{
 			name:   "flavor name already exists",
-			err:    chunk.ErrFlavorNameExists,
+			err:    apierrs.ErrFlavorNameExists,
 			flavor: fixture.Flavor(),
 			prep: func(repo *mock.MockChunkRepository) {
 				repo.EXPECT().
@@ -114,7 +115,7 @@ func TestListFlavors(t *testing.T) {
 		},
 		{
 			name: "chunk does not exists",
-			err:  chunk.ErrInvalidChunkID,
+			err:  apierrs.ErrInvalidChunkID,
 			prep: func(repo *mock.MockChunkRepository, _ []chunk.Flavor) {
 				repo.EXPECT().
 					ChunkExists(mocky.Anything, chunkID).
@@ -135,7 +136,7 @@ func TestListFlavors(t *testing.T) {
 			flavors, err := svc.ListFlavors(ctx, chunkID)
 
 			if tt.err != nil {
-				require.ErrorIs(t, err, chunk.ErrChunkNotFound)
+				require.ErrorIs(t, err, apierrs.ErrChunkNotFound)
 				return
 			}
 
@@ -256,7 +257,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).
 					Return(prevVersion, nil)
 			},
-			err: chunk.ErrHashMismatch,
+			err: apierrs.ErrHashMismatch,
 		},
 		{
 			name:        "version already exists",
@@ -271,7 +272,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
 					Return(true, nil)
 			},
-			err: chunk.ErrFlavorVersionExists,
+			err: apierrs.ErrFlavorVersionExists,
 		},
 		{
 			name:        "version is duplicate",
@@ -290,7 +291,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					FlavorVersionByHash(mocky.Anything, newVersion.Hash).
 					Return(newVersion.Hash, nil)
 			},
-			err: &chunk.ErrFlavorVersionDuplicate{},
+			err: apierrs.FlavorVersionDuplicate(fixture.FlavorVersion(t).Version),
 		},
 	}
 	for _, tt := range tests {

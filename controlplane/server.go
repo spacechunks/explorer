@@ -20,6 +20,7 @@ package controlplane
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -30,10 +31,13 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 type Server struct {
@@ -62,6 +66,7 @@ func (s *Server) Run(ctx context.Context) error {
 			// flavor file upload will exceed the default
 			// size of 4mb.
 			grpc.MaxRecvMsgSize(s.cfg.MaxGRPCMessageSize),
+			grpc.UnaryInterceptor(errorInterceptor),
 		)
 		blobStore    = blob.NewPGStore(db)
 		chunkService = chunk.NewService(db, blobStore)
@@ -97,4 +102,21 @@ func (s *Server) Run(ctx context.Context) error {
 	grpcServer.GracefulStop()
 
 	return g.Wait().ErrorOrNil()
+}
+
+func errorInterceptor(
+	ctx context.Context,
+	req any,
+	_ *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
+	resp, err := handler(ctx, req)
+	if err != nil {
+		var e cperrs.Error
+		if errors.As(err, &e) {
+			return nil, e.GRPCStatus().Err()
+		}
+		return nil, status.Error(codes.Internal, "internal service error occured")
+	}
+	return resp, nil
 }

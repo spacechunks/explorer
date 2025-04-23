@@ -20,7 +20,6 @@ package functional
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"sort"
 	"strings"
@@ -30,6 +29,7 @@ import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/internal/ptr"
@@ -37,9 +37,7 @@ import (
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -56,7 +54,7 @@ func TestGetInstance(t *testing.T) {
 		},
 		{
 			name: "not found",
-			err:  instance.ErrInstanceNotFound,
+			err:  apierrs.ErrInstanceNotFound.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -212,7 +210,7 @@ func TestRunChunk(t *testing.T) {
 		{
 			name:     "flavor not found",
 			flavorID: "NOTFOUND",
-			err:      errors.New("flavor not found"), // FIXME: better error handling
+			err:      apierrs.ErrFlavorNotFound.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -350,7 +348,7 @@ func TestDiscoverInstances(t *testing.T) {
 			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
 				return nil
 			},
-			err: status.Error(codes.InvalidArgument, "node key is required"), // TODO: better error handling
+			err: apierrs.ErrNodeKeyMissing.GRPCStatus().Err(),
 		},
 	}
 

@@ -20,17 +20,10 @@ package chunk
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-)
-
-var (
-	ErrInvalidChunkID = status.Errorf(codes.InvalidArgument, "chunk id is invalid")
-	ErrInvalidName    = status.Errorf(codes.InvalidArgument, "name is invalid")
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 )
 
 type Server struct {
@@ -49,7 +42,7 @@ func (s *Server) CreateChunk(
 	req *chunkv1alpha1.CreateChunkRequest,
 ) (*chunkv1alpha1.CreateChunkResponse, error) {
 	if req.GetName() == "" {
-		return nil, ErrInvalidName
+		return nil, apierrs.ErrInvalidName
 	}
 
 	// we allow the description to be empty, because
@@ -77,7 +70,7 @@ func (s *Server) GetChunk(
 	req *chunkv1alpha1.GetChunkRequest,
 ) (*chunkv1alpha1.GetChunkResponse, error) {
 	if _, err := uuid.Parse(req.GetId()); err != nil {
-		return nil, ErrInvalidChunkID
+		return nil, apierrs.ErrInvalidChunkID
 	}
 
 	c, err := s.service.GetChunk(ctx, req.GetId())
@@ -95,7 +88,7 @@ func (s *Server) UpdateChunk(
 	req *chunkv1alpha1.UpdateChunkRequest,
 ) (*chunkv1alpha1.UpdateChunkResponse, error) {
 	if _, err := uuid.Parse(req.GetId()); err != nil {
-		return nil, ErrInvalidChunkID
+		return nil, apierrs.ErrInvalidChunkID
 	}
 
 	c := Chunk{
@@ -139,11 +132,11 @@ func (s *Server) CreateFlavor(
 	req *chunkv1alpha1.CreateFlavorRequest,
 ) (*chunkv1alpha1.CreateFlavorResponse, error) {
 	if _, err := uuid.Parse(req.GetChunkId()); err != nil {
-		return nil, ErrInvalidChunkID
+		return nil, apierrs.ErrInvalidChunkID
 	}
 
 	if req.GetName() == "" {
-		return nil, ErrInvalidName
+		return nil, apierrs.ErrInvalidName
 	}
 
 	domain := Flavor{
@@ -152,7 +145,7 @@ func (s *Server) CreateFlavor(
 
 	created, err := s.service.CreateFlavor(ctx, req.GetChunkId(), domain)
 	if err != nil {
-		return nil, fmt.Errorf("create flavor: %w", err)
+		return nil, err
 	}
 
 	return &chunkv1alpha1.CreateFlavorResponse{
@@ -165,12 +158,12 @@ func (s *Server) ListFlavors(
 	req *chunkv1alpha1.ListFlavorsRequest,
 ) (*chunkv1alpha1.ListFlavorsResponse, error) {
 	if _, err := uuid.Parse(req.GetChunkId()); err != nil {
-		return nil, ErrInvalidChunkID
+		return nil, apierrs.ErrInvalidChunkID
 	}
 
 	flavors, err := s.service.ListFlavors(ctx, req.GetChunkId())
 	if err != nil {
-		return nil, fmt.Errorf("create flavor: %w", err)
+		return nil, err
 	}
 
 	sl := make([]*chunkv1alpha1.Flavor, 0, len(flavors))

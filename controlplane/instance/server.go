@@ -23,11 +23,8 @@ import (
 	"fmt"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 )
-
-var ErrInvalidInstanceID = status.Errorf(codes.InvalidArgument, "invalid instance id")
 
 type Server struct {
 	instancev1alpha1.UnimplementedInstanceServiceServer
@@ -45,7 +42,7 @@ func (s *Server) GetInstance(
 	req *instancev1alpha1.GetInstanceRequest,
 ) (*instancev1alpha1.GetInstanceResponse, error) {
 	if req.GetId() == "" {
-		return nil, ErrInvalidInstanceID
+		return nil, apierrs.ErrInvalidInstanceID
 	}
 
 	ins, err := s.service.GetInstance(ctx, req.GetId())
@@ -95,7 +92,7 @@ func (s *Server) DiscoverInstances(
 	req *instancev1alpha1.DiscoverInstanceRequest,
 ) (*instancev1alpha1.DiscoverInstanceResponse, error) {
 	if req.GetNodeKey() == "" {
-		return nil, status.Error(codes.InvalidArgument, "node key is required")
+		return nil, apierrs.ErrNodeKeyMissing
 	}
 
 	instances, err := s.service.DiscoverInstances(ctx, req.GetNodeKey())
