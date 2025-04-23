@@ -123,21 +123,22 @@ func TestAPICreateChunk(t *testing.T) {
 
 func TestGetChunk(t *testing.T) {
 	tests := []struct {
-		name   string
-		create bool
-		err    error
+		name    string
+		chunkID string
+		err     error
 	}{
 		{
-			name:   "works",
-			create: true,
+			name: "works",
 		},
 		{
-			name: "not found",
-			err:  apierrs.ErrChunkNotFound.GRPCStatus().Err(),
+			name:    "not found",
+			chunkID: test.NewUUIDv7(t),
+			err:     apierrs.ErrChunkNotFound.GRPCStatus().Err(),
 		},
 		{
-			name: "invalid id",
-			err:  apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
+			name:    "invalid id",
+			chunkID: "invalid",
+			err:     apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -150,8 +151,9 @@ func TestGetChunk(t *testing.T) {
 
 			fixture.RunControlPlane(t, pg)
 
-			if tt.create {
+			if tt.chunkID == "" {
 				pg.CreateChunk(t, &c)
+				tt.chunkID = c.ID
 			}
 
 			conn, err := grpc.NewClient(
@@ -162,16 +164,8 @@ func TestGetChunk(t *testing.T) {
 
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
-			if tt.err == apierrs.ErrChunkNotFound {
-				c.ID = test.NewUUIDv7(t)
-			}
-
-			if tt.err == apierrs.ErrInvalidChunkID {
-				c.ID = ""
-			}
-
 			resp, err := client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
-				Id: c.ID,
+				Id: tt.chunkID,
 			})
 
 			if tt.err != nil {
@@ -416,7 +410,7 @@ func TestCreateFlavor(t *testing.T) {
 			name:       "invalid chunk id",
 			flavorName: fixture.Flavor().Name,
 			chunkID:    "invalid",
-			err:        apierrs.ErrInvalidChunkID,
+			err:        apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
 		},
 		{
 			name: "invalid flavor name",
