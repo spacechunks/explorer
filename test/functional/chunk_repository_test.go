@@ -40,7 +40,7 @@ func TestCreateChunk(t *testing.T) {
 	c, err := pg.DB.CreateChunk(ctx, expected)
 	require.NoError(t, err)
 
-	assert.Equal(t, expected.ID, c.ID)
+	// ignore id, since it is dynamically generated
 	assert.Equal(t, expected.Name, c.Name)
 	assert.Equal(t, expected.Description, c.Description)
 	assert.Equal(t, expected.Tags, c.Tags)
