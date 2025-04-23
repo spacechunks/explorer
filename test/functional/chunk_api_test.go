@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
@@ -54,28 +55,28 @@ func TestAPICreateChunk(t *testing.T) {
 			expected: fixture.Chunk(func(c *chunk.Chunk) {
 				c.Name = strings.Repeat("a", chunk.MaxChunkNameChars+1)
 			}),
-			err: chunk.ErrNameTooLong,
+			err: apierrs.ErrNameTooLong.GRPCStatus().Err(),
 		},
 		{
 			name: "description too long",
 			expected: fixture.Chunk(func(c *chunk.Chunk) {
 				c.Description = strings.Repeat("a", chunk.MaxChunkDescriptionChars+1)
 			}),
-			err: chunk.ErrDescriptionTooLong,
+			err: apierrs.ErrDescriptionTooLong.GRPCStatus().Err(),
 		},
 		{
 			name: "too many tags",
 			expected: fixture.Chunk(func(c *chunk.Chunk) {
 				c.Tags = slices.Repeat([]string{"a"}, chunk.MaxChunkTags+1)
 			}),
-			err: chunk.ErrTooManyTags,
+			err: apierrs.ErrTooManyTags.GRPCStatus().Err(),
 		},
 		{
 			name: "invalid name",
 			expected: fixture.Chunk(func(c *chunk.Chunk) {
 				c.Name = ""
 			}),
-			err: chunk.ErrInvalidName,
+			err: apierrs.ErrInvalidName.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -132,11 +133,11 @@ func TestGetChunk(t *testing.T) {
 		},
 		{
 			name: "not found",
-			err:  chunk.ErrChunkNotFound,
+			err:  apierrs.ErrChunkNotFound.GRPCStatus().Err(),
 		},
 		{
 			name: "invalid id",
-			err:  chunk.ErrInvalidChunkID,
+			err:  apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -161,11 +162,11 @@ func TestGetChunk(t *testing.T) {
 
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
-			if tt.err == chunk.ErrChunkNotFound {
+			if tt.err == apierrs.ErrChunkNotFound {
 				c.ID = test.NewUUIDv7(t)
 			}
 
-			if tt.err == chunk.ErrInvalidChunkID {
+			if tt.err == apierrs.ErrInvalidChunkID {
 				c.ID = ""
 			}
 
@@ -301,35 +302,35 @@ func TestUpdateChunk(t *testing.T) {
 				Description: "new-description",
 				Tags:        []string{"new-tags"},
 			},
-			err: chunk.ErrChunkNotFound,
+			err: apierrs.ErrChunkNotFound.GRPCStatus().Err(),
 		},
 		{
 			name: "name too long",
 			req: &chunkv1alpha1.UpdateChunkRequest{
 				Name: strings.Repeat("a", chunk.MaxChunkNameChars+1),
 			},
-			err: chunk.ErrNameTooLong,
+			err: apierrs.ErrNameTooLong.GRPCStatus().Err(),
 		},
 		{
 			name: "description too long",
 			req: &chunkv1alpha1.UpdateChunkRequest{
 				Description: strings.Repeat("a", chunk.MaxChunkDescriptionChars+1),
 			},
-			err: chunk.ErrDescriptionTooLong,
+			err: apierrs.ErrDescriptionTooLong.GRPCStatus().Err(),
 		},
 		{
 			name: "too many tags",
 			req: &chunkv1alpha1.UpdateChunkRequest{
 				Tags: slices.Repeat([]string{"a"}, chunk.MaxChunkTags+1),
 			},
-			err: chunk.ErrTooManyTags,
+			err: apierrs.ErrTooManyTags.GRPCStatus().Err(),
 		},
 		{
 			name: "invalid chunk id",
 			req: &chunkv1alpha1.UpdateChunkRequest{
 				Id: "invalid",
 			},
-			err: chunk.ErrInvalidChunkID,
+			err: apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -409,17 +410,17 @@ func TestCreateFlavor(t *testing.T) {
 			name:       "flavor already exists",
 			flavorName: fixture.Flavor().Name,
 			other:      ptr.Pointer(fixture.Flavor()),
-			err:        chunk.ErrFlavorNameExists,
+			err:        apierrs.ErrFlavorNameExists.GRPCStatus().Err(),
 		},
 		{
 			name:       "invalid chunk id",
 			flavorName: fixture.Flavor().Name,
 			chunkID:    "invalid",
-			err:        chunk.ErrInvalidChunkID,
+			err:        apierrs.ErrInvalidChunkID,
 		},
 		{
 			name: "invalid flavor name",
-			err:  chunk.ErrInvalidName,
+			err:  apierrs.ErrInvalidName.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -456,7 +457,7 @@ func TestCreateFlavor(t *testing.T) {
 			})
 
 			if tt.err != nil {
-				require.ErrorAs(t, err, &tt.err)
+				require.ErrorIs(t, err, tt.err)
 				return
 			}
 
@@ -489,11 +490,11 @@ func TestListFlavors(t *testing.T) {
 		},
 		{
 			name: "invalid chunk id",
-			err:  chunk.ErrInvalidChunkID,
+			err:  apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
 		},
 		{
 			name: "chunk not found",
-			err:  chunk.ErrChunkNotFound,
+			err:  apierrs.ErrChunkNotFound.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -539,7 +540,7 @@ func TestListFlavors(t *testing.T) {
 			})
 
 			if tt.err != nil {
-				require.ErrorAs(t, err, &tt.err)
+				require.ErrorIs(t, err, tt.err)
 				return
 			}
 
@@ -632,7 +633,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
 				v.Flavor = flavor
 			}),
-			err: chunk.ErrFlavorVersionExists,
+			err: apierrs.ErrFlavorVersionExists.GRPCStatus().Err(),
 		},
 		{
 			name: "version hash mismatch",
@@ -644,7 +645,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 				v.Version = "v2"
 				v.Hash = "wrong-hash"
 			}),
-			err: chunk.ErrHashMismatch,
+			err: apierrs.ErrHashMismatch.GRPCStatus().Err(),
 		},
 		{
 			name: "duplicate version",
@@ -655,7 +656,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 				v.Flavor = flavor
 				v.Version = "v2"
 			}),
-			err: chunk.ErrFlavorVersionDuplicate{},
+			err: apierrs.FlavorVersionDuplicate("v1").GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -694,7 +695,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 
 			if err != nil {
 				if tt.err != nil {
-					require.ErrorAs(t, err, &tt.err)
+					require.ErrorIs(t, err, tt.err)
 					return
 				}
 				require.NoError(t, err)
@@ -764,7 +765,7 @@ func TestSaveFlavorFiles(t *testing.T) {
 					},
 				}
 			}),
-			err: chunk.ErrHashMismatch,
+			err: apierrs.ErrHashMismatch.GRPCStatus().Err(),
 		},
 		{
 			name:  "hash mismatch - unexpected file",
@@ -785,7 +786,7 @@ func TestSaveFlavorFiles(t *testing.T) {
 					},
 				}
 			}),
-			err: chunk.ErrHashMismatch,
+			err: apierrs.ErrHashMismatch.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -907,5 +908,5 @@ func TestSaveFlavorFilesAlreadyUploaded(t *testing.T) {
 		FlavorVersionId: resp.GetVersion().Id,
 		Files:           transport,
 	})
-	require.ErrorIs(t, err, chunk.ErrFilesAlreadyExist)
+	require.ErrorIs(t, err, apierrs.ErrFilesAlreadyExist)
 }

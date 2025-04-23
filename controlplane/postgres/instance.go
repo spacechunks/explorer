@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 	"github.com/spacechunks/explorer/internal/ptr"
@@ -250,7 +251,7 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 	}
 
 	if len(rows) == 0 {
-		return instance.Instance{}, instance.ErrInstanceNotFound
+		return instance.Instance{}, apierrs.ErrInstanceNotFound
 	}
 
 	// we retrieve multiple rows when we call GetInstance

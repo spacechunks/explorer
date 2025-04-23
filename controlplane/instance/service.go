@@ -27,11 +27,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spacechunks/explorer/controlplane/chunk"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 )
-
-var ErrInstanceNotFound = status.Errorf(codes.NotFound, "instance not found")
 
 type Service interface {
 	GetInstance(ctx context.Context, id string) (Instance, error)
@@ -89,7 +86,7 @@ func (s *svc) RunChunk(ctx context.Context, chunkID string, flavorID string) (In
 	}
 
 	if flavor == nil {
-		return Instance{}, fmt.Errorf("flavor not found")
+		return Instance{}, apierrs.ErrFlavorNotFound
 	}
 
 	instanceID, err := uuid.NewV7()

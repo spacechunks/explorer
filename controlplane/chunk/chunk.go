@@ -24,15 +24,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-)
-
-var (
-	ErrChunkNotFound      = status.Error(codes.NotFound, "chunk does not exist")
-	ErrTooManyTags        = status.Error(codes.InvalidArgument, "too many tags")
-	ErrNameTooLong        = status.Error(codes.InvalidArgument, "name is too long")
-	ErrDescriptionTooLong = status.Error(codes.InvalidArgument, "description is too long")
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 )
 
 const (
@@ -114,15 +106,15 @@ func validateChunkFields(chunk Chunk) error {
 	//  - remove hardcoded limits for tags
 
 	if len(chunk.Tags) > MaxChunkTags {
-		return ErrTooManyTags
+		return apierrs.ErrTooManyTags
 	}
 
 	if utf8.RuneCountInString(chunk.Name) > MaxChunkNameChars {
-		return ErrNameTooLong
+		return apierrs.ErrNameTooLong
 	}
 
 	if utf8.RuneCountInString(chunk.Description) > MaxChunkDescriptionChars {
-		return ErrDescriptionTooLong
+		return apierrs.ErrDescriptionTooLong
 	}
 
 	return nil
