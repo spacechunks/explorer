@@ -137,7 +137,7 @@ func TestGetInstanceByID(t *testing.T) {
 		{
 			name:     "not found",
 			expected: fixture.Instance(),
-			err:      apierrs.ErrInstanceNotFound.GRPCStatus().Err(),
+			err:      apierrs.ErrInstanceNotFound,
 		},
 	}
 

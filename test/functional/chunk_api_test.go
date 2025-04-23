@@ -493,8 +493,9 @@ func TestListFlavors(t *testing.T) {
 			err:  apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
 		},
 		{
-			name: "chunk not found",
-			err:  apierrs.ErrChunkNotFound.GRPCStatus().Err(),
+			name:    "chunk not found",
+			chunkID: test.NewUUIDv7(t),
+			err:     apierrs.ErrChunkNotFound.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -908,5 +909,5 @@ func TestSaveFlavorFilesAlreadyUploaded(t *testing.T) {
 		FlavorVersionId: resp.GetVersion().Id,
 		Files:           transport,
 	})
-	require.ErrorIs(t, err, apierrs.ErrFilesAlreadyExist)
+	require.ErrorIs(t, err, apierrs.ErrFilesAlreadyExist.GRPCStatus().Err())
 }
