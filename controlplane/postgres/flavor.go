@@ -68,62 +68,6 @@ func (db *DB) CreateFlavor(ctx context.Context, chunkID string, flavor chunk.Fla
 	return ret, nil
 }
 
-func (db *DB) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]chunk.Flavor, error) {
-	var ret []chunk.Flavor
-	if err := db.do(ctx, func(q *query.Queries) error {
-		rows, err := q.ListFlavorsByChunkID(ctx, chunkID)
-		if err != nil {
-			return err
-		}
-
-		m := make(map[string][]query.ListFlavorsByChunkIDRow)
-		for _, r := range rows {
-			m[r.ID] = append(m[r.ID], r)
-		}
-
-		ret := make([]chunk.Flavor, 0, len(m))
-
-		for _, rows := range m {
-			var (
-				row = rows[0]
-				f   = chunk.Flavor{
-					ID:        row.FlavorID,
-					Name:      row.Name,
-					CreatedAt: row.CreatedAt,
-					UpdatedAt: row.UpdatedAt,
-				}
-			)
-
-			versions := make([]chunk.FlavorVersion, 0, len(rows))
-
-			for _, r := range rows {
-				versions = append(versions, chunk.FlavorVersion{
-					ID:            r.ID_2,
-					FlavorID:      r.FlavorID,
-					Version:       r.Version,
-					Hash:          r.Hash,
-					ChangeHash:    r.ChangeHash,
-					FileHashes:    nil,
-					FilesUploaded: false,
-					CreatedAt:     time.Time{},
-				})
-			}
-
-			sort.Slice(versions, func(i, j int) bool {
-				return versions[i].CreatedAt.Before(versions[j].CreatedAt)
-			})
-
-			f.Versions = versions
-			ret = append(ret, f)
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return ret, nil
-}
-
 func (db *DB) FlavorNameExists(ctx context.Context, chunkID string, name string) (bool, error) {
 	var ret bool
 	if err := db.do(ctx, func(q *query.Queries) error {

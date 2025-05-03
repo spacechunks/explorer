@@ -712,65 +712,6 @@ func (_c *MockChunkRepository_ListChunks_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
-// ListFlavorsByChunkID provides a mock function with given fields: ctx, chunkID
-func (_m *MockChunkRepository) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]chunk.Flavor, error) {
-	ret := _m.Called(ctx, chunkID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ListFlavorsByChunkID")
-	}
-
-	var r0 []chunk.Flavor
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) ([]chunk.Flavor, error)); ok {
-		return rf(ctx, chunkID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) []chunk.Flavor); ok {
-		r0 = rf(ctx, chunkID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]chunk.Flavor)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, chunkID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockChunkRepository_ListFlavorsByChunkID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListFlavorsByChunkID'
-type MockChunkRepository_ListFlavorsByChunkID_Call struct {
-	*mock.Call
-}
-
-// ListFlavorsByChunkID is a helper method to define mock.On call
-//   - ctx context.Context
-//   - chunkID string
-func (_e *MockChunkRepository_Expecter) ListFlavorsByChunkID(ctx interface{}, chunkID interface{}) *MockChunkRepository_ListFlavorsByChunkID_Call {
-	return &MockChunkRepository_ListFlavorsByChunkID_Call{Call: _e.mock.On("ListFlavorsByChunkID", ctx, chunkID)}
-}
-
-func (_c *MockChunkRepository_ListFlavorsByChunkID_Call) Run(run func(ctx context.Context, chunkID string)) *MockChunkRepository_ListFlavorsByChunkID_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockChunkRepository_ListFlavorsByChunkID_Call) Return(_a0 []chunk.Flavor, _a1 error) *MockChunkRepository_ListFlavorsByChunkID_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockChunkRepository_ListFlavorsByChunkID_Call) RunAndReturn(run func(context.Context, string) ([]chunk.Flavor, error)) *MockChunkRepository_ListFlavorsByChunkID_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // MarkFlavorVersionFilesUploaded provides a mock function with given fields: ctx, flavorVersionID
 func (_m *MockChunkRepository) MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error {
 	ret := _m.Called(ctx, flavorVersionID)
