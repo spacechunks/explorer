@@ -22,10 +22,18 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// FIXME: at some point we need to make sure in the tests
+//        that we actually pick the right flavors that belong
+//        to a chunk. same goes for flavor and flavor versions
+//        currently, we omit checking ids, because they are
+//        dynamically generated and it's a bit of a pain to test.
 
 func TestCreateChunk(t *testing.T) {
 	var (
@@ -46,4 +54,23 @@ func TestCreateChunk(t *testing.T) {
 	assert.Equal(t, expected.Tags, c.Tags)
 	assert.NotEmpty(t, c.CreatedAt)
 	assert.NotEmpty(t, c.UpdatedAt)
+}
+
+func TestGetChunkByID(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+	pg.Run(t, ctx)
+
+	expected := fixture.Chunk()
+
+	pg.CreateChunk(t, &expected)
+
+	actual, err := pg.DB.GetChunkByID(ctx, expected.ID)
+	require.NoError(t, err)
+
+	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
+		t.Errorf("chunk mismatch (-want +got):\n%s", d)
+	}
 }

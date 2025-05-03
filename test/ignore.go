@@ -70,6 +70,17 @@ var (
 		"Chunk.CreatedAt",
 		"Chunk.UpdatedAt",
 	}
+
+	IgnoredChunkFields = []string{
+		"ID",
+		"CreatedAt",
+		"UpdatedAt",
+		"Flavors.Versions.ID",
+		"Flavors.Versions.FlavorID",
+		"Flavors.CreatedAt",
+		"Flavors.UpdatedAt",
+		"Flavors.Versions.CreatedAt",
+	}
 )
 
 func IgnoreFields(fields ...string) cmp.Option {

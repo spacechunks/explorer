@@ -71,22 +71,51 @@ func (db *DB) CreateFlavor(ctx context.Context, chunkID string, flavor chunk.Fla
 func (db *DB) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]chunk.Flavor, error) {
 	var ret []chunk.Flavor
 	if err := db.do(ctx, func(q *query.Queries) error {
-		flavors, err := q.ListFlavorsByChunkID(ctx, chunkID)
+		rows, err := q.ListFlavorsByChunkID(ctx, chunkID)
 		if err != nil {
 			return err
 		}
 
-		ret = make([]chunk.Flavor, 0, len(flavors))
-
-		for _, f := range flavors {
-			ret = append(ret, chunk.Flavor{
-				ID:        f.ID,
-				Name:      f.Name,
-				CreatedAt: f.CreatedAt,
-				UpdatedAt: f.UpdatedAt,
-			})
+		m := make(map[string][]query.ListFlavorsByChunkIDRow)
+		for _, r := range rows {
+			m[r.ID] = append(m[r.ID], r)
 		}
 
+		ret := make([]chunk.Flavor, 0, len(m))
+
+		for _, rows := range m {
+			var (
+				row = rows[0]
+				f   = chunk.Flavor{
+					ID:        row.FlavorID,
+					Name:      row.Name,
+					CreatedAt: row.CreatedAt,
+					UpdatedAt: row.UpdatedAt,
+				}
+			)
+
+			versions := make([]chunk.FlavorVersion, 0, len(rows))
+
+			for _, r := range rows {
+				versions = append(versions, chunk.FlavorVersion{
+					ID:            r.ID_2,
+					FlavorID:      r.FlavorID,
+					Version:       r.Version,
+					Hash:          r.Hash,
+					ChangeHash:    r.ChangeHash,
+					FileHashes:    nil,
+					FilesUploaded: false,
+					CreatedAt:     time.Time{},
+				})
+			}
+
+			sort.Slice(versions, func(i, j int) bool {
+				return versions[i].CreatedAt.Before(versions[j].CreatedAt)
+			})
+
+			f.Versions = versions
+			ret = append(ret, f)
+		}
 		return nil
 	}); err != nil {
 		return nil, err
@@ -187,10 +216,7 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 		})
 
 		ret = chunk.FlavorVersion{
-			ID: latest.ID,
-			Flavor: chunk.Flavor{
-				ID: latest.FlavorID,
-			},
+			ID:         latest.ID,
 			Version:    latest.Version,
 			Hash:       latest.Hash,
 			FileHashes: hashes,
@@ -219,7 +245,7 @@ func (db *DB) CreateFlavorVersion(
 	if err := db.doTX(ctx, func(q *query.Queries) error {
 		createParams := query.CreateFlavorVersionParams{
 			ID:         id.String(),
-			FlavorID:   version.Flavor.ID,
+			FlavorID:   version.FlavorID,
 			Hash:       version.Hash,
 			Version:    version.Version,
 			ChangeHash: version.ChangeHash,

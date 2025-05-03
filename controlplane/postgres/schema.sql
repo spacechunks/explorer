@@ -45,8 +45,8 @@ CREATE TABLE public.blobs (
 
 CREATE TABLE public.chunks (
     id uuid NOT NULL,
-    name character varying(25) NOT NULL,
-    description character varying(50) NOT NULL,
+    name character varying(50) NOT NULL,
+    description character varying(100) NOT NULL,
     tags character varying(25)[] NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL

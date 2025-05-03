@@ -35,9 +35,15 @@ func ChunkToTransport(domain Chunk) *chunkv1alpha1.Chunk {
 
 	flavors := make([]*chunkv1alpha1.Flavor, 0, len(domain.Flavors))
 	for _, f := range domain.Flavors {
+		versions := make([]*chunkv1alpha1.FlavorVersion, 0, len(f.Versions))
+		for _, v := range f.Versions {
+			versions = append(versions, FlavorVersionToTransport(v))
+		}
+
 		flavors = append(flavors, &chunkv1alpha1.Flavor{
-			Id:   f.ID,
-			Name: f.Name,
+			Id:       f.ID,
+			Name:     f.Name,
+			Versions: versions,
 		})
 	}
 
@@ -67,7 +73,7 @@ func FlavorToDomain(transport *chunkv1alpha1.Flavor) Flavor {
 func FlavorVersionToDomain(transport *chunkv1alpha1.FlavorVersion) FlavorVersion {
 	return FlavorVersion{
 		ID:         transport.GetId(),
-		Flavor:     FlavorToDomain(transport.GetFlavor()),
+		FlavorID:   transport.GetId(),
 		Version:    transport.GetVersion(),
 		Hash:       transport.GetHash(),
 		FileHashes: FileHashSliceToDomain(transport.FileHashes),
@@ -78,7 +84,6 @@ func FlavorVersionToDomain(transport *chunkv1alpha1.FlavorVersion) FlavorVersion
 func FlavorVersionToTransport(domain FlavorVersion) *chunkv1alpha1.FlavorVersion {
 	return &chunkv1alpha1.FlavorVersion{
 		Id:         domain.ID,
-		Flavor:     FlavorToTransport(domain.Flavor),
 		Version:    domain.Version,
 		Hash:       domain.Hash,
 		FileHashes: FileHashSliceToTransport(domain.FileHashes),

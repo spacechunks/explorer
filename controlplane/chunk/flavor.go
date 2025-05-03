@@ -43,6 +43,7 @@ import (
 type Flavor struct {
 	ID        string
 	Name      string
+	Versions  []FlavorVersion
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -55,7 +56,7 @@ type FlavorVersionDiff struct {
 
 type FlavorVersion struct {
 	ID            string
-	Flavor        Flavor
+	FlavorID      string
 	Version       string
 	Hash          string
 	ChangeHash    string
@@ -134,7 +135,7 @@ func (s *svc) CreateFlavorVersion(
 	ctx context.Context,
 	version FlavorVersion,
 ) (FlavorVersion, FlavorVersionDiff, error) {
-	exists, err := s.repo.FlavorVersionExists(ctx, version.Flavor.ID, version.Version)
+	exists, err := s.repo.FlavorVersionExists(ctx, version.FlavorID, version.Version)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("flavor version exists: %w", err)
 	}
@@ -152,7 +153,7 @@ func (s *svc) CreateFlavorVersion(
 		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.FlavorVersionDuplicate(dupVersion)
 	}
 
-	prevVersion, err := s.repo.LatestFlavorVersion(ctx, version.Flavor.ID)
+	prevVersion, err := s.repo.LatestFlavorVersion(ctx, version.FlavorID)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("latest flavor version file hashes: %w", err)
 	}
