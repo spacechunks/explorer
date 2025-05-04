@@ -69,6 +69,13 @@ var (
 		"Chunk.ID",
 		"Chunk.CreatedAt",
 		"Chunk.UpdatedAt",
+
+		// FIXME: will currently not be returned, but fixtures
+		//        have those fields set. at some point we should
+		//        also return the flavor versions when getting an
+		//        instance. but for now it's not necessary.
+		"Chunk.Flavors.Versions",
+		"ChunkFlavor.Versions",
 	}
 
 	IgnoredChunkFields = []string{
