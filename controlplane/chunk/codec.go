@@ -73,7 +73,6 @@ func FlavorToDomain(transport *chunkv1alpha1.Flavor) Flavor {
 func FlavorVersionToDomain(transport *chunkv1alpha1.FlavorVersion) FlavorVersion {
 	return FlavorVersion{
 		ID:         transport.GetId(),
-		FlavorID:   transport.GetId(),
 		Version:    transport.GetVersion(),
 		Hash:       transport.GetHash(),
 		FileHashes: FileHashSliceToDomain(transport.FileHashes),

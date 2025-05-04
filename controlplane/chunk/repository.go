@@ -33,7 +33,12 @@ type Repository interface {
 	FlavorVersionExists(ctx context.Context, flavorID string, version string) (bool, error)
 	FlavorVersionByHash(ctx context.Context, hash string) (string, error)
 	LatestFlavorVersion(ctx context.Context, flavorID string) (FlavorVersion, error)
-	CreateFlavorVersion(ctx context.Context, version FlavorVersion, prevVersionID string) (FlavorVersion, error)
+	CreateFlavorVersion(
+		ctx context.Context,
+		flavorID string,
+		version FlavorVersion,
+		prevVersionID string,
+	) (FlavorVersion, error)
 	FlavorVersionHashByID(ctx context.Context, id string) (string, error)
 	MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error
 	FlavorVersionByID(ctx context.Context, id string) (FlavorVersion, error)

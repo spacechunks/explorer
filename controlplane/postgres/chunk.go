@@ -246,10 +246,11 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 	// now it works.
 
 	var (
-		ret        chunk.Chunk
-		flavorMap  = make(map[string]chunk.Flavor)
-		versionMap = make(map[string]chunk.FlavorVersion)
-		fhMap      = make(map[string][]chunk.FileHash)
+		ret                chunk.Chunk
+		flavorMap          = make(map[string]chunk.Flavor)
+		versionMap         = make(map[string]chunk.FlavorVersion)
+		fhMap              = make(map[string][]chunk.FileHash)
+		versionToFlavorMap = make(map[string]string)
 
 		row = rows[0]
 		c   = chunk.Chunk{
@@ -278,9 +279,9 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 		if r.FlavorVersionID != nil {
 			_, ok := versionMap[*r.FlavorVersionID]
 			if !ok {
+				versionToFlavorMap[*r.FlavorVersionID] = *r.FlavorID
 				versionMap[*r.FlavorVersionID] = chunk.FlavorVersion{
 					ID:            *r.FlavorVersionID,
-					FlavorID:      *r.FlavorID,
 					Version:       r.Version,
 					Hash:          r.Hash,
 					ChangeHash:    r.ChangeHash,
@@ -311,9 +312,10 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 	}
 
 	for _, v := range versionMap {
-		flavor := flavorMap[v.FlavorID]
+		flavorID := versionToFlavorMap[v.ID]
+		flavor := flavorMap[flavorID]
 		flavor.Versions = append(flavor.Versions, v)
-		flavorMap[v.FlavorID] = flavor
+		flavorMap[flavorID] = flavor
 	}
 
 	for _, f := range flavorMap {

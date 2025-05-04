@@ -66,7 +66,7 @@ func (s *Server) Run(ctx context.Context) error {
 			// flavor file upload will exceed the default
 			// size of 4mb.
 			grpc.MaxRecvMsgSize(s.cfg.MaxGRPCMessageSize),
-			grpc.UnaryInterceptor(errorInterceptor),
+			grpc.UnaryInterceptor(errorInterceptor(s.logger)),
 		)
 		blobStore    = blob.NewPGStore(db)
 		chunkService = chunk.NewService(db, blobStore)
@@ -104,19 +104,24 @@ func (s *Server) Run(ctx context.Context) error {
 	return g.Wait().ErrorOrNil()
 }
 
-func errorInterceptor(
-	ctx context.Context,
-	req any,
-	_ *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (any, error) {
-	resp, err := handler(ctx, req)
-	if err != nil {
-		var e cperrs.Error
-		if errors.As(err, &e) {
-			return nil, e.GRPCStatus().Err()
+func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		resp, err := handler(ctx, req)
+		if err != nil {
+			var e cperrs.Error
+			if errors.As(err, &e) {
+				return nil, e.GRPCStatus().Err()
+			}
+
+			logger.ErrorContext(
+				ctx,
+				"internal service error occurred",
+				"method", info.FullMethod,
+				"err", err,
+			)
+
+			return nil, status.Error(codes.Internal, "internal service error occurred")
 		}
-		return nil, status.Error(codes.Internal, "internal service error occured")
+		return resp, nil
 	}
-	return resp, nil
 }

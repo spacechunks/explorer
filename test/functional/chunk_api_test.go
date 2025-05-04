@@ -152,7 +152,7 @@ func TestGetChunk(t *testing.T) {
 			fixture.RunControlPlane(t, pg)
 
 			if tt.chunkID == "" {
-				pg.CreateChunk(t, &c)
+				pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 				tt.chunkID = c.ID
 			}
 
@@ -219,7 +219,7 @@ func TestListChunks(t *testing.T) {
 	}
 
 	for i := range chunks {
-		pg.CreateChunk(t, &chunks[i])
+		pg.CreateChunk(t, &chunks[i], fixture.CreateOptionsAll)
 	}
 
 	conn, err := grpc.NewClient(
@@ -339,7 +339,7 @@ func TestUpdateChunk(t *testing.T) {
 
 			fixture.RunControlPlane(t, pg)
 
-			pg.CreateChunk(t, &c)
+			pg.CreateChunk(t, &c, fixture.CreateOptions{})
 
 			conn, err := grpc.NewClient(
 				fixture.ControlPlaneAddr,
@@ -429,7 +429,7 @@ func TestCreateFlavor(t *testing.T) {
 
 			fixture.RunControlPlane(t, pg)
 
-			pg.CreateChunk(t, &c)
+			pg.CreateChunk(t, &c, fixture.CreateOptions{})
 
 			if tt.other != nil {
 				_, err := pg.DB.CreateFlavor(ctx, c.ID, *tt.other)
@@ -478,8 +478,7 @@ func TestCreateFlavor(t *testing.T) {
 
 func TestCreateFlavorVersion(t *testing.T) {
 	var (
-		c      = fixture.Chunk()
-		flavor = fixture.Chunk().Flavors[0]
+		c = fixture.Chunk()
 	)
 
 	tests := []struct {
@@ -490,21 +489,16 @@ func TestCreateFlavorVersion(t *testing.T) {
 		err         error
 	}{
 		{
-			name: "create initial version",
-			newVersion: fixture.FlavorVersion(t, func(f *chunk.FlavorVersion) {
-				f.FlavorID = flavor.ID
-			}),
+			name:       "create initial version",
+			newVersion: fixture.FlavorVersion(t),
 			diff: chunk.FlavorVersionDiff{
 				Added: fixture.FlavorVersion(t).FileHashes,
 			},
 		},
 		{
-			name: "create second version with changed files",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
-				v.FlavorID = flavor.ID
-			})),
+			name:        "create second version with changed files",
+			prevVersion: ptr.Pointer(fixture.FlavorVersion(t)),
 			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
-				v.FlavorID = flavor.ID
 				v.Version = "v2"
 				v.FileHashes = []chunk.FileHash{
 					// plugins/myplugin/config.json not present -> its removed
@@ -544,34 +538,24 @@ func TestCreateFlavorVersion(t *testing.T) {
 			},
 		},
 		{
-			name: "version already exists",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
-				v.FlavorID = flavor.ID
-			})),
-			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
-				v.FlavorID = flavor.ID
-			}),
-			err: apierrs.ErrFlavorVersionExists.GRPCStatus().Err(),
+			name:        "version already exists",
+			prevVersion: ptr.Pointer(fixture.FlavorVersion(t)),
+			newVersion:  fixture.FlavorVersion(t),
+			err:         apierrs.ErrFlavorVersionExists.GRPCStatus().Err(),
 		},
 		{
-			name: "version hash mismatch",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
-				v.FlavorID = flavor.ID
-			})),
+			name:        "version hash mismatch",
+			prevVersion: ptr.Pointer(fixture.FlavorVersion(t)),
 			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
-				v.FlavorID = flavor.ID
 				v.Version = "v2"
 				v.Hash = "wrong-hash"
 			}),
 			err: apierrs.ErrHashMismatch.GRPCStatus().Err(),
 		},
 		{
-			name: "duplicate version",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
-				v.FlavorID = flavor.ID
-			})),
+			name:        "duplicate version",
+			prevVersion: ptr.Pointer(fixture.FlavorVersion(t)),
 			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
-				v.FlavorID = flavor.ID
 				v.Version = "v2"
 			}),
 			err: apierrs.FlavorVersionDuplicate("v1").GRPCStatus().Err(),
@@ -586,7 +570,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 
 			fixture.RunControlPlane(t, pg)
 
-			pg.CreateChunk(t, &c)
+			pg.CreateChunk(t, &c, fixture.CreateOptions{
+				WithFlavors: true,
+			})
+			pg.DB.CreateFlavor(ctx, c.ID, fixture.Flavor())
 
 			conn, err := grpc.NewClient(
 				fixture.ControlPlaneAddr,
@@ -597,18 +584,19 @@ func TestCreateFlavorVersion(t *testing.T) {
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
 			if tt.prevVersion != nil {
-				tt.prevVersion.FlavorID = c.Flavors[0].ID
 				_, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
-					Version: chunk.FlavorVersionToTransport(*tt.prevVersion),
+					FlavorId: c.Flavors[0].ID,
+					Version:  chunk.FlavorVersionToTransport(*tt.prevVersion),
 				})
 				require.NoError(t, err)
 			}
 
-			tt.newVersion.FlavorID = c.Flavors[0].ID
+			//tt.newVersion.FlavorID = c.Flavors[0].ID
 			version := chunk.FlavorVersionToTransport(tt.newVersion)
 
 			resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
-				Version: version,
+				FlavorId: c.Flavors[0].ID,
+				Version:  version,
 			})
 
 			if err != nil {
@@ -717,7 +705,9 @@ func TestSaveFlavorFiles(t *testing.T) {
 			fixture.RunControlPlane(t, pg)
 
 			c := fixture.Chunk()
-			pg.CreateChunk(t, &c)
+			pg.CreateChunk(t, &c, fixture.CreateOptions{
+				WithFlavors: true,
+			})
 
 			conn, err := grpc.NewClient(
 				fixture.ControlPlaneAddr,
@@ -727,10 +717,9 @@ func TestSaveFlavorFiles(t *testing.T) {
 
 			client := chunkv1alpha1.NewChunkServiceClient(conn)
 
-			tt.version.FlavorID = c.Flavors[0].ID
-
 			resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
-				Version: chunk.FlavorVersionToTransport(tt.version),
+				FlavorId: c.Flavors[0].ID,
+				Version:  chunk.FlavorVersionToTransport(tt.version),
 			})
 			require.NoError(t, err)
 
@@ -791,7 +780,9 @@ func TestSaveFlavorFilesAlreadyUploaded(t *testing.T) {
 	fixture.RunControlPlane(t, pg)
 
 	c := fixture.Chunk()
-	pg.CreateChunk(t, &c)
+	pg.CreateChunk(t, &c, fixture.CreateOptions{
+		WithFlavors: true,
+	})
 
 	conn, err := grpc.NewClient(
 		fixture.ControlPlaneAddr,
@@ -801,10 +792,9 @@ func TestSaveFlavorFilesAlreadyUploaded(t *testing.T) {
 
 	client := chunkv1alpha1.NewChunkServiceClient(conn)
 
-	flavorVersion.FlavorID = c.Flavors[0].ID
-
 	resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
-		Version: chunk.FlavorVersionToTransport(flavorVersion),
+		FlavorId: c.Flavors[0].ID,
+		Version:  chunk.FlavorVersionToTransport(flavorVersion),
 	})
 	require.NoError(t, err)
 

@@ -224,7 +224,7 @@ func TestRunChunk(t *testing.T) {
 			fixture.RunControlPlane(t, pg)
 
 			pg.InsertNode(t)
-			pg.CreateChunk(t, &c)
+			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 			expected := &instancev1alpha1.Instance{
 				Id: "",

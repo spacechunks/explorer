@@ -195,9 +195,9 @@ func (_c *MockChunkRepository_CreateFlavor_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// CreateFlavorVersion provides a mock function with given fields: ctx, version, prevVersionID
-func (_m *MockChunkRepository) CreateFlavorVersion(ctx context.Context, version chunk.FlavorVersion, prevVersionID string) (chunk.FlavorVersion, error) {
-	ret := _m.Called(ctx, version, prevVersionID)
+// CreateFlavorVersion provides a mock function with given fields: ctx, flavorID, version, prevVersionID
+func (_m *MockChunkRepository) CreateFlavorVersion(ctx context.Context, flavorID string, version chunk.FlavorVersion, prevVersionID string) (chunk.FlavorVersion, error) {
+	ret := _m.Called(ctx, flavorID, version, prevVersionID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateFlavorVersion")
@@ -205,17 +205,17 @@ func (_m *MockChunkRepository) CreateFlavorVersion(ctx context.Context, version 
 
 	var r0 chunk.FlavorVersion
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, chunk.FlavorVersion, string) (chunk.FlavorVersion, error)); ok {
-		return rf(ctx, version, prevVersionID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, chunk.FlavorVersion, string) (chunk.FlavorVersion, error)); ok {
+		return rf(ctx, flavorID, version, prevVersionID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, chunk.FlavorVersion, string) chunk.FlavorVersion); ok {
-		r0 = rf(ctx, version, prevVersionID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, chunk.FlavorVersion, string) chunk.FlavorVersion); ok {
+		r0 = rf(ctx, flavorID, version, prevVersionID)
 	} else {
 		r0 = ret.Get(0).(chunk.FlavorVersion)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, chunk.FlavorVersion, string) error); ok {
-		r1 = rf(ctx, version, prevVersionID)
+	if rf, ok := ret.Get(1).(func(context.Context, string, chunk.FlavorVersion, string) error); ok {
+		r1 = rf(ctx, flavorID, version, prevVersionID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -230,15 +230,16 @@ type MockChunkRepository_CreateFlavorVersion_Call struct {
 
 // CreateFlavorVersion is a helper method to define mock.On call
 //   - ctx context.Context
+//   - flavorID string
 //   - version chunk.FlavorVersion
 //   - prevVersionID string
-func (_e *MockChunkRepository_Expecter) CreateFlavorVersion(ctx interface{}, version interface{}, prevVersionID interface{}) *MockChunkRepository_CreateFlavorVersion_Call {
-	return &MockChunkRepository_CreateFlavorVersion_Call{Call: _e.mock.On("CreateFlavorVersion", ctx, version, prevVersionID)}
+func (_e *MockChunkRepository_Expecter) CreateFlavorVersion(ctx interface{}, flavorID interface{}, version interface{}, prevVersionID interface{}) *MockChunkRepository_CreateFlavorVersion_Call {
+	return &MockChunkRepository_CreateFlavorVersion_Call{Call: _e.mock.On("CreateFlavorVersion", ctx, flavorID, version, prevVersionID)}
 }
 
-func (_c *MockChunkRepository_CreateFlavorVersion_Call) Run(run func(ctx context.Context, version chunk.FlavorVersion, prevVersionID string)) *MockChunkRepository_CreateFlavorVersion_Call {
+func (_c *MockChunkRepository_CreateFlavorVersion_Call) Run(run func(ctx context.Context, flavorID string, version chunk.FlavorVersion, prevVersionID string)) *MockChunkRepository_CreateFlavorVersion_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(chunk.FlavorVersion), args[2].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(chunk.FlavorVersion), args[3].(string))
 	})
 	return _c
 }
@@ -248,7 +249,7 @@ func (_c *MockChunkRepository_CreateFlavorVersion_Call) Return(_a0 chunk.FlavorV
 	return _c
 }
 
-func (_c *MockChunkRepository_CreateFlavorVersion_Call) RunAndReturn(run func(context.Context, chunk.FlavorVersion, string) (chunk.FlavorVersion, error)) *MockChunkRepository_CreateFlavorVersion_Call {
+func (_c *MockChunkRepository_CreateFlavorVersion_Call) RunAndReturn(run func(context.Context, string, chunk.FlavorVersion, string) (chunk.FlavorVersion, error)) *MockChunkRepository_CreateFlavorVersion_Call {
 	_c.Call.Return(run)
 	return _c
 }

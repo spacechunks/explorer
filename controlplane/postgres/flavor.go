@@ -176,6 +176,7 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 
 func (db *DB) CreateFlavorVersion(
 	ctx context.Context,
+	flavorID string,
 	version chunk.FlavorVersion,
 	prevVersionID string,
 ) (chunk.FlavorVersion, error) {
@@ -189,7 +190,7 @@ func (db *DB) CreateFlavorVersion(
 	if err := db.doTX(ctx, func(q *query.Queries) error {
 		createParams := query.CreateFlavorVersionParams{
 			ID:         id.String(),
-			FlavorID:   version.FlavorID,
+			FlavorID:   flavorID,
 			Hash:       version.Hash,
 			Version:    version.Version,
 			ChangeHash: version.ChangeHash,

@@ -65,7 +65,7 @@ func TestGetChunkByID(t *testing.T) {
 
 	expected := fixture.Chunk()
 
-	pg.CreateChunk(t, &expected)
+	pg.CreateChunk(t, &expected, fixture.CreateOptionsAll)
 
 	actual, err := pg.DB.GetChunkByID(ctx, expected.ID)
 	require.NoError(t, err)

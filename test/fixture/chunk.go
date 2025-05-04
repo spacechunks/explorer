@@ -35,6 +35,8 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
+const FlavorID = "019532bb-5582-7608-9a08-bb742a8174aa"
+
 func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
 	c := chunk.Chunk{
 		ID:          "019532bb-2bd3-73ea-afc2-99f368a3eb97",
@@ -95,7 +97,6 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 
 func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.FlavorVersion {
 	version := chunk.FlavorVersion{
-		FlavorID:   "019532bb-5582-7608-9a08-bb742a8174aa", // use hardcoded flavor id here to avoid endless recursion
 		Version:    "v1",
 		ChangeHash: "kkkkkkkkkkkkkkkk",
 		FileHashes: []chunk.FileHash{

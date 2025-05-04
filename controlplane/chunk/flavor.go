@@ -56,7 +56,6 @@ type FlavorVersionDiff struct {
 
 type FlavorVersion struct {
 	ID            string
-	FlavorID      string
 	Version       string
 	Hash          string
 	ChangeHash    string
@@ -111,9 +110,10 @@ func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (
 
 func (s *svc) CreateFlavorVersion(
 	ctx context.Context,
+	flavorID string,
 	version FlavorVersion,
 ) (FlavorVersion, FlavorVersionDiff, error) {
-	exists, err := s.repo.FlavorVersionExists(ctx, version.FlavorID, version.Version)
+	exists, err := s.repo.FlavorVersionExists(ctx, flavorID, version.Version)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("flavor version exists: %w", err)
 	}
@@ -131,7 +131,7 @@ func (s *svc) CreateFlavorVersion(
 		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.FlavorVersionDuplicate(dupVersion)
 	}
 
-	prevVersion, err := s.repo.LatestFlavorVersion(ctx, version.FlavorID)
+	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("latest flavor version file hashes: %w", err)
 	}
@@ -235,7 +235,7 @@ func (s *svc) CreateFlavorVersion(
 	version.ChangeHash = hashString(changesTree)
 	version.FileHashes = all
 
-	created, err := s.repo.CreateFlavorVersion(ctx, version, prevVersion.ID)
+	created, err := s.repo.CreateFlavorVersion(ctx, flavorID, version, prevVersion.ID)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("create flavor version: %w", err)
 	}

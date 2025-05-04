@@ -159,7 +159,7 @@ func (s *Server) CreateFlavorVersion(
 ) (*chunkv1alpha1.CreateFlavorVersionResponse, error) {
 	domain := FlavorVersionToDomain(req.GetVersion())
 
-	version, diff, err := s.service.CreateFlavorVersion(ctx, domain)
+	version, diff, err := s.service.CreateFlavorVersion(ctx, req.GetFlavorId(), domain)
 	if err != nil {
 		return nil, err
 	}

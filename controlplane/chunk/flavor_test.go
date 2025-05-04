@@ -155,7 +155,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(prevVersion, nil)
 
 				repo.EXPECT().
-					CreateFlavorVersion(mocky.Anything, newVersion, prevVersion.ID).
+					CreateFlavorVersion(mocky.Anything, fixture.FlavorID, newVersion, prevVersion.ID).
 					Return(newVersion, nil)
 			},
 		},
@@ -244,7 +244,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 
 			tt.prep(mockRepo, tt.newVersion, tt.prevVersion)
 
-			actualNewVersion, actualDiff, err := svc.CreateFlavorVersion(ctx, tt.newVersion)
+			actualNewVersion, actualDiff, err := svc.CreateFlavorVersion(ctx, fixture.FlavorID, tt.newVersion)
 
 			if tt.err != nil {
 				require.ErrorAs(t, err, &tt.err)

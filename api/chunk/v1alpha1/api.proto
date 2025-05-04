@@ -163,7 +163,8 @@ message CreateFlavorResponse {
 }
 
 message CreateFlavorVersionRequest {
-  FlavorVersion version = 1;
+  string flavor_id = 1;
+  FlavorVersion version = 2;
 }
 
 message CreateFlavorVersionResponse {
