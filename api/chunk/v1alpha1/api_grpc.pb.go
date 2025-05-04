@@ -25,7 +25,6 @@ package v1alpha1
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -42,7 +41,6 @@ const (
 	ChunkService_UpdateChunk_FullMethodName         = "/chunk.v1alpha1.ChunkService/UpdateChunk"
 	ChunkService_ListChunks_FullMethodName          = "/chunk.v1alpha1.ChunkService/ListChunks"
 	ChunkService_CreateFlavor_FullMethodName        = "/chunk.v1alpha1.ChunkService/CreateFlavor"
-	ChunkService_ListFlavors_FullMethodName         = "/chunk.v1alpha1.ChunkService/ListFlavors"
 	ChunkService_CreateFlavorVersion_FullMethodName = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
 	ChunkService_SaveFlavorFiles_FullMethodName     = "/chunk.v1alpha1.ChunkService/SaveFlavorFiles"
 )
@@ -101,16 +99,6 @@ type ChunkServiceClient interface {
 	//   - the provided chunk id is invalid
 	//   - the provided flavor name is invalid
 	CreateFlavor(ctx context.Context, in *CreateFlavorRequest, opts ...grpc.CallOption) (*CreateFlavorResponse, error)
-	// ListFlavors lists all the available flavors that belong to a
-	// single chunk.
-	//
-	// Defined error codes:
-	// - NOT_FOUND:
-	//   - the chunk for which the flavors are requested does not exist
-	//
-	// - INVALID_ARGUMENT:
-	//   - the provided chunk id is invalid
-	ListFlavors(ctx context.Context, in *ListFlavorsRequest, opts ...grpc.CallOption) (*ListFlavorsResponse, error)
 	// CreateFlavorVersion creates a new flavor version for a
 	// given flavor by determining the added, changed and removed
 	// files. it also prevents version duplicates, meaning either
@@ -199,16 +187,6 @@ func (c *chunkServiceClient) CreateFlavor(ctx context.Context, in *CreateFlavorR
 	return out, nil
 }
 
-func (c *chunkServiceClient) ListFlavors(ctx context.Context, in *ListFlavorsRequest, opts ...grpc.CallOption) (*ListFlavorsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListFlavorsResponse)
-	err := c.cc.Invoke(ctx, ChunkService_ListFlavors_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *chunkServiceClient) CreateFlavorVersion(ctx context.Context, in *CreateFlavorVersionRequest, opts ...grpc.CallOption) (*CreateFlavorVersionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateFlavorVersionResponse)
@@ -283,16 +261,6 @@ type ChunkServiceServer interface {
 	//   - the provided chunk id is invalid
 	//   - the provided flavor name is invalid
 	CreateFlavor(context.Context, *CreateFlavorRequest) (*CreateFlavorResponse, error)
-	// ListFlavors lists all the available flavors that belong to a
-	// single chunk.
-	//
-	// Defined error codes:
-	// - NOT_FOUND:
-	//   - the chunk for which the flavors are requested does not exist
-	//
-	// - INVALID_ARGUMENT:
-	//   - the provided chunk id is invalid
-	ListFlavors(context.Context, *ListFlavorsRequest) (*ListFlavorsResponse, error)
 	// CreateFlavorVersion creates a new flavor version for a
 	// given flavor by determining the added, changed and removed
 	// files. it also prevents version duplicates, meaning either
@@ -345,9 +313,6 @@ func (UnimplementedChunkServiceServer) ListChunks(context.Context, *ListChunksRe
 }
 func (UnimplementedChunkServiceServer) CreateFlavor(context.Context, *CreateFlavorRequest) (*CreateFlavorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateFlavor not implemented")
-}
-func (UnimplementedChunkServiceServer) ListFlavors(context.Context, *ListFlavorsRequest) (*ListFlavorsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListFlavors not implemented")
 }
 func (UnimplementedChunkServiceServer) CreateFlavorVersion(context.Context, *CreateFlavorVersionRequest) (*CreateFlavorVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateFlavorVersion not implemented")
@@ -466,24 +431,6 @@ func _ChunkService_CreateFlavor_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChunkService_ListFlavors_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListFlavorsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChunkServiceServer).ListFlavors(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ChunkService_ListFlavors_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChunkServiceServer).ListFlavors(ctx, req.(*ListFlavorsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _ChunkService_CreateFlavorVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateFlavorVersionRequest)
 	if err := dec(in); err != nil {
@@ -546,10 +493,6 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateFlavor",
 			Handler:    _ChunkService_CreateFlavor_Handler,
-		},
-		{
-			MethodName: "ListFlavors",
-			Handler:    _ChunkService_ListFlavors_Handler,
 		},
 		{
 			MethodName: "CreateFlavorVersion",

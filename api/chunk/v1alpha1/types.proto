@@ -54,13 +54,13 @@ message Chunk {
 message Flavor {
   string id = 1;
   string name = 2;
-  google.protobuf.Timestamp created_at = 3;
-  google.protobuf.Timestamp updated_at = 4;
+  repeated FlavorVersion versions = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
 }
 
 message FlavorVersion {
   string id = 1;
-  Flavor flavor = 2;
   string version = 3;
   string hash = 4;
   repeated FileHashes file_hashes = 5;

@@ -29,12 +29,16 @@ type Repository interface {
 	ListChunks(ctx context.Context) ([]Chunk, error)
 	ChunkExists(ctx context.Context, id string) (bool, error)
 	CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error)
-	ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]Flavor, error)
 	FlavorNameExists(ctx context.Context, chunkID string, name string) (bool, error)
 	FlavorVersionExists(ctx context.Context, flavorID string, version string) (bool, error)
 	FlavorVersionByHash(ctx context.Context, hash string) (string, error)
 	LatestFlavorVersion(ctx context.Context, flavorID string) (FlavorVersion, error)
-	CreateFlavorVersion(ctx context.Context, version FlavorVersion, prevVersionID string) (FlavorVersion, error)
+	CreateFlavorVersion(
+		ctx context.Context,
+		flavorID string,
+		version FlavorVersion,
+		prevVersionID string,
+	) (FlavorVersion, error)
 	FlavorVersionHashByID(ctx context.Context, id string) (string, error)
 	MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error
 	FlavorVersionByID(ctx context.Context, id string) (FlavorVersion, error)

@@ -21,6 +21,7 @@ package fixture
 import (
 	"fmt"
 	"hash"
+	"log"
 	"net/netip"
 	"sort"
 	"strings"
@@ -31,9 +32,10 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/internal/ptr"
-	"github.com/stretchr/testify/require"
 	"github.com/zeebo/xxh3"
 )
+
+const FlavorID = "019532bb-5582-7608-9a08-bb742a8174aa"
 
 func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
 	c := chunk.Chunk{
@@ -64,8 +66,24 @@ func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
 
 func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 	flavor := chunk.Flavor{
-		ID:        "019532bb-5582-7608-9a08-bb742a8174aa",
-		Name:      "flavorABC",
+		ID:   "019532bb-5582-7608-9a08-bb742a8174aa",
+		Name: "flavorABC",
+		Versions: []chunk.FlavorVersion{
+			FlavorVersion(nil, func(v *chunk.FlavorVersion) {
+				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
+				v.Version = "v1"
+			}),
+			FlavorVersion(nil, func(v *chunk.FlavorVersion) {
+				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
+				v.Version = "v2"
+				v.FileHashes = []chunk.FileHash{
+					{
+						Path: "/tmp/somefile",
+						Hash: "aaaaaaaaaaaaaaaa",
+					},
+				}
+			}),
+		},
 		CreatedAt: time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
 		UpdatedAt: time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
 	}
@@ -79,10 +97,8 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 
 func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.FlavorVersion {
 	version := chunk.FlavorVersion{
-		Flavor: chunk.Flavor{
-			ID: Flavor().ID,
-		},
-		Version: "v1",
+		Version:    "v1",
+		ChangeHash: "kkkkkkkkkkkkkkkk",
 		FileHashes: []chunk.FileHash{
 			{
 				Path: "server.properties",
@@ -97,6 +113,8 @@ func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.Flav
 				Hash: "pppppppppppppppp",
 			},
 		},
+		FilesUploaded: false,
+		CreatedAt:     time.Time{},
 	}
 
 	for _, mod := range mod {
@@ -118,7 +136,10 @@ func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.Flav
 	tree, err := merkletree.NewTreeWithHashStrategy(content, func() hash.Hash {
 		return xxh3.New()
 	})
-	require.NoError(t, err)
+	if err != nil {
+		log.Fatalf("create merkle tree: %v", err)
+	}
+
 	version.Hash = fmt.Sprintf("%x", tree.MerkleRoot())
 
 	// call twice in case we need to modify the hash

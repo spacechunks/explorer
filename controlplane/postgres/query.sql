@@ -11,7 +11,9 @@ VALUES
 -- TODO: read multiple
 -- name: GetChunkByID :many
 SELECT * FROM chunks c
-    JOIN flavors f ON f.chunk_id = c.id
+    LEFT JOIN flavors f ON f.chunk_id = c.id
+    LEFT JOIN flavor_versions v ON v.flavor_id = f.id
+    LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
 WHERE c.id = $1;
 
 -- name: UpdateChunk :exec
@@ -31,8 +33,9 @@ SELECT EXISTS(
 
 -- name: ListChunks :many
 SELECT * FROM chunks c
-    JOIN flavors f ON f.chunk_id = c.id;
-
+    LEFT JOIN flavors f ON f.chunk_id = c.id
+    LEFT JOIN flavor_versions v ON v.flavor_id = f.id
+    LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id;
 
 /*
  * FLAVORS
@@ -46,7 +49,10 @@ VALUES
     ($1, $2, $3, $4, $5);
 
 -- name: ListFlavorsByChunkID :many
-SELECT * FROM flavors WHERE chunk_id = $1;
+SELECT * FROM flavors f
+    JOIN flavor_versions v ON v.flavor_id = f.id
+    JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
+WHERE chunk_id = $1;
 
 -- name: FlavorNameExists :one
 SELECT EXISTS(

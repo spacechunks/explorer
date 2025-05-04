@@ -47,9 +47,8 @@ CREATE TABLE IF NOT EXISTS flavor_version_files (
     created_at        TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX flavor_name_idx ON flavors(name);
-CREATE UNIQUE INDEX flavor_version_idx ON flavor_versions(version);
-CREATE UNIQUE INDEX flavor_hash_idx ON flavor_versions(hash);
+CREATE INDEX flavor_version_idx ON flavor_versions(version);
+CREATE INDEX flavor_hash_idx ON flavor_versions(hash);
 
 --
 -- instances

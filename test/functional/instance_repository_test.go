@@ -51,7 +51,7 @@ func TestCreateInstance(t *testing.T) {
 	pg.InsertNode(t)
 
 	c.Flavors = []chunk.Flavor{c.Flavors[0]}
-	pg.CreateChunk(t, &c)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 	expected := fixture.Instance()
 	expected.Chunk = c
@@ -87,7 +87,7 @@ func TestDBListInstances(t *testing.T) {
 	// make sure we only have one flavor, the fixture has 2 configured by default
 	// but for this test we only we need one.
 	c.Flavors = []chunk.Flavor{c.Flavors[0]}
-	pg.CreateChunk(t, &c)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 	expected := []instance.Instance{
 		fixture.Instance(func(i *instance.Instance) {
@@ -152,7 +152,7 @@ func TestGetInstanceByID(t *testing.T) {
 			pg.InsertNode(t)
 
 			if tt.create {
-				pg.CreateChunk(t, &tt.expected.Chunk)
+				pg.CreateChunk(t, &tt.expected.Chunk, fixture.CreateOptionsAll)
 				tt.expected.ChunkFlavor = tt.expected.Chunk.Flavors[0]
 
 				_, err := pg.DB.CreateInstance(ctx, tt.expected, fixture.Node().ID)
@@ -224,7 +224,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 	var expected []instance.Instance
 
 	for i := range chunks {
-		pg.CreateChunk(t, &chunks[i])
+		pg.CreateChunk(t, &chunks[i], fixture.CreateOptionsAll)
 
 		ins := instance.Instance{
 			ID:          test.NewUUIDv7(t),

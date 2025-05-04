@@ -21,6 +21,10 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,41 +65,12 @@ func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 
 func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) {
 	// FIXME: allow fetching multiple chunks at once
-
 	var ret chunk.Chunk
 	if err := db.do(ctx, func(q *query.Queries) error {
-		rows, err := q.GetChunkByID(ctx, id)
+		c, err := db.getChunkByID(ctx, q, id)
 		if err != nil {
 			return err
 		}
-
-		if len(rows) == 0 {
-			return apierrs.ErrChunkNotFound
-		}
-
-		var (
-			row     = rows[0]
-			flavors = make([]chunk.Flavor, 0, len(rows))
-			c       = chunk.Chunk{
-				ID:          row.ID,
-				Name:        row.Name,
-				Description: row.Description,
-				Tags:        row.Tags,
-				CreatedAt:   row.CreatedAt.UTC(),
-				UpdatedAt:   row.UpdatedAt.UTC(),
-			}
-		)
-
-		for _, r := range rows {
-			flavors = append(flavors, chunk.Flavor{
-				ID:        r.ID_2,
-				Name:      r.Name_2,
-				CreatedAt: r.CreatedAt_2.UTC(),
-				UpdatedAt: r.UpdatedAt_2.UTC(),
-			})
-		}
-
-		c.Flavors = flavors
 		ret = c
 		return nil
 	}); err != nil {
@@ -158,38 +133,36 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 			return err
 		}
 
-		m := make(map[string][]query.ListChunksRow)
+		m := make(map[string][]chunkRelationsRow)
 		for _, r := range rows {
-			m[r.ID] = append(m[r.ID], r)
+			m[r.ID] = append(m[r.ID], chunkRelationsRow{
+				ChunkID:        r.ID,
+				ChunkName:      r.Name,
+				Description:    r.Description,
+				Tags:           r.Tags,
+				ChunkCreatedAt: r.CreatedAt.UTC(),
+				ChunkUpdatedAt: r.UpdatedAt.UTC(),
+
+				FlavorID:        r.ID_2,
+				FlavorName:      r.Name_2.String,
+				FlavorCreatedAt: r.CreatedAt_2.Time,
+				FlavorUpdatedAt: r.UpdatedAt_2.Time,
+
+				FlavorVersionID:        r.ID_3,
+				FlavorVersionFlavorID:  r.FlavorID,
+				Version:                r.Version.String,
+				Hash:                   r.Hash.String,
+				ChangeHash:             r.ChangeHash.String,
+				FilesUploaded:          r.FilesUploaded.Bool,
+				FlavorVersionCreatedAt: r.CreatedAt_3.Time,
+
+				FilePath: r.FilePath.String,
+				FileHash: r.FileHash.String,
+			})
 		}
 
-		ret = make([]chunk.Chunk, 0, len(m))
-
-		for _, v := range m {
-			var (
-				row     = v[0]
-				flavors = make([]chunk.Flavor, 0, len(rows))
-				c       = chunk.Chunk{
-					ID:          row.ID,
-					Name:        row.Name,
-					Description: row.Description,
-					Tags:        row.Tags,
-					CreatedAt:   row.CreatedAt.UTC(),
-					UpdatedAt:   row.UpdatedAt.UTC(),
-				}
-			)
-
-			for _, r := range v {
-				flavors = append(flavors, chunk.Flavor{
-					ID:        r.ID_2,
-					Name:      r.Name_2,
-					CreatedAt: r.CreatedAt_2.UTC(),
-					UpdatedAt: r.UpdatedAt_2.UTC(),
-				})
-			}
-
-			c.Flavors = flavors
-			ret = append(ret, c)
+		for _, rows := range m {
+			ret = append(ret, collectChunks(rows))
 		}
 
 		return nil
@@ -210,28 +183,154 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 		return chunk.Chunk{}, apierrs.ErrChunkNotFound
 	}
 
+	relationRows := make([]chunkRelationsRow, 0, len(rows))
+
+	for _, r := range rows {
+		relationRows = append(relationRows, chunkRelationsRow{
+			ChunkID:        r.ID,
+			ChunkName:      r.Name,
+			Description:    r.Description,
+			Tags:           r.Tags,
+			ChunkCreatedAt: r.CreatedAt.UTC(),
+			ChunkUpdatedAt: r.UpdatedAt.UTC(),
+
+			FlavorID:        r.ID_2,
+			FlavorName:      r.Name_2.String,
+			FlavorCreatedAt: r.CreatedAt_2.Time,
+			FlavorUpdatedAt: r.UpdatedAt_2.Time,
+
+			FlavorVersionID:        r.ID_3,
+			FlavorVersionFlavorID:  r.FlavorID,
+			Version:                r.Version.String,
+			Hash:                   r.Hash.String,
+			ChangeHash:             r.ChangeHash.String,
+			FilesUploaded:          r.FilesUploaded.Bool,
+			FlavorVersionCreatedAt: r.CreatedAt_3.Time,
+
+			FilePath: r.FilePath.String,
+			FileHash: r.FileHash.String,
+		})
+	}
+
+	return collectChunks(relationRows), nil
+}
+
+type chunkRelationsRow struct {
+	ChunkID        string
+	ChunkName      string
+	Description    string
+	Tags           []string
+	ChunkCreatedAt time.Time
+	ChunkUpdatedAt time.Time
+
+	FlavorID        *string
+	FlavorName      string
+	FlavorCreatedAt time.Time
+	FlavorUpdatedAt time.Time
+
+	FlavorVersionID        *string
+	FlavorVersionFlavorID  *string
+	Version                string
+	Hash                   string
+	ChangeHash             string
+	FilesUploaded          bool
+	FlavorVersionCreatedAt time.Time
+
+	FilePath string
+	FileHash string
+}
+
+func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
+	// crazy shit code ahead, but really at this point
+	// i. couldn't. care. less. ill fix this later, for
+	// now it works.
+
 	var (
-		row     = rows[0]
-		flavors = make([]chunk.Flavor, 0, len(rows))
-		c       = chunk.Chunk{
-			ID:          row.ID,
-			Name:        row.Name,
+		ret                chunk.Chunk
+		flavorMap          = make(map[string]chunk.Flavor)
+		versionMap         = make(map[string]chunk.FlavorVersion)
+		fhMap              = make(map[string][]chunk.FileHash)
+		versionToFlavorMap = make(map[string]string)
+
+		row = rows[0]
+		c   = chunk.Chunk{
+			ID:          row.ChunkID,
+			Name:        row.ChunkName,
 			Description: row.Description,
 			Tags:        row.Tags,
-			CreatedAt:   row.CreatedAt.UTC(),
-			UpdatedAt:   row.UpdatedAt.UTC(),
+			CreatedAt:   row.ChunkCreatedAt.UTC(),
+			UpdatedAt:   row.ChunkUpdatedAt.UTC(),
 		}
 	)
 
 	for _, r := range rows {
-		flavors = append(flavors, chunk.Flavor{
-			ID:        r.ID_2,
-			Name:      r.Name_2,
-			CreatedAt: r.CreatedAt_2.UTC(),
-			UpdatedAt: r.UpdatedAt_2.UTC(),
-		})
+		if r.FlavorID != nil {
+			_, ok := flavorMap[*r.FlavorID]
+			if !ok {
+				flavorMap[*r.FlavorID] = chunk.Flavor{
+					ID:        *r.FlavorID,
+					Name:      r.FlavorName,
+					CreatedAt: r.FlavorCreatedAt,
+					UpdatedAt: r.FlavorUpdatedAt,
+				}
+			}
+		}
+
+		if r.FlavorVersionID != nil {
+			_, ok := versionMap[*r.FlavorVersionID]
+			if !ok {
+				versionToFlavorMap[*r.FlavorVersionID] = *r.FlavorID
+				versionMap[*r.FlavorVersionID] = chunk.FlavorVersion{
+					ID:            *r.FlavorVersionID,
+					Version:       r.Version,
+					Hash:          r.Hash,
+					ChangeHash:    r.ChangeHash,
+					FilesUploaded: r.FilesUploaded,
+					CreatedAt:     r.FlavorVersionCreatedAt,
+				}
+			}
+		}
+
+		if r.FlavorVersionID != nil {
+			contains := slices.ContainsFunc(fhMap[*r.FlavorVersionID], func(fh chunk.FileHash) bool {
+				return fh.Path == r.FilePath
+			})
+
+			if !contains {
+				fhMap[*r.FlavorVersionID] = append(fhMap[*r.FlavorVersionID], chunk.FileHash{
+					Path: r.FilePath,
+					Hash: r.FileHash,
+				})
+			}
+		}
 	}
 
-	c.Flavors = flavors
-	return c, nil
+	for k, hashes := range fhMap {
+		ver := versionMap[k]
+		ver.FileHashes = hashes
+		versionMap[k] = ver
+	}
+
+	for _, v := range versionMap {
+		flavorID := versionToFlavorMap[v.ID]
+		flavor := flavorMap[flavorID]
+		flavor.Versions = append(flavor.Versions, v)
+		flavorMap[flavorID] = flavor
+	}
+
+	for _, f := range flavorMap {
+		sort.Slice(f.Versions, func(i, j int) bool {
+			return f.Versions[i].CreatedAt.Before(f.Versions[j].CreatedAt)
+		})
+		for _, v := range f.Versions {
+			sort.Slice(v.FileHashes, func(i, j int) bool {
+				return strings.Compare(v.FileHashes[i].Path, v.FileHashes[j].Path) < 0
+			})
+		}
+	}
+
+	c.Flavors = slices.Collect(maps.Values(flavorMap))
+	ret = c
+
+	return ret
 }

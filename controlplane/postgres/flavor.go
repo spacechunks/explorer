@@ -68,33 +68,6 @@ func (db *DB) CreateFlavor(ctx context.Context, chunkID string, flavor chunk.Fla
 	return ret, nil
 }
 
-func (db *DB) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]chunk.Flavor, error) {
-	var ret []chunk.Flavor
-	if err := db.do(ctx, func(q *query.Queries) error {
-		flavors, err := q.ListFlavorsByChunkID(ctx, chunkID)
-		if err != nil {
-			return err
-		}
-
-		ret = make([]chunk.Flavor, 0, len(flavors))
-
-		for _, f := range flavors {
-			ret = append(ret, chunk.Flavor{
-				ID:        f.ID,
-				Name:      f.Name,
-				CreatedAt: f.CreatedAt,
-				UpdatedAt: f.UpdatedAt,
-			})
-		}
-
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return ret, nil
-}
-
 func (db *DB) FlavorNameExists(ctx context.Context, chunkID string, name string) (bool, error) {
 	var ret bool
 	if err := db.do(ctx, func(q *query.Queries) error {
@@ -187,10 +160,7 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 		})
 
 		ret = chunk.FlavorVersion{
-			ID: latest.ID,
-			Flavor: chunk.Flavor{
-				ID: latest.FlavorID,
-			},
+			ID:         latest.ID,
 			Version:    latest.Version,
 			Hash:       latest.Hash,
 			FileHashes: hashes,
@@ -206,6 +176,7 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 
 func (db *DB) CreateFlavorVersion(
 	ctx context.Context,
+	flavorID string,
 	version chunk.FlavorVersion,
 	prevVersionID string,
 ) (chunk.FlavorVersion, error) {
@@ -219,7 +190,7 @@ func (db *DB) CreateFlavorVersion(
 	if err := db.doTX(ctx, func(q *query.Queries) error {
 		createParams := query.CreateFlavorVersionParams{
 			ID:         id.String(),
-			FlavorID:   version.Flavor.ID,
+			FlavorID:   flavorID,
 			Hash:       version.Hash,
 			Version:    version.Version,
 			ChangeHash: version.ChangeHash,

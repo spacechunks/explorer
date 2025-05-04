@@ -43,6 +43,7 @@ import (
 type Flavor struct {
 	ID        string
 	Name      string
+	Versions  []FlavorVersion
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -55,7 +56,6 @@ type FlavorVersionDiff struct {
 
 type FlavorVersion struct {
 	ID            string
-	Flavor        Flavor
 	Version       string
 	Hash          string
 	ChangeHash    string
@@ -108,33 +108,12 @@ func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (
 	return ret, nil
 }
 
-func (s *svc) ListFlavors(ctx context.Context, chunkID string) ([]Flavor, error) {
-	// reason why we check if the chunk exists is so that we can return
-	// a more descriptive error message. otherwise we would simply seturn
-	// an empty list in the response, which is does not indicate if the
-	// chunk is missing or does not have any flavors configured.
-	exists, err := s.repo.ChunkExists(ctx, chunkID)
-	if err != nil {
-		return nil, fmt.Errorf("chunk exists: %w", err)
-	}
-
-	if !exists {
-		return nil, apierrs.ErrChunkNotFound
-	}
-
-	flavors, err := s.repo.ListFlavorsByChunkID(ctx, chunkID)
-	if err != nil {
-		return nil, fmt.Errorf("list flavors: %w", err)
-	}
-
-	return flavors, nil
-}
-
 func (s *svc) CreateFlavorVersion(
 	ctx context.Context,
+	flavorID string,
 	version FlavorVersion,
 ) (FlavorVersion, FlavorVersionDiff, error) {
-	exists, err := s.repo.FlavorVersionExists(ctx, version.Flavor.ID, version.Version)
+	exists, err := s.repo.FlavorVersionExists(ctx, flavorID, version.Version)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("flavor version exists: %w", err)
 	}
@@ -152,7 +131,7 @@ func (s *svc) CreateFlavorVersion(
 		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.FlavorVersionDuplicate(dupVersion)
 	}
 
-	prevVersion, err := s.repo.LatestFlavorVersion(ctx, version.Flavor.ID)
+	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("latest flavor version file hashes: %w", err)
 	}
@@ -256,7 +235,7 @@ func (s *svc) CreateFlavorVersion(
 	version.ChangeHash = hashString(changesTree)
 	version.FileHashes = all
 
-	created, err := s.repo.CreateFlavorVersion(ctx, version, prevVersion.ID)
+	created, err := s.repo.CreateFlavorVersion(ctx, flavorID, version, prevVersion.ID)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("create flavor version: %w", err)
 	}

@@ -153,36 +153,13 @@ func (s *Server) CreateFlavor(
 	}, nil
 }
 
-func (s *Server) ListFlavors(
-	ctx context.Context,
-	req *chunkv1alpha1.ListFlavorsRequest,
-) (*chunkv1alpha1.ListFlavorsResponse, error) {
-	if _, err := uuid.Parse(req.GetChunkId()); err != nil {
-		return nil, apierrs.ErrInvalidChunkID
-	}
-
-	flavors, err := s.service.ListFlavors(ctx, req.GetChunkId())
-	if err != nil {
-		return nil, err
-	}
-
-	sl := make([]*chunkv1alpha1.Flavor, 0, len(flavors))
-	for _, flavor := range flavors {
-		sl = append(sl, FlavorToTransport(flavor))
-	}
-
-	return &chunkv1alpha1.ListFlavorsResponse{
-		Flavors: sl,
-	}, nil
-}
-
 func (s *Server) CreateFlavorVersion(
 	ctx context.Context,
 	req *chunkv1alpha1.CreateFlavorVersionRequest,
 ) (*chunkv1alpha1.CreateFlavorVersionResponse, error) {
 	domain := FlavorVersionToDomain(req.GetVersion())
 
-	version, diff, err := s.service.CreateFlavorVersion(ctx, domain)
+	version, diff, err := s.service.CreateFlavorVersion(ctx, req.GetFlavorId(), domain)
 	if err != nil {
 		return nil, err
 	}

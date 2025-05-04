@@ -72,6 +72,7 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 		},
 		Started: true,
 	})
+
 	require.NoError(t, err)
 
 	ip, err := ctr.Host(ctx)
@@ -96,16 +97,28 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	p.DB = postgres.NewDB(slog.New(slog.NewTextHandler(os.Stdout, nil)), pool)
 }
 
+type CreateOptions struct {
+	WithFlavors        bool
+	WithFlavorVersions bool
+}
+
+var CreateOptionsAll = CreateOptions{
+	WithFlavors:        true,
+	WithFlavorVersions: true,
+}
+
 // CreateChunk inserts a chunk and all flavors. it also updates
 // the passed object so that dynamically generated values of fields
 // like id or created_at have the correct value.
-func (p *Postgres) CreateChunk(t *testing.T, c *chunk.Chunk) {
+func (p *Postgres) CreateChunk(t *testing.T, c *chunk.Chunk, opts CreateOptions) {
 	ctx := context.Background()
 	createdChunk, err := p.DB.CreateChunk(ctx, *c)
 	require.NoError(t, err)
 
-	for i := range c.Flavors {
-		p.CreateFlavor(t, createdChunk.ID, &createdChunk.Flavors[i])
+	if opts.WithFlavors {
+		for i := range c.Flavors {
+			p.CreateFlavor(t, createdChunk.ID, &createdChunk.Flavors[i], opts)
+		}
 	}
 
 	*c = createdChunk
@@ -114,10 +127,22 @@ func (p *Postgres) CreateChunk(t *testing.T, c *chunk.Chunk) {
 // CreateFlavor inserts a flavor. it also updates the passed object
 // so that dynamically generated values of fields like id or created_at
 // have the correct value.
-func (p *Postgres) CreateFlavor(t *testing.T, chunkID string, f *chunk.Flavor) {
-	ctx := context.Background()
+func (p *Postgres) CreateFlavor(t *testing.T, chunkID string, f *chunk.Flavor, opts CreateOptions) {
+	var (
+		ctx = context.Background()
+		tmp = f.Versions // copy here, because CreateFlavor will overwrite it
+	)
+
 	createdFlavor, err := p.DB.CreateFlavor(ctx, chunkID, *f)
 	require.NoError(t, err)
+
+	createdFlavor.Versions = tmp
+
+	if opts.WithFlavorVersions {
+		for i := range createdFlavor.Versions {
+			p.CreateFlavorVersion(t, createdFlavor.ID, &createdFlavor.Versions[i])
+		}
+	}
 
 	*f = createdFlavor
 }
@@ -127,7 +152,10 @@ func (p *Postgres) CreateFlavor(t *testing.T, chunkID string, f *chunk.Flavor) {
 // generated values of fields like id or created_at have the correct value.
 func (p *Postgres) CreateInstance(t *testing.T, nodeID string, ins *instance.Instance) {
 	ctx := context.Background()
-	p.CreateChunk(t, &ins.Chunk)
+	p.CreateChunk(t, &ins.Chunk, CreateOptions{
+		WithFlavors:        true,
+		WithFlavorVersions: true,
+	})
 
 	for _, f := range ins.Chunk.Flavors {
 		// flavor names for a chunk are unique
@@ -140,6 +168,13 @@ func (p *Postgres) CreateInstance(t *testing.T, nodeID string, ins *instance.Ins
 	require.NoError(t, err)
 
 	*ins = created
+}
+
+func (p *Postgres) CreateFlavorVersion(t *testing.T, flavorID string, version *chunk.FlavorVersion) {
+	ctx := context.Background()
+	created, err := p.DB.CreateFlavorVersion(ctx, flavorID, *version, "")
+	require.NoError(t, err)
+	*version = created
 }
 
 func (p *Postgres) InsertNode(t *testing.T) {

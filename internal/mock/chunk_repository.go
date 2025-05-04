@@ -195,9 +195,9 @@ func (_c *MockChunkRepository_CreateFlavor_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// CreateFlavorVersion provides a mock function with given fields: ctx, version, prevVersionID
-func (_m *MockChunkRepository) CreateFlavorVersion(ctx context.Context, version chunk.FlavorVersion, prevVersionID string) (chunk.FlavorVersion, error) {
-	ret := _m.Called(ctx, version, prevVersionID)
+// CreateFlavorVersion provides a mock function with given fields: ctx, flavorID, version, prevVersionID
+func (_m *MockChunkRepository) CreateFlavorVersion(ctx context.Context, flavorID string, version chunk.FlavorVersion, prevVersionID string) (chunk.FlavorVersion, error) {
+	ret := _m.Called(ctx, flavorID, version, prevVersionID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateFlavorVersion")
@@ -205,17 +205,17 @@ func (_m *MockChunkRepository) CreateFlavorVersion(ctx context.Context, version 
 
 	var r0 chunk.FlavorVersion
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, chunk.FlavorVersion, string) (chunk.FlavorVersion, error)); ok {
-		return rf(ctx, version, prevVersionID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, chunk.FlavorVersion, string) (chunk.FlavorVersion, error)); ok {
+		return rf(ctx, flavorID, version, prevVersionID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, chunk.FlavorVersion, string) chunk.FlavorVersion); ok {
-		r0 = rf(ctx, version, prevVersionID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, chunk.FlavorVersion, string) chunk.FlavorVersion); ok {
+		r0 = rf(ctx, flavorID, version, prevVersionID)
 	} else {
 		r0 = ret.Get(0).(chunk.FlavorVersion)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, chunk.FlavorVersion, string) error); ok {
-		r1 = rf(ctx, version, prevVersionID)
+	if rf, ok := ret.Get(1).(func(context.Context, string, chunk.FlavorVersion, string) error); ok {
+		r1 = rf(ctx, flavorID, version, prevVersionID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -230,15 +230,16 @@ type MockChunkRepository_CreateFlavorVersion_Call struct {
 
 // CreateFlavorVersion is a helper method to define mock.On call
 //   - ctx context.Context
+//   - flavorID string
 //   - version chunk.FlavorVersion
 //   - prevVersionID string
-func (_e *MockChunkRepository_Expecter) CreateFlavorVersion(ctx interface{}, version interface{}, prevVersionID interface{}) *MockChunkRepository_CreateFlavorVersion_Call {
-	return &MockChunkRepository_CreateFlavorVersion_Call{Call: _e.mock.On("CreateFlavorVersion", ctx, version, prevVersionID)}
+func (_e *MockChunkRepository_Expecter) CreateFlavorVersion(ctx interface{}, flavorID interface{}, version interface{}, prevVersionID interface{}) *MockChunkRepository_CreateFlavorVersion_Call {
+	return &MockChunkRepository_CreateFlavorVersion_Call{Call: _e.mock.On("CreateFlavorVersion", ctx, flavorID, version, prevVersionID)}
 }
 
-func (_c *MockChunkRepository_CreateFlavorVersion_Call) Run(run func(ctx context.Context, version chunk.FlavorVersion, prevVersionID string)) *MockChunkRepository_CreateFlavorVersion_Call {
+func (_c *MockChunkRepository_CreateFlavorVersion_Call) Run(run func(ctx context.Context, flavorID string, version chunk.FlavorVersion, prevVersionID string)) *MockChunkRepository_CreateFlavorVersion_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(chunk.FlavorVersion), args[2].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(chunk.FlavorVersion), args[3].(string))
 	})
 	return _c
 }
@@ -248,7 +249,7 @@ func (_c *MockChunkRepository_CreateFlavorVersion_Call) Return(_a0 chunk.FlavorV
 	return _c
 }
 
-func (_c *MockChunkRepository_CreateFlavorVersion_Call) RunAndReturn(run func(context.Context, chunk.FlavorVersion, string) (chunk.FlavorVersion, error)) *MockChunkRepository_CreateFlavorVersion_Call {
+func (_c *MockChunkRepository_CreateFlavorVersion_Call) RunAndReturn(run func(context.Context, string, chunk.FlavorVersion, string) (chunk.FlavorVersion, error)) *MockChunkRepository_CreateFlavorVersion_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -708,65 +709,6 @@ func (_c *MockChunkRepository_ListChunks_Call) Return(_a0 []chunk.Chunk, _a1 err
 }
 
 func (_c *MockChunkRepository_ListChunks_Call) RunAndReturn(run func(context.Context) ([]chunk.Chunk, error)) *MockChunkRepository_ListChunks_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ListFlavorsByChunkID provides a mock function with given fields: ctx, chunkID
-func (_m *MockChunkRepository) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]chunk.Flavor, error) {
-	ret := _m.Called(ctx, chunkID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ListFlavorsByChunkID")
-	}
-
-	var r0 []chunk.Flavor
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) ([]chunk.Flavor, error)); ok {
-		return rf(ctx, chunkID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) []chunk.Flavor); ok {
-		r0 = rf(ctx, chunkID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]chunk.Flavor)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, chunkID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockChunkRepository_ListFlavorsByChunkID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListFlavorsByChunkID'
-type MockChunkRepository_ListFlavorsByChunkID_Call struct {
-	*mock.Call
-}
-
-// ListFlavorsByChunkID is a helper method to define mock.On call
-//   - ctx context.Context
-//   - chunkID string
-func (_e *MockChunkRepository_Expecter) ListFlavorsByChunkID(ctx interface{}, chunkID interface{}) *MockChunkRepository_ListFlavorsByChunkID_Call {
-	return &MockChunkRepository_ListFlavorsByChunkID_Call{Call: _e.mock.On("ListFlavorsByChunkID", ctx, chunkID)}
-}
-
-func (_c *MockChunkRepository_ListFlavorsByChunkID_Call) Run(run func(ctx context.Context, chunkID string)) *MockChunkRepository_ListFlavorsByChunkID_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockChunkRepository_ListFlavorsByChunkID_Call) Return(_a0 []chunk.Flavor, _a1 error) *MockChunkRepository_ListFlavorsByChunkID_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockChunkRepository_ListFlavorsByChunkID_Call) RunAndReturn(run func(context.Context, string) ([]chunk.Flavor, error)) *MockChunkRepository_ListFlavorsByChunkID_Call {
 	_c.Call.Return(run)
 	return _c
 }
