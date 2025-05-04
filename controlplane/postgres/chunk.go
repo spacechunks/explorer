@@ -149,7 +149,7 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 				FlavorUpdatedAt: r.UpdatedAt_2.Time,
 
 				FlavorVersionID:        r.ID_3,
-				FlavorVersionFlavorID:  *r.FlavorID,
+				FlavorVersionFlavorID:  r.FlavorID,
 				Version:                r.Version.String,
 				Hash:                   r.Hash.String,
 				ChangeHash:             r.ChangeHash.String,
@@ -200,7 +200,7 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 			FlavorUpdatedAt: r.UpdatedAt_2.Time,
 
 			FlavorVersionID:        r.ID_3,
-			FlavorVersionFlavorID:  *r.FlavorID,
+			FlavorVersionFlavorID:  r.FlavorID,
 			Version:                r.Version.String,
 			Hash:                   r.Hash.String,
 			ChangeHash:             r.ChangeHash.String,
@@ -229,7 +229,7 @@ type chunkRelationsRow struct {
 	FlavorUpdatedAt time.Time
 
 	FlavorVersionID        *string
-	FlavorVersionFlavorID  string
+	FlavorVersionFlavorID  *string
 	Version                string
 	Hash                   string
 	ChangeHash             string

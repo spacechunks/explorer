@@ -339,7 +339,7 @@ func TestUpdateChunk(t *testing.T) {
 
 			fixture.RunControlPlane(t, pg)
 
-			pg.CreateChunk(t, &c, fixture.CreateOptions{})
+			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 			conn, err := grpc.NewClient(
 				fixture.ControlPlaneAddr,
@@ -377,8 +377,8 @@ func TestUpdateChunk(t *testing.T) {
 			}
 
 			if d := cmp.Diff(
-				resp.GetChunk(),
 				expected,
+				resp.GetChunk(),
 				protocmp.Transform(),
 				test.IgnoredProtoChunkFields,
 				test.IgnoredProtoFlavorFields,
