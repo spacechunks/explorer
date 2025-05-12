@@ -14,7 +14,5 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# purpose of this dockerfile is
 FROM alpine
-WORKDIR /
-COPY . .
+CMD ["sleep 600"]
