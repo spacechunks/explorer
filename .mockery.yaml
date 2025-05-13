@@ -5,6 +5,12 @@ outpkg: mock
 filename: "{{ .PackageName }}_{{ .InterfaceName | snakecase }}.go"
 mockname: "Mock{{ .PackageName | camelcase }}{{ .InterfaceName }}"
 packages:
+  github.com/spacechunks/explorer/controlplane/job:
+    interfaces:
+      Client:
+  github.com/spacechunks/explorer/controlplane/image:
+    interfaces:
+      Service:
   github.com/spacechunks/explorer/controlplane/blob:
     interfaces:
       Store:

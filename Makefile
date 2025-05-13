@@ -1,8 +1,7 @@
 WORKDIR := work
 CNI_PLUGINS := $(WORKDIR)/plugins
-IMG_TESTDATA_DIR := internal/image/testdata
-REPACK_IMG := internal/image/testdata/repack-img.tar.gz
-UNPACK_IMG := internal/image/testdata/unpack-img.tar.gz
+IMG_TESTDATA_DIR := controlplane/image/testdata
+TEST_IMG := $(IMG_TESTDATA_DIR)/img.tar.gz
 SUDO := sudo --preserve-env=PATH env
 DATABASE_URL := postgres://postgres:test@localhost:5432/postgres?sslmode=disable
 OS := $(shell uname)
@@ -71,7 +70,7 @@ dev:
 	./dev/up.sh
 
 .PHONY: unittests
-unittests: $(REPACK_IMG) $(UNPACK_IMG)
+unittests: $(TEST_IMG)
 	$(RUN) go test $$(go list ./... | grep -v github.com/spacechunks/explorer/test/e2e \
                                     | grep -v github.com/spacechunks/explorer/test/functional)
 
@@ -81,7 +80,7 @@ e2etests:
 	$(SUDO) go test ./test/e2e/...
 
 .PHONY: functests
-functests: $(CNI_PLUGINS)
+functests: $(CNI_PLUGINS) $(TEST_IMG)
 	$(RUN) $(SUDO) FUNCTESTS_ENVOY_IMAGE=docker.io/envoyproxy/envoy:v1.31.4 \
 				   FUNCTESTS_ENVOY_CONFIG=../../dev/platformd/envoy-xds.yaml \
 				   FUNCTESTS_POSTGRES_IMAGE=postgres:17 \
@@ -91,13 +90,9 @@ functests: $(CNI_PLUGINS)
 				   CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin \
 				   go test -v $(ARGS)
 
-$(REPACK_IMG):
-	@docker build -t repack-img -f $(IMG_TESTDATA_DIR)/Dockerfile.repack $(IMG_TESTDATA_DIR)
-	@docker image save repack-img > $(IMG_TESTDATA_DIR)/repack-img.tar.gz
-
-$(UNPACK_IMG):
-	@docker build -t unpack-img -f $(IMG_TESTDATA_DIR)/Dockerfile.unpack $(IMG_TESTDATA_DIR)
-	@docker image save unpack-img > $(IMG_TESTDATA_DIR)/unpack-img.tar.gz
+$(TEST_IMG):
+	@docker build -t test-img -f $(IMG_TESTDATA_DIR)/Dockerfile $(IMG_TESTDATA_DIR)
+	@docker image save test-img > $(IMG_TESTDATA_DIR)/img.tar.gz
 
 $(CNI_PLUGINS): $(WORKDIR)
 	git clone https://github.com/containernetworking/plugins.git $(CNI_PLUGINS)

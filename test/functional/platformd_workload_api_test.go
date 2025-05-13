@@ -39,7 +39,7 @@ func TestRunWorkload(t *testing.T) {
 
 	resp, err := c.RunWorkload(context.Background(), &workloadv1alpha1.RunWorkloadRequest{
 		Name:                 expected.Name,
-		Image:                expected.Image,
+		BaseImage:                expected.BaseImage,
 		Namespace:            expected.Namespace,
 		Hostname:             expected.Hostname,
 		Labels:               expected.Labels,
@@ -48,7 +48,7 @@ func TestRunWorkload(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, expected.Name, resp.Workload.Name)
-	assert.Equal(t, expected.Image, resp.Workload.Image)
+	assert.Equal(t, expected.BaseImage, resp.Workload.BaseImage)
 	assert.Equal(t, expected.Namespace, resp.Workload.Namespace)
 	assert.Equal(t, expected.Hostname, resp.Workload.Hostname)
 	assert.Equal(t, expected.Labels, resp.Workload.Labels)
@@ -66,7 +66,7 @@ func TestWorkloadStatus(t *testing.T) {
 
 	runResp, err := c.RunWorkload(context.Background(), &workloadv1alpha1.RunWorkloadRequest{
 		Name:                 expected.Name,
-		Image:                expected.Image,
+		BaseImage:                expected.BaseImage,
 		Namespace:            expected.Namespace,
 		Hostname:             expected.Hostname,
 		Labels:               expected.Labels,
