@@ -1,6 +1,7 @@
 package maintenance
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -17,8 +18,8 @@ import (
 	"github.com/riverqueue/river/rivershared/util/ptrutil"
 	"github.com/riverqueue/river/rivershared/util/randutil"
 	"github.com/riverqueue/river/rivershared/util/serviceutil"
+	"github.com/riverqueue/river/rivershared/util/testutil"
 	"github.com/riverqueue/river/rivershared/util/timeutil"
-	"github.com/riverqueue/river/rivershared/util/valutil"
 	"github.com/riverqueue/river/rivertype"
 )
 
@@ -33,9 +34,9 @@ type JobRescuerTestSignals struct {
 	UpdatedBatch testsignal.TestSignal[struct{}] // notifies when runOnce has updated rescued jobs from a batch
 }
 
-func (ts *JobRescuerTestSignals) Init() {
-	ts.FetchedBatch.Init()
-	ts.UpdatedBatch.Init()
+func (ts *JobRescuerTestSignals) Init(tb testutil.TestingTB) {
+	ts.FetchedBatch.Init(tb)
+	ts.UpdatedBatch.Init(tb)
 }
 
 type JobRescuerConfig struct {
@@ -92,8 +93,8 @@ func NewRescuer(archetype *baseservice.Archetype, config *JobRescuerConfig, exec
 	return baseservice.Init(archetype, &JobRescuer{
 		Config: (&JobRescuerConfig{
 			ClientRetryPolicy:   config.ClientRetryPolicy,
-			Interval:            valutil.ValOrDefault(config.Interval, JobRescuerIntervalDefault),
-			RescueAfter:         valutil.ValOrDefault(config.RescueAfter, JobRescuerRescueAfterDefault),
+			Interval:            cmp.Or(config.Interval, JobRescuerIntervalDefault),
+			RescueAfter:         cmp.Or(config.RescueAfter, JobRescuerRescueAfterDefault),
 			Schema:              config.Schema,
 			WorkUnitFactoryFunc: config.WorkUnitFactoryFunc,
 		}).mustValidate(),

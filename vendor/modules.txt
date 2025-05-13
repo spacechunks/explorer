@@ -266,7 +266,6 @@ github.com/google/go-containerregistry/pkg/v1/mutate
 github.com/google/go-containerregistry/pkg/v1/partial
 github.com/google/go-containerregistry/pkg/v1/remote
 github.com/google/go-containerregistry/pkg/v1/remote/transport
-github.com/google/go-containerregistry/pkg/v1/static
 github.com/google/go-containerregistry/pkg/v1/stream
 github.com/google/go-containerregistry/pkg/v1/tarball
 github.com/google/go-containerregistry/pkg/v1/types
@@ -450,7 +449,7 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/riverqueue/river v0.21.0
+# github.com/riverqueue/river v0.22.0
 ## explicit; go 1.23.0
 github.com/riverqueue/river
 github.com/riverqueue/river/internal/dblist
@@ -469,14 +468,15 @@ github.com/riverqueue/river/internal/rivercommon
 github.com/riverqueue/river/internal/util/chanutil
 github.com/riverqueue/river/internal/util/dbutil
 github.com/riverqueue/river/internal/workunit
-# github.com/riverqueue/river/riverdriver v0.21.0
+github.com/riverqueue/river/rivertest
+# github.com/riverqueue/river/riverdriver v0.22.0
 ## explicit; go 1.23.0
 github.com/riverqueue/river/riverdriver
-# github.com/riverqueue/river/riverdriver/riverpgxv5 v0.21.0
+# github.com/riverqueue/river/riverdriver/riverpgxv5 v0.22.0
 ## explicit; go 1.23.0
 github.com/riverqueue/river/riverdriver/riverpgxv5
 github.com/riverqueue/river/riverdriver/riverpgxv5/internal/dbsqlc
-# github.com/riverqueue/river/rivershared v0.21.0
+# github.com/riverqueue/river/rivershared v0.22.0
 ## explicit; go 1.23.0
 github.com/riverqueue/river/rivershared/baseservice
 github.com/riverqueue/river/rivershared/riverpilot
@@ -493,7 +493,7 @@ github.com/riverqueue/river/rivershared/util/sliceutil
 github.com/riverqueue/river/rivershared/util/testutil
 github.com/riverqueue/river/rivershared/util/timeutil
 github.com/riverqueue/river/rivershared/util/valutil
-# github.com/riverqueue/river/rivertype v0.21.0
+# github.com/riverqueue/river/rivertype v0.22.0
 ## explicit; go 1.23.0
 github.com/riverqueue/river/rivertype
 # github.com/rs/zerolog v1.29.0

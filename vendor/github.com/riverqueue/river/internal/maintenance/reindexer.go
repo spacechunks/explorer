@@ -1,6 +1,7 @@
 package maintenance
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"log/slog"
@@ -10,7 +11,7 @@ import (
 	"github.com/riverqueue/river/rivershared/baseservice"
 	"github.com/riverqueue/river/rivershared/startstop"
 	"github.com/riverqueue/river/rivershared/testsignal"
-	"github.com/riverqueue/river/rivershared/util/valutil"
+	"github.com/riverqueue/river/rivershared/util/testutil"
 )
 
 const (
@@ -25,8 +26,8 @@ type ReindexerTestSignals struct {
 	Reindexed testsignal.TestSignal[struct{}] // notifies when a run finishes executing reindexes for all indexes
 }
 
-func (ts *ReindexerTestSignals) Init() {
-	ts.Reindexed.Init()
+func (ts *ReindexerTestSignals) Init(tb testutil.TestingTB) {
+	ts.Reindexed.Init(tb)
 }
 
 type ReindexerConfig struct {
@@ -86,7 +87,7 @@ func NewReindexer(archetype *baseservice.Archetype, config *ReindexerConfig, exe
 			IndexNames:   indexNames,
 			ScheduleFunc: scheduleFunc,
 			Schema:       config.Schema,
-			Timeout:      valutil.ValOrDefault(config.Timeout, ReindexerTimeoutDefault),
+			Timeout:      cmp.Or(config.Timeout, ReindexerTimeoutDefault),
 		}).mustValidate(),
 
 		batchSize: BatchSizeDefault,

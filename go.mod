@@ -21,8 +21,8 @@ require (
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/pkg/errors v0.9.1
-	github.com/riverqueue/river v0.21.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.21.0
+	github.com/riverqueue/river v0.22.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.22.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.36.0
 	github.com/vektra/mockery/v2 v2.46.3
@@ -30,7 +30,6 @@ require (
 	github.com/vishvananda/netns v0.0.5
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/crypto v0.33.0
-	golang.org/x/sync v0.13.0
 	golang.org/x/sys v0.31.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250219182151-9fdb1cabc7b2
 	google.golang.org/grpc v1.70.0
@@ -104,9 +103,9 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/riverqueue/river/riverdriver v0.21.0 // indirect
-	github.com/riverqueue/river/rivershared v0.21.0 // indirect
-	github.com/riverqueue/river/rivertype v0.21.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.22.0 // indirect
+	github.com/riverqueue/river/rivershared v0.22.0 // indirect
+	github.com/riverqueue/river/rivertype v0.22.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/safchain/ethtool v0.3.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.1 // indirect
@@ -138,6 +137,7 @@ require (
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect

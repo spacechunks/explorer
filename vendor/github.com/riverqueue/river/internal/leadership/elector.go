@@ -1,6 +1,7 @@
 package leadership
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -17,7 +18,7 @@ import (
 	"github.com/riverqueue/river/rivershared/testsignal"
 	"github.com/riverqueue/river/rivershared/util/randutil"
 	"github.com/riverqueue/river/rivershared/util/serviceutil"
-	"github.com/riverqueue/river/rivershared/util/valutil"
+	"github.com/riverqueue/river/rivershared/util/testutil"
 )
 
 const (
@@ -63,12 +64,12 @@ type electorTestSignals struct {
 	ResignedLeadership   testsignal.TestSignal[struct{}] // notifies when elector resigns leadership
 }
 
-func (ts *electorTestSignals) Init() {
-	ts.DeniedLeadership.Init()
-	ts.GainedLeadership.Init()
-	ts.LostLeadership.Init()
-	ts.MaintainedLeadership.Init()
-	ts.ResignedLeadership.Init()
+func (ts *electorTestSignals) Init(tb testutil.TestingTB) {
+	ts.DeniedLeadership.Init(tb)
+	ts.GainedLeadership.Init(tb)
+	ts.LostLeadership.Init(tb)
+	ts.MaintainedLeadership.Init(tb)
+	ts.ResignedLeadership.Init(tb)
 }
 
 type Config struct {
@@ -111,8 +112,8 @@ func NewElector(archetype *baseservice.Archetype, exec riverdriver.Executor, not
 	return baseservice.Init(archetype, &Elector{
 		config: (&Config{
 			ClientID:            config.ClientID,
-			ElectInterval:       valutil.ValOrDefault(config.ElectInterval, electIntervalDefault),
-			ElectIntervalJitter: valutil.ValOrDefault(config.ElectIntervalJitter, electIntervalJitterDefault),
+			ElectInterval:       cmp.Or(config.ElectInterval, electIntervalDefault),
+			ElectIntervalJitter: cmp.Or(config.ElectIntervalJitter, electIntervalJitterDefault),
 			Schema:              config.Schema,
 		}).mustValidate(),
 		exec:     exec,

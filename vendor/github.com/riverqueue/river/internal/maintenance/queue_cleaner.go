@@ -1,6 +1,7 @@
 package maintenance
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -14,8 +15,8 @@ import (
 	"github.com/riverqueue/river/rivershared/testsignal"
 	"github.com/riverqueue/river/rivershared/util/randutil"
 	"github.com/riverqueue/river/rivershared/util/serviceutil"
+	"github.com/riverqueue/river/rivershared/util/testutil"
 	"github.com/riverqueue/river/rivershared/util/timeutil"
-	"github.com/riverqueue/river/rivershared/util/valutil"
 )
 
 const (
@@ -28,8 +29,8 @@ type QueueCleanerTestSignals struct {
 	DeletedBatch testsignal.TestSignal[struct{}] // notifies when runOnce finishes a pass
 }
 
-func (ts *QueueCleanerTestSignals) Init() {
-	ts.DeletedBatch.Init()
+func (ts *QueueCleanerTestSignals) Init(tb testutil.TestingTB) {
+	ts.DeletedBatch.Init(tb)
 }
 
 type QueueCleanerConfig struct {
@@ -73,8 +74,8 @@ type QueueCleaner struct {
 func NewQueueCleaner(archetype *baseservice.Archetype, config *QueueCleanerConfig, exec riverdriver.Executor) *QueueCleaner {
 	return baseservice.Init(archetype, &QueueCleaner{
 		Config: (&QueueCleanerConfig{
-			Interval:        valutil.ValOrDefault(config.Interval, queueCleanerIntervalDefault),
-			RetentionPeriod: valutil.ValOrDefault(config.RetentionPeriod, QueueRetentionPeriodDefault),
+			Interval:        cmp.Or(config.Interval, queueCleanerIntervalDefault),
+			RetentionPeriod: cmp.Or(config.RetentionPeriod, QueueRetentionPeriodDefault),
 			Schema:          config.Schema,
 		}).mustValidate(),
 

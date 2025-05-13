@@ -1,6 +1,7 @@
 package maintenance
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -13,8 +14,8 @@ import (
 	"github.com/riverqueue/river/rivershared/testsignal"
 	"github.com/riverqueue/river/rivershared/util/randutil"
 	"github.com/riverqueue/river/rivershared/util/serviceutil"
+	"github.com/riverqueue/river/rivershared/util/testutil"
 	"github.com/riverqueue/river/rivershared/util/timeutil"
-	"github.com/riverqueue/river/rivershared/util/valutil"
 	"github.com/riverqueue/river/rivertype"
 )
 
@@ -29,9 +30,9 @@ type JobSchedulerTestSignals struct {
 	ScheduledBatch testsignal.TestSignal[struct{}] // notifies when runOnce finishes a pass
 }
 
-func (ts *JobSchedulerTestSignals) Init() {
-	ts.NotifiedQueues.Init()
-	ts.ScheduledBatch.Init()
+func (ts *JobSchedulerTestSignals) Init(tb testutil.TestingTB) {
+	ts.NotifiedQueues.Init(tb)
+	ts.ScheduledBatch.Init(tb)
 }
 
 type InsertFunc func(ctx context.Context, tx riverdriver.ExecutorTx, insertParams []*rivertype.JobInsertParams) ([]*rivertype.JobInsertResult, error)
@@ -86,8 +87,8 @@ type JobScheduler struct {
 func NewJobScheduler(archetype *baseservice.Archetype, config *JobSchedulerConfig, exec riverdriver.Executor) *JobScheduler {
 	return baseservice.Init(archetype, &JobScheduler{
 		config: (&JobSchedulerConfig{
-			Interval:     valutil.ValOrDefault(config.Interval, JobSchedulerIntervalDefault),
-			Limit:        valutil.ValOrDefault(config.Limit, JobSchedulerLimitDefault),
+			Interval:     cmp.Or(config.Interval, JobSchedulerIntervalDefault),
+			Limit:        cmp.Or(config.Limit, JobSchedulerLimitDefault),
 			NotifyInsert: config.NotifyInsert,
 			Schema:       config.Schema,
 		}).mustValidate(),

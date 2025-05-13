@@ -7,13 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.21.0] - 2025-05-02
-
-⚠️ Internal APIs used for communication between River and River Pro have changed. If using River Pro, make sure to update River and River Pro to latest at the same time to get compatible versions.
+## [0.22.0] - 2025-05-10
 
 ### Added
 
-- Added `river/riverlog` containing middleware that injects a context logger to workers that collates log output and persists it with job metadata. This is paired with a River UI enhancement that shows logs in the UI. [PR #844](https://github.com/riverqueue/river/pull/844).
+- A new `JobArgsWithKindAliases` interface lets job args implement `KindAliases` to register a second kind that their worker will respond to. This provides a way to safely rename job kinds even with jobs using the original kind already in the database. [PR #880](https://github.com/riverqueue/river/pull/880).
+
+### Changed
+
+- Job kinds must comply to a format of `\A[\w][\w\-\[\]<>\/.·:+]+\z`, mainly in an attempt to eliminate commas and spaces to make format more predictable for an upcoming search UI. This check can be disabled for now using `Config.SkipJobKindValidation`, but this option will likely be removed in a future version of River. The new `JobArgsWithKindAliases` interface (see above) can be used to rename non-compliant kinds. [PR #879](https://github.com/riverqueue/river/pull/879).
+
+### Fixed
+
+- The `riverdatabasesql` now fully supports raw connections through [`lib/pq`](https://github.com/lib/pq) rather than just `database/sql` through Pgx. We don't recommend the use of `lib/pq` as it's an unmaintained project, but this change should help with compatibility for older projects. [PR #883](https://github.com/riverqueue/river/pull/883).
+
+## [0.21.0] - 2025-05-02
+
+⚠️ Internal APIs used for communication between River and River Pro have changed. If using River Pro, make sure to update River and River Pro to latest at the same time to get compatible versions. River v0.21.0 is compatible with River Pro v0.13.0.
+
+### Added
+
+- Added `river/riverlog` containing middleware that injects a context logger to workers that collates log output and persists it with job metadata. [PR #844](https://github.com/riverqueue/river/pull/844).
 - Added `JobInsertMiddlewareFunc` and `WorkerMiddlewareFunc` to easily implement middleware with a function instead of a struct. [PR #844](https://github.com/riverqueue/river/pull/844).
 - Added `Config.Schema` which lets a non-default schema be injected explicitly into a River client that'll be used for all database operations. This may be particularly useful for proxies like PgBouncer that may not respect a schema configured in `search_path`. [PR #848](https://github.com/riverqueue/river/pull/848).
 - Added `rivertype.HookWorkEnd` hook interface that runs after a job has been worked. [PR #863](https://github.com/riverqueue/river/pull/863).

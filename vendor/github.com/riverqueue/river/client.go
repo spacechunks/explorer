@@ -31,6 +31,7 @@ import (
 	"github.com/riverqueue/river/rivershared/testsignal"
 	"github.com/riverqueue/river/rivershared/util/maputil"
 	"github.com/riverqueue/river/rivershared/util/sliceutil"
+	"github.com/riverqueue/river/rivershared/util/testutil"
 	"github.com/riverqueue/river/rivershared/util/valutil"
 	"github.com/riverqueue/river/rivertype"
 )
@@ -289,6 +290,15 @@ type Config struct {
 	// setting of Postgres `search_path`.
 	Schema string
 
+	// SkipJobKindValidation causes the job kind format validation check to be
+	// skipped. This is available as an interim stopgap for users that have
+	// invalid job kind names, but would rather disable the check rather than
+	// fix them immediately.
+	//
+	// Deprecated: This option will be removed in a future versions so that job
+	// kinds will always have to have a valid format.
+	SkipJobKindValidation bool
+
 	// SkipUnknownJobCheck is a flag to control whether the client should skip
 	// checking to see if a registered worker exists in the client's worker bundle
 	// for a job arg prior to insertion.
@@ -364,32 +374,33 @@ func (c *Config) WithDefaults() *Config {
 
 	return &Config{
 		AdvisoryLockPrefix:          c.AdvisoryLockPrefix,
-		CancelledJobRetentionPeriod: valutil.ValOrDefault(c.CancelledJobRetentionPeriod, maintenance.CancelledJobRetentionPeriodDefault),
-		CompletedJobRetentionPeriod: valutil.ValOrDefault(c.CompletedJobRetentionPeriod, maintenance.CompletedJobRetentionPeriodDefault),
-		DiscardedJobRetentionPeriod: valutil.ValOrDefault(c.DiscardedJobRetentionPeriod, maintenance.DiscardedJobRetentionPeriodDefault),
+		CancelledJobRetentionPeriod: cmp.Or(c.CancelledJobRetentionPeriod, maintenance.CancelledJobRetentionPeriodDefault),
+		CompletedJobRetentionPeriod: cmp.Or(c.CompletedJobRetentionPeriod, maintenance.CompletedJobRetentionPeriodDefault),
+		DiscardedJobRetentionPeriod: cmp.Or(c.DiscardedJobRetentionPeriod, maintenance.DiscardedJobRetentionPeriodDefault),
 		ErrorHandler:                c.ErrorHandler,
-		FetchCooldown:               valutil.ValOrDefault(c.FetchCooldown, FetchCooldownDefault),
-		FetchPollInterval:           valutil.ValOrDefault(c.FetchPollInterval, FetchPollIntervalDefault),
+		FetchCooldown:               cmp.Or(c.FetchCooldown, FetchCooldownDefault),
+		FetchPollInterval:           cmp.Or(c.FetchPollInterval, FetchPollIntervalDefault),
 		ID:                          valutil.ValOrDefaultFunc(c.ID, func() string { return defaultClientID(time.Now().UTC()) }),
 		Hooks:                       c.Hooks,
 		JobInsertMiddleware:         c.JobInsertMiddleware,
-		JobTimeout:                  valutil.ValOrDefault(c.JobTimeout, JobTimeoutDefault),
+		JobTimeout:                  cmp.Or(c.JobTimeout, JobTimeoutDefault),
 		Logger:                      logger,
-		MaxAttempts:                 valutil.ValOrDefault(c.MaxAttempts, MaxAttemptsDefault),
+		MaxAttempts:                 cmp.Or(c.MaxAttempts, MaxAttemptsDefault),
 		Middleware:                  c.Middleware,
 		PeriodicJobs:                c.PeriodicJobs,
 		PollOnly:                    c.PollOnly,
 		Queues:                      c.Queues,
 		ReindexerSchedule:           c.ReindexerSchedule,
-		RescueStuckJobsAfter:        valutil.ValOrDefault(c.RescueStuckJobsAfter, rescueAfter),
+		RescueStuckJobsAfter:        cmp.Or(c.RescueStuckJobsAfter, rescueAfter),
 		RetryPolicy:                 retryPolicy,
 		Schema:                      c.Schema,
+		SkipJobKindValidation:       c.SkipJobKindValidation,
 		SkipUnknownJobCheck:         c.SkipUnknownJobCheck,
 		Test:                        c.Test,
 		TestOnly:                    c.TestOnly,
 		WorkerMiddleware:            c.WorkerMiddleware,
 		Workers:                     c.Workers,
-		schedulerInterval:           valutil.ValOrDefault(c.schedulerInterval, maintenance.JobSchedulerIntervalDefault),
+		schedulerInterval:           cmp.Or(c.schedulerInterval, maintenance.JobSchedulerIntervalDefault),
 	}
 }
 
@@ -447,6 +458,22 @@ func (c *Config) validate() error {
 
 	if c.Workers == nil && c.Queues != nil {
 		return errors.New("Workers must be set if Queues is set")
+	}
+
+	if c.Workers != nil {
+		for _, workerInfo := range c.Workers.workersMap {
+			kind := workerInfo.jobArgs.Kind()
+			if !jobKindRE.MatchString(kind) {
+				if c.SkipJobKindValidation {
+					c.Logger.Warn("job kind should match regex; this will be an error in future versions",
+						slog.String("kind", kind),
+						slog.String("regex", jobKindRE.String()),
+					)
+				} else {
+					return fmt.Errorf("job kind %q should match regex %q", kind, jobKindRE.String())
+				}
+			}
+		}
 	}
 
 	return nil
@@ -530,26 +557,26 @@ type clientTestSignals struct {
 	reindexer           *maintenance.ReindexerTestSignals
 }
 
-func (ts *clientTestSignals) Init() {
-	ts.electedLeader.Init()
+func (ts *clientTestSignals) Init(tb testutil.TestingTB) {
+	ts.electedLeader.Init(tb)
 
 	if ts.jobCleaner != nil {
-		ts.jobCleaner.Init()
+		ts.jobCleaner.Init(tb)
 	}
 	if ts.jobRescuer != nil {
-		ts.jobRescuer.Init()
+		ts.jobRescuer.Init(tb)
 	}
 	if ts.jobScheduler != nil {
-		ts.jobScheduler.Init()
+		ts.jobScheduler.Init(tb)
 	}
 	if ts.periodicJobEnqueuer != nil {
-		ts.periodicJobEnqueuer.Init()
+		ts.periodicJobEnqueuer.Init(tb)
 	}
 	if ts.queueCleaner != nil {
-		ts.queueCleaner.Init()
+		ts.queueCleaner.Init(tb)
 	}
 	if ts.reindexer != nil {
-		ts.reindexer.Init()
+		ts.reindexer.Init(tb)
 	}
 }
 
@@ -2357,6 +2384,11 @@ func (b *QueueBundle) Add(queueName string, queueConfig QueueConfig) error {
 
 	return nil
 }
+
+// Regular expression to which the format of job kinds must comply. Mainly,
+// minimal special characters, and excluding spaces and commas which are
+// problematic for the search UI.
+var jobKindRE = regexp.MustCompile(`\A[\w][\w\-\[\]<>\/.·:+]+\z`)
 
 // Generates a default client ID using the current hostname and time.
 func defaultClientID(startedAt time.Time) string {
