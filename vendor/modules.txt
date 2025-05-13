@@ -468,7 +468,6 @@ github.com/riverqueue/river/internal/rivercommon
 github.com/riverqueue/river/internal/util/chanutil
 github.com/riverqueue/river/internal/util/dbutil
 github.com/riverqueue/river/internal/workunit
-github.com/riverqueue/river/rivertest
 # github.com/riverqueue/river/riverdriver v0.22.0
 ## explicit; go 1.23.0
 github.com/riverqueue/river/riverdriver
