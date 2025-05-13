@@ -19,17 +19,14 @@
 package functional
 
 import (
-	"bytes"
 	"context"
-	"io"
 	"log/slog"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/spacechunks/explorer/controlplane/image"
-	"github.com/spacechunks/explorer/controlplane/image/testdata"
+	imgtestdata "github.com/spacechunks/explorer/controlplane/image/testdata"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 )
@@ -47,16 +44,9 @@ func TestImagePull(t *testing.T) {
 		endpoint = fixture.RunRegistry(t)
 	)
 
-	expected, err := tarball.Image(func() (io.ReadCloser, error) {
-		return io.NopCloser(bytes.NewReader(testdata.Image)), nil
-	}, nil)
-	if err != nil {
-		t.Fatalf("read img: %v", err)
-	}
-
 	ref := strings.ReplaceAll(endpoint, "http://", "") + "/test:latest"
 
-	err = service.Push(ctx, expected, ref)
+	err := service.Push(ctx, imgtestdata.Image(t), ref)
 	require.NoError(t, err)
 
 	_, err = service.Pull(ctx, ref)

@@ -16,28 +16,13 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package testdata
+package worker
 
-import (
-	"bytes"
-	_ "embed"
-	"io"
-	"testing"
+type ContextKey string
 
-	ociv1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/stretchr/testify/require"
+const (
+	ContextKeyBlobStore       ContextKey = "explorer.chunks.cloud/blob-store"
+	ContextKeyImageService    ContextKey = "explorer.chunks.cloud/image-service"
+	ContextKeyChunkRepository ContextKey = "explorer.chunks.cloud/chunk-repository"
+	ContextKeyJobClient       ContextKey = "explorer.chunks.cloud/job-client"
 )
-
-//go:generate bash ./build-img.sh
-
-//go:embed img.tar.gz
-var image []byte
-
-func Image(t *testing.T) ociv1.Image {
-	img, err := tarball.Image(func() (io.ReadCloser, error) {
-		return io.NopCloser(bytes.NewReader(image)), nil
-	}, nil)
-	require.NoError(t, err)
-	return img
-}

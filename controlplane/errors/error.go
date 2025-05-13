@@ -98,6 +98,7 @@ func (e Error) Error() string {
 
 func New(args ...any) Error {
 	e := Error{}
+	e.Code = codes.Internal
 	for _, arg := range args {
 		switch arg := arg.(type) {
 		case string:
