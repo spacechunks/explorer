@@ -29,6 +29,7 @@ import (
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
 	"github.com/docker/docker/api/types/container"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/spacechunks/explorer/controlplane"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
@@ -94,7 +95,11 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	require.NoError(t, err)
 
 	p.Pool = pool
-	p.DB = postgres.NewDB(slog.New(slog.NewTextHandler(os.Stdout, nil)), pool)
+
+	riverClient, err := controlplane.RunRiverWorker(ctx, pool)
+	require.NoError(t, err)
+
+	p.DB = postgres.NewDB(slog.New(slog.NewTextHandler(os.Stdout, nil)), pool, riverClient)
 }
 
 type CreateOptions struct {

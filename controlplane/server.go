@@ -26,14 +26,19 @@ import (
 	"net"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
+	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/postgres"
+	"github.com/spacechunks/explorer/controlplane/worker"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -58,8 +63,13 @@ func (s *Server) Run(ctx context.Context) error {
 		return fmt.Errorf("connect to database: %w", err)
 	}
 
+	riverClient, err := RunRiverWorker(ctx, pool)
+	if err != nil {
+		return fmt.Errorf("run job worker: %w", err)
+	}
+
 	var (
-		db         = postgres.NewDB(s.logger, pool)
+		db         = postgres.NewDB(s.logger, pool, riverClient)
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
 			// this option is important to set, because
@@ -69,7 +79,7 @@ func (s *Server) Run(ctx context.Context) error {
 			grpc.UnaryInterceptor(errorInterceptor(s.logger)),
 		)
 		blobStore    = blob.NewPGStore(db)
-		chunkService = chunk.NewService(db, blobStore)
+		chunkService = chunk.NewService(db, blobStore, db, s.cfg.OCIRegistry, s.cfg.BaseImage)
 		chunkServer  = chunk.NewServer(chunkService)
 		insService   = instance.NewService(s.logger, db, chunkService)
 		insServer    = instance.NewServer(insService)
@@ -97,9 +107,13 @@ func (s *Server) Run(ctx context.Context) error {
 
 	<-ctx.Done()
 
-	// add stop related code below
+	// add stop-related code below
 
 	grpcServer.GracefulStop()
+
+	if err := riverClient.Stop(ctx); err != nil {
+		s.logger.ErrorContext(ctx, "failed to stop river client", "err", err)
+	}
 
 	return g.Wait().ErrorOrNil()
 }
@@ -124,4 +138,30 @@ func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 		}
 		return resp, nil
 	}
+}
+
+func RunRiverWorker(ctx context.Context, pool *pgxpool.Pool) (*river.Client[pgx.Tx], error) {
+	workers := river.NewWorkers()
+
+	if err := river.AddWorkerSafely[job.CreateImage](workers, &worker.CreateImageWorker{}); err != nil {
+		return nil, fmt.Errorf("add create image worker: %w", err)
+	}
+
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
+		Queues: map[string]river.QueueConfig{
+			river.QueueDefault: {
+				MaxWorkers: 100,
+			},
+		},
+		Workers: workers,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("river client: %w", err)
+	}
+
+	if err := riverClient.Start(ctx); err != nil {
+		return nil, fmt.Errorf("river client start: %w", err)
+	}
+
+	return riverClient, nil
 }

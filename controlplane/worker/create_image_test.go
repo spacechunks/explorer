@@ -29,6 +29,7 @@ import (
 
 	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/blob"
+	"github.com/spacechunks/explorer/controlplane/chunk"
 	imgtestdata "github.com/spacechunks/explorer/controlplane/image/testdata"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/worker"
@@ -55,10 +56,10 @@ func TestCreateImageWorker(t *testing.T) {
 	var (
 		registry         = "example.com"
 		baseImgRef       = "example.com/base:latest"
-		chunk            = fixture.Chunk()
-		flavor           = chunk.Flavors[0]
-		flavorVersion    = chunk.Flavors[0].Versions[0]
-		checkpointImgRef = fmt.Sprintf("%s/%s/%s:%s", registry, chunk.Name, flavor.Name, flavorVersion.Version)
+		c                = fixture.Chunk()
+		flavor           = c.Flavors[0]
+		flavorVersion    = c.Flavors[0].Versions[0]
+		checkpointImgRef = fmt.Sprintf("%s/%s/%s:%s", registry, c.Name, flavor.Name, flavorVersion.Version)
 	)
 
 	hashToPath := make(map[string]string, len(flavorVersion.FileHashes))
@@ -102,7 +103,12 @@ func TestCreateImageWorker(t *testing.T) {
 		Return(nil)
 
 	jobClient.EXPECT().
-		InsertJob(mocky.Anything, job.CreateCheckpoint{BaseImage: checkpointImgRef}).
+		InsertJob(
+			mocky.Anything,
+			flavorVersion.ID,
+			string(chunk.BuildStatusBuildCheckpoint),
+			job.CreateCheckpoint{BaseImage: checkpointImgRef},
+		).
 		Return(nil)
 
 	w := worker.CreateImageWorker{}
@@ -110,10 +116,8 @@ func TestCreateImageWorker(t *testing.T) {
 	riverJob := &river.Job[job.CreateImage]{
 		Args: job.CreateImage{
 			FlavorVersionID: flavorVersion.ID,
-			FlavorName:      flavor.Name,
-			ChunkName:       chunk.Name,
 			BaseImage:       baseImgRef,
-			Registry:        registry,
+			OCIRegistry:     registry,
 		},
 	}
 

@@ -24,9 +24,8 @@ import (
 	"io"
 	"net/url"
 
-	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
-
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
+	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
 )
 
 //go:embed *.sql

@@ -43,6 +43,7 @@ const (
 	ChunkService_CreateFlavor_FullMethodName        = "/chunk.v1alpha1.ChunkService/CreateFlavor"
 	ChunkService_CreateFlavorVersion_FullMethodName = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
 	ChunkService_SaveFlavorFiles_FullMethodName     = "/chunk.v1alpha1.ChunkService/SaveFlavorFiles"
+	ChunkService_BuildFlavorVersion_FullMethodName  = "/chunk.v1alpha1.ChunkService/BuildFlavorVersion"
 )
 
 // ChunkServiceClient is the client API for ChunkService service.
@@ -127,6 +128,7 @@ type ChunkServiceClient interface {
 	//     hash of all newly added and changed files. this means that some files have
 	//     changed after creating the flavor version or are missing.
 	SaveFlavorFiles(ctx context.Context, in *SaveFlavorFilesRequest, opts ...grpc.CallOption) (*SaveFlavorFilesResponse, error)
+	BuildFlavorVersion(ctx context.Context, in *BuildFlavorVersionRequest, opts ...grpc.CallOption) (*BuildFlavorVersionResponse, error)
 }
 
 type chunkServiceClient struct {
@@ -201,6 +203,16 @@ func (c *chunkServiceClient) SaveFlavorFiles(ctx context.Context, in *SaveFlavor
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SaveFlavorFilesResponse)
 	err := c.cc.Invoke(ctx, ChunkService_SaveFlavorFiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chunkServiceClient) BuildFlavorVersion(ctx context.Context, in *BuildFlavorVersionRequest, opts ...grpc.CallOption) (*BuildFlavorVersionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BuildFlavorVersionResponse)
+	err := c.cc.Invoke(ctx, ChunkService_BuildFlavorVersion_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -289,6 +301,7 @@ type ChunkServiceServer interface {
 	//     hash of all newly added and changed files. this means that some files have
 	//     changed after creating the flavor version or are missing.
 	SaveFlavorFiles(context.Context, *SaveFlavorFilesRequest) (*SaveFlavorFilesResponse, error)
+	BuildFlavorVersion(context.Context, *BuildFlavorVersionRequest) (*BuildFlavorVersionResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
 
@@ -319,6 +332,9 @@ func (UnimplementedChunkServiceServer) CreateFlavorVersion(context.Context, *Cre
 }
 func (UnimplementedChunkServiceServer) SaveFlavorFiles(context.Context, *SaveFlavorFilesRequest) (*SaveFlavorFilesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SaveFlavorFiles not implemented")
+}
+func (UnimplementedChunkServiceServer) BuildFlavorVersion(context.Context, *BuildFlavorVersionRequest) (*BuildFlavorVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BuildFlavorVersion not implemented")
 }
 func (UnimplementedChunkServiceServer) mustEmbedUnimplementedChunkServiceServer() {}
 func (UnimplementedChunkServiceServer) testEmbeddedByValue()                      {}
@@ -467,6 +483,24 @@ func _ChunkService_SaveFlavorFiles_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChunkService_BuildFlavorVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BuildFlavorVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).BuildFlavorVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_BuildFlavorVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).BuildFlavorVersion(ctx, req.(*BuildFlavorVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChunkService_ServiceDesc is the grpc.ServiceDesc for ChunkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -501,6 +535,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SaveFlavorFiles",
 			Handler:    _ChunkService_SaveFlavorFiles_Handler,
+		},
+		{
+			MethodName: "BuildFlavorVersion",
+			Handler:    _ChunkService_BuildFlavorVersion_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

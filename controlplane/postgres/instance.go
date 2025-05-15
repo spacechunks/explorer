@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
@@ -41,7 +42,7 @@ func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID 
 	}
 
 	var ret instance.Instance
-	if err := db.doTX(ctx, func(q *query.Queries) error {
+	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.CreateInstance(ctx, params); err != nil {
 			return fmt.Errorf("create instance: %w", err)
 		}

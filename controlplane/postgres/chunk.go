@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
@@ -89,7 +90,7 @@ func (db *DB) UpdateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 	}
 
 	var ret chunk.Chunk
-	if err := db.doTX(ctx, func(q *query.Queries) error {
+	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.UpdateChunk(ctx, params); err != nil {
 			return fmt.Errorf("update chunk: %w", err)
 		}

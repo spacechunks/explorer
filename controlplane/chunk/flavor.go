@@ -33,12 +33,24 @@ import (
 	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/zeebo/xxh3"
 )
 
 /*
  * flavor types
  */
+
+type BuildStatus string
+
+const (
+	BuildStatusPending               BuildStatus = "PENDING"
+	BuildStatusBuildImage            BuildStatus = "BUILD_IMAGE"
+	BuildStatusBuildCheckpoint       BuildStatus = "BUILD_CHECKPOINT"
+	BuildStatusBuildImageFailed      BuildStatus = "BUILD_IMAGE_FAILED"
+	BuildStatusBuildCheckpointFailed BuildStatus = "BUILD_CHECKPOINT_FAILED"
+	BuildStatusCompleted             BuildStatus = "COMPLETED"
+)
 
 type Flavor struct {
 	ID        string
@@ -61,6 +73,7 @@ type FlavorVersion struct {
 	ChangeHash    string
 	FileHashes    []FileHash
 	FilesUploaded bool
+	BuildStatus   BuildStatus
 	CreatedAt     time.Time
 }
 
@@ -286,6 +299,38 @@ func (s *svc) SaveFlavorFiles(ctx context.Context, versionID string, files []Fil
 
 	if err := s.repo.MarkFlavorVersionFilesUploaded(ctx, versionID); err != nil {
 		return fmt.Errorf("mark flavor version: %w", err)
+	}
+
+	return nil
+}
+
+func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
+	version, err := s.repo.FlavorVersionByID(ctx, versionID)
+	if err != nil {
+		return fmt.Errorf("flavor version: %w", err)
+	}
+
+	if !version.FilesUploaded {
+		return apierrs.ErrFlavorFilesNotUploaded
+	}
+
+	// do not fail the request if there is already a job running,
+	// or it is already completed, because those states do not
+	// indicate that anything is wrong.
+	if version.BuildStatus == BuildStatusBuildCheckpoint ||
+		version.BuildStatus == BuildStatusBuildImage ||
+		version.BuildStatus == BuildStatusCompleted {
+		return nil
+	}
+
+	// TODO: if previous state is CHECKPOINT_FAILED => start checkpoint job otherwise start create image job
+
+	if err := s.jobClient.InsertJob(ctx, versionID, string(BuildStatusBuildImage), job.CreateImage{
+		FlavorVersionID: versionID,
+		BaseImage:       s.baseImage,
+		OCIRegistry:     s.registry,
+	}); err != nil {
+		return fmt.Errorf("insert create image job: %w", err)
 	}
 
 	return nil

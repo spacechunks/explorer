@@ -29,6 +29,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
@@ -130,7 +131,7 @@ func (db *DB) FlavorVersionByHash(ctx context.Context, hash string) (string, err
 
 func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.FlavorVersion, error) {
 	var ret chunk.FlavorVersion
-	if err := db.doTX(ctx, func(q *query.Queries) error {
+	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		// FIXME: at some point join with flavors table to return the complete
 		// FlavorVersion object, right now there is no need so skip this
 
@@ -187,7 +188,7 @@ func (db *DB) CreateFlavorVersion(
 
 	now := time.Now()
 
-	if err := db.doTX(ctx, func(q *query.Queries) error {
+	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		createParams := query.CreateFlavorVersionParams{
 			ID:         id.String(),
 			FlavorID:   flavorID,
@@ -272,6 +273,7 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 			Version:       row.Version,
 			Hash:          row.Hash,
 			ChangeHash:    row.ChangeHash,
+			BuildStatus:   chunk.BuildStatus(row.BuildStatus),
 			FilesUploaded: row.FilesUploaded,
 			CreatedAt:     row.CreatedAt,
 		}
@@ -291,4 +293,24 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 	}
 
 	return ret, nil
+}
+
+func (db *DB) InsertJob(ctx context.Context, flavorVersionID string, status string, job river.JobArgs) error {
+	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
+		if err := q.UpdateFlavorVersionBuildStatus(ctx, query.UpdateFlavorVersionBuildStatusParams{
+			BuildStatus: query.BuildStatus(status),
+			ID:          flavorVersionID,
+		}); err != nil {
+			return fmt.Errorf("build status: %w", err)
+		}
+
+		if _, err := db.riverClient.InsertTx(ctx, tx, job, &river.InsertOpts{
+			UniqueOpts: river.UniqueOpts{
+				ByArgs: true,
+			},
+		}); err != nil {
+			return fmt.Errorf("insert job: %w", err)
+		}
+		return nil
+	})
 }

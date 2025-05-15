@@ -23,6 +23,11 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivertest"
+	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/assert"
@@ -73,4 +78,37 @@ func TestGetChunkByID(t *testing.T) {
 	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
 		t.Errorf("chunk mismatch (-want +got):\n%s", d)
 	}
+}
+
+func TestInsertJob(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+	pg.Run(t, ctx)
+
+	c := fixture.Chunk()
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	riverJob := job.CreateImage{
+		FlavorVersionID: "adawdddd",
+		BaseImage:       "111",
+		OCIRegistry:     "3333",
+	}
+
+	err := pg.DB.InsertJob(ctx, c.Flavors[0].Versions[0].ID, string(chunk.BuildStatusBuildImage), riverJob)
+	require.NoError(t, err)
+
+	version, err := pg.DB.FlavorVersionByID(ctx, c.Flavors[0].Versions[0].ID)
+	require.NoError(t, err)
+
+	require.Equal(t, chunk.BuildStatusBuildImage, version.BuildStatus)
+
+	rivertest.RequireInserted[*riverpgxv5.Driver, pgx.Tx, job.CreateImage](
+		ctx,
+		t,
+		riverpgxv5.New(pg.Pool),
+		riverJob,
+		nil,
+	)
 }
