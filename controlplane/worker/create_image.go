@@ -107,24 +107,20 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 	}
 
 	// FIXME: if we implement users add user id to ref
-	//        => <registry>/<userID>/<chunk>/<flavor>:<version>
-	ref := fmt.Sprintf(
-		"%s/%s/%s:%s",
-		riverJob.Args.Registry,
-		riverJob.Args.ChunkName,
-		riverJob.Args.FlavorName,
-		version.Version,
-	)
+	//        => <registry>/<userID>/<flavor-version-id>:<base|checkpoint>
+	ref := fmt.Sprintf("%s/%s:base", riverJob.Args.OCIRegistry, riverJob.Args.FlavorVersionID)
 
 	if err := imgService.Push(ctx, img, ref); err != nil {
 		return fmt.Errorf("push image: %w", err)
 	}
 
-	// FIXME: record job
-
-	if err := jobClient.InsertJob(ctx, job.CreateCheckpoint{
-		BaseImage: ref,
-	}); err != nil {
+	if err := jobClient.InsertJob(
+		ctx,
+		riverJob.Args.FlavorVersionID,
+		string(chunk.BuildStatusBuildCheckpoint),
+		job.CreateCheckpoint{
+			BaseImage: ref,
+		}); err != nil {
 		return fmt.Errorf("insert create checkpoint job: %w", err)
 	}
 
