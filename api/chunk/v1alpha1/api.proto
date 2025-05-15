@@ -103,6 +103,8 @@ service ChunkService {
   //     hash of all newly added and changed files. this means that some files have
   //     changed after creating the flavor version or are missing.
   rpc SaveFlavorFiles(SaveFlavorFilesRequest) returns (SaveFlavorFilesResponse);
+
+  rpc BuildFlavorVersion(BuildFlavorVersionRequest) returns (BuildFlavorVersionResponse);
 }
 
 message CreateChunkRequest {
@@ -146,7 +148,6 @@ message UpdateChunkResponse {
 }
 
 message ListChunksRequest {
-
 }
 
 message ListChunksResponse {
@@ -180,4 +181,11 @@ message SaveFlavorFilesRequest {
 }
 
 message SaveFlavorFilesResponse {
+}
+
+message BuildFlavorVersionRequest {
+  string flavor_version_id = 1;
+}
+
+message BuildFlavorVersionResponse {
 }
