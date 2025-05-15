@@ -25,18 +25,14 @@ import (
 
 var (
 	ErrInvalidFlavorVersionID = errors.New("invalid flavor version id")
-	ErrInvalidFlavorName      = errors.New("invalid flavor name")
-	ErrInvalidChunkName       = errors.New("invalid chunk name")
 	ErrInvalidBaseImage       = errors.New("invalid base image")
-	ErrInvalidRegistry        = errors.New("invalid registry")
+	ErrInvalidOCIRegistry     = errors.New("invalid registry")
 )
 
 type CreateImage struct {
 	FlavorVersionID string `json:"flavorVersionId"`
-	FlavorName      string `json:"flavorName"`
-	ChunkName       string `json:"chunkName"`
 	BaseImage       string `json:"baseImage"`
-	Registry        string `json:"registry"`
+	OCIRegistry     string `json:"registry"`
 }
 
 func (CreateImage) Kind() string {
@@ -48,20 +44,12 @@ func (c CreateImage) Validate() error {
 		return ErrInvalidFlavorVersionID
 	}
 
-	if c.FlavorName == "" {
-		return ErrInvalidFlavorName
-	}
-
-	if c.ChunkName == "" {
-		return ErrInvalidChunkName
-	}
-
 	if c.BaseImage == "" {
 		return ErrInvalidBaseImage
 	}
 
-	if c.Registry == "" {
-		return ErrInvalidRegistry
+	if c.OCIRegistry == "" {
+		return ErrInvalidOCIRegistry
 	}
 
 	return nil

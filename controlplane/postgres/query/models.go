@@ -13,6 +13,52 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type BuildStatus string
+
+const (
+	BuildStatusPENDING               BuildStatus = "PENDING"
+	BuildStatusBUILDIMAGE            BuildStatus = "BUILD_IMAGE"
+	BuildStatusBUILDCHECKPOINT       BuildStatus = "BUILD_CHECKPOINT"
+	BuildStatusBUILDIMAGEFAILED      BuildStatus = "BUILD_IMAGE_FAILED"
+	BuildStatusBUILDCHECKPOINTFAILED BuildStatus = "BUILD_CHECKPOINT_FAILED"
+	BuildStatusCOMPLETED             BuildStatus = "COMPLETED"
+)
+
+func (e *BuildStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = BuildStatus(s)
+	case string:
+		*e = BuildStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for BuildStatus: %T", src)
+	}
+	return nil
+}
+
+type NullBuildStatus struct {
+	BuildStatus BuildStatus
+	Valid       bool // Valid is true if BuildStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullBuildStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.BuildStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.BuildStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullBuildStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.BuildStatus), nil
+}
+
 type InstanceState string
 
 const (
@@ -89,6 +135,7 @@ type FlavorVersion struct {
 	ChangeHash    string
 	Version       string
 	FilesUploaded bool
+	BuildStatus   BuildStatus
 	PrevVersionID *string
 	CreatedAt     time.Time
 }

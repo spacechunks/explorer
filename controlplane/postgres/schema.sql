@@ -11,6 +11,20 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: build_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.build_status AS ENUM (
+    'PENDING',
+    'BUILD_IMAGE',
+    'BUILD_CHECKPOINT',
+    'BUILD_IMAGE_FAILED',
+    'BUILD_CHECKPOINT_FAILED',
+    'COMPLETED'
+);
+
+
+--
 -- Name: instance_state; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -76,6 +90,7 @@ CREATE TABLE public.flavor_versions (
     change_hash character(16) NOT NULL,
     version character varying(25) NOT NULL,
     files_uploaded boolean DEFAULT false NOT NULL,
+    build_status public.build_status DEFAULT 'PENDING'::public.build_status NOT NULL,
     prev_version_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -206,21 +221,14 @@ ALTER TABLE ONLY public.schema_migrations
 -- Name: flavor_hash_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX flavor_hash_idx ON public.flavor_versions USING btree (hash);
-
-
---
--- Name: flavor_name_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX flavor_name_idx ON public.flavors USING btree (name);
+CREATE INDEX flavor_hash_idx ON public.flavor_versions USING btree (hash);
 
 
 --
 -- Name: flavor_version_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX flavor_version_idx ON public.flavor_versions USING btree (version);
+CREATE INDEX flavor_version_idx ON public.flavor_versions USING btree (version);
 
 
 --

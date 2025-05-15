@@ -13,6 +13,15 @@ CREATE TABLE IF NOT EXISTS chunks (
 -- flavors
 --
 
+CREATE TYPE build_status AS ENUM (
+    'PENDING',
+    'BUILD_IMAGE',
+    'BUILD_CHECKPOINT',
+    'BUILD_IMAGE_FAILED',
+    'BUILD_CHECKPOINT_FAILED',
+    'COMPLETED'
+);
+
 CREATE TABLE IF NOT EXISTS flavors (
     id                   UUID PRIMARY KEY NOT NULL,
     chunk_id             UUID             NOT NULL REFERENCES chunks(id),
@@ -33,6 +42,7 @@ CREATE TABLE IF NOT EXISTS flavor_versions (
     -- first place. this also detects if files are missing.
     change_hash     CHAR(16)      NOT NULL,
 
+    build_status    build_status           DEFAULT 'PENDING',
     version         VARCHAR(25)   NOT NULL,
     files_uploaded  BOOL          NOT NULL DEFAULT FALSE,
     prev_version_id UUID,

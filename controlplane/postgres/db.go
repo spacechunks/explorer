@@ -24,15 +24,18 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
 var ErrNotFound = errors.New("not found")
 
 type DB struct {
-	logger *slog.Logger
-	pool   *pgxpool.Pool
+	logger      *slog.Logger
+	pool        *pgxpool.Pool
+	riverClient *river.Client[pgx.Tx]
 }
 
 type bulkExecer interface {
@@ -40,10 +43,11 @@ type bulkExecer interface {
 	Close() error
 }
 
-func NewDB(logger *slog.Logger, pool *pgxpool.Pool) *DB {
+func NewDB(logger *slog.Logger, pool *pgxpool.Pool, riverClient *river.Client[pgx.Tx]) *DB {
 	return &DB{
-		logger: logger,
-		pool:   pool,
+		logger:      logger,
+		pool:        pool,
+		riverClient: riverClient,
 	}
 }
 
@@ -56,14 +60,14 @@ func (db *DB) do(ctx context.Context, fn func(q *query.Queries) error) error {
 	return nil
 }
 
-func (db *DB) doTX(ctx context.Context, fn func(q *query.Queries) error) error {
+func (db *DB) doTX(ctx context.Context, fn func(tx pgx.Tx, q *query.Queries) error) error {
 	if err := db.pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) error {
 		tx, err := conn.Begin(ctx)
 		if err != nil {
 			return fmt.Errorf("begin tx: %w", err)
 		}
 
-		if err := fn(query.New(tx)); err != nil {
+		if err := fn(tx, query.New(tx)); err != nil {
 			if txErr := tx.Rollback(ctx); txErr != nil {
 				// only log rollback related error, because we want to
 				// pass the actual error that caused the rollback back to the caller

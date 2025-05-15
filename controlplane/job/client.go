@@ -24,6 +24,8 @@ import (
 	"github.com/riverqueue/river"
 )
 
+// use string var to avoid circular dependency
+
 type Client interface {
-	InsertJob(ctx context.Context, job river.JobArgs) error
+	InsertJob(ctx context.Context, flavorVersionID string, status string, job river.JobArgs) error
 }
