@@ -185,7 +185,7 @@ func (q *Queries) FlavorVersionByHash(ctx context.Context, hash string) (string,
 }
 
 const flavorVersionByID = `-- name: FlavorVersionByID :many
-SELECT id, flavor_id, hash, change_hash, version, files_uploaded, build_status, prev_version_id, v.created_at, flavor_version_id, file_hash, file_path, f.created_at FROM flavor_versions v
+SELECT id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, flavor_version_id, file_hash, file_path, f.created_at FROM flavor_versions v
     JOIN flavor_version_files f ON f.flavor_version_id = v.id
 WHERE id = $1
 `
@@ -195,9 +195,9 @@ type FlavorVersionByIDRow struct {
 	FlavorID        string
 	Hash            string
 	ChangeHash      string
+	BuildStatus     BuildStatus
 	Version         string
 	FilesUploaded   bool
-	BuildStatus     BuildStatus
 	PrevVersionID   *string
 	CreatedAt       time.Time
 	FlavorVersionID string
@@ -220,9 +220,9 @@ func (q *Queries) FlavorVersionByID(ctx context.Context, id string) ([]FlavorVer
 			&i.FlavorID,
 			&i.Hash,
 			&i.ChangeHash,
+			&i.BuildStatus,
 			&i.Version,
 			&i.FilesUploaded,
-			&i.BuildStatus,
 			&i.PrevVersionID,
 			&i.CreatedAt,
 			&i.FlavorVersionID,
@@ -300,7 +300,7 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 }
 
 const getChunkByID = `-- name: GetChunkByID :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, version, files_uploaded, build_status, prev_version_id, v.created_at, flavor_version_id, file_hash, file_path, vf.created_at FROM chunks c
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, flavor_version_id, file_hash, file_path, vf.created_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
@@ -323,9 +323,9 @@ type GetChunkByIDRow struct {
 	FlavorID        *string
 	Hash            pgtype.Text
 	ChangeHash      pgtype.Text
+	BuildStatus     NullBuildStatus
 	Version         pgtype.Text
 	FilesUploaded   pgtype.Bool
-	BuildStatus     NullBuildStatus
 	PrevVersionID   *string
 	CreatedAt_3     pgtype.Timestamptz
 	FlavorVersionID *string
@@ -360,9 +360,9 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 			&i.FlavorID,
 			&i.Hash,
 			&i.ChangeHash,
+			&i.BuildStatus,
 			&i.Version,
 			&i.FilesUploaded,
-			&i.BuildStatus,
 			&i.PrevVersionID,
 			&i.CreatedAt_3,
 			&i.FlavorVersionID,
@@ -533,7 +533,7 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 }
 
 const latestFlavorVersionByFlavorID = `-- name: LatestFlavorVersionByFlavorID :one
-SELECT id, flavor_id, hash, change_hash, version, files_uploaded, build_status, prev_version_id, created_at FROM flavor_versions WHERE flavor_id = $1
+SELECT id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, created_at FROM flavor_versions WHERE flavor_id = $1
 ORDER BY created_at DESC LIMIT 1
 `
 
@@ -545,9 +545,9 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 		&i.FlavorID,
 		&i.Hash,
 		&i.ChangeHash,
+		&i.BuildStatus,
 		&i.Version,
 		&i.FilesUploaded,
-		&i.BuildStatus,
 		&i.PrevVersionID,
 		&i.CreatedAt,
 	)
@@ -555,7 +555,7 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 }
 
 const listChunks = `-- name: ListChunks :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, version, files_uploaded, build_status, prev_version_id, v.created_at, flavor_version_id, file_hash, file_path, vf.created_at FROM chunks c
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, flavor_version_id, file_hash, file_path, vf.created_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
@@ -577,9 +577,9 @@ type ListChunksRow struct {
 	FlavorID        *string
 	Hash            pgtype.Text
 	ChangeHash      pgtype.Text
+	BuildStatus     NullBuildStatus
 	Version         pgtype.Text
 	FilesUploaded   pgtype.Bool
-	BuildStatus     NullBuildStatus
 	PrevVersionID   *string
 	CreatedAt_3     pgtype.Timestamptz
 	FlavorVersionID *string
@@ -613,9 +613,9 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 			&i.FlavorID,
 			&i.Hash,
 			&i.ChangeHash,
+			&i.BuildStatus,
 			&i.Version,
 			&i.FilesUploaded,
-			&i.BuildStatus,
 			&i.PrevVersionID,
 			&i.CreatedAt_3,
 			&i.FlavorVersionID,
@@ -634,7 +634,7 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 }
 
 const listFlavorsByChunkID = `-- name: ListFlavorsByChunkID :many
-SELECT f.id, chunk_id, name, f.created_at, updated_at, v.id, flavor_id, hash, change_hash, version, files_uploaded, build_status, prev_version_id, v.created_at, flavor_version_id, file_hash, file_path, vf.created_at FROM flavors f
+SELECT f.id, chunk_id, name, f.created_at, updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, flavor_version_id, file_hash, file_path, vf.created_at FROM flavors f
     JOIN flavor_versions v ON v.flavor_id = f.id
     JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
 WHERE chunk_id = $1
@@ -650,9 +650,9 @@ type ListFlavorsByChunkIDRow struct {
 	FlavorID        string
 	Hash            string
 	ChangeHash      string
+	BuildStatus     BuildStatus
 	Version         string
 	FilesUploaded   bool
-	BuildStatus     BuildStatus
 	PrevVersionID   *string
 	CreatedAt_2     time.Time
 	FlavorVersionID string
@@ -680,9 +680,9 @@ func (q *Queries) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]L
 			&i.FlavorID,
 			&i.Hash,
 			&i.ChangeHash,
+			&i.BuildStatus,
 			&i.Version,
 			&i.FilesUploaded,
-			&i.BuildStatus,
 			&i.PrevVersionID,
 			&i.CreatedAt_2,
 			&i.FlavorVersionID,
