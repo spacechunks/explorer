@@ -79,6 +79,7 @@ require (
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/lib/pq v1.10.9 // indirect
+	github.com/lmittmann/tint v1.0.7 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -103,6 +104,7 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
+	github.com/riverqueue/river/cmd/river v0.22.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.22.0 // indirect
 	github.com/riverqueue/river/rivershared v0.22.0 // indirect
 	github.com/riverqueue/river/rivertype v0.22.0 // indirect
@@ -112,9 +114,9 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/spf13/cobra v1.8.1 // indirect
+	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/spf13/viper v1.15.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
@@ -146,3 +148,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+tool github.com/riverqueue/river/cmd/river
