@@ -113,6 +113,7 @@ func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.Flav
 				Hash: "pppppppppppppppp",
 			},
 		},
+		BuildStatus:   chunk.BuildStatusPending,
 		FilesUploaded: false,
 		CreatedAt:     time.Time{},
 	}

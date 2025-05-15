@@ -22,6 +22,7 @@ import (
 	"context"
 
 	"github.com/spacechunks/explorer/controlplane/blob"
+	"github.com/spacechunks/explorer/controlplane/job"
 )
 
 type Service interface {
@@ -36,16 +37,29 @@ type Service interface {
 		flavorID string,
 		version FlavorVersion,
 	) (FlavorVersion, FlavorVersionDiff, error)
+	BuildFlavorVersion(ctx context.Context, versionID string) error
 }
 
 type svc struct {
 	repo      Repository
 	blobStore blob.Store
+	jobClient job.Client
+	registry  string
+	baseImage string
 }
 
-func NewService(repo Repository, blobStore blob.Store) Service {
+func NewService(
+	repo Repository,
+	blobStore blob.Store,
+	jobClient job.Client,
+	registry string,
+	baseImage string,
+) Service {
 	return &svc{
 		repo:      repo,
 		blobStore: blobStore,
+		jobClient: jobClient,
+		registry:  registry,
+		baseImage: baseImage,
 	}
 }

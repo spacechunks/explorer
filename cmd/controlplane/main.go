@@ -36,11 +36,13 @@ import (
 
 func main() {
 	var (
-		logger             = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		logger             = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 		fs                 = flag.NewFlagSet("controlplane", flag.ContinueOnError)
 		listenAddr         = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                //nolint:lll
 		pgConnString       = fs.String("postgres-dsn", "", "connection string in the form of postgres://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]") //nolint:lll
 		grpcMaxMessageSize = fs.Uint("grpc-max-message-size", 4000000, "maximum grpc message size in bytes")
+		ociRegistry        = fs.String("oci-registry", "", "registry to use to pull and push images")
+		baseImage          = fs.String("base-image", "", "base image to use for creating flavor version images")
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
@@ -53,6 +55,8 @@ func main() {
 			ListenAddr:         *listenAddr,
 			DBConnString:       *pgConnString,
 			MaxGRPCMessageSize: int(*grpcMaxMessageSize),
+			OCIRegistry:        *ociRegistry,
+			BaseImage:          *baseImage,
 		}
 		ctx, cancel = context.WithCancel(context.Background())
 		server      = controlplane.NewServer(logger, cfg)

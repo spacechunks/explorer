@@ -22,4 +22,6 @@ type Config struct {
 	ListenAddr         string
 	DBConnString       string
 	MaxGRPCMessageSize int
+	OCIRegistry        string
+	BaseImage          string
 }
