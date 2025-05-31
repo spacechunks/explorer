@@ -37,8 +37,8 @@ func TestImagePull(t *testing.T) {
 		cacheDir = t.TempDir()
 		service  = image.NewService(
 			slog.New(slog.NewTextHandler(os.Stdout, nil)),
-			fixture.RegistryUser,
-			fixture.RegistryPass,
+			fixture.OCIRegsitryUser,
+			fixture.OCIRegistryPass,
 			cacheDir,
 		)
 		endpoint = fixture.RunRegistry(t)

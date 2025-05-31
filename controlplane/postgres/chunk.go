@@ -28,8 +28,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
@@ -89,7 +91,7 @@ func (db *DB) UpdateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 	}
 
 	var ret chunk.Chunk
-	if err := db.doTX(ctx, func(q *query.Queries) error {
+	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.UpdateChunk(ctx, params); err != nil {
 			return fmt.Errorf("update chunk: %w", err)
 		}
@@ -152,6 +154,7 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 				FlavorVersionFlavorID:  r.FlavorID,
 				Version:                r.Version.String,
 				Hash:                   r.Hash.String,
+				BuildStatus:            string(r.BuildStatus.BuildStatus),
 				ChangeHash:             r.ChangeHash.String,
 				FilesUploaded:          r.FilesUploaded.Bool,
 				FlavorVersionCreatedAt: r.CreatedAt_3.Time,
@@ -203,6 +206,7 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 			FlavorVersionFlavorID:  r.FlavorID,
 			Version:                r.Version.String,
 			Hash:                   r.Hash.String,
+			BuildStatus:            string(r.BuildStatus.BuildStatus),
 			ChangeHash:             r.ChangeHash.String,
 			FilesUploaded:          r.FilesUploaded.Bool,
 			FlavorVersionCreatedAt: r.CreatedAt_3.Time,
@@ -232,6 +236,7 @@ type chunkRelationsRow struct {
 	FlavorVersionFlavorID  *string
 	Version                string
 	Hash                   string
+	BuildStatus            string
 	ChangeHash             string
 	FilesUploaded          bool
 	FlavorVersionCreatedAt time.Time
@@ -249,7 +254,7 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 		ret                chunk.Chunk
 		flavorMap          = make(map[string]chunk.Flavor)
 		versionMap         = make(map[string]chunk.FlavorVersion)
-		fhMap              = make(map[string][]chunk.FileHash)
+		fhMap              = make(map[string][]file.Hash)
 		versionToFlavorMap = make(map[string]string)
 
 		row = rows[0]
@@ -284,6 +289,7 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 					ID:            *r.FlavorVersionID,
 					Version:       r.Version,
 					Hash:          r.Hash,
+					BuildStatus:   chunk.BuildStatus(r.BuildStatus),
 					ChangeHash:    r.ChangeHash,
 					FilesUploaded: r.FilesUploaded,
 					CreatedAt:     r.FlavorVersionCreatedAt,
@@ -292,12 +298,12 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 		}
 
 		if r.FlavorVersionID != nil {
-			contains := slices.ContainsFunc(fhMap[*r.FlavorVersionID], func(fh chunk.FileHash) bool {
+			contains := slices.ContainsFunc(fhMap[*r.FlavorVersionID], func(fh file.Hash) bool {
 				return fh.Path == r.FilePath
 			})
 
 			if !contains {
-				fhMap[*r.FlavorVersionID] = append(fhMap[*r.FlavorVersionID], chunk.FileHash{
+				fhMap[*r.FlavorVersionID] = append(fhMap[*r.FlavorVersionID], file.Hash{
 					Path: r.FilePath,
 					Hash: r.FileHash,
 				})

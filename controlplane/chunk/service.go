@@ -22,6 +22,8 @@ import (
 	"context"
 
 	"github.com/spacechunks/explorer/controlplane/blob"
+	"github.com/spacechunks/explorer/controlplane/file"
+	"github.com/spacechunks/explorer/controlplane/job"
 )
 
 type Service interface {
@@ -30,22 +32,35 @@ type Service interface {
 	UpdateChunk(ctx context.Context, new Chunk) (Chunk, error)
 	ListChunks(ctx context.Context) ([]Chunk, error)
 	CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error)
-	SaveFlavorFiles(ctx context.Context, versionID string, files []File) error
+	SaveFlavorFiles(ctx context.Context, versionID string, files []file.Object) error
 	CreateFlavorVersion(
 		ctx context.Context,
 		flavorID string,
 		version FlavorVersion,
 	) (FlavorVersion, FlavorVersionDiff, error)
+	BuildFlavorVersion(ctx context.Context, versionID string) error
 }
 
 type svc struct {
 	repo      Repository
 	blobStore blob.Store
+	jobClient job.Client
+	registry  string
+	baseImage string
 }
 
-func NewService(repo Repository, blobStore blob.Store) Service {
+func NewService(
+	repo Repository,
+	blobStore blob.Store,
+	jobClient job.Client,
+	registry string,
+	baseImage string,
+) Service {
 	return &svc{
 		repo:      repo,
 		blobStore: blobStore,
+		jobClient: jobClient,
+		registry:  registry,
+		baseImage: baseImage,
 	}
 }

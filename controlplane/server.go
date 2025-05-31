@@ -26,14 +26,20 @@ import (
 	"net"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/image"
 	"github.com/spacechunks/explorer/controlplane/instance"
+	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/postgres"
+	"github.com/spacechunks/explorer/controlplane/worker"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -43,12 +49,14 @@ import (
 type Server struct {
 	logger *slog.Logger
 	cfg    Config
+	stopCh chan struct{}
 }
 
 func NewServer(logger *slog.Logger, cfg Config) *Server {
 	return &Server{
 		logger: logger,
 		cfg:    cfg,
+		stopCh: make(chan struct{}),
 	}
 }
 
@@ -60,6 +68,18 @@ func (s *Server) Run(ctx context.Context) error {
 
 	var (
 		db         = postgres.NewDB(s.logger, pool)
+		blobStore  = blob.NewPGStore(db)
+		imgService = image.NewService(s.logger, s.cfg.OCIRegistryUser, s.cfg.OCIRegistryPass, s.cfg.ImageCacheDir)
+	)
+
+	riverClient, err := CreateRiverClient(s.logger.With("component", "river"), db, imgService, blobStore, pool)
+	if err != nil {
+		return fmt.Errorf("create river client: %w", err)
+	}
+
+	db.SetRiverClient(riverClient)
+
+	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
 			// this option is important to set, because
@@ -68,8 +88,7 @@ func (s *Server) Run(ctx context.Context) error {
 			grpc.MaxRecvMsgSize(s.cfg.MaxGRPCMessageSize),
 			grpc.UnaryInterceptor(errorInterceptor(s.logger)),
 		)
-		blobStore    = blob.NewPGStore(db)
-		chunkService = chunk.NewService(db, blobStore)
+		chunkService = chunk.NewService(db, blobStore, db, s.cfg.OCIRegistry, s.cfg.BaseImage)
 		chunkServer  = chunk.NewServer(chunkService)
 		insService   = instance.NewService(s.logger, db, chunkService)
 		insServer    = instance.NewServer(insService)
@@ -78,8 +97,9 @@ func (s *Server) Run(ctx context.Context) error {
 	instancev1alpha1.RegisterInstanceServiceServer(grpcServer, insServer)
 	chunkv1alpha1.RegisterChunkServiceServer(grpcServer, chunkServer)
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	if err := riverClient.Start(ctx); err != nil {
+		return fmt.Errorf("start river client: %w", err)
+	}
 
 	lis, err := net.Listen("tcp", s.cfg.ListenAddr)
 	if err != nil {
@@ -89,19 +109,27 @@ func (s *Server) Run(ctx context.Context) error {
 	g := multierror.Group{}
 	g.Go(func() error {
 		if err := grpcServer.Serve(lis); err != nil {
-			cancel()
+			s.Stop()
 			return fmt.Errorf("failed to serve mgmt server: %w", err)
 		}
 		return nil
 	})
 
-	<-ctx.Done()
+	<-s.stopCh
 
-	// add stop related code below
+	// add stopCh-related code below
 
 	grpcServer.GracefulStop()
 
+	if err := riverClient.Stop(ctx); err != nil {
+		s.logger.ErrorContext(ctx, "failed to stop river client", "err", err)
+	}
+
 	return g.Wait().ErrorOrNil()
+}
+
+func (s *Server) Stop() {
+	s.stopCh <- struct{}{}
 }
 
 func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
@@ -124,4 +152,38 @@ func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 		}
 		return resp, nil
 	}
+}
+
+func CreateRiverClient(
+	logger *slog.Logger,
+	repo chunk.Repository,
+	imgService image.Service,
+	blobStore blob.Store,
+	pool *pgxpool.Pool,
+) (*river.Client[pgx.Tx], error) {
+	workers := river.NewWorkers()
+
+	if err := river.AddWorkerSafely[job.CreateImage](workers, &worker.CreateImageWorker{
+		Repo:       repo,
+		ImgService: imgService,
+		BlobStore:  blobStore,
+	}); err != nil {
+		return nil, fmt.Errorf("add create image worker: %w", err)
+	}
+
+	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
+		Queues: map[string]river.QueueConfig{
+			river.QueueDefault: {
+				MaxWorkers: 10,
+			},
+		},
+		Workers:     workers,
+		Logger:      logger,
+		MaxAttempts: 5,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("river client: %w", err)
+	}
+
+	return riverClient, nil
 }

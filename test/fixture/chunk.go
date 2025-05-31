@@ -30,6 +30,7 @@ import (
 
 	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/zeebo/xxh3"
@@ -76,7 +77,7 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 			FlavorVersion(nil, func(v *chunk.FlavorVersion) {
 				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
 				v.Version = "v2"
-				v.FileHashes = []chunk.FileHash{
+				v.FileHashes = []file.Hash{
 					{
 						Path: "/tmp/somefile",
 						Hash: "aaaaaaaaaaaaaaaa",
@@ -99,7 +100,7 @@ func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.Flav
 	version := chunk.FlavorVersion{
 		Version:    "v1",
 		ChangeHash: "kkkkkkkkkkkkkkkk",
-		FileHashes: []chunk.FileHash{
+		FileHashes: []file.Hash{
 			{
 				Path: "server.properties",
 				Hash: "server-prop-hash", // hashes can only be 16 chars long
@@ -113,6 +114,7 @@ func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.Flav
 				Hash: "pppppppppppppppp",
 			},
 		},
+		BuildStatus:   chunk.BuildStatusPending,
 		FilesUploaded: false,
 		CreatedAt:     time.Time{},
 	}
@@ -125,7 +127,7 @@ func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.Flav
 		return strings.Compare(version.FileHashes[i].Path, version.FileHashes[j].Path) < 0
 	})
 
-	sorted := make([]chunk.FileHash, len(version.FileHashes))
+	sorted := make([]file.Hash, len(version.FileHashes))
 	copy(sorted, version.FileHashes)
 
 	content := make([]merkletree.Content, 0, len(version.FileHashes))

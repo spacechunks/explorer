@@ -19,42 +19,42 @@
 package image_test
 
 import (
-	"archive/tar"
-	"io"
 	"testing"
 
+	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/image"
+	imgtestdata "github.com/spacechunks/explorer/controlplane/image/testdata"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAppendLayerFromFiles(t *testing.T) {
-	expected := map[string][]byte{
-		"/opt/paper/test1":     []byte("test1"),
-		"/opt/paper/test":      []byte("helll"),
-		"/opt/paper/dir/test2": []byte("test2"),
+func TestAppendLayer(t *testing.T) {
+	layerFiles := []file.Object{
+		{
+			Path: "/opt/paper/test1",
+			Data: []byte("test1"),
+		},
+		{
+			Path: "/opt/paper/test",
+			Data: []byte("helll"),
+		},
+		{
+			Path: "/opt/paper/dir/test2",
+			Data: []byte("test2"),
+		},
 	}
 
-	layer, err := image.LayerFromFiles(expected)
+	base := imgtestdata.Image(t)
+
+	actual, err := image.AppendLayer(base, layerFiles)
 	require.NoError(t, err)
 
-	r, err := layer.Uncompressed()
+	layer, err := image.LayerFromFiles(layerFiles)
 	require.NoError(t, err)
 
-	actual := make(map[string][]byte)
+	dig, err := layer.Digest()
+	require.NoError(t, err)
 
-	tarr := tar.NewReader(r)
-
-	for {
-		hdr, err := tarr.Next()
-		if err == io.EOF {
-			break
-		}
-		require.NoError(t, err)
-
-		actual[hdr.Name] = make([]byte, hdr.Size)
-		_, err = io.ReadFull(tarr, actual[hdr.Name])
-		require.NoError(t, err)
-	}
-
-	require.Equal(t, expected, actual)
+	// throws an error if digest is not found
+	_, err = actual.LayerByDigest(dig)
+	require.NoError(t, err)
 }

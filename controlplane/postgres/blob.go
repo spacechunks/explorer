@@ -21,12 +21,13 @@ package postgres
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
 func (db *DB) BulkWriteBlobs(ctx context.Context, objects []blob.Object) error {
-	return db.doTX(ctx, func(q *query.Queries) error {
+	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		objs := make([]query.BulkInsertBlobDataParams, 0, len(objects))
 		for _, o := range objects {
 			objs = append(objs, query.BulkInsertBlobDataParams{

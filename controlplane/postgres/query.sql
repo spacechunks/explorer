@@ -99,6 +99,9 @@ SELECT hash FROM flavor_versions WHERE id = $1;
 -- name: MarkFlavorVersionFilesUploaded :exec
 UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1;
 
+-- name: UpdateFlavorVersionBuildStatus :exec
+UPDATE flavor_versions SET build_status = $1 WHERE id = $2;
+
 /*
  * BLOB STORE
  */

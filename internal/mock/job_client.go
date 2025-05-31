@@ -23,17 +23,17 @@ func (_m *MockJobClient) EXPECT() *MockJobClient_Expecter {
 	return &MockJobClient_Expecter{mock: &_m.Mock}
 }
 
-// InsertJob provides a mock function with given fields: ctx, _a1
-func (_m *MockJobClient) InsertJob(ctx context.Context, _a1 river.JobArgs) error {
-	ret := _m.Called(ctx, _a1)
+// InsertJob provides a mock function with given fields: ctx, flavorVersionID, status, _a3
+func (_m *MockJobClient) InsertJob(ctx context.Context, flavorVersionID string, status string, _a3 river.JobArgs) error {
+	ret := _m.Called(ctx, flavorVersionID, status, _a3)
 
 	if len(ret) == 0 {
 		panic("no return value specified for InsertJob")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, river.JobArgs) error); ok {
-		r0 = rf(ctx, _a1)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, river.JobArgs) error); ok {
+		r0 = rf(ctx, flavorVersionID, status, _a3)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -48,14 +48,16 @@ type MockJobClient_InsertJob_Call struct {
 
 // InsertJob is a helper method to define mock.On call
 //   - ctx context.Context
-//   - _a1 river.JobArgs
-func (_e *MockJobClient_Expecter) InsertJob(ctx interface{}, _a1 interface{}) *MockJobClient_InsertJob_Call {
-	return &MockJobClient_InsertJob_Call{Call: _e.mock.On("InsertJob", ctx, _a1)}
+//   - flavorVersionID string
+//   - status string
+//   - _a3 river.JobArgs
+func (_e *MockJobClient_Expecter) InsertJob(ctx interface{}, flavorVersionID interface{}, status interface{}, _a3 interface{}) *MockJobClient_InsertJob_Call {
+	return &MockJobClient_InsertJob_Call{Call: _e.mock.On("InsertJob", ctx, flavorVersionID, status, _a3)}
 }
 
-func (_c *MockJobClient_InsertJob_Call) Run(run func(ctx context.Context, _a1 river.JobArgs)) *MockJobClient_InsertJob_Call {
+func (_c *MockJobClient_InsertJob_Call) Run(run func(ctx context.Context, flavorVersionID string, status string, _a3 river.JobArgs)) *MockJobClient_InsertJob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(river.JobArgs))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(river.JobArgs))
 	})
 	return _c
 }
@@ -65,7 +67,7 @@ func (_c *MockJobClient_InsertJob_Call) Return(_a0 error) *MockJobClient_InsertJ
 	return _c
 }
 
-func (_c *MockJobClient_InsertJob_Call) RunAndReturn(run func(context.Context, river.JobArgs) error) *MockJobClient_InsertJob_Call {
+func (_c *MockJobClient_InsertJob_Call) RunAndReturn(run func(context.Context, string, string, river.JobArgs) error) *MockJobClient_InsertJob_Call {
 	_c.Call.Return(run)
 	return _c
 }

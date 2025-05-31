@@ -16,43 +16,33 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package migrations
+// Package file provides structs for a common way to represent files.
+package file
 
 import (
-	"embed"
-	"fmt"
-	"io"
-	"net/url"
+	"errors"
 
-	"github.com/amacneil/dbmate/v2/pkg/dbmate"
-	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
+	"github.com/cbergoon/merkletree"
 )
 
-//go:embed *.sql
-var fs embed.FS
+type Object struct {
+	Path string
+	Data []byte
+}
 
-func Migrate(dsn string) error {
-	pgDSN, err := url.Parse(dsn)
-	if err != nil {
-		return fmt.Errorf("parse dsn: %w", err)
+type Hash struct {
+	Path string
+	Hash string
+}
+
+func (f Hash) CalculateHash() ([]byte, error) {
+	return []byte(f.Hash), nil
+}
+
+func (f Hash) Equals(other merkletree.Content) (bool, error) {
+	otherHash, ok := other.(Hash)
+	if !ok {
+		return false, errors.New("value is not of type Hash")
 	}
-
-	mate := dbmate.New(pgDSN)
-	mate.FS = fs
-	mate.Log = io.Discard
-	mate.MigrationsDir = []string{"./"}
-
-	if err := mate.Wait(); err != nil {
-		return fmt.Errorf("wait migrations: %w", err)
-	}
-
-	if _, err := mate.FindMigrations(); err != nil {
-		return fmt.Errorf("find migrations: %w", err)
-	}
-
-	if err := mate.Migrate(); err != nil {
-		return fmt.Errorf("migrate: %w", err)
-	}
-
-	return nil
+	return f.Hash == otherHash.Hash, nil
 }

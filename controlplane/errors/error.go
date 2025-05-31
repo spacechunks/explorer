@@ -26,6 +26,12 @@ import (
 )
 
 /*
+ * common errors
+ */
+
+var ErrNotFound = New(codes.NotFound, "resource does not exist")
+
+/*
  * chunk related errors
  */
 
@@ -43,11 +49,12 @@ var (
  */
 
 var (
-	ErrFlavorNameExists    = New(codes.AlreadyExists, "flavor name already exists")
-	ErrFlavorVersionExists = New(codes.AlreadyExists, "flavor version already exists")
-	ErrHashMismatch        = New(codes.FailedPrecondition, "hash does not match")
-	ErrFilesAlreadyExist   = New(codes.AlreadyExists, "files already exist")
-	ErrFlavorNotFound      = New(codes.NotFound, "flavor does not exist")
+	ErrFlavorNameExists       = New(codes.AlreadyExists, "flavor name already exists")
+	ErrFlavorVersionExists    = New(codes.AlreadyExists, "flavor version already exists")
+	ErrHashMismatch           = New(codes.FailedPrecondition, "hash does not match")
+	ErrFilesAlreadyExist      = New(codes.AlreadyExists, "files already exist")
+	ErrFlavorNotFound         = New(codes.NotFound, "flavor does not exist")
+	ErrFlavorFilesNotUploaded = New(codes.FailedPrecondition, "flavor files have not been uploaded")
 )
 
 func FlavorVersionDuplicate(version string) Error {

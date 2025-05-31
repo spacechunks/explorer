@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	RegistryUser = "spc"
-	RegistryPass = "test123"
+	OCIRegsitryUser = "spc"
+	OCIRegistryPass = "test123"
 )
 
 func RunRegistry(t *testing.T) string {
@@ -76,5 +76,5 @@ func RunRegistry(t *testing.T) string {
 	mapped, err := ctr.MappedPort(ctx, "5000")
 	require.NoError(t, err)
 
-	return fmt.Sprintf("http://%s:%s", ip, mapped.Port())
+	return fmt.Sprintf("%s:%s", ip, mapped.Port())
 }

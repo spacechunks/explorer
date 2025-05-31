@@ -20,6 +20,7 @@ package chunk
 
 import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	"github.com/spacechunks/explorer/controlplane/file"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -72,25 +73,27 @@ func FlavorToDomain(transport *chunkv1alpha1.Flavor) Flavor {
 
 func FlavorVersionToDomain(transport *chunkv1alpha1.FlavorVersion) FlavorVersion {
 	return FlavorVersion{
-		ID:         transport.GetId(),
-		Version:    transport.GetVersion(),
-		Hash:       transport.GetHash(),
-		FileHashes: FileHashSliceToDomain(transport.FileHashes),
-		CreatedAt:  transport.GetCreatedAt().AsTime(),
+		ID:          transport.GetId(),
+		Version:     transport.GetVersion(),
+		Hash:        transport.GetHash(),
+		BuildStatus: BuildStatus(transport.BuildStatus),
+		FileHashes:  FileHashSliceToDomain(transport.FileHashes),
+		CreatedAt:   transport.GetCreatedAt().AsTime(),
 	}
 }
 
 func FlavorVersionToTransport(domain FlavorVersion) *chunkv1alpha1.FlavorVersion {
 	return &chunkv1alpha1.FlavorVersion{
-		Id:         domain.ID,
-		Version:    domain.Version,
-		Hash:       domain.Hash,
-		FileHashes: FileHashSliceToTransport(domain.FileHashes),
-		CreatedAt:  timestamppb.New(domain.CreatedAt),
+		Id:          domain.ID,
+		Version:     domain.Version,
+		Hash:        domain.Hash,
+		BuildStatus: chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(domain.BuildStatus)]),
+		FileHashes:  FileHashSliceToTransport(domain.FileHashes),
+		CreatedAt:   timestamppb.New(domain.CreatedAt),
 	}
 }
 
-func FileHashSliceToTransport(domain []FileHash) []*chunkv1alpha1.FileHashes {
+func FileHashSliceToTransport(domain []file.Hash) []*chunkv1alpha1.FileHashes {
 	hashes := make([]*chunkv1alpha1.FileHashes, 0, len(domain))
 	for _, fh := range domain {
 		hashes = append(hashes, &chunkv1alpha1.FileHashes{
@@ -101,10 +104,10 @@ func FileHashSliceToTransport(domain []FileHash) []*chunkv1alpha1.FileHashes {
 	return hashes
 }
 
-func FileHashSliceToDomain(transport []*chunkv1alpha1.FileHashes) []FileHash {
-	hashes := make([]FileHash, 0, len(transport))
+func FileHashSliceToDomain(transport []*chunkv1alpha1.FileHashes) []file.Hash {
+	hashes := make([]file.Hash, 0, len(transport))
 	for _, fh := range transport {
-		hashes = append(hashes, FileHash{
+		hashes = append(hashes, file.Hash{
 			Path: fh.GetPath(),
 			Hash: fh.GetHash(),
 		})

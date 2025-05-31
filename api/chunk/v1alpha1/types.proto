@@ -24,6 +24,15 @@ option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
 
 import "google/protobuf/timestamp.proto";
 
+enum BuildStatus {
+  PENDING = 0;
+  IMAGE_BUILD = 1;
+  IMAGE_BUILD_FAILED = 2;
+  CHECKPOINT_BUILD = 3;
+  CHECKPOINT_BUILD_FAILED = 4;
+  COMPLETED = 5;
+}
+
 // Chunk defines the configuration and metadata
 // of user-generated content. This can be anything
 // from a minigame to a freebuild server.
@@ -64,7 +73,9 @@ message FlavorVersion {
   string version = 3;
   string hash = 4;
   repeated FileHashes file_hashes = 5;
-  google.protobuf.Timestamp created_at = 6;
+  BuildStatus build_status = 6;
+  // TODO: add files uploaded
+  google.protobuf.Timestamp created_at = 7;
 }
 
 message FileHashes {

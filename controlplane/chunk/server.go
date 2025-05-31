@@ -20,10 +20,12 @@ package chunk
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/file"
 )
 
 type Server struct {
@@ -176,17 +178,24 @@ func (s *Server) SaveFlavorFiles(
 	ctx context.Context,
 	req *chunkv1alpha1.SaveFlavorFilesRequest,
 ) (*chunkv1alpha1.SaveFlavorFilesResponse, error) {
-	files := make([]File, 0, len(req.Files))
+	files := make([]file.Object, 0, len(req.Files))
 	for _, f := range req.Files {
-		files = append(files, File{
+		files = append(files, file.Object{
 			Path: f.GetPath(),
 			Data: f.GetData(),
 		})
 	}
 
 	if err := s.service.SaveFlavorFiles(ctx, req.GetFlavorVersionId(), files); err != nil {
-		return &chunkv1alpha1.SaveFlavorFilesResponse{}, err
+		return &chunkv1alpha1.SaveFlavorFilesResponse{}, fmt.Errorf("save flavor files: %w", err)
 	}
 
 	return &chunkv1alpha1.SaveFlavorFilesResponse{}, nil
+}
+
+func (s *Server) BuildFlavorVersion(
+	ctx context.Context,
+	req *chunkv1alpha1.BuildFlavorVersionRequest,
+) (*chunkv1alpha1.BuildFlavorVersionResponse, error) {
+	return &chunkv1alpha1.BuildFlavorVersionResponse{}, s.service.BuildFlavorVersion(ctx, req.GetFlavorVersionId())
 }

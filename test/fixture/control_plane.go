@@ -20,6 +20,7 @@ package fixture
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"testing"
@@ -30,11 +31,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const ControlPlaneAddr = "localhost:9012"
+const (
+	ControlPlaneAddr = "localhost:9012"
+	BaseImage        = "base-image:latest"
+)
 
-func RunControlPlane(t *testing.T, pg *Postgres) {
-	ctx, cancel := context.WithCancel(context.Background())
+type ControlPlaneRunOption func(*ControlPlaneRunOptions)
+
+type ControlPlaneRunOptions struct {
+	OCIRegistryEndpoint string
+}
+
+func WithOCIRegistryEndpoint(endpoint string) ControlPlaneRunOption {
+	return func(opts *ControlPlaneRunOptions) {
+		opts.OCIRegistryEndpoint = endpoint
+	}
+}
+
+func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) {
+	ctx := context.Background()
 	pg.Run(t, ctx)
+
+	defaultOpts := ControlPlaneRunOptions{
+		OCIRegistryEndpoint: "http://localhost:5000",
+	}
+
+	for _, opt := range opts {
+		opt(&defaultOpts)
+	}
 
 	var (
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -42,11 +66,16 @@ func RunControlPlane(t *testing.T, pg *Postgres) {
 			ListenAddr:         ControlPlaneAddr,
 			DBConnString:       pg.ConnString,
 			MaxGRPCMessageSize: 1_000_000_000,
+			OCIRegistry:        defaultOpts.OCIRegistryEndpoint,
+			OCIRegistryUser:    OCIRegsitryUser,
+			OCIRegistryPass:    OCIRegistryPass,
+			BaseImage:          fmt.Sprintf("%s/base-image:latest", defaultOpts.OCIRegistryEndpoint),
+			ImageCacheDir:      t.TempDir(),
 		})
 	)
 
 	t.Cleanup(func() {
-		cancel()
+		server.Stop()
 	})
 
 	go func() {
