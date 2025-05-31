@@ -899,9 +899,11 @@ func TestBuildFlavorVersion(t *testing.T) {
 			require.NoError(t, err)
 
 			var (
-				timeoutCtx, _ = context.WithTimeout(ctx, 20*time.Second)
-				ticker        = time.NewTicker(200 * time.Millisecond)
+				timeoutCtx, cancel = context.WithTimeout(ctx, 20*time.Second)
+				ticker             = time.NewTicker(200 * time.Millisecond)
 			)
+
+			defer cancel()
 
 			for {
 				select {

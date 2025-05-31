@@ -40,12 +40,12 @@ func main() {
 		fs                 = flag.NewFlagSet("controlplane", flag.ContinueOnError)
 		listenAddr         = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                //nolint:lll
 		pgConnString       = fs.String("postgres-dsn", "", "connection string in the form of postgres://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]") //nolint:lll
-		grpcMaxMessageSize = fs.Uint("grpc-max-message-size", 4000000, "maximum grpc message size in bytes")
-		ociRegistry        = fs.String("oci-registry", "", "registry to use to pull and push images")
-		ociRegistryUser    = fs.String("oci-registry-user", "", "oci registry username used for authentication against configured oci registry")
-		ociRegistryPass    = fs.String("oci-registry-pass", "", "oci registry password used for authentication against configured oci registry")
-		baseImage          = fs.String("base-image", "", "base image to use for creating flavor version images")
-		imageCacheDir      = fs.String("image-cache-dir", "/tmp/explorer-images", "directory used to cache base image")
+		grpcMaxMessageSize = fs.Uint("grpc-max-message-size", 4000000, "maximum grpc message size in bytes")                                                             //nolint:lll
+		ociRegistry        = fs.String("oci-registry", "", "registry to use to pull and push images")                                                                    //nolint:lll
+		ociRegistryUser    = fs.String("oci-registry-user", "", "oci registry username used for authentication against configured oci registry")                         //nolint:lll
+		ociRegistryPass    = fs.String("oci-registry-pass", "", "oci registry password used for authentication against configured oci registry")                         //nolint:lll
+		baseImage          = fs.String("base-image", "", "base image to use for creating flavor version images")                                                         //nolint:lll
+		imageCacheDir      = fs.String("image-cache-dir", "/tmp/explorer-images", "directory used to cache base image")                                                  //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
