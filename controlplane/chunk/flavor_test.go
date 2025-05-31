@@ -24,6 +24,7 @@ import (
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/test/fixture"
 	mocky "github.com/stretchr/testify/mock"
@@ -100,7 +101,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			prevVersion: fixture.FlavorVersion(t),
 			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
 				v.Version = "v2"
-				v.FileHashes = []chunk.FileHash{
+				v.FileHashes = []file.Hash{
 					// plugins/myplugin/config.json not present -> its removed
 					{
 						Path: "paper.yml", // unchanged
@@ -118,19 +119,19 @@ func TestCreateFlavorVersion(t *testing.T) {
 				v.ChangeHash = "68df46974f6dc5fe"
 			}),
 			expectedDiff: chunk.FlavorVersionDiff{
-				Added: []chunk.FileHash{
+				Added: []file.Hash{
 					{
 						Path: "plugins/myplugin.jar",
 						Hash: "hash1",
 					},
 				},
-				Removed: []chunk.FileHash{
+				Removed: []file.Hash{
 					{
 						Path: "plugins/myplugin/config.json",
 						Hash: "cooooooooooooooo",
 					},
 				},
-				Changed: []chunk.FileHash{
+				Changed: []file.Hash{
 					{
 						Path: "server.properties",
 						Hash: "hash changed",
@@ -164,7 +165,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			prevVersion: fixture.FlavorVersion(t),
 			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
 				v.Hash = "some-not-matching-hash"
-				v.FileHashes = []chunk.FileHash{
+				v.FileHashes = []file.Hash{
 					// plugins/myplugin/config.json not present -> its removed
 					{
 						Path: "paper.yml", // unchanged

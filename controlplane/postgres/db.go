@@ -43,12 +43,21 @@ type bulkExecer interface {
 	Close() error
 }
 
-func NewDB(logger *slog.Logger, pool *pgxpool.Pool, riverClient *river.Client[pgx.Tx]) *DB {
+func NewDB(logger *slog.Logger, pool *pgxpool.Pool) *DB {
 	return &DB{
-		logger:      logger,
-		pool:        pool,
-		riverClient: riverClient,
+		logger: logger,
+		pool:   pool,
 	}
+}
+
+// SetRiverClient is a workaround to resolve a chicken-egg problem.
+// river workers need to be configured before the river client can
+// be created. workers depend on services which use the [postgres.DB]
+// object. passing the river client in the [postgres.DB] constructor
+// will create a circular dependency. db needs river client -> river
+// client needs db.
+func (db *DB) SetRiverClient(client *river.Client[pgx.Tx]) {
+	db.riverClient = client
 }
 
 func (db *DB) do(ctx context.Context, fn func(q *query.Queries) error) error {

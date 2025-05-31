@@ -29,7 +29,6 @@ import (
 
 	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/blob"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	imgtestdata "github.com/spacechunks/explorer/controlplane/image/testdata"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/worker"
@@ -45,21 +44,15 @@ func TestCreateImageWorker(t *testing.T) {
 		imgService = mock.NewMockImageService(t)
 		blobStore  = mock.NewMockBlobStore(t)
 		repo       = mock.NewMockChunkRepository(t)
-		jobClient  = mock.NewMockJobClient(t)
+		// jobClient  = mock.NewMockJobClient(t)
 	)
-
-	ctx = context.WithValue(ctx, worker.ContextKeyImageService, imgService)
-	ctx = context.WithValue(ctx, worker.ContextKeyBlobStore, blobStore)
-	ctx = context.WithValue(ctx, worker.ContextKeyChunkRepository, repo)
-	ctx = context.WithValue(ctx, worker.ContextKeyJobClient, jobClient)
 
 	var (
 		registry         = "example.com"
 		baseImgRef       = "example.com/base:latest"
 		c                = fixture.Chunk()
-		flavor           = c.Flavors[0]
 		flavorVersion    = c.Flavors[0].Versions[0]
-		checkpointImgRef = fmt.Sprintf("%s/%s/%s:%s", registry, c.Name, flavor.Name, flavorVersion.Version)
+		checkpointImgRef = fmt.Sprintf("%s/%s:base", registry, flavorVersion.ID)
 	)
 
 	hashToPath := make(map[string]string, len(flavorVersion.FileHashes))
@@ -67,10 +60,10 @@ func TestCreateImageWorker(t *testing.T) {
 		hashToPath[fh.Hash] = fh.Path
 	}
 
-	sl := slices.Collect(maps.Keys(hashToPath))
+	hashes := slices.Collect(maps.Keys(hashToPath))
 
-	sort.Slice(sl, func(i, j int) bool {
-		return strings.Compare(sl[i], sl[j]) < 0
+	sort.Slice(hashes, func(i, j int) bool {
+		return strings.Compare(hashes[i], hashes[j]) < 0
 	})
 
 	fileData := make(map[string][]byte)
@@ -95,23 +88,25 @@ func TestCreateImageWorker(t *testing.T) {
 		Return(flavorVersion, nil)
 
 	blobStore.EXPECT().
-		Get(mocky.Anything, sl).
+		Get(mocky.Anything, hashes).
 		Return(objs, nil)
 
+	// ignore the created image here, because mocks have trouble comparing the
+	// ociv1.Image object. we can trust that the pushed image will contain the
+	// correct files, because we have a test for that in the image package.
 	imgService.EXPECT().
 		Push(mocky.Anything, mocky.Anything, checkpointImgRef).
 		Return(nil)
 
-	jobClient.EXPECT().
-		InsertJob(
-			mocky.Anything,
-			flavorVersion.ID,
-			string(chunk.BuildStatusBuildCheckpoint),
-			job.CreateCheckpoint{BaseImage: checkpointImgRef},
-		).
-		Return(nil)
-
-	w := worker.CreateImageWorker{}
+	// TODO: uncomment when we have a checkpoint worker
+	//jobClient.EXPECT().
+	//	InsertJob(
+	//		mocky.Anything,
+	//		flavorVersion.ID,
+	//		string(chunk.BuildStatusBuildCheckpoint),
+	//		job.CreateCheckpoint{BaseImage: checkpointImgRef},
+	//	).
+	//	Return(nil)
 
 	riverJob := &river.Job[job.CreateImage]{
 		Args: job.CreateImage{
@@ -119,6 +114,12 @@ func TestCreateImageWorker(t *testing.T) {
 			BaseImage:       baseImgRef,
 			OCIRegistry:     registry,
 		},
+	}
+
+	w := worker.CreateImageWorker{
+		Repo:       repo,
+		BlobStore:  blobStore,
+		ImgService: imgService,
 	}
 
 	require.NoError(t, w.Work(ctx, riverJob))

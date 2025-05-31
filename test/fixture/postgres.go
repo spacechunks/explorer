@@ -30,7 +30,9 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spacechunks/explorer/controlplane"
+	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/image"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/test"
@@ -51,9 +53,10 @@ func NewPostgres() *Postgres {
 
 func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	var (
-		user = os.Getenv("FUNCTESTS_POSTGRES_USER")
-		pass = os.Getenv("FUNCTESTS_POSTGRES_PASS")
-		db   = os.Getenv("FUNCTESTS_POSTGRES_DB")
+		user   = os.Getenv("FUNCTESTS_POSTGRES_USER")
+		pass   = os.Getenv("FUNCTESTS_POSTGRES_PASS")
+		db     = os.Getenv("FUNCTESTS_POSTGRES_DB")
+		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	)
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -95,11 +98,24 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	require.NoError(t, err)
 
 	p.Pool = pool
+	p.DB = postgres.NewDB(logger, pool)
 
-	riverClient, err := controlplane.RunRiverWorker(ctx, pool)
+	var (
+		blobStore  = blob.NewPGStore(p.DB)
+		imgService = image.NewService(logger, OCIRegsitryUser, OCIRegistryPass, t.TempDir())
+	)
+
+	riverClient, err := controlplane.CreateRiverClient(logger, p.DB, imgService, blobStore, pool)
 	require.NoError(t, err)
 
-	p.DB = postgres.NewDB(slog.New(slog.NewTextHandler(os.Stdout, nil)), pool, riverClient)
+	p.DB.SetRiverClient(riverClient)
+
+	err = riverClient.Start(ctx)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		riverClient.Stop(ctx)
+	})
 }
 
 type CreateOptions struct {
@@ -180,6 +196,19 @@ func (p *Postgres) CreateFlavorVersion(t *testing.T, flavorID string, version *c
 	created, err := p.DB.CreateFlavorVersion(ctx, flavorID, *version, "")
 	require.NoError(t, err)
 	*version = created
+}
+
+func (p *Postgres) CreateBlobs(t *testing.T, version chunk.FlavorVersion) {
+	var objs []blob.Object
+	for _, fh := range version.FileHashes {
+		objs = append(objs, blob.Object{
+			Hash: fh.Hash,
+			Data: []byte(fh.Path),
+		})
+	}
+
+	err := p.DB.BulkWriteBlobs(context.Background(), objs)
+	require.NoError(t, err)
 }
 
 func (p *Postgres) InsertNode(t *testing.T) {

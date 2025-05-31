@@ -26,6 +26,12 @@ import (
 )
 
 /*
+ * common errors
+ */
+
+var ErrNotFound = New(codes.NotFound, "resource does not exist")
+
+/*
  * chunk related errors
  */
 

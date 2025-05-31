@@ -20,23 +20,25 @@ package worker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"slices"
 	"sort"
 	"strings"
 
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/image"
 	"github.com/spacechunks/explorer/controlplane/job"
 )
 
 type CreateImageWorker struct {
 	river.WorkerDefaults[job.CreateImage]
+	Repo       chunk.Repository
+	BlobStore  blob.Store
+	ImgService image.Service
 }
 
 func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.CreateImage]) error {
@@ -44,32 +46,12 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		return fmt.Errorf("validate args: %w", err)
 	}
 
-	repo, ok := ctx.Value(ContextKeyChunkRepository).(chunk.Repository)
-	if !ok {
-		return errors.New("repo not found in context")
-	}
-
-	blobStore, ok := ctx.Value(ContextKeyBlobStore).(blob.Store)
-	if !ok {
-		return errors.New("blob store not found in context")
-	}
-
-	imgService, ok := ctx.Value(ContextKeyImageService).(image.Service)
-	if !ok {
-		return errors.New("img service not found in context")
-	}
-
-	jobClient, ok := ctx.Value(ContextKeyJobClient).(job.Client)
-	if !ok {
-		return errors.New("img service not found in context")
-	}
-
-	baseImg, err := imgService.Pull(ctx, riverJob.Args.BaseImage)
+	baseImg, err := w.ImgService.Pull(ctx, riverJob.Args.BaseImage)
 	if err != nil {
 		return fmt.Errorf("pull image: %w", err)
 	}
 
-	version, err := repo.FlavorVersionByID(ctx, riverJob.Args.FlavorVersionID)
+	version, err := w.Repo.FlavorVersionByID(ctx, riverJob.Args.FlavorVersionID)
 	if err != nil {
 		return fmt.Errorf("flavor version: %w", err)
 	}
@@ -81,27 +63,25 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 	}
 
 	// needed for testing to have a consistent order
-	sl := slices.Collect(maps.Keys(hashToPath))
-	sort.Slice(sl, func(i, j int) bool {
-		return strings.Compare(sl[i], sl[j]) < 0
+	hashes := slices.Collect(maps.Keys(hashToPath))
+	sort.Slice(hashes, func(i, j int) bool {
+		return strings.Compare(hashes[i], hashes[j]) < 0
 	})
 
-	objs, err := blobStore.Get(ctx, sl)
+	objs, err := w.BlobStore.Get(ctx, hashes)
 	if err != nil {
 		return fmt.Errorf("get objs: %w", err)
 	}
 
-	f := make(map[string][]byte, len(objs))
+	f := make([]file.Object, 0, len(objs))
 	for _, obj := range objs {
-		f[hashToPath[obj.Hash]] = obj.Data
+		f = append(f, file.Object{
+			Path: hashToPath[obj.Hash],
+			Data: obj.Data,
+		})
 	}
 
-	layer, err := image.LayerFromFiles(f)
-	if err != nil {
-		return fmt.Errorf("layer from files: %w", err)
-	}
-
-	img, err := mutate.AppendLayers(baseImg, layer)
+	img, err := image.AppendLayer(baseImg, f)
 	if err != nil {
 		return fmt.Errorf("append layer: %w", err)
 	}
@@ -110,19 +90,20 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 	//        => <registry>/<userID>/<flavor-version-id>:<base|checkpoint>
 	ref := fmt.Sprintf("%s/%s:base", riverJob.Args.OCIRegistry, riverJob.Args.FlavorVersionID)
 
-	if err := imgService.Push(ctx, img, ref); err != nil {
+	if err := w.ImgService.Push(ctx, img, ref); err != nil {
 		return fmt.Errorf("push image: %w", err)
 	}
 
-	if err := jobClient.InsertJob(
-		ctx,
-		riverJob.Args.FlavorVersionID,
-		string(chunk.BuildStatusBuildCheckpoint),
-		job.CreateCheckpoint{
-			BaseImage: ref,
-		}); err != nil {
-		return fmt.Errorf("insert create checkpoint job: %w", err)
-	}
+	// TODO: uncomment when we have a checkpoint worker
+	//if err := jobClient.InsertJob(
+	//	ctx,
+	//	riverJob.Args.FlavorVersionID,
+	//	string(chunk.BuildStatusBuildCheckpoint),
+	//	job.CreateCheckpoint{
+	//		BaseImage: ref,
+	//	}); err != nil {
+	//	return fmt.Errorf("insert create checkpoint job: %w", err)
+	//}
 
 	return nil
 }
