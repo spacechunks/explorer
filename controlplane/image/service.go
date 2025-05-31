@@ -68,7 +68,7 @@ func (s *service) Push(ctx context.Context, img ociv1.Image, imgRef string) erro
 		},
 		ForceAttemptHTTP2: true,
 	}
-	auth := Auther{
+	auth := Auth{
 		Username: s.registryUser,
 		Password: s.registryPass,
 	}
@@ -104,7 +104,7 @@ func (s *service) Pull(ctx context.Context, imgRef string) (ociv1.Image, error) 
 			ForceAttemptHTTP2: true,
 		}
 
-		auth := Auther{
+		auth := Auth{
 			Username: s.registryUser,
 			Password: s.registryPass,
 		}
@@ -132,13 +132,13 @@ func (s *service) Pull(ctx context.Context, imgRef string) (ociv1.Image, error) 
 	return img, nil
 }
 
-// Auther is a hack to avoid having to rely on keychain stuff
-type Auther struct {
+// Auth is a hack to avoid having to rely on keychain stuff
+type Auth struct {
 	Username string
 	Password string
 }
 
-func (a Auther) Authorization() (*authn.AuthConfig, error) {
+func (a Auth) Authorization() (*authn.AuthConfig, error) {
 	return &authn.AuthConfig{
 		Username: a.Username,
 		Password: a.Password,

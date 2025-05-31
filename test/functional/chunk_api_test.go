@@ -847,7 +847,7 @@ func TestBuildFlavorVersion(t *testing.T) {
 				pg       = fixture.NewPostgres()
 				endpoint = fixture.RunRegistry(t)
 				c        = fixture.Chunk()
-				auth     = remote.WithAuth(&image.Auther{
+				auth     = remote.WithAuth(&image.Auth{
 					Username: fixture.OCIRegsitryUser,
 					Password: fixture.OCIRegistryPass,
 				})

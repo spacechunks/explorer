@@ -110,7 +110,7 @@ func (s *Server) Run(ctx context.Context) error {
 	g.Go(func() error {
 		if err := grpcServer.Serve(lis); err != nil {
 			s.Stop()
-			return fmt.Errorf("failed to serve mgmt server: fw", err)
+			return fmt.Errorf("failed to serve mgmt server: %w", err)
 		}
 		return nil
 	})
