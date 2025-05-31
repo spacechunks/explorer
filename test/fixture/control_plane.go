@@ -49,7 +49,7 @@ func WithOCIRegistryEndpoint(endpoint string) ControlPlaneRunOption {
 }
 
 func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 	pg.Run(t, ctx)
 
 	defaultOpts := ControlPlaneRunOptions{
@@ -75,7 +75,7 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 	)
 
 	t.Cleanup(func() {
-		cancel()
+		server.Stop()
 	})
 
 	go func() {

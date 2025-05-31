@@ -105,7 +105,13 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 		imgService = image.NewService(logger, OCIRegsitryUser, OCIRegistryPass, t.TempDir())
 	)
 
-	riverClient, err := controlplane.CreateRiverClient(logger, p.DB, imgService, blobStore, pool)
+	riverClient, err := controlplane.CreateRiverClient(
+		logger.With("component", "functests-postgres"),
+		p.DB,
+		imgService,
+		blobStore,
+		pool,
+	)
 	require.NoError(t, err)
 
 	p.DB.SetRiverClient(riverClient)

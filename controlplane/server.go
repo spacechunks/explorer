@@ -49,12 +49,14 @@ import (
 type Server struct {
 	logger *slog.Logger
 	cfg    Config
+	stopCh chan struct{}
 }
 
 func NewServer(logger *slog.Logger, cfg Config) *Server {
 	return &Server{
 		logger: logger,
 		cfg:    cfg,
+		stopCh: make(chan struct{}),
 	}
 }
 
@@ -99,9 +101,6 @@ func (s *Server) Run(ctx context.Context) error {
 		return fmt.Errorf("start river client: %w", err)
 	}
 
-	cancelCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	lis, err := net.Listen("tcp", s.cfg.ListenAddr)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
@@ -110,15 +109,15 @@ func (s *Server) Run(ctx context.Context) error {
 	g := multierror.Group{}
 	g.Go(func() error {
 		if err := grpcServer.Serve(lis); err != nil {
-			cancel()
-			return fmt.Errorf("failed to serve mgmt server: %w", err)
+			s.Stop()
+			return fmt.Errorf("failed to serve mgmt server: fw", err)
 		}
 		return nil
 	})
 
-	<-cancelCtx.Done()
+	<-s.stopCh
 
-	// add stop-related code below
+	// add stopCh-related code below
 
 	grpcServer.GracefulStop()
 
@@ -127,6 +126,10 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 
 	return g.Wait().ErrorOrNil()
+}
+
+func (s *Server) Stop() {
+	s.stopCh <- struct{}{}
 }
 
 func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
@@ -151,8 +154,13 @@ func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 	}
 }
 
-func CreateRiverClient(logger *slog.Logger, repo chunk.Repository, imgService image.Service, blobStore blob.Store, pool *pgxpool.Pool) (*river.Client[pgx.Tx], error) {
-
+func CreateRiverClient(
+	logger *slog.Logger,
+	repo chunk.Repository,
+	imgService image.Service,
+	blobStore blob.Store,
+	pool *pgxpool.Pool,
+) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 
 	if err := river.AddWorkerSafely[job.CreateImage](workers, &worker.CreateImageWorker{
