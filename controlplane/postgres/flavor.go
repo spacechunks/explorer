@@ -31,6 +31,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
@@ -148,9 +150,9 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 			return err
 		}
 
-		hashes := make([]chunk.FileHash, 0, len(files))
+		hashes := make([]file.Hash, 0, len(files))
 		for _, f := range files {
-			hashes = append(hashes, chunk.FileHash{
+			hashes = append(hashes, file.Hash{
 				Path: f.FilePath,
 				Hash: f.FileHash.String,
 			})
@@ -265,7 +267,11 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 			return err
 		}
 
-		hashes := make([]chunk.FileHash, 0, len(rows))
+		if len(rows) == 0 {
+			return apierrs.ErrNotFound
+		}
+
+		hashes := make([]file.Hash, 0, len(rows))
 
 		row := rows[0]
 		ret = chunk.FlavorVersion{
@@ -279,7 +285,7 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 		}
 
 		for _, r := range rows {
-			hashes = append(hashes, chunk.FileHash{
+			hashes = append(hashes, file.Hash{
 				Path: r.FilePath,
 				Hash: r.FileHash.String,
 			})

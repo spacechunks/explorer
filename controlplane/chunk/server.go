@@ -25,6 +25,7 @@ import (
 	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/file"
 )
 
 type Server struct {
@@ -177,9 +178,9 @@ func (s *Server) SaveFlavorFiles(
 	ctx context.Context,
 	req *chunkv1alpha1.SaveFlavorFilesRequest,
 ) (*chunkv1alpha1.SaveFlavorFilesResponse, error) {
-	files := make([]File, 0, len(req.Files))
+	files := make([]file.Object, 0, len(req.Files))
 	for _, f := range req.Files {
-		files = append(files, File{
+		files = append(files, file.Object{
 			Path: f.GetPath(),
 			Data: f.GetData(),
 		})

@@ -20,6 +20,7 @@ package chunk
 
 import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	"github.com/spacechunks/explorer/controlplane/file"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -90,7 +91,7 @@ func FlavorVersionToTransport(domain FlavorVersion) *chunkv1alpha1.FlavorVersion
 	}
 }
 
-func FileHashSliceToTransport(domain []FileHash) []*chunkv1alpha1.FileHashes {
+func FileHashSliceToTransport(domain []file.Hash) []*chunkv1alpha1.FileHashes {
 	hashes := make([]*chunkv1alpha1.FileHashes, 0, len(domain))
 	for _, fh := range domain {
 		hashes = append(hashes, &chunkv1alpha1.FileHashes{
@@ -101,10 +102,10 @@ func FileHashSliceToTransport(domain []FileHash) []*chunkv1alpha1.FileHashes {
 	return hashes
 }
 
-func FileHashSliceToDomain(transport []*chunkv1alpha1.FileHashes) []FileHash {
-	hashes := make([]FileHash, 0, len(transport))
+func FileHashSliceToDomain(transport []*chunkv1alpha1.FileHashes) []file.Hash {
+	hashes := make([]file.Hash, 0, len(transport))
 	for _, fh := range transport {
-		hashes = append(hashes, FileHash{
+		hashes = append(hashes, file.Hash{
 			Path: fh.GetPath(),
 			Hash: fh.GetHash(),
 		})

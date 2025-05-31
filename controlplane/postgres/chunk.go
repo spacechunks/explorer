@@ -31,6 +31,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 )
 
@@ -250,7 +251,7 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 		ret                chunk.Chunk
 		flavorMap          = make(map[string]chunk.Flavor)
 		versionMap         = make(map[string]chunk.FlavorVersion)
-		fhMap              = make(map[string][]chunk.FileHash)
+		fhMap              = make(map[string][]file.Hash)
 		versionToFlavorMap = make(map[string]string)
 
 		row = rows[0]
@@ -293,12 +294,12 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 		}
 
 		if r.FlavorVersionID != nil {
-			contains := slices.ContainsFunc(fhMap[*r.FlavorVersionID], func(fh chunk.FileHash) bool {
+			contains := slices.ContainsFunc(fhMap[*r.FlavorVersionID], func(fh file.Hash) bool {
 				return fh.Path == r.FilePath
 			})
 
 			if !contains {
-				fhMap[*r.FlavorVersionID] = append(fhMap[*r.FlavorVersionID], chunk.FileHash{
+				fhMap[*r.FlavorVersionID] = append(fhMap[*r.FlavorVersionID], file.Hash{
 					Path: r.FilePath,
 					Hash: r.FileHash,
 				})
