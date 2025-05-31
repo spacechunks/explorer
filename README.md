@@ -25,4 +25,7 @@ What's missing for a working beta:
 **Requirements**
 * Linux kernel >= 6.6, tcx not supported (caused by `link.AttachTCX`)
 
+## License
+This project uses two different licenses: AGPLv3 and LGPLv3. Everything found under under the `api/` folder is licensed under LGPLv3 while everything else is covered by AGPLv3, if not stated otherwise.
+
 
