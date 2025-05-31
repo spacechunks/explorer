@@ -288,7 +288,7 @@ CREATE TABLE public.river_queue (
 --
 
 CREATE TABLE public.schema_migrations (
-    version character varying(128) NOT NULL
+    version character varying NOT NULL
 );
 
 

@@ -154,6 +154,7 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 				FlavorVersionFlavorID:  r.FlavorID,
 				Version:                r.Version.String,
 				Hash:                   r.Hash.String,
+				BuildStatus:            string(r.BuildStatus.BuildStatus),
 				ChangeHash:             r.ChangeHash.String,
 				FilesUploaded:          r.FilesUploaded.Bool,
 				FlavorVersionCreatedAt: r.CreatedAt_3.Time,
@@ -205,6 +206,7 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 			FlavorVersionFlavorID:  r.FlavorID,
 			Version:                r.Version.String,
 			Hash:                   r.Hash.String,
+			BuildStatus:            string(r.BuildStatus.BuildStatus),
 			ChangeHash:             r.ChangeHash.String,
 			FilesUploaded:          r.FilesUploaded.Bool,
 			FlavorVersionCreatedAt: r.CreatedAt_3.Time,
@@ -234,6 +236,7 @@ type chunkRelationsRow struct {
 	FlavorVersionFlavorID  *string
 	Version                string
 	Hash                   string
+	BuildStatus            string
 	ChangeHash             string
 	FilesUploaded          bool
 	FlavorVersionCreatedAt time.Time
@@ -286,6 +289,7 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 					ID:            *r.FlavorVersionID,
 					Version:       r.Version,
 					Hash:          r.Hash,
+					BuildStatus:   chunk.BuildStatus(r.BuildStatus),
 					ChangeHash:    r.ChangeHash,
 					FilesUploaded: r.FilesUploaded,
 					CreatedAt:     r.FlavorVersionCreatedAt,
