@@ -104,6 +104,14 @@ service ChunkService {
   //     changed after creating the flavor version or are missing.
   rpc SaveFlavorFiles(SaveFlavorFilesRequest) returns (SaveFlavorFilesResponse);
 
+  // BuildFlavorVersion will initiate the process for building a checkpoint image.
+  // there are multiple steps involved. Calling this endpoint multiple times will
+  // have no effect, if the build process is ongoing. Build status can be retrieved
+  // by getting the flavor version.
+  //
+  // Defined error codes:
+  // - FAILED_PRECONDITION:
+  //   - the flavor version files have not been uploaded yet.
   rpc BuildFlavorVersion(BuildFlavorVersionRequest) returns (BuildFlavorVersionResponse);
 }
 
