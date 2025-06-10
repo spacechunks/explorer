@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: 1.24.3
-      - run: make controlplane/image/testdata/img.tar.gz
+      - run: make internal/image/testdata/img.tar.gz
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
