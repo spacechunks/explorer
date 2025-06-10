@@ -22,8 +22,8 @@ import (
 	"testing"
 
 	"github.com/spacechunks/explorer/controlplane/file"
-	"github.com/spacechunks/explorer/controlplane/image"
-	imgtestdata "github.com/spacechunks/explorer/controlplane/image/testdata"
+	"github.com/spacechunks/explorer/internal/image"
+	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
 	"github.com/stretchr/testify/require"
 )
 

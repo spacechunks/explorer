@@ -30,15 +30,15 @@ import (
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/file"
-	"github.com/spacechunks/explorer/controlplane/image"
 	"github.com/spacechunks/explorer/controlplane/job"
+	image2 "github.com/spacechunks/explorer/internal/image"
 )
 
 type CreateImageWorker struct {
 	river.WorkerDefaults[job.CreateImage]
 	Repo       chunk.Repository
 	BlobStore  blob.Store
-	ImgService image.Service
+	ImgService image2.Service
 }
 
 func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.CreateImage]) error {
@@ -81,7 +81,7 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		})
 	}
 
-	img, err := image.AppendLayer(baseImg, f)
+	img, err := image2.AppendLayer(baseImg, f)
 	if err != nil {
 		return fmt.Errorf("append layer: %w", err)
 	}

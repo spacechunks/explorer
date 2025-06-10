@@ -25,8 +25,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spacechunks/explorer/controlplane/image"
-	imgtestdata "github.com/spacechunks/explorer/controlplane/image/testdata"
+	"github.com/spacechunks/explorer/internal/image"
+	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 )

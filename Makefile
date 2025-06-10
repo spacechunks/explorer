@@ -1,6 +1,6 @@
 WORKDIR := work
 CNI_PLUGINS := $(WORKDIR)/plugins
-IMG_TESTDATA_DIR := controlplane/image/testdata
+IMG_TESTDATA_DIR := internal/image/testdata
 TEST_IMG := $(IMG_TESTDATA_DIR)/img.tar.gz
 SUDO := sudo --preserve-env=PATH env
 DATABASE_URL := postgres://postgres:test@localhost:5432/postgres?sslmode=disable
@@ -35,6 +35,11 @@ setup:
 	$(RUN) $(SUDO) apt update
 	$(RUN) $(SUDO) apt install -y linux-tools-common libbpf-dev
 	$(RUN) $(SUDO) mount bpffs /sys/fs/bpf -t bpf
+
+.PHONY: run-platformd
+run-platformd: $(WORKDIR)
+	$(RUN) go build -o ./$(WORKDIR)/platformd.bin ./cmd/platformd
+	$(RUN) $(SUDO) ./$(WORKDIR)/platformd.bin
 
 .PHONY: sqlc
 sqlc:
