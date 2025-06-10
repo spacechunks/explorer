@@ -29,14 +29,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//go:generate bash ./build-img.sh
-
 //go:embed img.tar.gz
-var image []byte
+var RawImage []byte
 
 func Image(t *testing.T) ociv1.Image {
 	img, err := tarball.Image(func() (io.ReadCloser, error) {
-		return io.NopCloser(bytes.NewReader(image)), nil
+		return io.NopCloser(bytes.NewReader(RawImage)), nil
 	}, nil)
 	require.NoError(t, err)
 	return img
