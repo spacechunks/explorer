@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/stream"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 // CheckpointAnnotation is used by crio to identify an image containing a checkpoint.
@@ -46,25 +47,31 @@ func FromCheckpoint(path string, arch string, createdBy string, createdAt time.T
 		Time: createdAt,
 	}
 
-	cfg := &ociv1.ConfigFile{
-		Architecture: arch,
-		Created:      created,
-		History: []ociv1.History{
-			{
-				Created:   created,
-				CreatedBy: createdBy,
-			},
+	cfg, err := empty.Image.ConfigFile()
+	if err != nil {
+		return nil, fmt.Errorf("read image config: %w", err)
+	}
+
+	cfg.Architecture = arch
+	cfg.OS = "linux"
+	cfg.Created = created
+	cfg.History = []ociv1.History{
+		{
+			Created:   created,
+			CreatedBy: createdBy,
 		},
 	}
 
 	img, err := mutate.ConfigFile(empty.Image, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("config file: %w", err)
+		return nil, fmt.Errorf("write image config: %w", err)
 	}
+
+	img = mutate.ConfigMediaType(img, types.OCIConfigJSON)
 
 	// use a streaming layer here, because checkpoints
 	// will be very large.
-	img, err = mutate.AppendLayers(img, stream.NewLayer(f))
+	img, err = mutate.AppendLayers(img, stream.NewLayer(f, stream.WithMediaType(types.OCILayer)))
 	if err != nil {
 		return nil, fmt.Errorf("append layer: %w", err)
 	}
@@ -72,6 +79,8 @@ func FromCheckpoint(path string, arch string, createdBy string, createdAt time.T
 	img = mutate.Annotations(img, map[string]string{
 		CheckpointAnnotation: "payload",
 	}).(ociv1.Image)
+
+	img = mutate.MediaType(img, types.OCIManifestSchema1)
 
 	return img, nil
 }

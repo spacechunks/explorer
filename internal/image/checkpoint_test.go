@@ -34,6 +34,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/stream"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/image/testdata"
 	"github.com/spacechunks/explorer/test/fixture"
@@ -71,23 +72,10 @@ func TestFromCheckpoint(t *testing.T) {
 					fixture.OCIRegistryPass,
 					t.TempDir(),
 				)
-				addr      = fixture.RunRegistry(t)
-				createdAt = time.Now()
-				createdBy = "test"
-				arch      = "arm64"
-				created   = ociv1.Time{
-					Time: createdAt,
-				}
-				cfg = &ociv1.ConfigFile{
-					Architecture: "arm64",
-					Created:      created,
-					History: []ociv1.History{
-						{
-							Created:   created,
-							CreatedBy: createdBy,
-						},
-					},
-				}
+				addr           = fixture.RunRegistry(t)
+				createdAt      = time.Now()
+				createdBy      = "test"
+				arch           = "arm64"
 				actualRefStr   = addr + "/actual"
 				expectedRefStr = addr + "/expected"
 			)
@@ -97,13 +85,7 @@ func TestFromCheckpoint(t *testing.T) {
 			err := os.WriteFile(path, testdata.RawImage, 0777)
 			require.NoError(t, err)
 
-			expectedImg, err := mutate.ConfigFile(empty.Image, cfg)
-			require.NoError(t, err)
-
-			expectedImg, err = mutate.AppendLayers(expectedImg, stream.NewLayer(io.NopCloser(bytes.NewReader(testdata.RawImage))))
-			require.NoError(t, err)
-
-			expectedImg = mutate.Annotations(expectedImg, tt.annotations).(ociv1.Image)
+			expectedImg := buildExpectedImg(t, arch, createdBy, createdAt, tt.annotations)
 
 			actualImg, err := image.FromCheckpoint(path, arch, createdBy, createdAt)
 			require.NoError(t, err)
@@ -144,4 +126,49 @@ func TestFromCheckpoint(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func buildExpectedImg(
+	t *testing.T,
+	arch string,
+	createdBy string,
+	createdAt time.Time,
+	annotations map[string]string,
+) ociv1.Image {
+	var (
+		created = ociv1.Time{
+			Time: createdAt,
+		}
+	)
+
+	cfg, err := empty.Image.ConfigFile()
+	require.NoError(t, err)
+
+	cfg.Architecture = arch
+	cfg.OS = "linux"
+	cfg.Created = created
+	cfg.History = []ociv1.History{
+		{
+			Created:   created,
+			CreatedBy: createdBy,
+		},
+	}
+
+	img, err := mutate.ConfigFile(empty.Image, cfg)
+	require.NoError(t, err)
+
+	img = mutate.ConfigMediaType(img, types.OCIConfigJSON)
+
+	img, err = mutate.AppendLayers(
+		img,
+		stream.NewLayer(
+			io.NopCloser(bytes.NewReader(testdata.RawImage)),
+			stream.WithMediaType(types.OCILayer)),
+	)
+	require.NoError(t, err)
+
+	img = mutate.Annotations(img, annotations).(ociv1.Image)
+	img = mutate.MediaType(img, types.OCIManifestSchema1)
+
+	return img
 }
