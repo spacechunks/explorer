@@ -72,6 +72,9 @@ func (s *service) Push(ctx context.Context, img ociv1.Image, imgRef string) erro
 		Username: s.registryUser,
 		Password: s.registryPass,
 	}
+
+	s.logger.InfoContext(ctx, "pushing image", "ref", ref)
+
 	if err := remote.Write(
 		ref,
 		img,
