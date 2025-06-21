@@ -69,7 +69,7 @@ func (r *logReader) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func spdyExecutor(urlStr string) (remotecommand.Executor, error) {
+func newSPDYExecutor(urlStr string) (remotecommand.Executor, error) {
 	streamURL, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, fmt.Errorf("parse url: %w", err)

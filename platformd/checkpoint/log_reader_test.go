@@ -10,14 +10,14 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
-type testRemoteCmdExecutor struct {
+type mockRemoteCmdExecutor struct {
 }
 
-func (e *testRemoteCmdExecutor) Stream(_ remotecommand.StreamOptions) error {
+func (e *mockRemoteCmdExecutor) Stream(_ remotecommand.StreamOptions) error {
 	panic("implement me")
 }
 
-func (e *testRemoteCmdExecutor) StreamWithContext(ctx context.Context, opts remotecommand.StreamOptions) error {
+func (e *mockRemoteCmdExecutor) StreamWithContext(ctx context.Context, opts remotecommand.StreamOptions) error {
 	t := time.NewTicker(1 * time.Second)
 	counter := 0
 	for {
@@ -53,7 +53,7 @@ func TestLogReader(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := newLogReader(&testRemoteCmdExecutor{})
+			r := newLogReader(&mockRemoteCmdExecutor{})
 
 			ctx, cancel := context.WithTimeout(context.Background(), tt.deadline)
 			defer cancel()
