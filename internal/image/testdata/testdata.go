@@ -16,41 +16,26 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package functional
+package testdata
 
 import (
-	"context"
-	"log/slog"
-	"os"
-	"strings"
+	"bytes"
+	_ "embed"
+	"io"
 	"testing"
 
-	"github.com/spacechunks/explorer/internal/image"
-	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
-	"github.com/spacechunks/explorer/test/fixture"
+	ociv1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/stretchr/testify/require"
 )
 
-func TestImagePull(t *testing.T) {
-	var (
-		ctx      = context.Background()
-		cacheDir = t.TempDir()
-		service  = image.NewService(
-			slog.New(slog.NewTextHandler(os.Stdout, nil)),
-			fixture.OCIRegsitryUser,
-			fixture.OCIRegistryPass,
-			cacheDir,
-		)
-		endpoint = fixture.RunRegistry(t)
-	)
+//go:embed img.tar.gz
+var RawImage []byte
 
-	ref := strings.ReplaceAll(endpoint, "http://", "") + "/test:latest"
-
-	err := service.Push(ctx, imgtestdata.Image(t), ref)
+func Image(t *testing.T) ociv1.Image {
+	img, err := tarball.Image(func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(RawImage)), nil
+	}, nil)
 	require.NoError(t, err)
-
-	_, err = service.Pull(ctx, ref)
-	require.NoError(t, err)
-
-	require.FileExists(t, cacheDir+"/"+strings.ReplaceAll(ref, "/", "_"))
+	return img
 }
