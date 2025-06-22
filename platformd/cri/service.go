@@ -130,8 +130,7 @@ func (s *svc) RunContainer(ctx context.Context, req *runtimev1.CreateContainerRe
 }
 
 // EnsureImage first calls ListImages then checks if the image is contained in the response.
-// if this is not the case PullImage is being called. this function does not access the services logger,
-// and instead uses a passed one, to preserve arguments which provide additional context to the image pull.
+// if this is not the case PullImage is being called.
 func (s *svc) EnsureImage(ctx context.Context, imageURL string) (bool, error) {
 	listResp, err := s.imgClient.ListImages(ctx, &runtimev1.ListImagesRequest{})
 	if err != nil {
@@ -163,3 +162,9 @@ func (s *svc) EnsureImage(ctx context.Context, imageURL string) (bool, error) {
 
 	return true, nil
 }
+
+// TODO: DeletePodAndContainers function
+//       -> stop all containers
+//       -> remove all containers
+//       -> stop pod
+//       -> remove pod

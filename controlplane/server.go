@@ -117,7 +117,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 	<-s.stopCh
 
-	// add stopCh-related code below
+	// add stop-related code below
 
 	grpcServer.GracefulStop()
 
