@@ -9,7 +9,7 @@ sudo bash llvm $LLVM_VERSION all
 rm llvm
 
 # platformd
-mkdir /etc/platformd
+sudo mkdir /etc/platformd
 sudo cp dev/platformd/config.json /etc/platformd/config.json
 sudo cp dev/platformd/Corefile /etc/platformd/dns.conf
 sudo cp dev/platformd/envoy-xds.yaml /etc/platformd/proxy.conf
