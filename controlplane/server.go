@@ -35,11 +35,11 @@ import (
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/image"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/controlplane/worker"
+	"github.com/spacechunks/explorer/internal/image"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -117,7 +117,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 	<-s.stopCh
 
-	// add stopCh-related code below
+	// add stop-related code below
 
 	grpcServer.GracefulStop()
 

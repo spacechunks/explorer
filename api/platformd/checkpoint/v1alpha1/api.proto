@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package platformd.checkpoint.v1alpha1;
+
+option go_package = "github.com/spacechunks/explorer/api/platformd/checkpoint/v1alpha1";
+
+import "platformd/checkpoint/v1alpha1/types.proto";
+
+service CheckpointService {
+  rpc CreateCheckpoint(CreateCheckpointRequest) returns (CreateCheckpointResponse);
+  rpc CheckpointStatus(CheckpointStatusRequest) returns (CheckpointStatusResponse);
+}
+
+message CreateCheckpointRequest {
+  string base_image_url = 1;
+}
+
+message CreateCheckpointResponse {
+  string checkpoint_id = 1;
+}
+
+message CheckpointStatusRequest {
+  string checkpoint_id = 1;
+}
+
+message CheckpointStatusResponse {
+  CheckpointStatus status = 1;
+}
+

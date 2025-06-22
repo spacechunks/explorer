@@ -16,28 +16,39 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package testdata
+package garbage_test
 
 import (
-	"bytes"
-	_ "embed"
-	"io"
+	"context"
+	"log/slog"
+	"os"
 	"testing"
+	"time"
 
-	ociv1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/stretchr/testify/require"
+	"github.com/spacechunks/explorer/platformd/garbage"
+	"github.com/stretchr/testify/assert"
 )
 
-//go:generate bash ./build-img.sh
+type testCollector struct {
+	called bool
+}
 
-//go:embed img.tar.gz
-var image []byte
+func (tc *testCollector) CollectGarbage(ctx context.Context) error {
+	tc.called = true
+	return nil
+}
 
-func Image(t *testing.T) ociv1.Image {
-	img, err := tarball.Image(func() (io.ReadCloser, error) {
-		return io.NopCloser(bytes.NewReader(image)), nil
-	}, nil)
-	require.NoError(t, err)
-	return img
+func TestGC(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	tc := &testCollector{}
+	gc := garbage.NewExecutor(logger, 100*time.Millisecond, tc)
+
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		gc.Stop()
+	}()
+
+	gc.Run(context.Background())
+
+	assert.True(t, tc.called)
 }

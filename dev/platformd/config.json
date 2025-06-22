@@ -13,5 +13,15 @@
   "max-port": 40000,
   "workload-namespace": "explorer-instances",
   "registry-endpoint": "ghcr.io/spacechunks/explorer-dev",
-  "control-plane-endpoint": "localhost:9012"
+  "registry-user": "",
+  "registry-password": "",
+  "control-plane-endpoint": "localhost:9012",
+  "checkpoint-listen-addr": "localhost:3011",
+  "checkpoint-status-retention-period": "30s",
+  "checkpoint-file-dir": "/tmp/platformd",
+  "checkpoint-timeout-seconds": 60,
+  "checkpoint-cpu-period": 100000,
+  "checkpoint-cpu-quota": 200000,
+  "checkpoint-memory-limit-bytes": 2000000000,
+  "checkpoint-container-ready-timeout": "1m"
 }

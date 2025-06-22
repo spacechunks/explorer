@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package platformd.checkpoint.v1alpha1;
+
+option go_package = "github.com/spacechunks/explorer/api/platformd/checkpoint/v1alpha1";
+
+message CheckpointStatus {
+  // state of the current checkpointing process.
+  CheckpointState state = 1;
+
+  // message provides details as to why the checkpoint is
+  // in this state. this field is optional.
+  string message = 2;
+}
+
+enum CheckpointState {
+  RUNNING = 0;
+  PULL_BASE_IMAGE_FAILED = 1;
+  CONTAINER_WAIT_READY_FAILED = 2;
+  CONTAINER_CHECKPOINT_FAILED = 3;
+  PUSH_CHECKPOINT_FAILED = 4;
+  COMPLETED = 5;
+}

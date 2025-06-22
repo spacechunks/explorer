@@ -6,14 +6,22 @@ import (
 	"log/slog"
 	"net"
 	"net/netip"
+	"os"
 	"time"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/hashicorp/go-multierror"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	"github.com/spacechunks/explorer/internal/image"
+	"github.com/spacechunks/explorer/platformd/garbage"
+	"k8s.io/client-go/tools/remotecommand"
+
+	//instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	checkpointv1alpha1 "github.com/spacechunks/explorer/api/platformd/checkpoint/v1alpha1"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 	"github.com/spacechunks/explorer/internal/datapath"
+	"github.com/spacechunks/explorer/platformd/checkpoint"
 	"github.com/spacechunks/explorer/platformd/cri"
 	"github.com/spacechunks/explorer/platformd/proxy"
 	"github.com/spacechunks/explorer/platformd/proxy/xds"
@@ -25,11 +33,13 @@ import (
 
 type Server struct {
 	logger *slog.Logger
+	stopCh chan struct{}
 }
 
 func NewServer(logger *slog.Logger) *Server {
 	return &Server{
 		logger: logger,
+		stopCh: make(chan struct{}),
 	}
 }
 
@@ -63,10 +73,9 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 
 	var (
 		xdsCfg    = cache.NewSnapshotCache(true, cache.IDHash{}, nil)
-		rtClient  = runtimev1.NewRuntimeServiceClient(criConn)
 		insClient = instancev1alpha1.NewInstanceServiceClient(cpConn)
 		criSvc    = cri.NewService(
-			s.logger,
+			s.logger.With("component", "cri-service"),
 			runtimev1.NewRuntimeServiceClient(criConn),
 			runtimev1.NewImageServiceClient(criConn),
 		)
@@ -75,17 +84,40 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			criSvc,
 		)
 		proxySvc = proxy.NewService(
-			s.logger,
+			s.logger.With("component", "proxy-service"),
 			proxy.Config{
 				DNSUpstream: dnsUpstream,
 			},
 			xds.NewMap(proxyNodeID, xdsCfg),
 		)
 
-		mgmtServer  = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
+		checkSvcLogger = s.logger.With("component", "checkpoint-service")
+		checkSvc       = checkpoint.NewService(
+			checkSvcLogger,
+			checkpoint.Config{
+				CPUPeriod:                cfg.CheckpointConfig.CPUPeriod,
+				CPUQuota:                 cfg.CheckpointConfig.CPUQuota,
+				MemoryLimitBytes:         cfg.CheckpointConfig.MemoryLimitBytes,
+				CheckpointFileDir:        cfg.CheckpointConfig.CheckpointFileDir,
+				CheckpointTimeoutSeconds: cfg.CheckpointConfig.CheckpointTimeoutSeconds,
+				RegistryUser:             cfg.RegistryUser,
+				RegistryPass:             cfg.RegistryPass,
+				ListenAddr:               cfg.CheckpointConfig.ListenAddr,
+				StatusRetentionPeriod:    cfg.CheckpointConfig.StatusRetentionPeriod,
+				ContainerReadyTimeout:    cfg.CheckpointConfig.ContainerReadyTimeout,
+			},
+			criSvc,
+			image.NewService(checkSvcLogger, cfg.RegistryUser, cfg.RegistryPass, "/tmp"),
+			checkpoint.NewStore(),
+			func(url string) (remotecommand.Executor, error) {
+				return checkpoint.NewSPDYExecutor(url)
+			},
+		)
+
 		proxyServer = proxy.NewServer(proxySvc)
 		wlStore     = workload.NewStore()
 		wlServer    = workload.NewServer(wlStore)
+		checkServer = checkpoint.NewServer(checkSvc)
 		reconciler  = newReconciler(s.logger, reconcilerConfig{
 			MaxAttempts:       cfg.MaxAttempts,
 			SyncInterval:      cfg.SyncInterval,
@@ -95,12 +127,17 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			WorkloadNamespace: cfg.WorkloadNamespace,
 			RegistryEndpoint:  cfg.RegistryEndpoint,
 		}, insClient, wlSvc, wlStore)
-		gc = newPodGC(s.logger, rtClient, 1*time.Second, 5)
+		gc = garbage.NewExecutor(s.logger, 1*time.Second, checkSvc)
 	)
 
+	mgmtServer := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 	proxyv1alpha1.RegisterProxyServiceServer(mgmtServer, proxyServer)
 	workloadv1alpha2.RegisterWorkloadServiceServer(mgmtServer, wlServer)
-	xds.CreateAndRegisterServer(ctx, s.logger, mgmtServer, xdsCfg)
+	checkpointv1alpha1.RegisterCheckpointServiceServer(mgmtServer, checkServer)
+	xds.CreateAndRegisterServer(ctx, s.logger.With("component", "xds"), mgmtServer, xdsCfg)
+
+	checkGRPCServer := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
+	checkpointv1alpha1.RegisterCheckpointServiceServer(checkGRPCServer, checkServer)
 
 	bpf, err := datapath.LoadBPF()
 	if err != nil {
@@ -136,6 +173,10 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 
 	if err := proxySvc.ApplyGlobalResources(ctx); err != nil {
 		return fmt.Errorf("apply global resources: %w", err)
+	}
+
+	if err := os.MkdirAll(cfg.CheckpointConfig.CheckpointFileDir, 0777); err != nil {
+		return fmt.Errorf("create checkpoint location dir: %w", err)
 	}
 
 	// before we start our grpc services make sure our system workloads are running
@@ -211,17 +252,31 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("ensure coredns: %w", err)
 	}
 
-	unixSock, err := net.Listen("unix", cfg.ManagementServerListenSock)
-	if err != nil {
-		return fmt.Errorf("failed to listen on unix socket: %v", err)
-	}
-
-	ctx, cancel := context.WithCancel(ctx)
-
 	var g multierror.Group
+
 	g.Go(func() error {
+		checkSock, err := net.Listen("tcp", cfg.CheckpointConfig.ListenAddr)
+		if err != nil {
+			s.stopCh <- struct{}{}
+			return fmt.Errorf("failed to listen on unix socket: %v", err)
+		}
+
+		if err := checkGRPCServer.Serve(checkSock); err != nil {
+			s.stopCh <- struct{}{}
+			return fmt.Errorf("failed to serve mgmt server: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		unixSock, err := net.Listen("unix", cfg.ManagementServerListenSock)
+		if err != nil {
+			s.stopCh <- struct{}{}
+			return fmt.Errorf("failed to listen on unix socket: %v", err)
+		}
+
 		if err := mgmtServer.Serve(unixSock); err != nil {
-			cancel()
+			s.stopCh <- struct{}{}
 			return fmt.Errorf("failed to serve mgmt server: %w", err)
 		}
 		return nil
@@ -231,14 +286,16 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	// because otherwise creating pending instances will
 	// fail as netglue is not able to retrieve the allocated
 	// host port.
-	go gc.Start(ctx)
+	go gc.Run(ctx)
 	go reconciler.Start(ctx)
 
-	<-ctx.Done()
+	<-s.stopCh
 
 	// add stop related code below
 
 	mgmtServer.GracefulStop()
+	checkGRPCServer.GracefulStop()
+
 	gc.Stop()
 	reconciler.Stop()
 
@@ -250,4 +307,8 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	})
 
 	return g.Wait().ErrorOrNil()
+}
+
+func (s *Server) Stop() {
+	s.stopCh <- struct{}{}
 }

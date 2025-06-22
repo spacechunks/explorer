@@ -29,9 +29,9 @@ import (
 
 	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/blob"
-	imgtestdata "github.com/spacechunks/explorer/controlplane/image/testdata"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/worker"
+	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/test/fixture"
 	mocky "github.com/stretchr/testify/mock"

@@ -1,6 +1,10 @@
 package platformd
 
-import "time"
+import (
+	"time"
+
+	"github.com/spacechunks/explorer/platformd/checkpoint"
+)
 
 type Config struct {
 	ManagementServerListenSock string
@@ -17,5 +21,8 @@ type Config struct {
 	MaxPort                    uint16
 	WorkloadNamespace          string
 	RegistryEndpoint           string
+	RegistryUser               string
+	RegistryPass               string
 	ControlPlaneEndpoint       string
+	CheckpointConfig           checkpoint.Config
 }

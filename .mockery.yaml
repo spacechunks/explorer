@@ -8,7 +8,7 @@ packages:
   github.com/spacechunks/explorer/controlplane/job:
     interfaces:
       Client:
-  github.com/spacechunks/explorer/controlplane/image:
+  github.com/spacechunks/explorer/internal/image:
     interfaces:
       Service:
   github.com/spacechunks/explorer/controlplane/blob:
