@@ -48,11 +48,14 @@ func (s *Server) CreateCheckpoint(
 		return nil, status.Errorf(codes.InvalidArgument, "invalid image url: %v", err)
 	}
 
-	if _, err := s.service.CreateCheckpoint(ctx, ref); err != nil {
+	id, err := s.service.CreateCheckpoint(context.Background(), ref)
+	if err != nil {
 		return nil, err
 	}
 
-	return &checkpointv1alpha1.CreateCheckpointResponse{}, nil
+	return &checkpointv1alpha1.CreateCheckpointResponse{
+		CheckpointId: id,
+	}, nil
 }
 
 func (s *Server) CheckpointStatus(
@@ -60,7 +63,7 @@ func (s *Server) CheckpointStatus(
 	req *checkpointv1alpha1.CheckpointStatusRequest,
 ) (*checkpointv1alpha1.CheckpointStatusResponse, error) {
 	if _, err := uuid.Parse(req.CheckpointId); err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid checkpoint id")
+		return nil, status.Errorf(codes.InvalidArgument, "invalid checkpoint id: %v", err)
 	}
 
 	if s := s.service.CheckpointStatus(req.CheckpointId); s != nil {

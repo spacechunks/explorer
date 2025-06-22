@@ -18,15 +18,19 @@
 
 package checkpoint
 
-import "time"
+import (
+	"time"
+)
 
 type Config struct {
 	CPUPeriod                int64
 	CPUQuota                 int64
-	MemoryLimitInBytes       int64
-	CheckpointLocationDir    string
+	MemoryLimitBytes         int64
+	CheckpointFileDir        string
 	CheckpointTimeoutSeconds int64
 	RegistryUser             string
 	RegistryPass             string
-	StatusRetentionDuration  time.Duration
+	ListenAddr               string
+	StatusRetentionPeriod    time.Duration
+	ContainerReadyTimeout    time.Duration
 }
