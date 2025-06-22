@@ -27,7 +27,7 @@ import (
 type Status struct {
 	State       State
 	Message     string
-	CompletedAt time.Time
+	CompletedAt *time.Time
 }
 
 type State string
@@ -45,14 +45,14 @@ const (
 //       at some point evaluate if a single status store solution
 //       is possible.
 
-type statusStore interface {
+type StatusStore interface {
 	Get(id string) *Status
 	Update(id string, status Status)
 	View() map[string]Status
 	Del(id string)
 }
 
-func newStore() statusStore {
+func NewStore() StatusStore {
 	return &inmemStore{
 		data: make(map[string]Status),
 	}
