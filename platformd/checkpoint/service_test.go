@@ -63,8 +63,19 @@ func TestCollectGarbage(t *testing.T) {
 					State: checkpoint.StateRunning,
 				},
 				"2": {
-					State:       checkpoint.StateCompleted,
-					CompletedAt: ptr.Pointer(time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()-1, 0, now.Location())),
+					State: checkpoint.StateCompleted,
+					CompletedAt: ptr.Pointer(
+						time.Date(
+							now.Year(),
+							now.Month(),
+							now.Day(),
+							now.Hour(),
+							now.Minute(),
+							now.Second()-1,
+							0,
+							now.Location(),
+						),
+					),
 				},
 			},
 			expectedStoreItems: map[string]checkpoint.Status{

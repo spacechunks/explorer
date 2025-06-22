@@ -150,7 +150,14 @@ func TestCheckpoint(t *testing.T) {
 	}
 }
 
-func prepUntilContainerAttach(svc *ServiceImpl, checkID string, podID string, ctrID string, mockCRISvc *mock.MockCriService, baseRef name.Reference) {
+func prepUntilContainerAttach(
+	svc *ServiceImpl,
+	checkID string,
+	podID string,
+	ctrID string,
+	mockCRISvc *mock.MockCriService,
+	baseRef name.Reference,
+) {
 	mockCRISvc.EXPECT().
 		EnsureImage(mocky.Anything, baseRef.String()).
 		Return(true, nil)

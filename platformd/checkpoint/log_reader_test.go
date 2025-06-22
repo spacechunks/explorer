@@ -26,7 +26,7 @@ func (e *mockRemoteCmdExecutor) StreamWithContext(ctx context.Context, opts remo
 			if counter == 3 {
 				_, _ = opts.Stdout.Write([]byte(`Done (30.0s)! For help, type "help"`))
 			}
-			_, _ = opts.Stdout.Write([]byte(fmt.Sprintf("%d", counter)))
+			_, _ = fmt.Fprintf(opts.Stdout, "%d", counter)
 			counter++
 		case <-ctx.Done():
 			return ctx.Err()
