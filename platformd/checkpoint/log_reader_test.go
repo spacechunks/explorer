@@ -2,37 +2,12 @@ package checkpoint
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
+	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/tools/remotecommand"
 )
-
-type mockRemoteCmdExecutor struct {
-}
-
-func (e *mockRemoteCmdExecutor) Stream(_ remotecommand.StreamOptions) error {
-	panic("implement me")
-}
-
-func (e *mockRemoteCmdExecutor) StreamWithContext(ctx context.Context, opts remotecommand.StreamOptions) error {
-	t := time.NewTicker(1 * time.Second)
-	counter := 0
-	for {
-		select {
-		case <-t.C:
-			if counter == 3 {
-				_, _ = opts.Stdout.Write([]byte(`Done (30.0s)! For help, type "help"`))
-			}
-			_, _ = fmt.Fprintf(opts.Stdout, "%d", counter)
-			counter++
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-}
 
 func TestLogReader(t *testing.T) {
 	tests := []struct {
@@ -53,7 +28,7 @@ func TestLogReader(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := newLogReader(&mockRemoteCmdExecutor{})
+			r := newLogReader(&test.RemoteCmdExecutor{})
 
 			ctx, cancel := context.WithTimeout(context.Background(), tt.deadline)
 			defer cancel()
