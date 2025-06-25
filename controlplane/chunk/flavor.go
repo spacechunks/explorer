@@ -301,7 +301,15 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 		return nil
 	}
 
-	// TODO: if previous state is CHECKPOINT_FAILED => start checkpoint job otherwise start create image job
+	if version.BuildStatus == BuildStatusBuildCheckpointFailed {
+		if err := s.jobClient.InsertJob(ctx, versionID, string(BuildStatusBuildCheckpoint), job.CreateCheckpoint{
+			FlavorVersionID: versionID,
+			BaseImageURL:    fmt.Sprintf("%s/%s:base", s.registry, versionID),
+		}); err != nil {
+			return fmt.Errorf("insert create image job: %w", err)
+		}
+		return nil
+	}
 
 	if err := s.jobClient.InsertJob(ctx, versionID, string(BuildStatusBuildImage), job.CreateImage{
 		FlavorVersionID: versionID,
