@@ -56,7 +56,20 @@ func (c CreateImage) Validate() error {
 }
 
 type CreateCheckpoint struct {
-	BaseImageURL string `json:"baseImageUrl"`
+	FlavorVersionID string `json:"flavorVersionId"`
+	BaseImageURL    string `json:"baseImageUrl"`
+}
+
+func (c CreateCheckpoint) Validate() error {
+	if _, err := uuid.Parse(c.FlavorVersionID); err != nil {
+		return ErrInvalidFlavorVersionID
+	}
+
+	if c.BaseImageURL == "" {
+		return ErrInvalidBaseImage
+	}
+
+	return nil
 }
 
 func (CreateCheckpoint) Kind() string {

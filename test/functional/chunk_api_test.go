@@ -936,6 +936,7 @@ func TestBuildFlavorVersion(t *testing.T) {
 						require.NoError(t, err)
 
 						if slices.Contains(tags.Tags, "checkpoint") {
+							// FIXME: test that state is set to completed
 							return
 						}
 					}

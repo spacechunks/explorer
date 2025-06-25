@@ -114,7 +114,8 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		riverJob.Args.FlavorVersionID,
 		string(chunk.BuildStatusBuildCheckpoint),
 		job.CreateCheckpoint{
-			BaseImageURL: ref,
+			FlavorVersionID: riverJob.Args.FlavorVersionID,
+			BaseImageURL:    ref,
 		}); err != nil {
 		return fmt.Errorf("insert create checkpoint job: %w", err)
 	}

@@ -169,7 +169,7 @@ func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 
 func CreateRiverClient(
 	logger *slog.Logger,
-	repo chunk.Repository,
+	chunkRepo chunk.Repository,
 	imgService image.Service,
 	blobStore blob.Store,
 	pool *pgxpool.Pool,
@@ -180,7 +180,7 @@ func CreateRiverClient(
 ) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 
-	imgWorker := worker.NewCreateImageWorker(repo, blobStore, imgService, jobClient)
+	imgWorker := worker.NewCreateImageWorker(chunkRepo, blobStore, imgService, jobClient)
 	if err := river.AddWorkerSafely[job.CreateImage](workers, imgWorker); err != nil {
 		return nil, fmt.Errorf("add create image worker: %w", err)
 	}
@@ -191,6 +191,7 @@ func CreateRiverClient(
 		checkpointTimeout,
 		statusCheckInterval,
 		nodeRepo,
+		chunkRepo,
 	)
 	if err := river.AddWorkerSafely[job.CreateCheckpoint](workers, checkWorker); err != nil {
 		return nil, fmt.Errorf("add create checkpoint worker: %w", err)

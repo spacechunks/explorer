@@ -104,7 +104,10 @@ func TestCreateImageWorker(t *testing.T) {
 			mocky.Anything,
 			flavorVersion.ID,
 			string(chunk.BuildStatusBuildCheckpoint),
-			job.CreateCheckpoint{BaseImageURL: checkpointImgRef},
+			job.CreateCheckpoint{
+				FlavorVersionID: flavorVersion.ID,
+				BaseImageURL:    checkpointImgRef,
+			},
 		).
 		Return(nil)
 
