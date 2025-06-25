@@ -29,6 +29,7 @@ import (
 
 	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/blob"
+	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
@@ -44,7 +45,7 @@ func TestCreateImageWorker(t *testing.T) {
 		imgService = mock.NewMockImageService(t)
 		blobStore  = mock.NewMockBlobStore(t)
 		repo       = mock.NewMockChunkRepository(t)
-		// jobClient  = mock.NewMockJobClient(t)
+		jobClient  = mock.NewMockJobClient(t)
 	)
 
 	var (
@@ -98,15 +99,14 @@ func TestCreateImageWorker(t *testing.T) {
 		Push(mocky.Anything, mocky.Anything, checkpointImgRef).
 		Return(nil)
 
-	// TODO: uncomment when we have a checkpoint worker
-	//jobClient.EXPECT().
-	//	InsertJob(
-	//		mocky.Anything,
-	//		flavorVersion.ID,
-	//		string(chunk.BuildStatusBuildCheckpoint),
-	//		job.CreateCheckpoint{BaseImage: checkpointImgRef},
-	//	).
-	//	Return(nil)
+	jobClient.EXPECT().
+		InsertJob(
+			mocky.Anything,
+			flavorVersion.ID,
+			string(chunk.BuildStatusBuildCheckpoint),
+			job.CreateCheckpoint{BaseImageURL: checkpointImgRef},
+		).
+		Return(nil)
 
 	riverJob := &river.Job[job.CreateImage]{
 		Args: job.CreateImage{
@@ -116,11 +116,7 @@ func TestCreateImageWorker(t *testing.T) {
 		},
 	}
 
-	w := worker.CreateImageWorker{
-		Repo:       repo,
-		BlobStore:  blobStore,
-		ImgService: imgService,
-	}
+	w := worker.NewCreateImageWorker(repo, blobStore, imgService, jobClient)
 
 	require.NoError(t, w.Work(ctx, riverJob))
 }

@@ -56,7 +56,7 @@ func (c CreateImage) Validate() error {
 }
 
 type CreateCheckpoint struct {
-	BaseImage string `json:"baseImage"`
+	BaseImageURL string `json:"baseImageUrl"`
 }
 
 func (CreateCheckpoint) Kind() string {

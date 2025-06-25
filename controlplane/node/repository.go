@@ -16,19 +16,20 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package controlplane
+package node
 
-import "time"
+import (
+	"context"
+	"net/netip"
+)
 
-type Config struct {
-	ListenAddr                    string
-	DBConnString                  string
-	MaxGRPCMessageSize            int
-	OCIRegistry                   string
-	OCIRegistryUser               string
-	OCIRegistryPass               string
-	BaseImage                     string
-	ImageCacheDir                 string
-	CheckpointJobTimeout          time.Duration
-	CheckpointStatusCheckInterval time.Duration
+type Node struct {
+	ID                    string
+	Name                  string
+	Addr                  netip.Addr
+	CheckpointAPIEndpoint netip.AddrPort
+}
+
+type Repository interface {
+	RandomNode(ctx context.Context) (Node, error)
 }
