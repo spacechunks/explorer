@@ -67,9 +67,11 @@ CREATE INDEX flavor_hash_idx ON flavor_versions(hash);
 CREATE TYPE instance_state AS ENUM ('PENDING', 'CREATING', 'RUNNING', 'DELETING', 'DELETED', 'CREATION_FAILED');
 
 CREATE TABLE IF NOT EXISTS nodes (
-    id         UUID        NOT NULL PRIMARY KEY,
-    address    INET        NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                      UUID         NOT NULL PRIMARY KEY,
+    name                    TEXT         NOT NULL,
+    address                 INET         NOT NULL,
+    checkpoint_api_endpoint TEXT         NOT NULL,
+    created_at              TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS instances (

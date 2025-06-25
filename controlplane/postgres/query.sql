@@ -1,4 +1,11 @@
 /*
+ * NODES
+ */
+
+-- name: RandomNode :one
+SELECT * FROM nodes ORDER BY random() LIMIT 1;
+
+/*
  * CHUNKS
  */
 
