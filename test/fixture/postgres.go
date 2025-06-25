@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
 	"github.com/docker/docker/api/types/container"
@@ -42,21 +43,23 @@ import (
 )
 
 type Postgres struct {
+	logger     *slog.Logger
 	DB         *postgres.DB
 	Pool       *pgxpool.Pool
 	ConnString string
 }
 
 func NewPostgres() *Postgres {
-	return &Postgres{}
+	return &Postgres{
+		logger: slog.New(slog.NewTextHandler(os.Stdout, nil)),
+	}
 }
 
 func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	var (
-		user   = os.Getenv("FUNCTESTS_POSTGRES_USER")
-		pass   = os.Getenv("FUNCTESTS_POSTGRES_PASS")
-		db     = os.Getenv("FUNCTESTS_POSTGRES_DB")
-		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		user = os.Getenv("FUNCTESTS_POSTGRES_USER")
+		pass = os.Getenv("FUNCTESTS_POSTGRES_PASS")
+		db   = os.Getenv("FUNCTESTS_POSTGRES_DB")
 	)
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -98,19 +101,36 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	require.NoError(t, err)
 
 	p.Pool = pool
-	p.DB = postgres.NewDB(logger, pool)
+	p.DB = postgres.NewDB(p.logger, pool)
+}
+
+// CreateRiverClient creates a new river client calling [controlplane.CreateRiverClient]
+// and assigning it to the [postgres.DB] instance wrapped by this struct. do not call this
+// function if you are using postgres in combination with the control plane fixture as this
+// could override the river client set by the control plane.
+//
+// also needs to be called AFTER [Postgres.Run].
+func (p *Postgres) CreateRiverClient(t *testing.T) {
+	if p.Pool == nil || p.DB == nil {
+		t.Fatal("db connection is nil, call CreateRiverClient after Run")
+	}
 
 	var (
+		ctx        = context.Background()
 		blobStore  = blob.NewPGStore(p.DB)
-		imgService = image.NewService(logger, OCIRegsitryUser, OCIRegistryPass, t.TempDir())
+		imgService = image.NewService(p.logger, OCIRegsitryUser, OCIRegistryPass, t.TempDir())
 	)
 
 	riverClient, err := controlplane.CreateRiverClient(
-		logger.With("component", "functests-postgres"),
+		p.logger,
 		p.DB,
 		imgService,
 		blobStore,
-		pool,
+		p.Pool,
+		5*time.Second,
+		1*time.Second,
+		p.DB,
+		p.DB,
 	)
 	require.NoError(t, err)
 
@@ -219,6 +239,7 @@ func (p *Postgres) CreateBlobs(t *testing.T, version chunk.FlavorVersion) {
 
 func (p *Postgres) InsertNode(t *testing.T) {
 	ctx := context.Background()
-	_, err := p.Pool.Exec(ctx, `INSERT INTO nodes (id, address) VALUES ($1, $2)`, Node().ID, Node().Addr)
+	q := `INSERT INTO nodes (id, name, address, checkpoint_api_endpoint) VALUES ($1, $2, $3, $4)`
+	_, err := p.Pool.Exec(ctx, q, Node().ID, Node().Name, Node().Addr, Node().CheckpointAPIEndpoint)
 	require.NoError(t, err)
 }

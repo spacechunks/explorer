@@ -86,6 +86,7 @@ func TestInsertJob(t *testing.T) {
 		pg  = fixture.NewPostgres()
 	)
 	pg.Run(t, ctx)
+	pg.CreateRiverClient(t)
 
 	c := fixture.Chunk()
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)

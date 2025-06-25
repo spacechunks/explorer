@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spacechunks/explorer/internal/mock"
+	"github.com/spacechunks/explorer/test"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/remotecommand"
@@ -116,7 +117,7 @@ func TestCheckpoint(t *testing.T) {
 				mockCRISvc  = mock.NewMockCriService(t)
 				statusStore = NewStore()
 				mockExecer  = func(url string) (remotecommand.Executor, error) {
-					return &mockRemoteCmdExecutor{}, nil
+					return &test.RemoteCmdExecutor{}, nil
 				}
 
 				svc = NewService(logger, tt.cfg, mockCRISvc, mockImgSvc, statusStore, mockExecer)

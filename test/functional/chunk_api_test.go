@@ -833,11 +833,11 @@ func TestBuildFlavorVersion(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "files not uploaded",
-			err:  apierrs.ErrFlavorFilesNotUploaded.GRPCStatus().Err(),
+			name: "works",
 		},
 		{
-			name: "works",
+			name: "files not uploaded",
+			err:  apierrs.ErrFlavorFilesNotUploaded.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -854,6 +854,9 @@ func TestBuildFlavorVersion(t *testing.T) {
 			)
 
 			fixture.RunControlPlane(t, pg, fixture.WithOCIRegistryEndpoint(endpoint))
+			fixture.RunFakeCRI(t)
+			fixture.RunCheckpointAPIFixtures(t, fixture.OCIRegsitryUser, fixture.OCIRegistryPass)
+
 			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 			var (
@@ -862,6 +865,7 @@ func TestBuildFlavorVersion(t *testing.T) {
 			)
 
 			pg.CreateBlobs(t, version)
+			pg.InsertNode(t)
 
 			// push base image needed for testing
 
@@ -920,8 +924,20 @@ func TestBuildFlavorVersion(t *testing.T) {
 					cat, err := p.Catalog(ctx, reg)
 					require.NoError(t, err)
 
-					if slices.Contains(cat, version.ID) {
-						return
+					if !slices.Contains(cat, version.ID) {
+						continue
+					}
+
+					h, err := p.Lister(ctx, reg.Repo(version.ID))
+					require.NoError(t, err)
+
+					for h.HasNext() {
+						tags, err := h.Next(ctx)
+						require.NoError(t, err)
+
+						if slices.Contains(tags.Tags, "checkpoint") {
+							return
+						}
 					}
 				}
 			}

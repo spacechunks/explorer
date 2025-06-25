@@ -61,17 +61,20 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 	}
 
 	var (
-		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
-		server = controlplane.NewServer(logger, controlplane.Config{
-			ListenAddr:         ControlPlaneAddr,
-			DBConnString:       pg.ConnString,
-			MaxGRPCMessageSize: 1_000_000_000,
-			OCIRegistry:        defaultOpts.OCIRegistryEndpoint,
-			OCIRegistryUser:    OCIRegsitryUser,
-			OCIRegistryPass:    OCIRegistryPass,
-			BaseImage:          fmt.Sprintf("%s/base-image:latest", defaultOpts.OCIRegistryEndpoint),
-			ImageCacheDir:      t.TempDir(),
-		})
+		logger = slog.New(slog.NewTextHandler(os.Stdout, nil)).With("service", "control-plane")
+		server = controlplane.NewServer(
+			logger, controlplane.Config{
+				ListenAddr:                    ControlPlaneAddr,
+				DBConnString:                  pg.ConnString,
+				MaxGRPCMessageSize:            1_000_000_000,
+				OCIRegistry:                   defaultOpts.OCIRegistryEndpoint,
+				OCIRegistryUser:               OCIRegsitryUser,
+				OCIRegistryPass:               OCIRegistryPass,
+				BaseImage:                     fmt.Sprintf("%s/base-image:latest", defaultOpts.OCIRegistryEndpoint),
+				ImageCacheDir:                 t.TempDir(),
+				CheckpointJobTimeout:          20 * time.Second,
+				CheckpointStatusCheckInterval: 1 * time.Second,
+			})
 	)
 
 	t.Cleanup(func() {

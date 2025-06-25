@@ -230,7 +230,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 			ID:          test.NewUUIDv7(t),
 			Chunk:       chunks[i],
 			ChunkFlavor: chunks[i].Flavors[0],
-			Address:     netip.MustParseAddr(fixture.Node().Addr),
+			Address:     fixture.Node().Addr,
 			State:       instance.StatePending,
 			CreatedAt:   chunks[i].CreatedAt,
 			UpdatedAt:   chunks[i].UpdatedAt,
