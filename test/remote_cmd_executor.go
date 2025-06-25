@@ -16,19 +16,36 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package controlplane
+package test
 
-import "time"
+import (
+	"context"
+	"fmt"
+	"time"
 
-type Config struct {
-	ListenAddr                    string
-	DBConnString                  string
-	MaxGRPCMessageSize            int
-	OCIRegistry                   string
-	OCIRegistryUser               string
-	OCIRegistryPass               string
-	BaseImage                     string
-	ImageCacheDir                 string
-	CheckpointJobTimeout          time.Duration
-	CheckpointStatusCheckInterval time.Duration
+	"k8s.io/client-go/tools/remotecommand"
+)
+
+type RemoteCmdExecutor struct {
+}
+
+func (e *RemoteCmdExecutor) Stream(_ remotecommand.StreamOptions) error {
+	panic("implement me")
+}
+
+func (e *RemoteCmdExecutor) StreamWithContext(ctx context.Context, opts remotecommand.StreamOptions) error {
+	t := time.NewTicker(1 * time.Second)
+	counter := 0
+	for {
+		select {
+		case <-t.C:
+			if counter == 3 {
+				_, _ = opts.Stdout.Write([]byte(`Done (30.0s)! For help, type "help"`))
+			}
+			_, _ = fmt.Fprintf(opts.Stdout, "%d", counter)
+			counter++
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }

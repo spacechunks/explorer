@@ -207,9 +207,11 @@ type Instance struct {
 }
 
 type Node struct {
-	ID        string
-	Address   netip.Addr
-	CreatedAt time.Time
+	ID                    string
+	Name                  string
+	Address               netip.Addr
+	CheckpointApiEndpoint string
+	CreatedAt             time.Time
 }
 
 type RiverClient struct {

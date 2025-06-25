@@ -301,6 +301,19 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 	return ret, nil
 }
 
+func (db *DB) UpdateFlavorVersionBuildStatus(
+	ctx context.Context,
+	flavorVersionID string,
+	status chunk.BuildStatus,
+) error {
+	return db.do(ctx, func(q *query.Queries) error {
+		return q.UpdateFlavorVersionBuildStatus(ctx, query.UpdateFlavorVersionBuildStatusParams{
+			BuildStatus: query.BuildStatus(status),
+			ID:          flavorVersionID,
+		})
+	})
+}
+
 func (db *DB) InsertJob(ctx context.Context, flavorVersionID string, status string, job river.JobArgs) error {
 	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.UpdateFlavorVersionBuildStatus(ctx, query.UpdateFlavorVersionBuildStatusParams{

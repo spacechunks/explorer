@@ -381,7 +381,7 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 }
 
 const getInstance = `-- name: GetInstance :many
-SELECT i.id, i.chunk_id, flavor_id, node_id, port, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_id, node_id, port, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
     JOIN flavors f ON i.chunk_id = f.chunk_id
     JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
@@ -389,28 +389,30 @@ WHERE i.id = $1
 `
 
 type GetInstanceRow struct {
-	ID          string
-	ChunkID     string
-	FlavorID    string
-	NodeID      string
-	Port        *int32
-	State       InstanceState
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	ID_2        string
-	ChunkID_2   string
-	Name        string
-	CreatedAt_2 time.Time
-	UpdatedAt_2 time.Time
-	ID_3        string
-	Name_2      string
-	Description string
-	Tags        []string
-	CreatedAt_3 time.Time
-	UpdatedAt_3 time.Time
-	ID_4        string
-	Address     netip.Addr
-	CreatedAt_4 time.Time
+	ID                    string
+	ChunkID               string
+	FlavorID              string
+	NodeID                string
+	Port                  *int32
+	State                 InstanceState
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	ID_2                  string
+	ChunkID_2             string
+	Name                  string
+	CreatedAt_2           time.Time
+	UpdatedAt_2           time.Time
+	ID_3                  string
+	Name_2                string
+	Description           string
+	Tags                  []string
+	CreatedAt_3           time.Time
+	UpdatedAt_3           time.Time
+	ID_4                  string
+	Name_3                string
+	Address               netip.Addr
+	CheckpointApiEndpoint string
+	CreatedAt_4           time.Time
 }
 
 func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow, error) {
@@ -443,7 +445,9 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.CreatedAt_3,
 			&i.UpdatedAt_3,
 			&i.ID_4,
+			&i.Name_3,
 			&i.Address,
+			&i.CheckpointApiEndpoint,
 			&i.CreatedAt_4,
 		); err != nil {
 			return nil, err
@@ -457,7 +461,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 }
 
 const getInstancesByNodeID = `-- name: GetInstancesByNodeID :many
-SELECT i.id, i.chunk_id, flavor_id, node_id, port, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_id, node_id, port, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
     JOIN flavors f ON i.flavor_id = f.id
     JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
@@ -465,28 +469,30 @@ WHERE i.node_id = $1
 `
 
 type GetInstancesByNodeIDRow struct {
-	ID          string
-	ChunkID     string
-	FlavorID    string
-	NodeID      string
-	Port        *int32
-	State       InstanceState
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	ID_2        string
-	ChunkID_2   string
-	Name        string
-	CreatedAt_2 time.Time
-	UpdatedAt_2 time.Time
-	ID_3        string
-	Name_2      string
-	Description string
-	Tags        []string
-	CreatedAt_3 time.Time
-	UpdatedAt_3 time.Time
-	ID_4        string
-	Address     netip.Addr
-	CreatedAt_4 time.Time
+	ID                    string
+	ChunkID               string
+	FlavorID              string
+	NodeID                string
+	Port                  *int32
+	State                 InstanceState
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	ID_2                  string
+	ChunkID_2             string
+	Name                  string
+	CreatedAt_2           time.Time
+	UpdatedAt_2           time.Time
+	ID_3                  string
+	Name_2                string
+	Description           string
+	Tags                  []string
+	CreatedAt_3           time.Time
+	UpdatedAt_3           time.Time
+	ID_4                  string
+	Name_3                string
+	Address               netip.Addr
+	CheckpointApiEndpoint string
+	CreatedAt_4           time.Time
 }
 
 func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]GetInstancesByNodeIDRow, error) {
@@ -519,7 +525,9 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 			&i.CreatedAt_3,
 			&i.UpdatedAt_3,
 			&i.ID_4,
+			&i.Name_3,
 			&i.Address,
+			&i.CheckpointApiEndpoint,
 			&i.CreatedAt_4,
 		); err != nil {
 			return nil, err
@@ -701,35 +709,37 @@ func (q *Queries) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]L
 }
 
 const listInstances = `-- name: ListInstances :many
-SELECT i.id, i.chunk_id, flavor_id, node_id, port, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, address, n.created_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_id, node_id, port, state, i.created_at, i.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
     JOIN flavors f ON i.chunk_id = f.chunk_id
     JOIN chunks c ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
 `
 
 type ListInstancesRow struct {
-	ID          string
-	ChunkID     string
-	FlavorID    string
-	NodeID      string
-	Port        *int32
-	State       InstanceState
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	ID_2        string
-	ChunkID_2   string
-	Name        string
-	CreatedAt_2 time.Time
-	UpdatedAt_2 time.Time
-	ID_3        string
-	Name_2      string
-	Description string
-	Tags        []string
-	CreatedAt_3 time.Time
-	UpdatedAt_3 time.Time
-	ID_4        string
-	Address     netip.Addr
-	CreatedAt_4 time.Time
+	ID                    string
+	ChunkID               string
+	FlavorID              string
+	NodeID                string
+	Port                  *int32
+	State                 InstanceState
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	ID_2                  string
+	ChunkID_2             string
+	Name                  string
+	CreatedAt_2           time.Time
+	UpdatedAt_2           time.Time
+	ID_3                  string
+	Name_2                string
+	Description           string
+	Tags                  []string
+	CreatedAt_3           time.Time
+	UpdatedAt_3           time.Time
+	ID_4                  string
+	Name_3                string
+	Address               netip.Addr
+	CheckpointApiEndpoint string
+	CreatedAt_4           time.Time
 }
 
 func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error) {
@@ -762,7 +772,9 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 			&i.CreatedAt_3,
 			&i.UpdatedAt_3,
 			&i.ID_4,
+			&i.Name_3,
 			&i.Address,
+			&i.CheckpointApiEndpoint,
 			&i.CreatedAt_4,
 		); err != nil {
 			return nil, err
@@ -782,6 +794,27 @@ UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1
 func (q *Queries) MarkFlavorVersionFilesUploaded(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, markFlavorVersionFilesUploaded, id)
 	return err
+}
+
+const randomNode = `-- name: RandomNode :one
+/*
+ * NODES
+ */
+
+SELECT id, name, address, checkpoint_api_endpoint, created_at FROM nodes ORDER BY random() LIMIT 1
+`
+
+func (q *Queries) RandomNode(ctx context.Context) (Node, error) {
+	row := q.db.QueryRow(ctx, randomNode)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Address,
+		&i.CheckpointApiEndpoint,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updateChunk = `-- name: UpdateChunk :exec

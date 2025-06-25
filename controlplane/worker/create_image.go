@@ -31,14 +31,29 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/job"
-	image2 "github.com/spacechunks/explorer/internal/image"
+	"github.com/spacechunks/explorer/internal/image"
 )
 
 type CreateImageWorker struct {
 	river.WorkerDefaults[job.CreateImage]
-	Repo       chunk.Repository
-	BlobStore  blob.Store
-	ImgService image2.Service
+	repo       chunk.Repository
+	blobStore  blob.Store
+	imgService image.Service
+	jobClient  job.Client
+}
+
+func NewCreateImageWorker(
+	repo chunk.Repository,
+	blobStore blob.Store,
+	imgSvc image.Service,
+	jobClient job.Client,
+) *CreateImageWorker {
+	return &CreateImageWorker{
+		repo:       repo,
+		blobStore:  blobStore,
+		imgService: imgSvc,
+		jobClient:  jobClient,
+	}
 }
 
 func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.CreateImage]) error {
@@ -46,12 +61,12 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		return fmt.Errorf("validate args: %w", err)
 	}
 
-	baseImg, err := w.ImgService.Pull(ctx, riverJob.Args.BaseImage)
+	baseImg, err := w.imgService.Pull(ctx, riverJob.Args.BaseImage)
 	if err != nil {
 		return fmt.Errorf("pull image: %w", err)
 	}
 
-	version, err := w.Repo.FlavorVersionByID(ctx, riverJob.Args.FlavorVersionID)
+	version, err := w.repo.FlavorVersionByID(ctx, riverJob.Args.FlavorVersionID)
 	if err != nil {
 		return fmt.Errorf("flavor version: %w", err)
 	}
@@ -68,7 +83,7 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		return strings.Compare(hashes[i], hashes[j]) < 0
 	})
 
-	objs, err := w.BlobStore.Get(ctx, hashes)
+	objs, err := w.blobStore.Get(ctx, hashes)
 	if err != nil {
 		return fmt.Errorf("get objs: %w", err)
 	}
@@ -81,7 +96,7 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		})
 	}
 
-	img, err := image2.AppendLayer(baseImg, f)
+	img, err := image.AppendLayer(baseImg, f)
 	if err != nil {
 		return fmt.Errorf("append layer: %w", err)
 	}
@@ -90,20 +105,20 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 	//        => <registry>/<userID>/<flavor-version-id>:<base|checkpoint>
 	ref := fmt.Sprintf("%s/%s:base", riverJob.Args.OCIRegistry, riverJob.Args.FlavorVersionID)
 
-	if err := w.ImgService.Push(ctx, img, ref); err != nil {
+	if err := w.imgService.Push(ctx, img, ref); err != nil {
 		return fmt.Errorf("push image: %w", err)
 	}
 
-	// TODO: uncomment when we have a checkpoint worker
-	//if err := jobClient.InsertJob(
-	//	ctx,
-	//	riverJob.Args.FlavorVersionID,
-	//	string(chunk.BuildStatusBuildCheckpoint),
-	//	job.CreateCheckpoint{
-	//		BaseImage: ref,
-	//	}); err != nil {
-	//	return fmt.Errorf("insert create checkpoint job: %w", err)
-	//}
+	if err := w.jobClient.InsertJob(
+		ctx,
+		riverJob.Args.FlavorVersionID,
+		string(chunk.BuildStatusBuildCheckpoint),
+		job.CreateCheckpoint{
+			FlavorVersionID: riverJob.Args.FlavorVersionID,
+			BaseImageURL:    ref,
+		}); err != nil {
+		return fmt.Errorf("insert create checkpoint job: %w", err)
+	}
 
 	return nil
 }

@@ -42,4 +42,5 @@ type Repository interface {
 	FlavorVersionHashByID(ctx context.Context, id string) (string, error)
 	MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error
 	FlavorVersionByID(ctx context.Context, id string) (FlavorVersion, error)
+	UpdateFlavorVersionBuildStatus(ctx context.Context, flavorVersionID string, status BuildStatus) error
 }

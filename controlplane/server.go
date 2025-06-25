@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/pgx/v5"
@@ -32,11 +33,13 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	checkpointv1alpha1 "github.com/spacechunks/explorer/api/platformd/checkpoint/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/job"
+	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
@@ -72,7 +75,17 @@ func (s *Server) Run(ctx context.Context) error {
 		imgService = image.NewService(s.logger, s.cfg.OCIRegistryUser, s.cfg.OCIRegistryPass, s.cfg.ImageCacheDir)
 	)
 
-	riverClient, err := CreateRiverClient(s.logger.With("component", "river"), db, imgService, blobStore, pool)
+	riverClient, err := CreateRiverClient(
+		s.logger,
+		db,
+		imgService,
+		blobStore,
+		pool,
+		s.cfg.CheckpointJobTimeout,
+		s.cfg.CheckpointStatusCheckInterval,
+		db,
+		db,
+	)
 	if err != nil {
 		return fmt.Errorf("create river client: %w", err)
 	}
@@ -156,19 +169,32 @@ func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 
 func CreateRiverClient(
 	logger *slog.Logger,
-	repo chunk.Repository,
+	chunkRepo chunk.Repository,
 	imgService image.Service,
 	blobStore blob.Store,
 	pool *pgxpool.Pool,
+	checkpointTimeout time.Duration,
+	statusCheckInterval time.Duration,
+	nodeRepo node.Repository,
+	jobClient job.Client,
 ) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 
-	if err := river.AddWorkerSafely[job.CreateImage](workers, &worker.CreateImageWorker{
-		Repo:       repo,
-		ImgService: imgService,
-		BlobStore:  blobStore,
-	}); err != nil {
+	imgWorker := worker.NewCreateImageWorker(chunkRepo, blobStore, imgService, jobClient)
+	if err := river.AddWorkerSafely[job.CreateImage](workers, imgWorker); err != nil {
 		return nil, fmt.Errorf("add create image worker: %w", err)
+	}
+
+	checkWorker := worker.NewCheckpointWorker(
+		logger.With("component", "checkpoint-worker"),
+		createCheckpointClient,
+		checkpointTimeout,
+		statusCheckInterval,
+		nodeRepo,
+		chunkRepo,
+	)
+	if err := river.AddWorkerSafely[job.CreateCheckpoint](workers, checkWorker); err != nil {
+		return nil, fmt.Errorf("add create checkpoint worker: %w", err)
 	}
 
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
@@ -178,7 +204,7 @@ func CreateRiverClient(
 			},
 		},
 		Workers:     workers,
-		Logger:      logger,
+		Logger:      logger.With("component", "river"),
 		MaxAttempts: 5,
 	})
 	if err != nil {
@@ -186,4 +212,12 @@ func CreateRiverClient(
 	}
 
 	return riverClient, nil
+}
+
+func createCheckpointClient(host string) (checkpointv1alpha1.CheckpointServiceClient, error) {
+	conn, err := grpc.NewClient(host, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	return checkpointv1alpha1.NewCheckpointServiceClient(conn), nil
 }

@@ -239,7 +239,7 @@ func TestRunChunk(t *testing.T) {
 				Flavor: &chunkv1alpha1.Flavor{
 					Name: c.Flavors[0].Name,
 				},
-				Ip:    fixture.Node().Addr,
+				Ip:    fixture.Node().Addr.String(),
 				State: instancev1alpha1.InstanceState_PENDING,
 			}
 

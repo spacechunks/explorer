@@ -168,7 +168,9 @@ CREATE TABLE public.instances (
 
 CREATE TABLE public.nodes (
     id uuid NOT NULL,
+    name text NOT NULL,
     address inet NOT NULL,
+    checkpoint_api_endpoint text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 

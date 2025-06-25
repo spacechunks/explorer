@@ -33,8 +33,8 @@ import (
 	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	"github.com/google/go-cmp/cmp"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
-	proxy2 "github.com/spacechunks/explorer/platformd/proxy"
-	fixture2 "github.com/spacechunks/explorer/test/fixture"
+	"github.com/spacechunks/explorer/platformd/proxy"
+	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -49,9 +49,9 @@ func TestCreateListener(t *testing.T) {
 		ip   = "127.0.0.1"
 	)
 
-	fixture2.RunProxyAPIFixtures(ctx, t)
+	fixture.RunProxyAPIFixtures(ctx, t)
 
-	c := proxyv1alpha1.NewProxyServiceClient(fixture2.PlatformdClientConn(t))
+	c := proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
 
 	_, err := c.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: wlID,
@@ -63,17 +63,17 @@ func TestCreateListener(t *testing.T) {
 	//                proxy package, that blocks until envoy has connected.
 	time.Sleep(10 * time.Second)
 
-	dnsRG, err := proxy2.DNSListenerResourceGroup(
-		proxy2.DNSClusterName,
-		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy2.DNSPort)),
-		fixture2.DNSUpstream,
+	dnsRG, err := proxy.DNSListenerResourceGroup(
+		proxy.DNSClusterName,
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.DNSPort)),
+		fixture.DNSUpstream,
 	)
 	require.NoError(t, err)
 
-	wlRG, err := proxy2.WorkloadResources(wlID,
-		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy2.HTTPPort)),
-		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy2.TCPPort)),
-		proxy2.OriginalDstClusterName,
+	wlRG, err := proxy.WorkloadResources(wlID,
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.HTTPPort)),
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.TCPPort)),
+		proxy.OriginalDstClusterName,
 	)
 	require.NoError(t, err)
 
@@ -106,9 +106,9 @@ func TestDeleteListener(t *testing.T) {
 		ip   = "127.0.0.1"
 	)
 
-	fixture2.RunProxyAPIFixtures(ctx, t)
+	fixture.RunProxyAPIFixtures(ctx, t)
 
-	c := proxyv1alpha1.NewProxyServiceClient(fixture2.PlatformdClientConn(t))
+	c := proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
 
 	_, err := c.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: wlID,
@@ -135,7 +135,7 @@ func TestDeleteListener(t *testing.T) {
 
 func readListener(t *testing.T) []*listenerv3.Listener {
 	resp, err := http.Get(
-		fmt.Sprintf("http://%s/config_dump?include_eds&resource=dynamic_listeners", fixture2.EnvoyAdminAddr),
+		fmt.Sprintf("http://%s/config_dump?include_eds&resource=dynamic_listeners", fixture.EnvoyAdminAddr),
 	)
 	require.NoError(t, err)
 

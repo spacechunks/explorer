@@ -32,6 +32,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/instance"
+	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/zeebo/xxh3"
 )
@@ -175,15 +176,11 @@ func Instance(mod ...func(i *instance.Instance)) instance.Instance {
 	return ins
 }
 
-func Node() struct {
-	ID   string
-	Addr string
-} {
-	return struct {
-		ID   string
-		Addr string
-	}{
-		ID:   "0195c2f6-f40c-72df-a0f1-e468f1be77b1",
-		Addr: "198.51.100.1",
+func Node() node.Node {
+	return node.Node{
+		ID:                    "0195c2f6-f40c-72df-a0f1-e468f1be77b1",
+		Name:                  "test-node",
+		Addr:                  netip.MustParseAddr("198.51.100.1"),
+		CheckpointAPIEndpoint: netip.MustParseAddrPort(CheckpointAPIAddr),
 	}
 }

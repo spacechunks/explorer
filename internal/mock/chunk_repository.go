@@ -817,6 +817,54 @@ func (_c *MockChunkRepository_UpdateChunk_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// UpdateFlavorVersionBuildStatus provides a mock function with given fields: ctx, flavorVersionID, status
+func (_m *MockChunkRepository) UpdateFlavorVersionBuildStatus(ctx context.Context, flavorVersionID string, status chunk.BuildStatus) error {
+	ret := _m.Called(ctx, flavorVersionID, status)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateFlavorVersionBuildStatus")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, chunk.BuildStatus) error); ok {
+		r0 = rf(ctx, flavorVersionID, status)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockChunkRepository_UpdateFlavorVersionBuildStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateFlavorVersionBuildStatus'
+type MockChunkRepository_UpdateFlavorVersionBuildStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateFlavorVersionBuildStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - flavorVersionID string
+//   - status chunk.BuildStatus
+func (_e *MockChunkRepository_Expecter) UpdateFlavorVersionBuildStatus(ctx interface{}, flavorVersionID interface{}, status interface{}) *MockChunkRepository_UpdateFlavorVersionBuildStatus_Call {
+	return &MockChunkRepository_UpdateFlavorVersionBuildStatus_Call{Call: _e.mock.On("UpdateFlavorVersionBuildStatus", ctx, flavorVersionID, status)}
+}
+
+func (_c *MockChunkRepository_UpdateFlavorVersionBuildStatus_Call) Run(run func(ctx context.Context, flavorVersionID string, status chunk.BuildStatus)) *MockChunkRepository_UpdateFlavorVersionBuildStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(chunk.BuildStatus))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_UpdateFlavorVersionBuildStatus_Call) Return(_a0 error) *MockChunkRepository_UpdateFlavorVersionBuildStatus_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockChunkRepository_UpdateFlavorVersionBuildStatus_Call) RunAndReturn(run func(context.Context, string, chunk.BuildStatus) error) *MockChunkRepository_UpdateFlavorVersionBuildStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockChunkRepository creates a new instance of MockChunkRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockChunkRepository(t interface {
