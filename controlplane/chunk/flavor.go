@@ -21,7 +21,6 @@ package chunk
 import (
 	"context"
 	"fmt"
-	"hash"
 	"log"
 	"maps"
 	"slices"
@@ -32,9 +31,8 @@ import (
 	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/job"
-	"github.com/zeebo/xxh3"
+	"github.com/spacechunks/explorer/internal/file"
 )
 
 /*
@@ -132,12 +130,12 @@ func (s *svc) CreateFlavorVersion(
 		newContent  = contentMap(version.FileHashes)
 	)
 
-	newContentTree, err := tree(version.FileHashes)
+	newContentTree, err := file.HashTree(version.FileHashes)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("new content tree: %w", err)
 	}
 
-	if hashString(newContentTree) != version.Hash {
+	if file.HashTreeRootString(newContentTree) != version.Hash {
 		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrHashMismatch
 	}
 
@@ -218,12 +216,12 @@ func (s *svc) CreateFlavorVersion(
 
 	sortByPath(all)
 
-	changesTree, err := tree(changes)
+	changesTree, err := file.HashTree(changes)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("changes tree: %w", err)
 	}
 
-	version.ChangeHash = hashString(changesTree)
+	version.ChangeHash = file.HashTreeRootString(changesTree)
 	version.FileHashes = all
 
 	created, err := s.repo.CreateFlavorVersion(ctx, flavorID, version, prevVersion.ID)
@@ -240,15 +238,13 @@ func (s *svc) SaveFlavorFiles(ctx context.Context, versionID string, files []fil
 		return fmt.Errorf("flavor version: %w", err)
 	}
 
-	sort.Slice(files, func(i, j int) bool {
-		return strings.Compare(files[i].Path, files[j].Path) < 0
-	})
+	file.Sort(files)
 
 	objs := make([]blob.Object, 0, len(files))
-	for _, file := range files {
-		fmt.Println("file: ", file.Path)
+	for _, f := range files {
+		fmt.Println("file: ", f.Path)
 		objs = append(objs, blob.Object{
-			Data: file.Data,
+			Data: f.Data,
 		})
 	}
 
@@ -259,15 +255,15 @@ func (s *svc) SaveFlavorFiles(ctx context.Context, versionID string, files []fil
 		return apierrs.ErrFilesAlreadyExist
 	}
 
-	tree, err := tree(objs)
+	tree, err := file.HashTree(objs)
 	if err != nil {
 		return fmt.Errorf("tree files: %w", err)
 	}
 
-	fmt.Println("got: " + hashString(tree))
+	fmt.Println("got: " + file.HashTreeRootString(tree))
 	fmt.Println("want: " + version.ChangeHash)
 
-	if hashString(tree) != version.ChangeHash {
+	if file.HashTreeRootString(tree) != version.ChangeHash {
 		return apierrs.ErrHashMismatch
 	}
 
@@ -320,24 +316,6 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 	}
 
 	return nil
-}
-
-func hashString(tree *merkletree.MerkleTree) string {
-	return fmt.Sprintf("%x", tree.MerkleRoot())
-}
-
-func tree[T merkletree.Content](hashes []T) (*merkletree.MerkleTree, error) {
-	sl := make([]merkletree.Content, 0, len(hashes))
-	for _, h := range hashes {
-		sl = append(sl, h)
-	}
-	tree, err := merkletree.NewTreeWithHashStrategy(sl, func() hash.Hash {
-		return xxh3.New()
-	})
-	if err != nil {
-		return nil, err
-	}
-	return tree, nil
 }
 
 func contentMap(hashes []file.Hash) map[string]merkletree.Content {

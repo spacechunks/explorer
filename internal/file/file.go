@@ -21,13 +21,45 @@ package file
 
 import (
 	"errors"
+	"fmt"
+	"hash"
+	"sort"
+	"strings"
 
 	"github.com/cbergoon/merkletree"
+	"github.com/zeebo/xxh3"
 )
 
 type Object struct {
 	Path string
 	Data []byte
+
+	fileHash string
+}
+
+// hash computes the xxh3 hash of the Data field.
+// since we could be dealing with potentially a large
+// Data slice, we first check if the hash has already
+// been computed.
+func (o Object) hash() []byte {
+	if o.fileHash != "" {
+		return []byte(o.fileHash)
+	}
+	str := fmt.Sprintf("%x", xxh3.Hash(o.Data))
+	o.fileHash = str
+	return []byte(str)
+}
+
+func (o Object) CalculateHash() ([]byte, error) {
+	return o.hash(), nil
+}
+
+func (o Object) Equals(other merkletree.Content) (bool, error) {
+	otherObj, ok := other.(Object)
+	if !ok {
+		return false, errors.New("value is not of type Object")
+	}
+	return o.fileHash == otherObj.fileHash, nil
 }
 
 type Hash struct {
@@ -45,4 +77,28 @@ func (f Hash) Equals(other merkletree.Content) (bool, error) {
 		return false, errors.New("value is not of type Hash")
 	}
 	return f.Hash == otherHash.Hash, nil
+}
+
+func HashTreeRootString(tree *merkletree.MerkleTree) string {
+	return fmt.Sprintf("%x", tree.MerkleRoot())
+}
+
+func HashTree[T merkletree.Content](hashes []T) (*merkletree.MerkleTree, error) {
+	sl := make([]merkletree.Content, 0, len(hashes))
+	for _, h := range hashes {
+		sl = append(sl, h)
+	}
+	tree, err := merkletree.NewTreeWithHashStrategy(sl, func() hash.Hash {
+		return xxh3.New()
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tree, nil
+}
+
+func Sort(objs []Object) {
+	sort.Slice(objs, func(i, j int) bool {
+		return strings.Compare(objs[i].Path, objs[j].Path) < 0
+	})
 }

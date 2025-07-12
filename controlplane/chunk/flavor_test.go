@@ -24,7 +24,7 @@ import (
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/file"
+	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/test/fixture"
 	mocky "github.com/stretchr/testify/mock"
