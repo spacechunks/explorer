@@ -33,33 +33,6 @@ import (
 type Object struct {
 	Path string
 	Data []byte
-
-	fileHash string
-}
-
-// hash computes the xxh3 hash of the Data field.
-// since we could be dealing with potentially a large
-// Data slice, we first check if the hash has already
-// been computed.
-func (o Object) hash() []byte {
-	if o.fileHash != "" {
-		return []byte(o.fileHash)
-	}
-	str := fmt.Sprintf("%x", xxh3.Hash(o.Data))
-	o.fileHash = str
-	return []byte(str)
-}
-
-func (o Object) CalculateHash() ([]byte, error) {
-	return o.hash(), nil
-}
-
-func (o Object) Equals(other merkletree.Content) (bool, error) {
-	otherObj, ok := other.(Object)
-	if !ok {
-		return false, errors.New("value is not of type Object")
-	}
-	return o.fileHash == otherObj.fileHash, nil
 }
 
 type Hash struct {
