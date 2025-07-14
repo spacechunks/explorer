@@ -238,7 +238,7 @@ func (s *svc) SaveFlavorFiles(ctx context.Context, versionID string, files []fil
 		return fmt.Errorf("flavor version: %w", err)
 	}
 
-	file.Sort(files)
+	file.SortFiles(files)
 
 	objs := make([]blob.Object, 0, len(files))
 	for _, f := range files {

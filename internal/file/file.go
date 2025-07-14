@@ -33,33 +33,6 @@ import (
 type Object struct {
 	Path string
 	Data []byte
-
-	fileHash string
-}
-
-// hash computes the xxh3 hash of the Data field.
-// since we could be dealing with potentially a large
-// Data slice, we first check if the hash has already
-// been computed.
-func (o Object) hash() []byte {
-	if o.fileHash != "" {
-		return []byte(o.fileHash)
-	}
-	str := fmt.Sprintf("%x", xxh3.Hash(o.Data))
-	o.fileHash = str
-	return []byte(str)
-}
-
-func (o Object) CalculateHash() ([]byte, error) {
-	return o.hash(), nil
-}
-
-func (o Object) Equals(other merkletree.Content) (bool, error) {
-	otherObj, ok := other.(Object)
-	if !ok {
-		return false, errors.New("value is not of type Object")
-	}
-	return o.fileHash == otherObj.fileHash, nil
 }
 
 type Hash struct {
@@ -77,6 +50,10 @@ func (f Hash) Equals(other merkletree.Content) (bool, error) {
 		return false, errors.New("value is not of type Hash")
 	}
 	return f.Hash == otherHash.Hash, nil
+}
+
+func ComputeHashStr(data []byte) string {
+	return fmt.Sprintf("%x", xxh3.Hash(data))
 }
 
 func HashTreeRootString(tree *merkletree.MerkleTree) string {
@@ -97,8 +74,14 @@ func HashTree[T merkletree.Content](hashes []T) (*merkletree.MerkleTree, error) 
 	return tree, nil
 }
 
-func Sort(objs []Object) {
+func SortFiles(objs []Object) {
 	sort.Slice(objs, func(i, j int) bool {
 		return strings.Compare(objs[i].Path, objs[j].Path) < 0
+	})
+}
+
+func SortHashes(hashes []Hash) {
+	sort.Slice(hashes, func(i, j int) bool {
+		return strings.Compare(hashes[i].Path, hashes[j].Path) < 0
 	})
 }
