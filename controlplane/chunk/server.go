@@ -25,7 +25,7 @@ import (
 	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/file"
+	"github.com/spacechunks/explorer/internal/file"
 )
 
 type Server struct {

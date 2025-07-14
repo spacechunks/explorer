@@ -22,8 +22,8 @@ import (
 	"context"
 
 	"github.com/spacechunks/explorer/controlplane/blob"
-	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/job"
+	"github.com/spacechunks/explorer/internal/file"
 )
 
 type Service interface {

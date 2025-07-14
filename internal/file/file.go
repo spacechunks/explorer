@@ -21,8 +21,13 @@ package file
 
 import (
 	"errors"
+	"fmt"
+	"hash"
+	"sort"
+	"strings"
 
 	"github.com/cbergoon/merkletree"
+	"github.com/zeebo/xxh3"
 )
 
 type Object struct {
@@ -45,4 +50,38 @@ func (f Hash) Equals(other merkletree.Content) (bool, error) {
 		return false, errors.New("value is not of type Hash")
 	}
 	return f.Hash == otherHash.Hash, nil
+}
+
+func ComputeHashStr(data []byte) string {
+	return fmt.Sprintf("%x", xxh3.Hash(data))
+}
+
+func HashTreeRootString(tree *merkletree.MerkleTree) string {
+	return fmt.Sprintf("%x", tree.MerkleRoot())
+}
+
+func HashTree[T merkletree.Content](hashes []T) (*merkletree.MerkleTree, error) {
+	sl := make([]merkletree.Content, 0, len(hashes))
+	for _, h := range hashes {
+		sl = append(sl, h)
+	}
+	tree, err := merkletree.NewTreeWithHashStrategy(sl, func() hash.Hash {
+		return xxh3.New()
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tree, nil
+}
+
+func SortFiles(objs []Object) {
+	sort.Slice(objs, func(i, j int) bool {
+		return strings.Compare(objs[i].Path, objs[j].Path) < 0
+	})
+}
+
+func SortHashes(hashes []Hash) {
+	sort.Slice(hashes, func(i, j int) bool {
+		return strings.Compare(hashes[i].Path, hashes[j].Path) < 0
+	})
 }

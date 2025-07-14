@@ -30,9 +30,9 @@ import (
 
 	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/chunk"
-	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/node"
+	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/zeebo/xxh3"
 )
