@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
@@ -306,12 +305,4 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 	}
 
 	return nil
-}
-
-func contentMap(hashes []file.Hash) map[string]merkletree.Content {
-	m := make(map[string]merkletree.Content, len(hashes))
-	for _, h := range hashes {
-		m[h.Path] = h
-	}
-	return m
 }
