@@ -21,20 +21,16 @@ package chunk
 import (
 	"context"
 	"fmt"
-	"hash"
-	"log"
 	"maps"
 	"slices"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/job"
-	"github.com/zeebo/xxh3"
+	"github.com/spacechunks/explorer/internal/file"
 )
 
 /*
@@ -127,17 +123,12 @@ func (s *svc) CreateFlavorVersion(
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("latest flavor version file hashes: %w", err)
 	}
 
-	var (
-		prevContent = contentMap(prevVersion.FileHashes)
-		newContent  = contentMap(version.FileHashes)
-	)
-
-	newContentTree, err := tree(version.FileHashes)
+	newContentTree, err := file.HashTree(version.FileHashes)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("new content tree: %w", err)
 	}
 
-	if hashString(newContentTree) != version.Hash {
+	if file.HashTreeRootString(newContentTree) != version.Hash {
 		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrHashMismatch
 	}
 
@@ -148,44 +139,44 @@ func (s *svc) CreateFlavorVersion(
 		removed   = make([]file.Hash, 0)
 	)
 
-	for _, prev := range slices.Collect(maps.Values(prevContent)) {
-		ok, err := newContentTree.VerifyContent(prev)
-		if err != nil {
-			return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("verify content: %w", err)
-		}
+	prevMap := make(map[string]file.Hash, len(prevVersion.FileHashes))
+	for _, v := range prevVersion.FileHashes {
+		prevMap[v.Path] = v
+	}
 
-		prevHash := prev.(file.Hash)
+	uploadedMap := make(map[string]file.Hash, len(version.FileHashes))
+	for _, v := range version.FileHashes {
+		uploadedMap[v.Path] = v
+	}
 
-		// hash is the same so it is unchanged
+	for _, prev := range slices.Collect(maps.Values(prevMap)) {
+		uploaded, ok := uploadedMap[prev.Path]
 		if ok {
-			unchanged = append(unchanged, prevHash)
+			//  did not change, ignore
+			if uploaded.Hash == prev.Hash {
+				unchanged = append(unchanged, uploaded)
+				continue
+			}
+
+			changed = append(changed, uploaded)
 			continue
 		}
 
-		// hash differs, but file was already present
-		// in the previous version -> it has been changed.
-		newFH, found := newContent[prevHash.Path]
-		if found {
-			changed = append(changed, newFH.(file.Hash))
-		}
-
-		if !found {
-			removed = append(added, prevHash)
-		}
+		// it does not exist in the uploaded hashes, but was previously present, this means
+		// the file has been deleted.
+		removed = append(removed, prev)
 	}
 
-	// everything that is contained in the new version,
-	// but not found in the previous version, we consider
-	// as newly added.
-	for _, nc := range newContent {
-		fh := nc.(file.Hash)
-		if _, ok := prevContent[fh.Path]; !ok {
-			added = append(added, fh)
+	for _, uploaded := range slices.Collect(maps.Values(uploadedMap)) {
+		if _, ok := prevMap[uploaded.Path]; ok {
+			continue
 		}
+
+		// the uploaded file was not previously present, this means it is new
+		added = append(added, uploaded)
 	}
 
 	var (
-		all  = make([]file.Hash, 0, len(unchanged)+len(changed)+len(added))
 		diff = FlavorVersionDiff{
 			Added:   added,
 			Removed: removed,
@@ -208,22 +199,18 @@ func (s *svc) CreateFlavorVersion(
 	changes = append(changes, added...)
 	sortByPath(changes)
 
-	for _, c := range changes {
-		log.Println("change: ", c.Path)
-	}
-
-	all = append(all, changed...)
-	all = append(all, added...)
+	all := make([]file.Hash, 0, len(unchanged)+len(changes))
+	all = append(all, changes...)
 	all = append(all, unchanged...)
 
 	sortByPath(all)
 
-	changesTree, err := tree(changes)
+	changesTree, err := file.HashTree(changes)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("changes tree: %w", err)
 	}
 
-	version.ChangeHash = hashString(changesTree)
+	version.ChangeHash = file.HashTreeRootString(changesTree)
 	version.FileHashes = all
 
 	created, err := s.repo.CreateFlavorVersion(ctx, flavorID, version, prevVersion.ID)
@@ -240,15 +227,13 @@ func (s *svc) SaveFlavorFiles(ctx context.Context, versionID string, files []fil
 		return fmt.Errorf("flavor version: %w", err)
 	}
 
-	sort.Slice(files, func(i, j int) bool {
-		return strings.Compare(files[i].Path, files[j].Path) < 0
-	})
+	file.SortFiles(files)
 
 	objs := make([]blob.Object, 0, len(files))
-	for _, file := range files {
-		fmt.Println("file: ", file.Path)
+	for _, f := range files {
+		fmt.Println("file: ", f.Path)
 		objs = append(objs, blob.Object{
-			Data: file.Data,
+			Data: f.Data,
 		})
 	}
 
@@ -259,15 +244,15 @@ func (s *svc) SaveFlavorFiles(ctx context.Context, versionID string, files []fil
 		return apierrs.ErrFilesAlreadyExist
 	}
 
-	tree, err := tree(objs)
+	tree, err := file.HashTree(objs)
 	if err != nil {
 		return fmt.Errorf("tree files: %w", err)
 	}
 
-	fmt.Println("got: " + hashString(tree))
+	fmt.Println("got: " + file.HashTreeRootString(tree))
 	fmt.Println("want: " + version.ChangeHash)
 
-	if hashString(tree) != version.ChangeHash {
+	if file.HashTreeRootString(tree) != version.ChangeHash {
 		return apierrs.ErrHashMismatch
 	}
 
@@ -320,30 +305,4 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 	}
 
 	return nil
-}
-
-func hashString(tree *merkletree.MerkleTree) string {
-	return fmt.Sprintf("%x", tree.MerkleRoot())
-}
-
-func tree[T merkletree.Content](hashes []T) (*merkletree.MerkleTree, error) {
-	sl := make([]merkletree.Content, 0, len(hashes))
-	for _, h := range hashes {
-		sl = append(sl, h)
-	}
-	tree, err := merkletree.NewTreeWithHashStrategy(sl, func() hash.Hash {
-		return xxh3.New()
-	})
-	if err != nil {
-		return nil, err
-	}
-	return tree, nil
-}
-
-func contentMap(hashes []file.Hash) map[string]merkletree.Content {
-	m := make(map[string]merkletree.Content, len(hashes))
-	for _, h := range hashes {
-		m[h.Path] = h
-	}
-	return m
 }

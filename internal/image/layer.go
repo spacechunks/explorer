@@ -9,7 +9,7 @@ import (
 	ociv1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/spacechunks/explorer/controlplane/file"
+	"github.com/spacechunks/explorer/internal/file"
 )
 
 func LayerFromFiles(files []file.Object) (ociv1.Layer, error) {

@@ -21,7 +21,7 @@ package image_test
 import (
 	"testing"
 
-	"github.com/spacechunks/explorer/controlplane/file"
+	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
 	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
 	"github.com/stretchr/testify/require"

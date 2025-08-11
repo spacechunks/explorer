@@ -31,8 +31,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/file"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
+	"github.com/spacechunks/explorer/internal/file"
 )
 
 func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, error) {

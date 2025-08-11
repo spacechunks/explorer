@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS flavor_versions (
 
 CREATE TABLE IF NOT EXISTS flavor_version_files (
     flavor_version_id UUID          NOT NULL REFERENCES flavor_versions(id) ON DELETE CASCADE,
-    file_hash         CHAR(16),               -- file_hash can be null if removed = true
+    file_hash         VARCHAR(16)   NOT NULL,
     file_path         VARCHAR(4096) NOT NULL, -- 4096 is PATH_MAX chars on linux
     created_at        TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
@@ -90,8 +90,8 @@ CREATE TABLE IF NOT EXISTS instances (
 --
 
 CREATE TABLE IF NOT EXISTS blobs (
-    hash CHAR(16)          NOT NULL PRIMARY KEY,
-    data BYTEA             NOT NULL,
+    hash VARCHAR(16)          NOT NULL PRIMARY KEY,
+    data BYTEA,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
