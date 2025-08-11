@@ -73,10 +73,6 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 		Versions: []chunk.FlavorVersion{
 			FlavorVersion(nil, func(v *chunk.FlavorVersion) {
 				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
-				v.Version = "v1"
-			}),
-			FlavorVersion(nil, func(v *chunk.FlavorVersion) {
-				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
 					{
@@ -84,6 +80,10 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 						Hash: "aaaaaaaaaaaaaaaa",
 					},
 				}
+			}),
+			FlavorVersion(nil, func(v *chunk.FlavorVersion) {
+				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
+				v.Version = "v1"
 			}),
 		},
 		CreatedAt: time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
