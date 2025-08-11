@@ -326,7 +326,7 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 
 	for _, f := range flavorMap {
 		sort.Slice(f.Versions, func(i, j int) bool {
-			return f.Versions[i].CreatedAt.Before(f.Versions[j].CreatedAt)
+			return f.Versions[i].CreatedAt.After(f.Versions[j].CreatedAt)
 		})
 		for _, v := range f.Versions {
 			sort.Slice(v.FileHashes, func(i, j int) bool {

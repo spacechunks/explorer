@@ -21,7 +21,6 @@ package chunk
 import (
 	"context"
 	"fmt"
-	"log"
 	"maps"
 	"slices"
 	"sort"
@@ -125,11 +124,6 @@ func (s *svc) CreateFlavorVersion(
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("latest flavor version file hashes: %w", err)
 	}
 
-	var (
-		prevContent = contentMap(prevVersion.FileHashes)
-		newContent  = contentMap(version.FileHashes)
-	)
-
 	newContentTree, err := file.HashTree(version.FileHashes)
 	if err != nil {
 		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("new content tree: %w", err)
@@ -146,44 +140,44 @@ func (s *svc) CreateFlavorVersion(
 		removed   = make([]file.Hash, 0)
 	)
 
-	for _, prev := range slices.Collect(maps.Values(prevContent)) {
-		ok, err := newContentTree.VerifyContent(prev)
-		if err != nil {
-			return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("verify content: %w", err)
-		}
+	prevMap := make(map[string]file.Hash, len(prevVersion.FileHashes))
+	for _, v := range prevVersion.FileHashes {
+		prevMap[v.Path] = v
+	}
 
-		prevHash := prev.(file.Hash)
+	uploadedMap := make(map[string]file.Hash, len(version.FileHashes))
+	for _, v := range version.FileHashes {
+		uploadedMap[v.Path] = v
+	}
 
-		// hash is the same so it is unchanged
+	for _, prev := range slices.Collect(maps.Values(prevMap)) {
+		uploaded, ok := uploadedMap[prev.Path]
 		if ok {
-			unchanged = append(unchanged, prevHash)
+			//  did not change, ignore
+			if uploaded.Hash == prev.Hash {
+				unchanged = append(unchanged, uploaded)
+				continue
+			}
+
+			changed = append(changed, uploaded)
 			continue
 		}
 
-		// hash differs, but file was already present
-		// in the previous version -> it has been changed.
-		newFH, found := newContent[prevHash.Path]
-		if found {
-			changed = append(changed, newFH.(file.Hash))
-		}
-
-		if !found {
-			removed = append(added, prevHash)
-		}
+		// it does not exist in the uploaded hashes, but was previously present, this means
+		// the file has been deleted.
+		removed = append(removed, prev)
 	}
 
-	// everything that is contained in the new version,
-	// but not found in the previous version, we consider
-	// as newly added.
-	for _, nc := range newContent {
-		fh := nc.(file.Hash)
-		if _, ok := prevContent[fh.Path]; !ok {
-			added = append(added, fh)
+	for _, uploaded := range slices.Collect(maps.Values(uploadedMap)) {
+		if _, ok := prevMap[uploaded.Path]; ok {
+			continue
 		}
+
+		// the uploaded file was not previously present, this means it is new
+		added = append(added, uploaded)
 	}
 
 	var (
-		all  = make([]file.Hash, 0, len(unchanged)+len(changed)+len(added))
 		diff = FlavorVersionDiff{
 			Added:   added,
 			Removed: removed,
@@ -206,12 +200,8 @@ func (s *svc) CreateFlavorVersion(
 	changes = append(changes, added...)
 	sortByPath(changes)
 
-	for _, c := range changes {
-		log.Println("change: ", c.Path)
-	}
-
-	all = append(all, changed...)
-	all = append(all, added...)
+	all := make([]file.Hash, 0, len(unchanged)+len(changes))
+	all = append(all, changes...)
 	all = append(all, unchanged...)
 
 	sortByPath(all)

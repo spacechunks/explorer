@@ -69,8 +69,8 @@ func main() {
 			CheckpointJobTimeout:          *checkJobTimeout,
 			CheckpointStatusCheckInterval: *checkStatusCheckInterval,
 		}
-		ctx, cancel = context.WithCancel(context.Background())
-		server      = controlplane.NewServer(logger, cfg)
+		ctx    = context.Background()
+		server = controlplane.NewServer(logger, cfg)
 	)
 
 	go func() {
@@ -78,7 +78,7 @@ func main() {
 		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 		s := <-c
 		logger.Info("received shutdown signal", "signal", s)
-		cancel()
+		server.Stop()
 	}()
 
 	if err := migrations.Migrate(cfg.DBConnString); err != nil {
