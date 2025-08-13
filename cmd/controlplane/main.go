@@ -39,16 +39,17 @@ func main() {
 	var (
 		logger                   = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 		fs                       = flag.NewFlagSet("controlplane", flag.ContinueOnError)
-		listenAddr               = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                //nolint:lll
-		pgConnString             = fs.String("postgres-dsn", "", "connection string in the form of postgres://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]") //nolint:lll
-		grpcMaxMessageSize       = fs.Uint("grpc-max-message-size", 4000000, "maximum grpc message size in bytes")                                                             //nolint:lll
-		ociRegistry              = fs.String("oci-registry", "", "registry to use to pull and push images")                                                                    //nolint:lll
-		ociRegistryUser          = fs.String("oci-registry-user", "", "oci registry username used for authentication against configured oci registry")                         //nolint:lll
-		ociRegistryPass          = fs.String("oci-registry-pass", "", "oci registry password used for authentication against configured oci registry")                         //nolint:lll
-		baseImage                = fs.String("base-image", "", "base image to use for creating flavor version images")                                                         //nolint:lll
-		imageCacheDir            = fs.String("image-cache-dir", "/tmp/explorer-images", "directory used to cache base image")                                                  //nolint:lll
-		checkJobTimeout          = fs.Duration("checkpoint-job-timeout", 5*time.Minute, "when to abort the checkpointing job")                                                 //nolint:lll
-		checkStatusCheckInterval = fs.Duration("checkpoint-status-check-interval", 3*time.Second, "how often the status check endpoint for a checkpoint should be called")     //nolint:lll
+		listenAddr               = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                                                   //nolint:lll
+		pgConnString             = fs.String("postgres-dsn", "", "connection string in the form of postgres://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]")                                    //nolint:lll
+		grpcMaxMessageSize       = fs.Uint("grpc-max-message-size", 4000000, "maximum grpc message size in bytes")                                                                                                //nolint:lll
+		ociRegistry              = fs.String("oci-registry", "", "registry to use to pull and push images")                                                                                                       //nolint:lll
+		ociRegistryUser          = fs.String("oci-registry-user", "", "oci registry username used for authentication against configured oci registry")                                                            //nolint:lll
+		ociRegistryPass          = fs.String("oci-registry-pass", "", "oci registry password used for authentication against configured oci registry")                                                            //nolint:lll
+		baseImage                = fs.String("base-image", "", "base image to use for creating flavor version images")                                                                                            //nolint:lll
+		imageCacheDir            = fs.String("image-cache-dir", "/tmp/explorer-images", "directory used to cache base image")                                                                                     //nolint:lll
+		imagePlatform            = fs.String("image-platform", "linux/amd64", "the platform that will be specified when pulling the base image. must match with all configured platformd hosts e.g. linux/amd64") //nolint:lll
+		checkJobTimeout          = fs.Duration("checkpoint-job-timeout", 5*time.Minute, "when to abort the checkpointing job")                                                                                    //nolint:lll
+		checkStatusCheckInterval = fs.Duration("checkpoint-status-check-interval", 3*time.Second, "how often the status check endpoint for a checkpoint should be called")                                        //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
@@ -66,6 +67,7 @@ func main() {
 			OCIRegistryPass:               *ociRegistryPass,
 			BaseImage:                     *baseImage,
 			ImageCacheDir:                 *imageCacheDir,
+			ImagePlatform:                 *imagePlatform,
 			CheckpointJobTimeout:          *checkJobTimeout,
 			CheckpointStatusCheckInterval: *checkStatusCheckInterval,
 		}

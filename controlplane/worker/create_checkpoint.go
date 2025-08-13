@@ -72,7 +72,7 @@ func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[j
 
 		// we only want to update the job to failed
 		// once we exhausted all attempts.
-		if riverJob.Attempt != riverJob.MaxAttempts {
+		if riverJob.Attempt < riverJob.MaxAttempts {
 			return
 		}
 
@@ -94,6 +94,11 @@ func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[j
 	//       and the job times out, but in the background
 	//       platformd still executes the checkpointing
 	//       and pushes an image.
+	//       --
+	//       if the image does not exist fetch checkpoint
+	//       status from node and if failed try again otherwise
+	//       wait for completion. => requires saving checkpoint id
+	//       and node id.
 
 	// TODO: choose only nodes that are available for running checkpoint workloads
 	n, err := w.nodeRepo.RandomNode(ctx)
@@ -122,6 +127,7 @@ func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[j
 				CheckpointId: resp.CheckpointId,
 			})
 			if err != nil {
+				// TODO: if error is not found return directly
 				w.logger.ErrorContext(ctx, "checkpoint status error", "err", err)
 				continue
 			}
