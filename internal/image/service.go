@@ -26,7 +26,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -155,7 +154,7 @@ func (s *service) pull(ctx context.Context, ref name.Reference, platform string)
 		Password: s.registryPass,
 	}
 
-	plat, err := ociv1.ParsePlatform(runtime.GOOS + "/" + runtime.GOARCH)
+	plat, err := ociv1.ParsePlatform(platform)
 	if err != nil {
 		return nil, fmt.Errorf("parse platform: %w", err)
 	}
