@@ -25,6 +25,9 @@ What's missing for a working beta:
 **Requirements**
 * Linux kernel >= 6.6, tcx not supported (caused by `link.AttachTCX`)
 
+**Limitations**
+* Only single-platform OCI images can be built, so setups containing both `linux/arm64` and `linux/amd64` hosts is not possible as of now.
+
 ## License
 This project uses two different licenses: AGPLv3 and LGPLv3. Everything found under under the `api/` folder is licensed under LGPLv3 while everything else is covered by AGPLv3, if not stated otherwise.
 

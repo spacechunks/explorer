@@ -37,7 +37,7 @@ import (
 
 type Service interface {
 	Push(ctx context.Context, img ociv1.Image, imgRef string) error
-	Pull(ctx context.Context, imgRef string) (ociv1.Image, error)
+	Pull(ctx context.Context, imgRef string, platform string) (ociv1.Image, error)
 }
 
 type service struct {
@@ -47,6 +47,7 @@ type service struct {
 	pullCacheDir string
 }
 
+// NewService creates a new instance of image.Service. Leave cacheDir empty to disable caching of pulled images.
 func NewService(logger *slog.Logger, registryUser string, registryPass string, cacheDir string) Service {
 	return &service{
 		logger:       logger,
@@ -73,7 +74,7 @@ func (s *service) Push(ctx context.Context, img ociv1.Image, imgRef string) erro
 		Password: s.registryPass,
 	}
 
-	s.logger.InfoContext(ctx, "pushing image", "ref", ref)
+	s.logger.InfoContext(ctx, "pushing image", "ref", ref.String())
 
 	if err := remote.Write(
 		ref,
@@ -87,7 +88,7 @@ func (s *service) Push(ctx context.Context, img ociv1.Image, imgRef string) erro
 	return nil
 }
 
-func (s *service) Pull(ctx context.Context, imgRef string) (ociv1.Image, error) {
+func (s *service) Pull(ctx context.Context, imgRef string, platform string) (img ociv1.Image, err error) {
 	ref, err := name.ParseReference(imgRef)
 	if err != nil {
 		return nil, fmt.Errorf("pull: parse image ref: %w", err)
@@ -96,25 +97,9 @@ func (s *service) Pull(ctx context.Context, imgRef string) (ociv1.Image, error) 
 	// linux does not allow slashes in filenames
 	path := fmt.Sprintf("%s/%s", s.pullCacheDir, strings.ReplaceAll(ref.Name(), "/", "_"))
 
-	img, err := tarball.ImageFromPath(path, nil)
-	if errors.Is(err, os.ErrNotExist) {
-		s.logger.InfoContext(ctx, "pulling image", "ref", ref, "path", path)
-		// TODO: view remote.DefaultTransport
-		tp := &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-			ForceAttemptHTTP2: true,
-		}
-
-		auth := Auth{
-			Username: s.registryUser,
-			Password: s.registryPass,
-		}
-
-		img, err := remote.Image(ref, remote.WithAuth(auth), remote.WithTransport(tp), remote.WithContext(ctx))
-		if err != nil {
-			return nil, fmt.Errorf("pull image: %w", err)
+	defer func() {
+		if err != nil && s.pullCacheDir == "" {
+			return
 		}
 
 		if err := tarball.WriteToFile(path, ref, img); err != nil {
@@ -122,14 +107,67 @@ func (s *service) Pull(ctx context.Context, imgRef string) (ociv1.Image, error) 
 				ctx,
 				"failed to cache image",
 				"err", err,
-				"ref", ref,
+				"ref", ref.String(),
 			)
 		}
-		return img, nil
+	}()
+
+	if s.pullCacheDir != "" {
+		img, err = tarball.ImageFromPath(path, nil)
+		if errors.Is(err, os.ErrNotExist) {
+			img, err = s.pull(ctx, ref, platform)
+			if err != nil {
+				return nil, fmt.Errorf("pull image: %w", err)
+			}
+		}
+		if err != nil {
+			s.logger.ErrorContext(
+				ctx,
+				"failed to read cached image",
+				"ref", ref.String(),
+				"path", path,
+				"err", err,
+			)
+		}
 	}
 
+	img, err = s.pull(ctx, ref, platform)
 	if err != nil {
-		return nil, fmt.Errorf("read file: %v", err)
+		return nil, fmt.Errorf("pull image: %w", err)
+	}
+
+	return img, nil
+}
+
+func (s *service) pull(ctx context.Context, ref name.Reference, platform string) (ociv1.Image, error) {
+	s.logger.InfoContext(ctx, "pulling image", "ref", ref.String())
+	// TODO: view remote.DefaultTransport
+	tp := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		ForceAttemptHTTP2: true,
+	}
+
+	auth := Auth{
+		Username: s.registryUser,
+		Password: s.registryPass,
+	}
+
+	plat, err := ociv1.ParsePlatform(platform)
+	if err != nil {
+		return nil, fmt.Errorf("parse platform: %w", err)
+	}
+
+	img, err := remote.Image(
+		ref,
+		remote.WithAuth(auth),
+		remote.WithTransport(tp),
+		remote.WithContext(ctx),
+		remote.WithPlatform(*plat),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("remote image: %w", err)
 	}
 
 	return img, nil

@@ -31,6 +31,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivertype"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	checkpointv1alpha1 "github.com/spacechunks/explorer/api/platformd/checkpoint/v1alpha1"
@@ -85,6 +86,7 @@ func (s *Server) Run(ctx context.Context) error {
 		s.cfg.CheckpointStatusCheckInterval,
 		db,
 		db,
+		s.cfg.ImagePlatform,
 	)
 	if err != nil {
 		return fmt.Errorf("create river client: %w", err)
@@ -167,6 +169,14 @@ func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 	}
 }
 
+type fixedRetryPolicy struct {
+	delay time.Duration
+}
+
+func (p *fixedRetryPolicy) NextRetry(_ *rivertype.JobRow) time.Time {
+	return time.Now().Add(p.delay)
+}
+
 func CreateRiverClient(
 	logger *slog.Logger,
 	chunkRepo chunk.Repository,
@@ -177,10 +187,18 @@ func CreateRiverClient(
 	statusCheckInterval time.Duration,
 	nodeRepo node.Repository,
 	jobClient job.Client,
+	imagePlatform string,
 ) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 
-	imgWorker := worker.NewCreateImageWorker(chunkRepo, blobStore, imgService, jobClient)
+	imgWorker := worker.NewCreateImageWorker(
+		logger.With("component", "image-worker"),
+		chunkRepo,
+		blobStore,
+		imgService,
+		jobClient,
+		imagePlatform,
+	)
 	if err := river.AddWorkerSafely[job.CreateImage](workers, imgWorker); err != nil {
 		return nil, fmt.Errorf("add create image worker: %w", err)
 	}
@@ -205,7 +223,10 @@ func CreateRiverClient(
 		},
 		Workers:     workers,
 		Logger:      logger.With("component", "river"),
-		MaxAttempts: 5,
+		MaxAttempts: 5, // TODO: configurable
+		RetryPolicy: &fixedRetryPolicy{
+			delay: time.Second * 5, // TODO: configurable
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("river client: %w", err)

@@ -23,9 +23,9 @@ func (_m *MockImageService) EXPECT() *MockImageService_Expecter {
 	return &MockImageService_Expecter{mock: &_m.Mock}
 }
 
-// Pull provides a mock function with given fields: ctx, imgRef
-func (_m *MockImageService) Pull(ctx context.Context, imgRef string) (v1.Image, error) {
-	ret := _m.Called(ctx, imgRef)
+// Pull provides a mock function with given fields: ctx, imgRef, platform
+func (_m *MockImageService) Pull(ctx context.Context, imgRef string, platform string) (v1.Image, error) {
+	ret := _m.Called(ctx, imgRef, platform)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Pull")
@@ -33,19 +33,19 @@ func (_m *MockImageService) Pull(ctx context.Context, imgRef string) (v1.Image, 
 
 	var r0 v1.Image
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (v1.Image, error)); ok {
-		return rf(ctx, imgRef)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (v1.Image, error)); ok {
+		return rf(ctx, imgRef, platform)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) v1.Image); ok {
-		r0 = rf(ctx, imgRef)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) v1.Image); ok {
+		r0 = rf(ctx, imgRef, platform)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(v1.Image)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, imgRef)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, imgRef, platform)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -61,13 +61,14 @@ type MockImageService_Pull_Call struct {
 // Pull is a helper method to define mock.On call
 //   - ctx context.Context
 //   - imgRef string
-func (_e *MockImageService_Expecter) Pull(ctx interface{}, imgRef interface{}) *MockImageService_Pull_Call {
-	return &MockImageService_Pull_Call{Call: _e.mock.On("Pull", ctx, imgRef)}
+//   - platform string
+func (_e *MockImageService_Expecter) Pull(ctx interface{}, imgRef interface{}, platform interface{}) *MockImageService_Pull_Call {
+	return &MockImageService_Pull_Call{Call: _e.mock.On("Pull", ctx, imgRef, platform)}
 }
 
-func (_c *MockImageService_Pull_Call) Run(run func(ctx context.Context, imgRef string)) *MockImageService_Pull_Call {
+func (_c *MockImageService_Pull_Call) Run(run func(ctx context.Context, imgRef string, platform string)) *MockImageService_Pull_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
@@ -77,7 +78,7 @@ func (_c *MockImageService_Pull_Call) Return(_a0 v1.Image, _a1 error) *MockImage
 	return _c
 }
 
-func (_c *MockImageService_Pull_Call) RunAndReturn(run func(context.Context, string) (v1.Image, error)) *MockImageService_Pull_Call {
+func (_c *MockImageService_Pull_Call) RunAndReturn(run func(context.Context, string, string) (v1.Image, error)) *MockImageService_Pull_Call {
 	_c.Call.Return(run)
 	return _c
 }

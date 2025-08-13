@@ -49,7 +49,7 @@ func TestImagePull(t *testing.T) {
 	err := service.Push(ctx, imgtestdata.Image(t), ref)
 	require.NoError(t, err)
 
-	_, err = service.Pull(ctx, ref)
+	_, err = service.Pull(ctx, ref, "linux/amd64")
 	require.NoError(t, err)
 
 	require.FileExists(t, cacheDir+"/"+strings.ReplaceAll(ref, "/", "_"))
