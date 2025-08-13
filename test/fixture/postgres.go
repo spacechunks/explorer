@@ -24,6 +24,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -131,6 +132,7 @@ func (p *Postgres) CreateRiverClient(t *testing.T) {
 		1*time.Second,
 		p.DB,
 		p.DB,
+		runtime.GOOS+"/"+runtime.GOARCH,
 	)
 	require.NoError(t, err)
 

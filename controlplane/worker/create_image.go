@@ -21,6 +21,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"maps"
 	"slices"
 	"sort"
@@ -35,33 +36,59 @@ import (
 )
 
 type CreateImageWorker struct {
+	logger *slog.Logger
 	river.WorkerDefaults[job.CreateImage]
-	repo       chunk.Repository
-	blobStore  blob.Store
-	imgService image.Service
-	jobClient  job.Client
+	repo          chunk.Repository
+	blobStore     blob.Store
+	imgService    image.Service
+	jobClient     job.Client
+	imagePlatform string
 }
 
 func NewCreateImageWorker(
+	logger *slog.Logger,
 	repo chunk.Repository,
 	blobStore blob.Store,
 	imgSvc image.Service,
 	jobClient job.Client,
+	imagePlatform string,
 ) *CreateImageWorker {
 	return &CreateImageWorker{
-		repo:       repo,
-		blobStore:  blobStore,
-		imgService: imgSvc,
-		jobClient:  jobClient,
+		logger:        logger,
+		repo:          repo,
+		blobStore:     blobStore,
+		imgService:    imgSvc,
+		jobClient:     jobClient,
+		imagePlatform: imagePlatform,
 	}
 }
 
-func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.CreateImage]) error {
+func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.CreateImage]) (ret error) {
+	defer func() {
+		if ret == nil {
+			return
+		}
+
+		// we only want to update the job to failed
+		// once we exhausted all attempts.
+		if riverJob.Attempt < riverJob.MaxAttempts {
+			return
+		}
+
+		if err := w.repo.UpdateFlavorVersionBuildStatus(
+			ctx,
+			riverJob.Args.FlavorVersionID,
+			chunk.BuildStatusBuildImageFailed,
+		); err != nil {
+			w.logger.ErrorContext(ctx, "failed to update flavor version build status", "err", err)
+		}
+	}()
+
 	if err := riverJob.Args.Validate(); err != nil {
 		return fmt.Errorf("validate args: %w", err)
 	}
 
-	baseImg, err := w.imgService.Pull(ctx, riverJob.Args.BaseImage)
+	baseImg, err := w.imgService.Pull(ctx, riverJob.Args.BaseImage, w.imagePlatform)
 	if err != nil {
 		return fmt.Errorf("pull image: %w", err)
 	}

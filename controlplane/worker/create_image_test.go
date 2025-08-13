@@ -20,14 +20,18 @@ package worker_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
+	"os"
 	"slices"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/job"
@@ -39,9 +43,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateImageWorker(t *testing.T) {
+func TestImageWorkerCreatesImageSuccessfully(t *testing.T) {
 	var (
 		ctx        = context.Background()
+		logger     = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		imgService = mock.NewMockImageService(t)
 		blobStore  = mock.NewMockBlobStore(t)
 		repo       = mock.NewMockChunkRepository(t)
@@ -54,6 +59,7 @@ func TestCreateImageWorker(t *testing.T) {
 		c                = fixture.Chunk()
 		flavorVersion    = c.Flavors[0].Versions[0]
 		checkpointImgRef = fmt.Sprintf("%s/%s:base", registry, flavorVersion.ID)
+		imagePlat        = "linux/amd64"
 	)
 
 	hashToPath := make(map[string]string, len(flavorVersion.FileHashes))
@@ -81,7 +87,7 @@ func TestCreateImageWorker(t *testing.T) {
 	}
 
 	imgService.EXPECT().
-		Pull(mocky.Anything, baseImgRef).
+		Pull(mocky.Anything, baseImgRef, imagePlat).
 		Return(imgtestdata.Image(t), nil)
 
 	repo.EXPECT().
@@ -119,7 +125,50 @@ func TestCreateImageWorker(t *testing.T) {
 		},
 	}
 
-	w := worker.NewCreateImageWorker(repo, blobStore, imgService, jobClient)
+	w := worker.NewCreateImageWorker(logger, repo, blobStore, imgService, jobClient, imagePlat)
 
 	require.NoError(t, w.Work(ctx, riverJob))
+}
+
+func TestImageWorkerSetsStatusToFailedIfMaxAttemptsReached(t *testing.T) {
+	var (
+		ctx        = context.Background()
+		logger     = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		imgService = mock.NewMockImageService(t)
+		blobStore  = mock.NewMockBlobStore(t)
+		repo       = mock.NewMockChunkRepository(t)
+		jobClient  = mock.NewMockJobClient(t)
+	)
+
+	var (
+		registry      = "example.com"
+		baseImgRef    = "example.com/base:latest"
+		flavorVersion = fixture.Chunk().Flavors[0].Versions[0]
+		imagePlat     = "linux/amd64"
+	)
+
+	// just return an error here so we leave early to trigger the status update
+	imgService.EXPECT().
+		Pull(mocky.Anything, baseImgRef, imagePlat).
+		Return(nil, errors.New("some error"))
+
+	repo.EXPECT().
+		UpdateFlavorVersionBuildStatus(mocky.Anything, flavorVersion.ID, chunk.BuildStatusBuildImageFailed).
+		Return(nil)
+
+	riverJob := &river.Job[job.CreateImage]{
+		JobRow: &rivertype.JobRow{
+			Attempt:     5,
+			MaxAttempts: 5,
+		},
+		Args: job.CreateImage{
+			FlavorVersionID: flavorVersion.ID,
+			BaseImage:       baseImgRef,
+			OCIRegistry:     registry,
+		},
+	}
+
+	w := worker.NewCreateImageWorker(logger, repo, blobStore, imgService, jobClient, imagePlat)
+
+	_ = w.Work(ctx, riverJob)
 }
