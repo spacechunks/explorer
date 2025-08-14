@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spacechunks/explorer/internal/mock"
+	"github.com/spacechunks/explorer/platformd/cri"
 	"github.com/spacechunks/explorer/test"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -63,10 +64,23 @@ func TestCheckpoint(t *testing.T) {
 				CheckpointFileDir:        t.TempDir(),
 				CheckpointTimeoutSeconds: 60,
 				ContainerReadyTimeout:    10 * time.Second,
+				RegistryUser:             "user",
+				RegistryPass:             "pass",
 			},
 			state: StateCompleted,
 			prep: func(args prepArgs) {
-				prepUntilContainerAttach(args.svc, args.checkID, args.podID, args.ctrID, args.mockCRISvc, args.baseRef)
+				prepUntilContainerAttach(
+					args.svc,
+					args.checkID,
+					args.podID,
+					args.ctrID,
+					args.mockCRISvc,
+					args.baseRef,
+					cri.RegistryAuth{
+						Username: args.cfg.RegistryUser,
+						Password: args.cfg.RegistryPass,
+					},
+				)
 
 				fileLoc := fmt.Sprintf("%s/%s", args.cfg.CheckpointFileDir, args.checkID)
 
@@ -95,11 +109,24 @@ func TestCheckpoint(t *testing.T) {
 				CheckpointFileDir:        t.TempDir(),
 				CheckpointTimeoutSeconds: 60,
 				ContainerReadyTimeout:    1 * time.Second,
+				RegistryUser:             "user",
+				RegistryPass:             "pass",
 			},
 			state: StateContainerWaitReadyFailed,
 			err:   context.DeadlineExceeded,
 			prep: func(args prepArgs) {
-				prepUntilContainerAttach(args.svc, args.checkID, args.podID, args.ctrID, args.mockCRISvc, args.baseRef)
+				prepUntilContainerAttach(
+					args.svc,
+					args.checkID,
+					args.podID,
+					args.ctrID,
+					args.mockCRISvc,
+					args.baseRef,
+					cri.RegistryAuth{
+						Username: args.cfg.RegistryUser,
+						Password: args.cfg.RegistryPass,
+					},
+				)
 			},
 		},
 	}
@@ -158,9 +185,10 @@ func prepUntilContainerAttach(
 	ctrID string,
 	mockCRISvc *mock.MockCriService,
 	baseRef name.Reference,
+	auth cri.RegistryAuth,
 ) {
 	mockCRISvc.EXPECT().
-		EnsureImage(mocky.Anything, baseRef.String()).
+		EnsureImage(mocky.Anything, baseRef.String(), auth).
 		Return(true, nil)
 
 	mockCRISvc.EXPECT().

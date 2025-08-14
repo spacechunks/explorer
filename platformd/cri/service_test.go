@@ -50,6 +50,7 @@ func TestEnsureImage(t *testing.T) {
 						Image: &runtimev1.ImageSpec{
 							Image: url,
 						},
+						Auth: &runtimev1.AuthConfig{},
 					}).
 					Return(&runtimev1.PullImageResponse{}, nil)
 			},
@@ -81,7 +82,7 @@ func TestEnsureImage(t *testing.T) {
 
 			tt.prep(mockImgClient, tt.url)
 
-			_, err := svc.EnsureImage(ctx, tt.url)
+			_, err := svc.EnsureImage(ctx, tt.url, cri.Unauthenticated)
 			require.NoError(t, err)
 		})
 	}

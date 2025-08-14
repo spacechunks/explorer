@@ -79,9 +79,14 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			runtimev1.NewRuntimeServiceClient(criConn),
 			runtimev1.NewImageServiceClient(criConn),
 		)
+		registryAuth = cri.RegistryAuth{
+			Username: cfg.RegistryUser,
+			Password: cfg.RegistryPass,
+		}
 		wlSvc = workload.NewService(
 			s.logger,
 			criSvc,
+			registryAuth,
 		)
 		proxySvc = proxy.NewService(
 			s.logger.With("component", "proxy-service"),
@@ -100,8 +105,8 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 				MemoryLimitBytes:         cfg.CheckpointConfig.MemoryLimitBytes,
 				CheckpointFileDir:        cfg.CheckpointConfig.CheckpointFileDir,
 				CheckpointTimeoutSeconds: cfg.CheckpointConfig.CheckpointTimeoutSeconds,
-				RegistryUser:             cfg.RegistryUser,
-				RegistryPass:             cfg.RegistryPass,
+				RegistryUser:             cfg.CheckpointConfig.RegistryUser,
+				RegistryPass:             cfg.CheckpointConfig.RegistryPass,
 				ListenAddr:               cfg.CheckpointConfig.ListenAddr,
 				StatusRetentionPeriod:    cfg.CheckpointConfig.StatusRetentionPeriod,
 				ContainerReadyTimeout:    cfg.CheckpointConfig.ContainerReadyTimeout,

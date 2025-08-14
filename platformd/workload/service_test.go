@@ -35,6 +35,10 @@ import (
 )
 
 func TestRunWorkload(t *testing.T) {
+	var regAuth = cri.RegistryAuth{
+		Username: "user",
+		Password: "pass",
+	}
 	tests := []struct {
 		name    string
 		w       workload.Workload
@@ -99,7 +103,7 @@ func TestRunWorkload(t *testing.T) {
 				)
 
 				criService.EXPECT().
-					EnsureImage(mocky.Anything, w.BaseImage).
+					EnsureImage(mocky.Anything, w.BaseImage, regAuth).
 					Return(false, nil)
 
 				criService.EXPECT().
@@ -111,7 +115,7 @@ func TestRunWorkload(t *testing.T) {
 					}, nil)
 
 				criService.EXPECT().
-					EnsureImage(mocky.Anything, w.CheckpointImage).
+					EnsureImage(mocky.Anything, w.CheckpointImage, regAuth).
 					Return(false, nil)
 
 				criService.EXPECT().
@@ -126,7 +130,7 @@ func TestRunWorkload(t *testing.T) {
 				ctx            = context.Background()
 				logger         = slog.New(slog.NewTextHandler(os.Stdout, nil))
 				mockCRIService = mock.NewMockCriService(t)
-				svc            = workload.NewService(logger, mockCRIService)
+				svc            = workload.NewService(logger, mockCRIService, regAuth)
 			)
 
 			tt.prep(mockCRIService, tt.w, tt.attempt)
@@ -139,11 +143,15 @@ func TestRunWorkload(t *testing.T) {
 
 func TestRemoveWorkload(t *testing.T) {
 	var (
-		ctx            = context.Background()
-		wlID           = test.NewUUIDv7(t)
-		logger         = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		ctx     = context.Background()
+		wlID    = test.NewUUIDv7(t)
+		logger  = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		regAuth = cri.RegistryAuth{
+			Username: "user",
+			Password: "pass",
+		}
 		mockCRIService = mock.NewMockCriService(t)
-		svc            = workload.NewService(logger, mockCRIService)
+		svc            = workload.NewService(logger, mockCRIService, regAuth)
 	)
 
 	mockCRIService.EXPECT().
@@ -188,7 +196,11 @@ func TestGetWorkloadHealth(t *testing.T) {
 				ctx            = context.Background()
 				logger         = slog.New(slog.NewTextHandler(os.Stdout, nil))
 				mockCRIService = mock.NewMockCriService(t)
-				svc            = workload.NewService(logger, mockCRIService)
+				regAuth        = cri.RegistryAuth{
+					Username: "user",
+					Password: "pass",
+				}
+				svc = workload.NewService(logger, mockCRIService, regAuth)
 			)
 
 			mockCRIService.EXPECT().

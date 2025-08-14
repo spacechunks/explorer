@@ -396,9 +396,9 @@ func (_c *MockCriService_CreateContainer_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
-// EnsureImage provides a mock function with given fields: ctx, imageURL
-func (_m *MockCriService) EnsureImage(ctx context.Context, imageURL string) (bool, error) {
-	ret := _m.Called(ctx, imageURL)
+// EnsureImage provides a mock function with given fields: ctx, imageURL, auth
+func (_m *MockCriService) EnsureImage(ctx context.Context, imageURL string, auth cri.RegistryAuth) (bool, error) {
+	ret := _m.Called(ctx, imageURL, auth)
 
 	if len(ret) == 0 {
 		panic("no return value specified for EnsureImage")
@@ -406,17 +406,17 @@ func (_m *MockCriService) EnsureImage(ctx context.Context, imageURL string) (boo
 
 	var r0 bool
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
-		return rf(ctx, imageURL)
+	if rf, ok := ret.Get(0).(func(context.Context, string, cri.RegistryAuth) (bool, error)); ok {
+		return rf(ctx, imageURL, auth)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) bool); ok {
-		r0 = rf(ctx, imageURL)
+	if rf, ok := ret.Get(0).(func(context.Context, string, cri.RegistryAuth) bool); ok {
+		r0 = rf(ctx, imageURL, auth)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, imageURL)
+	if rf, ok := ret.Get(1).(func(context.Context, string, cri.RegistryAuth) error); ok {
+		r1 = rf(ctx, imageURL, auth)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -432,13 +432,14 @@ type MockCriService_EnsureImage_Call struct {
 // EnsureImage is a helper method to define mock.On call
 //   - ctx context.Context
 //   - imageURL string
-func (_e *MockCriService_Expecter) EnsureImage(ctx interface{}, imageURL interface{}) *MockCriService_EnsureImage_Call {
-	return &MockCriService_EnsureImage_Call{Call: _e.mock.On("EnsureImage", ctx, imageURL)}
+//   - auth cri.RegistryAuth
+func (_e *MockCriService_Expecter) EnsureImage(ctx interface{}, imageURL interface{}, auth interface{}) *MockCriService_EnsureImage_Call {
+	return &MockCriService_EnsureImage_Call{Call: _e.mock.On("EnsureImage", ctx, imageURL, auth)}
 }
 
-func (_c *MockCriService_EnsureImage_Call) Run(run func(ctx context.Context, imageURL string)) *MockCriService_EnsureImage_Call {
+func (_c *MockCriService_EnsureImage_Call) Run(run func(ctx context.Context, imageURL string, auth cri.RegistryAuth)) *MockCriService_EnsureImage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(cri.RegistryAuth))
 	})
 	return _c
 }
@@ -448,7 +449,7 @@ func (_c *MockCriService_EnsureImage_Call) Return(_a0 bool, _a1 error) *MockCriS
 	return _c
 }
 
-func (_c *MockCriService_EnsureImage_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *MockCriService_EnsureImage_Call {
+func (_c *MockCriService_EnsureImage_Call) RunAndReturn(run func(context.Context, string, cri.RegistryAuth) (bool, error)) *MockCriService_EnsureImage_Call {
 	_c.Call.Return(run)
 	return _c
 }

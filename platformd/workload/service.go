@@ -19,17 +19,20 @@ type Service interface {
 }
 
 type svc struct {
-	logger     *slog.Logger
-	criService cri.Service
+	logger       *slog.Logger
+	criService   cri.Service
+	registryAuth cri.RegistryAuth
 }
 
 func NewService(
 	logger *slog.Logger,
 	criService cri.Service,
+	registryAuth cri.RegistryAuth,
 ) Service {
 	return &svc{
-		logger:     logger.With("component", "workload-service"),
-		criService: criService,
+		logger:       logger.With("component", "workload-service"),
+		criService:   criService,
+		registryAuth: registryAuth,
 	}
 }
 
@@ -61,7 +64,7 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 		},
 	}
 
-	pulled, err := s.criService.EnsureImage(ctx, w.BaseImage)
+	pulled, err := s.criService.EnsureImage(ctx, w.BaseImage, s.registryAuth)
 	if err != nil {
 		return fmt.Errorf("pull image if not present: %w", err)
 	}
@@ -88,7 +91,7 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 		return fmt.Errorf("create pod: %w", err)
 	}
 
-	if _, err := s.criService.EnsureImage(ctx, w.CheckpointImage); err != nil {
+	if _, err := s.criService.EnsureImage(ctx, w.CheckpointImage, s.registryAuth); err != nil {
 		return fmt.Errorf("pull image if not present: %w", err)
 	}
 

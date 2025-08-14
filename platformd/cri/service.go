@@ -14,9 +14,17 @@ const (
 	LabelPodUID = "io.kubernetes.pod.uid"
 )
 
+var Unauthenticated = RegistryAuth{}
+
 type RunOptions struct {
 	PodConfig       *runtimev1.PodSandboxConfig
 	ContainerConfig *runtimev1.ContainerConfig
+	Auth            RegistryAuth
+}
+
+type RegistryAuth struct {
+	Username string
+	Password string
 }
 
 // Service provides access to the cri api. its main purpose is to
@@ -35,7 +43,7 @@ type Service interface {
 
 	// EnsureImage makes sure that the OCI image with the given url is present.
 	// Returns true if pulling was necessary, false if not.
-	EnsureImage(ctx context.Context, imageURL string) (bool, error)
+	EnsureImage(ctx context.Context, imageURL string, auth RegistryAuth) (bool, error)
 }
 
 type svc struct {
@@ -80,7 +88,7 @@ func (s *svc) EnsurePod(ctx context.Context, opts RunOptions) error {
 		return fmt.Errorf("create pod: %w", err)
 	}
 
-	if _, err := s.EnsureImage(ctx, opts.ContainerConfig.Image.Image); err != nil {
+	if _, err := s.EnsureImage(ctx, opts.ContainerConfig.Image.Image, opts.Auth); err != nil {
 		return fmt.Errorf("ensure image: %w", err)
 	}
 
@@ -131,7 +139,7 @@ func (s *svc) RunContainer(ctx context.Context, req *runtimev1.CreateContainerRe
 
 // EnsureImage first calls ListImages then checks if the image is contained in the response.
 // if this is not the case PullImage is being called.
-func (s *svc) EnsureImage(ctx context.Context, imageURL string) (bool, error) {
+func (s *svc) EnsureImage(ctx context.Context, imageURL string, auth RegistryAuth) (bool, error) {
 	listResp, err := s.imgClient.ListImages(ctx, &runtimev1.ListImagesRequest{})
 	if err != nil {
 		return false, fmt.Errorf("list images: %w", err)
@@ -155,6 +163,10 @@ func (s *svc) EnsureImage(ctx context.Context, imageURL string) (bool, error) {
 	if _, err := s.imgClient.PullImage(ctx, &runtimev1.PullImageRequest{
 		Image: &runtimev1.ImageSpec{
 			Image: imageURL,
+		},
+		Auth: &runtimev1.AuthConfig{
+			Username: auth.Username,
+			Password: auth.Password,
 		},
 	}); err != nil {
 		return false, fmt.Errorf("pull image: %w", err)

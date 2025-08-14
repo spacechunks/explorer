@@ -81,6 +81,8 @@ func main() {
 				MemoryLimitBytes:         int64(*checkMemoryLimitInBytes), // TODO: validation
 				CheckpointFileDir:        *checkLocationDir,
 				CheckpointTimeoutSeconds: int64(*checkTimeout), // TODO: validation
+				RegistryUser:             *registryUser,
+				RegistryPass:             *registryPass,
 				ListenAddr:               *checkListenAddr,
 				StatusRetentionPeriod:    *checkStatusRetentionDuration,
 				ContainerReadyTimeout:    *checkContainerReadyTimeout,
