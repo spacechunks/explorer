@@ -207,7 +207,10 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 		})
 	}()
 
-	if _, err := s.criService.EnsureImage(ctx, baseRef.String()); err != nil {
+	if _, err := s.criService.EnsureImage(ctx, baseRef.String(), cri.RegistryAuth{
+		Username: s.cfg.RegistryUser,
+		Password: s.cfg.RegistryPass,
+	}); err != nil {
 		state = StatePullBaseImageFailed
 		return fmt.Errorf("pull base image: %w", err)
 	}
@@ -225,6 +228,7 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 		return fmt.Errorf("wait ctr ready: %w", err)
 	}
 
+	// TODO: check if checkpoint is already present and then only build image and push
 	location := fmt.Sprintf("%s/%s", s.cfg.CheckpointFileDir, id)
 
 	s.logger.InfoContext(ctx, "checkpointing container", "checkpoint_id", id, "container_id", ctrID)
