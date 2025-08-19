@@ -12,6 +12,7 @@ require (
 	github.com/containernetworking/plugins v1.5.0
 	github.com/docker/docker v28.0.1+incompatible
 	github.com/envoyproxy/go-control-plane v0.13.1
+	github.com/goccy/go-yaml v1.18.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-containerregistry v0.20.3
@@ -23,6 +24,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/riverqueue/river v0.22.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.22.0
+	github.com/riverqueue/river/rivertype v0.22.0
+	github.com/rodaine/table v1.3.0
+	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.36.0
 	github.com/vektra/mockery/v2 v2.46.3
@@ -115,14 +119,12 @@ require (
 	github.com/riverqueue/river/cmd/river v0.22.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.22.0 // indirect
 	github.com/riverqueue/river/rivershared v0.22.0 // indirect
-	github.com/riverqueue/river/rivertype v0.22.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/safchain/ethtool v0.3.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/spf13/viper v1.15.0 // indirect
