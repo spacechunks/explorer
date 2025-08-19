@@ -89,6 +89,7 @@ func TestAPICreateChunk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var (
 				ctx = context.Background()
 				pg  = fixture.NewPostgres()
@@ -151,6 +152,7 @@ func TestGetChunk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var (
 				ctx = context.Background()
 				pg  = fixture.NewPostgres()
@@ -198,6 +200,7 @@ func TestGetChunk(t *testing.T) {
 }
 
 func TestListChunks(t *testing.T) {
+	t.Parallel()
 	var (
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
@@ -339,6 +342,7 @@ func TestUpdateChunk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var (
 				ctx = context.Background()
 				pg  = fixture.NewPostgres()
@@ -430,6 +434,7 @@ func TestCreateFlavor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var (
 				ctx = context.Background()
 				pg  = fixture.NewPostgres()
@@ -571,6 +576,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var (
 				ctx = context.Background()
 				pg  = fixture.NewPostgres()
@@ -705,6 +711,7 @@ func TestSaveFlavorFiles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var (
 				ctx = context.Background()
 				pg  = fixture.NewPostgres()
@@ -757,6 +764,7 @@ func TestSaveFlavorFiles(t *testing.T) {
 }
 
 func TestSaveFlavorFilesAlreadyUploaded(t *testing.T) {
+	t.Parallel()
 	var (
 		ctx   = context.Background()
 		pg    = fixture.NewPostgres()
@@ -828,6 +836,7 @@ func TestSaveFlavorFilesAlreadyUploaded(t *testing.T) {
 }
 
 func TestBuildFlavorVersion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		err  error
