@@ -22,6 +22,7 @@ import (
 	"context"
 
 	"github.com/spacechunks/explorer/cli"
+	"github.com/spacechunks/explorer/cli/cmd/publish"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +34,7 @@ func Root(ctx context.Context, state cli.State) *cobra.Command {
 	}
 
 	chunkCmd := chunk()
-	chunkCmd.AddCommand(publish(ctx, state))
+	chunkCmd.AddCommand(publish.NewCommand(ctx, state))
 
 	root.AddCommand(chunkCmd)
 
