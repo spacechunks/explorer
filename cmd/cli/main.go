@@ -59,7 +59,7 @@ func main() {
 }
 
 func die(msg string, err error) {
-	_, _ = fmt.Fprintln(os.Stderr, fmt.Sprintf("%s: %v", msg, err))
+	_, _ = fmt.Fprintf(os.Stderr, "%s: %v\n", msg, err)
 	os.Exit(1)
 }
 
