@@ -1,0 +1,17 @@
+version: v1alpha1
+chunk:
+  name: TestChunk
+  description: this is a description
+  tags:
+    - tag1
+    - tag2
+  flavors:
+    - name: flavor1
+      version: v8
+      minecraft_version: 1.21.8
+      path: ./chunk/flavor1
+    - name: flavor2
+      version: v1
+      minecraft_version: 1.21.8
+      path: ./chunk/flavor2
+

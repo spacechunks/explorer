@@ -23,10 +23,6 @@ github.com/amacneil/dbmate/v2/pkg/driver/postgres
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
-# github.com/bramvdbogaerde/go-scp v1.5.0
-## explicit; go 1.21
-github.com/bramvdbogaerde/go-scp
-github.com/bramvdbogaerde/go-scp/auth
 # github.com/cbergoon/merkletree v0.2.0
 ## explicit; go 1.12
 github.com/cbergoon/merkletree
@@ -714,7 +710,6 @@ golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/ssh
-golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 # golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
 ## explicit; go 1.23.0

@@ -10,3 +10,6 @@ mounts:
   - location: "/Users/yannic/proj/spc/explorer"
     writable: true
 mountType: "virtiofs"
+portForwards:
+  - guestPort: 3011
+
