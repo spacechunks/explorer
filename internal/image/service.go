@@ -112,6 +112,8 @@ func (s *service) Pull(ctx context.Context, imgRef string, platform string) (img
 		}
 	}()
 
+	s.logger.InfoContext(ctx, "pulling image", "ref", ref.String())
+
 	if s.pullCacheDir != "" {
 		img, err = tarball.ImageFromPath(path, nil)
 		if errors.Is(err, os.ErrNotExist) {
@@ -140,7 +142,6 @@ func (s *service) Pull(ctx context.Context, imgRef string, platform string) (img
 }
 
 func (s *service) pull(ctx context.Context, ref name.Reference, platform string) (ociv1.Image, error) {
-	s.logger.InfoContext(ctx, "pulling image", "ref", ref.String())
 	// TODO: view remote.DefaultTransport
 	tp := &http.Transport{
 		TLSClientConfig: &tls.Config{

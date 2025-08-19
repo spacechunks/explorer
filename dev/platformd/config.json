@@ -15,7 +15,7 @@
   "registry-endpoint": "ghcr.io/spacechunks/explorer-dev",
   "registry-user": "",
   "registry-password": "",
-  "control-plane-endpoint": "localhost:9012",
+  "control-plane-endpoint": "192.168.5.2:9012",
   "checkpoint-listen-addr": "localhost:3011",
   "checkpoint-status-retention-period": "30s",
   "checkpoint-file-dir": "/tmp/platformd",
