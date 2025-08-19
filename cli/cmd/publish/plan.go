@@ -150,7 +150,7 @@ func (p plan) print() {
 		indent3        = "   "
 		tbl            = func() table.Table {
 			t := table.New("", "")
-			t.WithHeaderFormatter(func(s string, i ...interface{}) string {
+			t.WithHeaderFormatter(func(s string, i ...any) string {
 				return ""
 			})
 			return t
