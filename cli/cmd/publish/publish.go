@@ -320,6 +320,11 @@ func localFileHashes(flavorPath string) (string, []file.Hash, error) {
 			return nil
 		}
 
+		if err != nil {
+			fmt.Printf("Could not walk into directory %s: %v", path, err)
+			return nil
+		}
+
 		for _, p := range excluded {
 			matched, err := regexp.Match(p, []byte(path))
 			if err != nil {

@@ -59,7 +59,7 @@ func main() {
 }
 
 func die(msg string, err error) {
-	_, _ = fmt.Fprintln(os.Stderr, fmt.Sprintf("%s: %v\n", msg, err))
+	_, _ = fmt.Fprintln(os.Stderr, fmt.Sprintf("%s: %v", msg, err))
 	os.Exit(1)
 }
 
@@ -90,10 +90,12 @@ func configHome() (string, error) {
 	if cfgHome != "" {
 		return cfgHome, nil
 	}
-	if runtime.GOOS == "windows" {
+
+	switch runtime.GOOS {
+	case "windows":
 		// %LOCALAPPDATA% should always be present, so no need to create it
 		return filepath.Join("%LOCALAPPDATA%", "explorer"), nil
-	} else if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+	case "linux", "darwin":
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("failed to get users home directory: %w", err)
