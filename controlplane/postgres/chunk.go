@@ -326,6 +326,7 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 
 	for _, f := range flavorMap {
 		sort.Slice(f.Versions, func(i, j int) bool {
+			// the latest flavor version will be the first entry in the slice
 			return f.Versions[i].CreatedAt.Before(f.Versions[j].CreatedAt)
 		})
 		for _, v := range f.Versions {
@@ -336,6 +337,11 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 	}
 
 	c.Flavors = slices.Collect(maps.Values(flavorMap))
+	sort.Slice(c.Flavors, func(i, j int) bool {
+		// the latest flavor will be the first entry in the slice
+		return c.Flavors[i].CreatedAt.Before(c.Flavors[j].CreatedAt)
+	})
+
 	ret = c
 
 	return ret
