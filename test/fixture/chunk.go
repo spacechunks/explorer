@@ -46,13 +46,16 @@ func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
 		Description: "some description bla bla",
 		Tags:        []string{"tag1", "tag2"},
 		Flavors: []chunk.Flavor{
-			Flavor(func(f *chunk.Flavor) {
-				f.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
-				f.Name = "flavor1"
-			}),
+			// the latest flavor has to be first
 			Flavor(func(f *chunk.Flavor) {
 				f.ID = "01953e68-8313-76ba-8012-2f51abb7988a"
 				f.Name = "flavor2"
+				f.CreatedAt = time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC)
+			}),
+			Flavor(func(f *chunk.Flavor) {
+				f.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
+				f.Name = "flavor1"
+				f.CreatedAt = time.Date(2024, 2, 23, 13, 12, 15, 0, time.UTC)
 			}),
 		},
 		CreatedAt: time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
