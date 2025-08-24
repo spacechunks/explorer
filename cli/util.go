@@ -16,26 +16,16 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package cmd
+package cli
 
-import (
-	"context"
+import chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 
-	"github.com/spacechunks/explorer/cli"
-	"github.com/spacechunks/explorer/cli/cmd/publish"
-	"github.com/spacechunks/explorer/cli/cmd/run"
-	"github.com/spf13/cobra"
-)
-
-func newChunkCommand(ctx context.Context, state cli.State) *cobra.Command {
-	c := &cobra.Command{
-		Use:   "chunk",
-		Short: "TBD",
-		Long:  "TBD",
+func FindFlavor(flavors []*chunkv1alpha1.Flavor, filter func(f *chunkv1alpha1.Flavor) bool) *chunkv1alpha1.Flavor {
+	for _, f := range flavors {
+		if !filter(f) {
+			continue
+		}
+		return f
 	}
-
-	c.AddCommand(publish.NewCommand(ctx, state))
-	c.AddCommand(run.NewCommand(ctx, state))
-
-	return c
+	return nil
 }
