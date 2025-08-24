@@ -27,6 +27,7 @@ import (
 	"time"
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	"github.com/spacechunks/explorer/cli"
 	"github.com/spacechunks/explorer/internal/ptr"
 )
 
@@ -71,7 +72,7 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 			}
 			return
 		}
-		f := findFlavor(resp.Chunk.Flavors, func(f *chunkv1alpha1.Flavor) bool {
+		f := cli.FindFlavor(resp.Chunk.Flavors, func(f *chunkv1alpha1.Flavor) bool {
 			return f.Name == local.name
 		})
 		flavorID = f.Id
@@ -169,7 +170,7 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 				fmt.Println("error while getting chunk:", err)
 			}
 
-			flavor := findFlavor(c.GetChunk().Flavors, func(f *chunkv1alpha1.Flavor) bool {
+			flavor := cli.FindFlavor(c.GetChunk().Flavors, func(f *chunkv1alpha1.Flavor) bool {
 				return f.Id == flavorID
 			})
 
