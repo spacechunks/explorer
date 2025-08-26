@@ -22,6 +22,12 @@ pd:
 	go build -o platformd/platformd ../cmd/platformd/main.go
 	sudo PLATFORMD_ENABLE_CRIO_RESTART=true ./platformd/platformd
 
+.PHONY: upload-pd
+upload-pd:
+	@limactl shell xcomp GOOS=linux GOARCH=arm64 go build -o platformd/platformd ../cmd/platformd/main.go
+	scp platformd/platformd root@$(PLATFORMD_STAGE_HOST):/usr/bin/platformd
+	#scp platformd/platformd.service root@$(PLATFORMD_STAGE_HOST):/lib/systemd/system/platformd.service
+
 .PHONY: t
 t:
 	./test
