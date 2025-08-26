@@ -2,6 +2,7 @@ package platformd
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"net"
@@ -14,6 +15,7 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/platformd/garbage"
+	"google.golang.org/grpc/credentials"
 	"k8s.io/client-go/tools/remotecommand"
 
 	//instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
@@ -44,12 +46,18 @@ func NewServer(logger *slog.Logger) *Server {
 }
 
 func (s *Server) Run(ctx context.Context, cfg Config) error {
+	s.logger.Info("started with config", "config", cfg)
+
+	tlsCreds := credentials.NewTLS(&tls.Config{
+		InsecureSkipVerify: true,
+	})
+
 	criConn, err := grpc.NewClient(cfg.CRIListenSock, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("failed to create cri grpc client: %w", err)
 	}
 
-	cpConn, err := grpc.NewClient(cfg.ControlPlaneEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	cpConn, err := grpc.NewClient(cfg.ControlPlaneEndpoint, grpc.WithTransportCredentials(tlsCreds))
 	if err != nil {
 		return fmt.Errorf("failed to create cri grpc client: %w", err)
 	}
@@ -298,8 +306,8 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 
 	// add stop related code below
 
-	mgmtServer.GracefulStop()
-	checkGRPCServer.GracefulStop()
+	mgmtServer.Stop()
+	checkGRPCServer.Stop()
 
 	gc.Stop()
 	reconciler.Stop()
