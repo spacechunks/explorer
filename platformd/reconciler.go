@@ -70,7 +70,7 @@ type reconciler struct {
 	insClient instancev1alpha1.InstanceServiceClient
 	wlService workload.Service
 	store     workload.StatusStore
-	portAlloc *portAllocator
+	portAlloc *workload.PortAllocator
 
 	attempts map[string]uint
 	ticker   *time.Ticker
@@ -81,8 +81,6 @@ type reconcilerConfig struct {
 	MaxAttempts         uint
 	SyncInterval        time.Duration
 	NodeID              string
-	MinPort             uint16
-	MaxPort             uint16
 	WorkloadNamespace   string
 	WorkloadCPUPeriod   uint64
 	WorkloadCPUQuota    uint64
@@ -96,6 +94,7 @@ func newReconciler(
 	insClient instancev1alpha1.InstanceServiceClient,
 	wlService workload.Service,
 	store workload.StatusStore,
+	portAlloc *workload.PortAllocator,
 ) reconciler {
 	return reconciler{
 		logger:    logger.With("component", "reconciler"),
@@ -103,7 +102,7 @@ func newReconciler(
 		insClient: insClient,
 		wlService: wlService,
 		store:     store,
-		portAlloc: newPortAllocator(cfg.MinPort, cfg.MaxPort),
+		portAlloc: portAlloc,
 		ticker:    time.NewTicker(cfg.SyncInterval),
 		attempts:  make(map[string]uint),
 		stop:      make(chan bool),
@@ -262,9 +261,9 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 
 	var (
 		baseURL = fmt.Sprintf(
-			"%s/%s/%s",
+			"%s/",
 			r.cfg.RegistryEndpoint,
-			instance.GetChunk().GetName(),
+			instance.GetFlavor().,
 			instance.GetFlavor().GetName(),
 		)
 		labels = map[string]string{

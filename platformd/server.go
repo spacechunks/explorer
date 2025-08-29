@@ -104,6 +104,9 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			xds.NewMap(proxyNodeID, xdsCfg),
 		)
 
+		portAlloc = workload.NewPortAllocator(cfg.MinPort, cfg.MaxPort)
+		wlStore   = workload.NewStore()
+
 		checkSvcLogger = s.logger.With("component", "checkpoint-service")
 		checkSvc       = checkpoint.NewService(
 			checkSvcLogger,
@@ -125,21 +128,20 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			func(url string) (remotecommand.Executor, error) {
 				return checkpoint.NewSPDYExecutor(url)
 			},
+			wlStore,
+			portAlloc,
 		)
 
 		proxyServer = proxy.NewServer(proxySvc)
-		wlStore     = workload.NewStore()
 		wlServer    = workload.NewServer(wlStore)
 		checkServer = checkpoint.NewServer(checkSvc)
 		reconciler  = newReconciler(s.logger, reconcilerConfig{
 			MaxAttempts:       cfg.MaxAttempts,
 			SyncInterval:      cfg.SyncInterval,
 			NodeID:            cfg.NodeID,
-			MinPort:           cfg.MinPort,
-			MaxPort:           cfg.MaxPort,
 			WorkloadNamespace: cfg.WorkloadNamespace,
 			RegistryEndpoint:  cfg.RegistryEndpoint,
-		}, insClient, wlSvc, wlStore)
+		}, insClient, wlSvc, wlStore, portAlloc)
 		gc = garbage.NewExecutor(s.logger, 1*time.Second, checkSvc)
 	)
 

@@ -414,8 +414,6 @@ func TestReconciler(t *testing.T) {
 						MaxAttempts:         maxAttempts,
 						SyncInterval:        100 * time.Millisecond,
 						NodeID:              nodeKey,
-						MinPort:             1,
-						MaxPort:             1,
 						WorkloadNamespace:   namespace,
 						WorkloadCPUPeriod:   cpuPeriod,
 						WorkloadCPUQuota:    cpuQuota,
@@ -425,6 +423,7 @@ func TestReconciler(t *testing.T) {
 					mockInsSvc,
 					mockWlSvc,
 					mockStore,
+					workload.NewPortAllocator(1, 1),
 				)
 			)
 

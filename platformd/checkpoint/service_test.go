@@ -92,7 +92,16 @@ func TestCollectGarbage(t *testing.T) {
 				logger     = slog.New(slog.NewTextHandler(os.Stdout, nil))
 				store      = checkpoint.NewStore()
 				mockCRISvc = mock.NewMockCriService(t)
-				svc        = checkpoint.NewService(logger, tt.cfg, mockCRISvc, nil, store, nil)
+				svc        = checkpoint.NewService(
+					logger,
+					tt.cfg,
+					mockCRISvc,
+					nil,
+					store,
+					nil,
+					workload.NewStore(),
+					workload.NewPortAllocator(1, 1),
+				)
 			)
 
 			for id, status := range tt.storeItems {

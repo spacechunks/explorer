@@ -16,7 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package platformd
+package workload
 
 import (
 	"testing"
@@ -31,18 +31,18 @@ func TestPortAllocation(t *testing.T) {
 	tests := []struct {
 		name string
 		err  error
-		prep func() *portAllocator
+		prep func() *PortAllocator
 	}{
 		{
 			name: "allocate multiple ports successfully",
-			prep: func() *portAllocator {
-				return newPortAllocator(1000, 2000)
+			prep: func() *PortAllocator {
+				return NewPortAllocator(1000, 2000)
 			},
 		},
 		{
 			name: "port allocation failed",
-			prep: func() *portAllocator {
-				return &portAllocator{
+			prep: func() *PortAllocator {
+				return &PortAllocator{
 					portMin: 0,
 					portMax: 2,
 					allocated: map[int]bool{

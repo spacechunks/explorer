@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/platformd/cri"
+	"github.com/spacechunks/explorer/platformd/workload"
 	"github.com/spacechunks/explorer/test"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -37,14 +38,15 @@ import (
 )
 
 type prepArgs struct {
-	svc        *ServiceImpl
-	mockCRISvc *mock.MockCriService
-	mockImgSvc *mock.MockImageService
-	cfg        Config
-	checkID    string
-	podID      string
-	ctrID      string
-	baseRef    name.Reference
+	svc         *ServiceImpl
+	mockCRISvc  *mock.MockCriService
+	mockImgSvc  *mock.MockImageService
+	cfg         Config
+	checkID     string
+	podID       string
+	ctrID       string
+	baseRef     name.Reference
+	mockWlStore *mock.MockWorkloadStatusStore
 }
 
 func TestCheckpoint(t *testing.T) {
@@ -80,7 +82,16 @@ func TestCheckpoint(t *testing.T) {
 						Username: args.cfg.RegistryUser,
 						Password: args.cfg.RegistryPass,
 					},
+					args.mockWlStore,
 				)
+
+				args.mockWlStore.EXPECT().
+					Get(args.checkID).
+					Return(&workload.Status{
+						State: workload.StateRunning,
+						Port:  1,
+					})
+				args.mockWlStore.EXPECT().Del(args.checkID)
 
 				fileLoc := fmt.Sprintf("%s/%s", args.cfg.CheckpointFileDir, args.checkID)
 
@@ -126,7 +137,15 @@ func TestCheckpoint(t *testing.T) {
 						Username: args.cfg.RegistryUser,
 						Password: args.cfg.RegistryPass,
 					},
+					args.mockWlStore,
 				)
+				args.mockWlStore.EXPECT().
+					Get(args.checkID).
+					Return(&workload.Status{
+						State: workload.StateRunning,
+						Port:  1,
+					})
+				args.mockWlStore.EXPECT().Del(args.checkID)
 			},
 		},
 	}
@@ -143,25 +162,36 @@ func TestCheckpoint(t *testing.T) {
 				mockImgSvc  = mock.NewMockImageService(t)
 				mockCRISvc  = mock.NewMockCriService(t)
 				statusStore = NewStore()
+				wlStore     = mock.NewMockWorkloadStatusStore(t)
 				mockExecer  = func(url string) (remotecommand.Executor, error) {
 					return &test.RemoteCmdExecutor{}, nil
 				}
 
-				svc = NewService(logger, tt.cfg, mockCRISvc, mockImgSvc, statusStore, mockExecer)
+				svc = NewService(
+					logger,
+					tt.cfg,
+					mockCRISvc,
+					mockImgSvc,
+					statusStore,
+					mockExecer,
+					wlStore,
+					workload.NewPortAllocator(1, 1),
+				)
 			)
 
 			baseRef, err := name.ParseReference("example.com/test-img:latest")
 			require.NoError(t, err)
 
 			tt.prep(prepArgs{
-				svc:        svc,
-				mockCRISvc: mockCRISvc,
-				mockImgSvc: mockImgSvc,
-				cfg:        tt.cfg,
-				checkID:    checkID,
-				podID:      podID,
-				ctrID:      ctrID,
-				baseRef:    baseRef,
+				svc:         svc,
+				mockCRISvc:  mockCRISvc,
+				mockImgSvc:  mockImgSvc,
+				cfg:         tt.cfg,
+				checkID:     checkID,
+				podID:       podID,
+				ctrID:       ctrID,
+				baseRef:     baseRef,
+				mockWlStore: wlStore,
 			})
 
 			err = svc.checkpoint(ctx, checkID, baseRef)
@@ -186,6 +216,7 @@ func prepUntilContainerAttach(
 	mockCRISvc *mock.MockCriService,
 	baseRef name.Reference,
 	auth cri.RegistryAuth,
+	mockWlStore *mock.MockWorkloadStatusStore,
 ) {
 	mockCRISvc.EXPECT().
 		EnsureImage(mocky.Anything, baseRef.String(), auth).
@@ -200,6 +231,11 @@ func prepUntilContainerAttach(
 		}, nil)
 
 	podCfg := svc.podConfig(checkID)
+
+	mockWlStore.EXPECT().Update(checkID, workload.Status{
+		State: workload.StateRunning,
+		Port:  1,
+	})
 
 	mockCRISvc.EXPECT().
 		RunContainer(mocky.Anything, &runtimev1.CreateContainerRequest{
