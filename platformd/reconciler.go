@@ -260,13 +260,8 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 	})
 
 	var (
-		baseURL = fmt.Sprintf(
-			"%s/%s/%s",
-			r.cfg.RegistryEndpoint,
-			instance.GetChunk().GetName(),
-			instance.GetFlavor().GetName(),
-		)
-		labels = map[string]string{
+		baseURL = fmt.Sprintf("%s/%s", r.cfg.RegistryEndpoint, instance.GetFlavorVersion().GetId())
+		labels  = map[string]string{
 			workload.LabelWorkloadPort: strconv.Itoa(int(port)),
 		}
 	)
@@ -275,9 +270,9 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 
 	w := workload.Workload{
 		ID:               id,
-		Name:             instance.GetChunk().GetName() + "_" + instance.GetFlavor().GetName(),
-		BaseImage:        baseURL + "/base",
-		CheckpointImage:  baseURL + "/checkpoint",
+		Name:             instance.GetFlavorVersion().GetId(),
+		BaseImage:        baseURL + ":base",
+		CheckpointImage:  baseURL + ":checkpoint",
 		Namespace:        r.cfg.WorkloadNamespace,
 		Hostname:         id,
 		Labels:           labels,
