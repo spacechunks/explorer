@@ -263,7 +263,7 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 		baseURL = fmt.Sprintf(
 			"%s/",
 			r.cfg.RegistryEndpoint,
-			instance.GetFlavor().,
+			instance.GetChunk().GetName(),
 			instance.GetFlavor().GetName(),
 		)
 		labels = map[string]string{
