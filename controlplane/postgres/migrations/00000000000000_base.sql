@@ -75,14 +75,14 @@ CREATE TABLE IF NOT EXISTS nodes (
 );
 
 CREATE TABLE IF NOT EXISTS instances (
-    id             UUID           NOT NULL PRIMARY KEY,
-    chunk_id       UUID           NOT NULL REFERENCES chunks(id),
-    flavor_id      UUID           NOT NULL REFERENCES flavors(id),
-    node_id        UUID           NOT NULL REFERENCES nodes(id),
-    port           INT,
-    state          instance_state NOT NULL DEFAULT 'PENDING',
-    created_at     TIMESTAMPTZ    NOT NULL DEFAULT now(),
-    updated_at     TIMESTAMPTZ    NOT NULL DEFAULT now()
+    id                     UUID           NOT NULL PRIMARY KEY,
+    chunk_id               UUID           NOT NULL REFERENCES chunks(id),
+    flavor_version_id      UUID           NOT NULL REFERENCES flavor_versions(id),
+    node_id                UUID           NOT NULL REFERENCES nodes(id),
+    port                   INT,
+    state                  instance_state NOT NULL DEFAULT 'PENDING',
+    created_at             TIMESTAMPTZ    NOT NULL DEFAULT now(),
+    updated_at             TIMESTAMPTZ    NOT NULL DEFAULT now()
 );
 
 --

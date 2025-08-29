@@ -207,9 +207,13 @@ func (p *Postgres) CreateInstance(t *testing.T, nodeID string, ins *instance.Ins
 	})
 
 	for _, f := range ins.Chunk.Flavors {
-		// flavor names for a chunk are unique
-		if ins.ChunkFlavor.Name == f.Name {
-			ins.ChunkFlavor = f
+		for _, v := range f.Versions {
+			// use hash to find flavor version here, because
+			// id set in the passed instance will not match
+			// due to CreateChunk generating new ids.
+			if ins.FlavorVersion.Hash == v.Hash {
+				ins.FlavorVersion = v
+			}
 		}
 	}
 

@@ -162,14 +162,14 @@ func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.Flav
 func Instance(mod ...func(i *instance.Instance)) instance.Instance {
 	c := Chunk()
 	ins := instance.Instance{
-		ID:          "019533f6-a770-7903-8f99-88ae6b271663",
-		Chunk:       c,
-		ChunkFlavor: c.Flavors[0],
-		Address:     netip.MustParseAddr("198.51.100.1"),
-		State:       instance.StatePending,
-		Port:        ptr.Pointer(uint16(1337)),
-		CreatedAt:   time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
-		UpdatedAt:   time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
+		ID:            "019533f6-a770-7903-8f99-88ae6b271663",
+		Chunk:         c,
+		FlavorVersion: c.Flavors[0].Versions[0],
+		Address:       netip.MustParseAddr("198.51.100.1"),
+		State:         instance.StatePending,
+		Port:          ptr.Pointer(uint16(1337)),
+		CreatedAt:     time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
+		UpdatedAt:     time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
 	}
 
 	for _, fn := range mod {

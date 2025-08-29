@@ -28,7 +28,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
@@ -154,7 +153,7 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 		for _, f := range files {
 			hashes = append(hashes, file.Hash{
 				Path: f.FilePath,
-				Hash: f.FileHash.String,
+				Hash: f.FileHash,
 			})
 		}
 
@@ -212,11 +211,8 @@ func (db *DB) CreateFlavorVersion(
 		for _, f := range version.FileHashes {
 			dbHashes = append(dbHashes, query.BulkInsertFlavorFileHashesParams{
 				FlavorVersionID: id.String(),
-				FileHash: pgtype.Text{
-					String: f.Hash,
-					Valid:  true,
-				},
-				FilePath: f.Path,
+				FileHash:        f.Hash,
+				FilePath:        f.Path,
 			})
 		}
 
@@ -287,7 +283,7 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 		for _, r := range rows {
 			hashes = append(hashes, file.Hash{
 				Path: r.FilePath,
-				Hash: r.FileHash.String,
+				Hash: r.FileHash,
 			})
 		}
 

@@ -10,7 +10,6 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
@@ -189,7 +188,7 @@ type BulkInsertFlavorFileHashesBatchResults struct {
 
 type BulkInsertFlavorFileHashesParams struct {
 	FlavorVersionID string
-	FileHash        pgtype.Text
+	FileHash        string
 	FilePath        string
 }
 
