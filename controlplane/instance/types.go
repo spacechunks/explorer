@@ -26,14 +26,14 @@ import (
 )
 
 type Instance struct {
-	ID          string
-	Chunk       chunk.Chunk
-	ChunkFlavor chunk.Flavor
-	Address     netip.Addr
-	State       State
-	Port        *uint16
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID            string
+	Chunk         chunk.Chunk
+	FlavorVersion chunk.FlavorVersion
+	Address       netip.Addr
+	State         State
+	Port          *uint16
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type StatusReport struct {
