@@ -333,7 +333,7 @@ func (_m *MockV1alpha1InstanceServiceClient) RunChunk(ctx context.Context, in *v
 	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RunChunk")
+		panic("no return value specified for RunFlavorVersion")
 	}
 
 	var r0 *v1alpha1.RunChunkResponse
@@ -358,7 +358,7 @@ func (_m *MockV1alpha1InstanceServiceClient) RunChunk(ctx context.Context, in *v
 	return r0, r1
 }
 
-// MockV1alpha1InstanceServiceClient_RunChunk_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RunChunk'
+// MockV1alpha1InstanceServiceClient_RunChunk_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RunFlavorVersion'
 type MockV1alpha1InstanceServiceClient_RunChunk_Call struct {
 	*mock.Call
 }
@@ -368,7 +368,7 @@ type MockV1alpha1InstanceServiceClient_RunChunk_Call struct {
 //   - in *v1alpha1.RunChunkRequest
 //   - opts ...grpc.CallOption
 func (_e *MockV1alpha1InstanceServiceClient_Expecter) RunChunk(ctx interface{}, in interface{}, opts ...interface{}) *MockV1alpha1InstanceServiceClient_RunChunk_Call {
-	return &MockV1alpha1InstanceServiceClient_RunChunk_Call{Call: _e.mock.On("RunChunk",
+	return &MockV1alpha1InstanceServiceClient_RunChunk_Call{Call: _e.mock.On("RunFlavorVersion",
 		append([]interface{}{ctx, in}, opts...)...)}
 }
 
