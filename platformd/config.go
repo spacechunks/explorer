@@ -2,8 +2,6 @@ package platformd
 
 import (
 	"time"
-
-	"github.com/spacechunks/explorer/platformd/checkpoint"
 )
 
 type Config struct {
@@ -24,5 +22,16 @@ type Config struct {
 	RegistryUser               string
 	RegistryPass               string
 	ControlPlaneEndpoint       string
-	CheckpointConfig           checkpoint.Config
+	CheckpointConfig           struct {
+		CPUPeriod                int64
+		CPUQuota                 int64
+		MemoryLimitBytes         int64
+		CheckpointFileDir        string
+		CheckpointTimeoutSeconds int64
+		RegistryUser             string
+		RegistryPass             string
+		ListenAddr               string
+		StatusRetentionPeriod    time.Duration
+		ContainerReadyTimeout    time.Duration
+	}
 }

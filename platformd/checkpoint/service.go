@@ -47,11 +47,13 @@ type Service interface {
 }
 
 type ServiceImpl struct {
-	logger      *slog.Logger
-	criService  cri.Service
-	imgService  image.Service
-	cfg         Config
-	statusStore StatusStore
+	logger              *slog.Logger
+	criService          cri.Service
+	imgService          image.Service
+	cfg                 Config
+	statusStore         StatusStore
+	workloadStatusStore workload.StatusStore
+	portAlloc           *workload.PortAllocator
 
 	// this factory function allows us to inject a mock executor for testing.
 	newRemoteCMDExecutor RemoteCMDExecutorFactory
@@ -64,6 +66,9 @@ func NewService(
 	imgService image.Service,
 	statusStore StatusStore,
 	newRemoteCMDExecutor RemoteCMDExecutorFactory,
+	workloadStatusStore workload.StatusStore,
+	portAlloc *workload.PortAllocator,
+
 ) *ServiceImpl {
 	return &ServiceImpl{
 		logger:               logger,
@@ -71,6 +76,8 @@ func NewService(
 		imgService:           imgService,
 		cfg:                  cfg,
 		statusStore:          statusStore,
+		workloadStatusStore:  workloadStatusStore,
+		portAlloc:            portAlloc,
 		newRemoteCMDExecutor: newRemoteCMDExecutor,
 	}
 }
@@ -200,11 +207,20 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 		if ret != nil {
 			msg = ret.Error()
 		}
+
 		s.statusStore.Update(id, Status{
 			State:       state,
 			Message:     msg,
 			CompletedAt: ptr.Pointer(time.Now()),
 		})
+
+		status := s.workloadStatusStore.Get(id)
+		if status == nil {
+			return
+		}
+
+		s.portAlloc.Free(status.Port)
+		s.workloadStatusStore.Del(id)
 	}()
 
 	if _, err := s.criService.EnsureImage(ctx, baseRef.String(), cri.RegistryAuth{
@@ -290,6 +306,16 @@ func (s *ServiceImpl) waitContainerReady(
 
 func (s *ServiceImpl) runAndAttachContainer(ctx context.Context, id string, baseImgURL string) (string, string, error) {
 	podCfg := s.podConfig(id)
+
+	port, err := s.portAlloc.Allocate()
+	if err != nil {
+		return "", "", fmt.Errorf("allocate port: %w", err)
+	}
+
+	s.workloadStatusStore.Update(id, workload.Status{
+		State: workload.StateRunning,
+		Port:  port,
+	})
 
 	runPodResp, err := s.criService.RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{
 		Config: podCfg,
