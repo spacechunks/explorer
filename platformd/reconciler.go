@@ -261,7 +261,7 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 
 	var (
 		baseURL = fmt.Sprintf(
-			"%s/",
+			"%s/%s/%s",
 			r.cfg.RegistryEndpoint,
 			instance.GetChunk().GetName(),
 			instance.GetFlavor().GetName(),
