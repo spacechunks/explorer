@@ -292,16 +292,6 @@ func findChunk(ctx context.Context, c chunkv1alpha1.ChunkServiceClient, name str
 	return nil, nil
 }
 
-func findFlavor(flavors []*chunkv1alpha1.Flavor, filter func(f *chunkv1alpha1.Flavor) bool) *chunkv1alpha1.Flavor {
-	for _, f := range flavors {
-		if !filter(f) {
-			continue
-		}
-		return f
-	}
-	return nil
-}
-
 func localFileHashes(flavorPath string) (string, []file.Hash, error) {
 	var (
 		fileHashes = make([]file.Hash, 0)
