@@ -229,6 +229,7 @@ func (db *DB) ApplyStatusReports(ctx context.Context, reports []instance.StatusR
 			continue
 		}
 		toUpdate = append(toUpdate, query.BulkUpdateInstanceStateAndPortParams{
+			ID:    report.InstanceID,
 			State: query.InstanceState(report.State),
 			Port:  ptr.Pointer(int32(report.Port)),
 		})

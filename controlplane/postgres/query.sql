@@ -158,7 +158,8 @@ WHERE i.node_id = $1;
 UPDATE instances SET
     state = $1,
     port = $2,
-    updated_at = now();
+    updated_at = now()
+WHERE id = $3;
 
 -- name: BulkDeleteInstances :batchexec
 DELETE FROM instances WHERE id = $1;

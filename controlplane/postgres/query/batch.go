@@ -232,6 +232,7 @@ UPDATE instances SET
     state = $1,
     port = $2,
     updated_at = now()
+WHERE id = $3
 `
 
 type BulkUpdateInstanceStateAndPortBatchResults struct {
@@ -243,6 +244,7 @@ type BulkUpdateInstanceStateAndPortBatchResults struct {
 type BulkUpdateInstanceStateAndPortParams struct {
 	State InstanceState
 	Port  *int32
+	ID    string
 }
 
 func (q *Queries) BulkUpdateInstanceStateAndPort(ctx context.Context, arg []BulkUpdateInstanceStateAndPortParams) *BulkUpdateInstanceStateAndPortBatchResults {
@@ -251,6 +253,7 @@ func (q *Queries) BulkUpdateInstanceStateAndPort(ctx context.Context, arg []Bulk
 		vals := []interface{}{
 			a.State,
 			a.Port,
+			a.ID,
 		}
 		batch.Queue(bulkUpdateInstanceStateAndPort, vals...)
 	}
