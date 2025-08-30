@@ -28,32 +28,35 @@ import (
 	"github.com/google/uuid"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/node"
 )
 
 type Service interface {
 	GetInstance(ctx context.Context, id string) (Instance, error)
 	ListInstances(ctx context.Context) ([]Instance, error)
-	RunChunk(ctx context.Context, chunkID string, flavorID string) (Instance, error)
+	RunFlavorVersion(ctx context.Context, chunkID string, flavorVersionID string) (Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]Instance, error)
 	ReceiveInstanceStatusReports(ctx context.Context, reports []StatusReport) error
 }
 
 type svc struct {
 	logger       *slog.Logger
-	repo         Repository
+	insRepo      Repository
+	nodeRepo     node.Repository
 	chunkService chunk.Service
 }
 
-func NewService(logger *slog.Logger, repo Repository, chunkService chunk.Service) Service {
+func NewService(logger *slog.Logger, insRepo Repository, nodeRepo node.Repository, chunkService chunk.Service) Service {
 	return &svc{
 		logger:       logger,
-		repo:         repo,
+		insRepo:      insRepo,
+		nodeRepo:     nodeRepo,
 		chunkService: chunkService,
 	}
 }
 
 func (s *svc) GetInstance(ctx context.Context, id string) (Instance, error) {
-	ins, err := s.repo.GetInstanceByID(ctx, id)
+	ins, err := s.insRepo.GetInstanceByID(ctx, id)
 	if err != nil {
 		return Instance{}, err
 	}
@@ -61,32 +64,36 @@ func (s *svc) GetInstance(ctx context.Context, id string) (Instance, error) {
 }
 
 func (s *svc) ListInstances(ctx context.Context) ([]Instance, error) {
-	l, err := s.repo.ListInstances(ctx)
+	l, err := s.insRepo.ListInstances(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return l, nil
 }
 
-func (s *svc) RunChunk(ctx context.Context, chunkID string, flavorID string) (Instance, error) {
-	// FIXME: hardcoded for now, determine node to schedule instance to later
-	const nodeID = "0195c2f6-f40c-72df-a0f1-e468f1be77b1"
+func (s *svc) RunFlavorVersion(ctx context.Context, chunkID string, flavorVersionID string) (Instance, error) {
+	// TODO: at some point implement a more sophisticated node scheduling logic
+	n, err := s.nodeRepo.RandomNode(ctx)
+	if err != nil {
+		return Instance{}, fmt.Errorf("random node: %w", err)
+	}
 
 	c, err := s.chunkService.GetChunk(ctx, chunkID)
 	if err != nil {
 		return Instance{}, fmt.Errorf("chunk by id: %w", err)
 	}
 
-	var flavor *chunk.Flavor
+	versions := make(map[string]chunk.FlavorVersion)
+
 	for _, f := range c.Flavors {
-		if f.ID == flavorID {
-			flavor = &f
-			break
+		for _, v := range f.Versions {
+			versions[v.ID] = v
 		}
 	}
 
-	if flavor == nil {
-		return Instance{}, apierrs.ErrFlavorNotFound
+	ver, ok := versions[flavorVersionID]
+	if !ok {
+		return Instance{}, apierrs.ErrFlavorVersionNotFound
 	}
 
 	instanceID, err := uuid.NewV7()
@@ -94,12 +101,12 @@ func (s *svc) RunChunk(ctx context.Context, chunkID string, flavorID string) (In
 		return Instance{}, fmt.Errorf("instance id: %w", err)
 	}
 
-	ins, err := s.repo.CreateInstance(ctx, Instance{
-		ID:          instanceID.String(),
-		Chunk:       c,
-		ChunkFlavor: *flavor,
-		State:       StatePending,
-	}, nodeID)
+	ins, err := s.insRepo.CreateInstance(ctx, Instance{
+		ID:            instanceID.String(),
+		Chunk:         c,
+		FlavorVersion: ver,
+		State:         StatePending,
+	}, n.ID)
 	if err != nil {
 		return Instance{}, fmt.Errorf("create instance: %w", err)
 	}
@@ -108,7 +115,7 @@ func (s *svc) RunChunk(ctx context.Context, chunkID string, flavorID string) (In
 }
 
 func (s *svc) DiscoverInstances(ctx context.Context, nodeID string) ([]Instance, error) {
-	instances, err := s.repo.GetInstancesByNodeID(ctx, nodeID)
+	instances, err := s.insRepo.GetInstancesByNodeID(ctx, nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +131,7 @@ func (s *svc) DiscoverInstances(ctx context.Context, nodeID string) ([]Instance,
 }
 
 func (s *svc) ReceiveInstanceStatusReports(ctx context.Context, reports []StatusReport) error {
-	if err := s.repo.ApplyStatusReports(ctx, reports); err != nil {
+	if err := s.insRepo.ApplyStatusReports(ctx, reports); err != nil {
 		return fmt.Errorf("apply status reports: %w", err)
 	}
 	return nil

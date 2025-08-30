@@ -128,27 +128,29 @@ SELECT * FROM blobs WHERE hash = $1;
 
 -- name: CreateInstance :exec
 INSERT INTO instances
-    (id, chunk_id, flavor_id, node_id, state, created_at, updated_at)
+    (id, chunk_id, flavor_version_id, node_id, state, created_at, updated_at)
 VALUES
     ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: ListInstances :many
 SELECT * FROM instances i
-    JOIN flavors f ON i.chunk_id = f.chunk_id
-    JOIN chunks c ON f.chunk_id = c.id
+    JOIN flavor_versions v ON i.flavor_version_id = v.id
+    JOIN chunks c ON i.chunk_id = c.id
+    JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id;
 
 -- name: GetInstance :many
 SELECT * FROM instances i
-    JOIN flavors f ON i.chunk_id = f.chunk_id
-    JOIN chunks c ON f.chunk_id = c.id
+    JOIN flavor_versions v ON i.flavor_version_id = v.id
+    JOIN chunks c ON i.chunk_id = c.id
+    JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
 WHERE i.id = $1;
 
 -- name: GetInstancesByNodeID :many
 SELECT * FROM instances i
-    JOIN flavors f ON i.flavor_id = f.id
-    JOIN chunks c ON f.chunk_id = c.id
+    JOIN flavor_versions v ON i.flavor_version_id = v.id
+    JOIN chunks c ON i.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
 WHERE i.node_id = $1;
 

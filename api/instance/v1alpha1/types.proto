@@ -49,7 +49,7 @@ message Instance {
 
   chunk.v1alpha1.Chunk chunk = 2;
 
-  chunk.v1alpha1.Flavor flavor = 3;
+  chunk.v1alpha1.FlavorVersion flavor_version = 3;
 
   string ip = 4;
 

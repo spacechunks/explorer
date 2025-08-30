@@ -321,8 +321,8 @@ func (_c *MockV1alpha1InstanceServiceClient_ReceiveInstanceStatusReports_Call) R
 	return _c
 }
 
-// RunChunk provides a mock function with given fields: ctx, in, opts
-func (_m *MockV1alpha1InstanceServiceClient) RunChunk(ctx context.Context, in *v1alpha1.RunChunkRequest, opts ...grpc.CallOption) (*v1alpha1.RunChunkResponse, error) {
+// RunFlavorVersion provides a mock function with given fields: ctx, in, opts
+func (_m *MockV1alpha1InstanceServiceClient) RunFlavorVersion(ctx context.Context, in *v1alpha1.RunFlavorVersionRequest, opts ...grpc.CallOption) (*v1alpha1.RunFlavorVersionResponse, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -333,23 +333,23 @@ func (_m *MockV1alpha1InstanceServiceClient) RunChunk(ctx context.Context, in *v
 	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RunChunk")
+		panic("no return value specified for RunFlavorVersion")
 	}
 
-	var r0 *v1alpha1.RunChunkResponse
+	var r0 *v1alpha1.RunFlavorVersionResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha1.RunChunkRequest, ...grpc.CallOption) (*v1alpha1.RunChunkResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha1.RunFlavorVersionRequest, ...grpc.CallOption) (*v1alpha1.RunFlavorVersionResponse, error)); ok {
 		return rf(ctx, in, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha1.RunChunkRequest, ...grpc.CallOption) *v1alpha1.RunChunkResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha1.RunFlavorVersionRequest, ...grpc.CallOption) *v1alpha1.RunFlavorVersionResponse); ok {
 		r0 = rf(ctx, in, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v1alpha1.RunChunkResponse)
+			r0 = ret.Get(0).(*v1alpha1.RunFlavorVersionResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *v1alpha1.RunChunkRequest, ...grpc.CallOption) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *v1alpha1.RunFlavorVersionRequest, ...grpc.CallOption) error); ok {
 		r1 = rf(ctx, in, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -358,21 +358,21 @@ func (_m *MockV1alpha1InstanceServiceClient) RunChunk(ctx context.Context, in *v
 	return r0, r1
 }
 
-// MockV1alpha1InstanceServiceClient_RunChunk_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RunChunk'
-type MockV1alpha1InstanceServiceClient_RunChunk_Call struct {
+// MockV1alpha1InstanceServiceClient_RunFlavorVersion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RunFlavorVersion'
+type MockV1alpha1InstanceServiceClient_RunFlavorVersion_Call struct {
 	*mock.Call
 }
 
-// RunChunk is a helper method to define mock.On call
+// RunFlavorVersion is a helper method to define mock.On call
 //   - ctx context.Context
-//   - in *v1alpha1.RunChunkRequest
+//   - in *v1alpha1.RunFlavorVersionRequest
 //   - opts ...grpc.CallOption
-func (_e *MockV1alpha1InstanceServiceClient_Expecter) RunChunk(ctx interface{}, in interface{}, opts ...interface{}) *MockV1alpha1InstanceServiceClient_RunChunk_Call {
-	return &MockV1alpha1InstanceServiceClient_RunChunk_Call{Call: _e.mock.On("RunChunk",
+func (_e *MockV1alpha1InstanceServiceClient_Expecter) RunFlavorVersion(ctx interface{}, in interface{}, opts ...interface{}) *MockV1alpha1InstanceServiceClient_RunFlavorVersion_Call {
+	return &MockV1alpha1InstanceServiceClient_RunFlavorVersion_Call{Call: _e.mock.On("RunFlavorVersion",
 		append([]interface{}{ctx, in}, opts...)...)}
 }
 
-func (_c *MockV1alpha1InstanceServiceClient_RunChunk_Call) Run(run func(ctx context.Context, in *v1alpha1.RunChunkRequest, opts ...grpc.CallOption)) *MockV1alpha1InstanceServiceClient_RunChunk_Call {
+func (_c *MockV1alpha1InstanceServiceClient_RunFlavorVersion_Call) Run(run func(ctx context.Context, in *v1alpha1.RunFlavorVersionRequest, opts ...grpc.CallOption)) *MockV1alpha1InstanceServiceClient_RunFlavorVersion_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		variadicArgs := make([]grpc.CallOption, len(args)-2)
 		for i, a := range args[2:] {
@@ -380,17 +380,17 @@ func (_c *MockV1alpha1InstanceServiceClient_RunChunk_Call) Run(run func(ctx cont
 				variadicArgs[i] = a.(grpc.CallOption)
 			}
 		}
-		run(args[0].(context.Context), args[1].(*v1alpha1.RunChunkRequest), variadicArgs...)
+		run(args[0].(context.Context), args[1].(*v1alpha1.RunFlavorVersionRequest), variadicArgs...)
 	})
 	return _c
 }
 
-func (_c *MockV1alpha1InstanceServiceClient_RunChunk_Call) Return(_a0 *v1alpha1.RunChunkResponse, _a1 error) *MockV1alpha1InstanceServiceClient_RunChunk_Call {
+func (_c *MockV1alpha1InstanceServiceClient_RunFlavorVersion_Call) Return(_a0 *v1alpha1.RunFlavorVersionResponse, _a1 error) *MockV1alpha1InstanceServiceClient_RunFlavorVersion_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockV1alpha1InstanceServiceClient_RunChunk_Call) RunAndReturn(run func(context.Context, *v1alpha1.RunChunkRequest, ...grpc.CallOption) (*v1alpha1.RunChunkResponse, error)) *MockV1alpha1InstanceServiceClient_RunChunk_Call {
+func (_c *MockV1alpha1InstanceServiceClient_RunFlavorVersion_Call) RunAndReturn(run func(context.Context, *v1alpha1.RunFlavorVersionRequest, ...grpc.CallOption) (*v1alpha1.RunFlavorVersionResponse, error)) *MockV1alpha1InstanceServiceClient_RunFlavorVersion_Call {
 	_c.Call.Return(run)
 	return _c
 }

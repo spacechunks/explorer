@@ -39,7 +39,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	InstanceService_GetInstance_FullMethodName                  = "/instance.v1alpha1.InstanceService/GetInstance"
 	InstanceService_ListInstances_FullMethodName                = "/instance.v1alpha1.InstanceService/ListInstances"
-	InstanceService_RunChunk_FullMethodName                     = "/instance.v1alpha1.InstanceService/RunChunk"
+	InstanceService_RunFlavorVersion_FullMethodName             = "/instance.v1alpha1.InstanceService/RunFlavorVersion"
 	InstanceService_DiscoverInstances_FullMethodName            = "/instance.v1alpha1.InstanceService/DiscoverInstances"
 	InstanceService_ReceiveInstanceStatusReports_FullMethodName = "/instance.v1alpha1.InstanceService/ReceiveInstanceStatusReports"
 )
@@ -59,12 +59,12 @@ type InstanceServiceClient interface {
 	GetInstance(ctx context.Context, in *GetInstanceRequest, opts ...grpc.CallOption) (*GetInstanceResponse, error)
 	// ListInstances returns all created instances.
 	ListInstances(ctx context.Context, in *ListInstancesRequest, opts ...grpc.CallOption) (*ListInstancesResponse, error)
-	// RunChunk creates an instance for a specific flavor of a chunk
-	// and schedules it to be run on a node. The connection information
+	// RunFlavorVersion creates an instance for a specific flavor version of a
+	// Chunk and schedules it to be run on a node. The connection information
 	// of the returned instance will only be partially set, because the
 	// port will not be allocated at this point. However, the IP address
 	// is set.
-	RunChunk(ctx context.Context, in *RunChunkRequest, opts ...grpc.CallOption) (*RunChunkResponse, error)
+	RunFlavorVersion(ctx context.Context, in *RunFlavorVersionRequest, opts ...grpc.CallOption) (*RunFlavorVersionResponse, error)
 	// DiscoverInstances returns all workloads that have been scheduled to a node for
 	// creation or removal. Platformd identifies itself using its unique node key.
 	DiscoverInstances(ctx context.Context, in *DiscoverInstanceRequest, opts ...grpc.CallOption) (*DiscoverInstanceResponse, error)
@@ -101,10 +101,10 @@ func (c *instanceServiceClient) ListInstances(ctx context.Context, in *ListInsta
 	return out, nil
 }
 
-func (c *instanceServiceClient) RunChunk(ctx context.Context, in *RunChunkRequest, opts ...grpc.CallOption) (*RunChunkResponse, error) {
+func (c *instanceServiceClient) RunFlavorVersion(ctx context.Context, in *RunFlavorVersionRequest, opts ...grpc.CallOption) (*RunFlavorVersionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RunChunkResponse)
-	err := c.cc.Invoke(ctx, InstanceService_RunChunk_FullMethodName, in, out, cOpts...)
+	out := new(RunFlavorVersionResponse)
+	err := c.cc.Invoke(ctx, InstanceService_RunFlavorVersion_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -146,12 +146,12 @@ type InstanceServiceServer interface {
 	GetInstance(context.Context, *GetInstanceRequest) (*GetInstanceResponse, error)
 	// ListInstances returns all created instances.
 	ListInstances(context.Context, *ListInstancesRequest) (*ListInstancesResponse, error)
-	// RunChunk creates an instance for a specific flavor of a chunk
-	// and schedules it to be run on a node. The connection information
+	// RunFlavorVersion creates an instance for a specific flavor version of a
+	// Chunk and schedules it to be run on a node. The connection information
 	// of the returned instance will only be partially set, because the
 	// port will not be allocated at this point. However, the IP address
 	// is set.
-	RunChunk(context.Context, *RunChunkRequest) (*RunChunkResponse, error)
+	RunFlavorVersion(context.Context, *RunFlavorVersionRequest) (*RunFlavorVersionResponse, error)
 	// DiscoverInstances returns all workloads that have been scheduled to a node for
 	// creation or removal. Platformd identifies itself using its unique node key.
 	DiscoverInstances(context.Context, *DiscoverInstanceRequest) (*DiscoverInstanceResponse, error)
@@ -174,8 +174,8 @@ func (UnimplementedInstanceServiceServer) GetInstance(context.Context, *GetInsta
 func (UnimplementedInstanceServiceServer) ListInstances(context.Context, *ListInstancesRequest) (*ListInstancesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListInstances not implemented")
 }
-func (UnimplementedInstanceServiceServer) RunChunk(context.Context, *RunChunkRequest) (*RunChunkResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RunChunk not implemented")
+func (UnimplementedInstanceServiceServer) RunFlavorVersion(context.Context, *RunFlavorVersionRequest) (*RunFlavorVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunFlavorVersion not implemented")
 }
 func (UnimplementedInstanceServiceServer) DiscoverInstances(context.Context, *DiscoverInstanceRequest) (*DiscoverInstanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiscoverInstances not implemented")
@@ -240,20 +240,20 @@ func _InstanceService_ListInstances_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _InstanceService_RunChunk_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RunChunkRequest)
+func _InstanceService_RunFlavorVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunFlavorVersionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(InstanceServiceServer).RunChunk(ctx, in)
+		return srv.(InstanceServiceServer).RunFlavorVersion(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: InstanceService_RunChunk_FullMethodName,
+		FullMethod: InstanceService_RunFlavorVersion_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InstanceServiceServer).RunChunk(ctx, req.(*RunChunkRequest))
+		return srv.(InstanceServiceServer).RunFlavorVersion(ctx, req.(*RunFlavorVersionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -310,8 +310,8 @@ var InstanceService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _InstanceService_ListInstances_Handler,
 		},
 		{
-			MethodName: "RunChunk",
-			Handler:    _InstanceService_RunChunk_Handler,
+			MethodName: "RunFlavorVersion",
+			Handler:    _InstanceService_RunFlavorVersion_Handler,
 		},
 		{
 			MethodName: "DiscoverInstances",

@@ -190,20 +190,20 @@ type FlavorVersion struct {
 
 type FlavorVersionFile struct {
 	FlavorVersionID string
-	FileHash        pgtype.Text
+	FileHash        string
 	FilePath        string
 	CreatedAt       time.Time
 }
 
 type Instance struct {
-	ID        string
-	ChunkID   string
-	FlavorID  string
-	NodeID    string
-	Port      *int32
-	State     InstanceState
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID              string
+	ChunkID         string
+	FlavorVersionID string
+	NodeID          string
+	Port            *int32
+	State           InstanceState
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type Node struct {

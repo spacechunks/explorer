@@ -105,7 +105,7 @@ func (s *Server) Run(ctx context.Context) error {
 		)
 		chunkService = chunk.NewService(db, blobStore, db, s.cfg.OCIRegistry, s.cfg.BaseImage)
 		chunkServer  = chunk.NewServer(chunkService)
-		insService   = instance.NewService(s.logger, db, chunkService)
+		insService   = instance.NewService(s.logger, db, db, chunkService)
 		insServer    = instance.NewServer(insService)
 	)
 

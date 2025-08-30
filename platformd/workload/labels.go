@@ -10,8 +10,7 @@ const (
 	LabelChunkID   = "explorer.chunks.cloud/chunk-id"
 	LabelChunkName = "explorer.chunks.cloud/chunk-name"
 
-	LabelFlavorID   = "explorer.chunks.cloud/flavor-id"
-	LabelFlavorName = "explorer.chunks.cloud/flavor-name"
+	LabelFlavorVersionID = "explorer.chunks.cloud/flavor-version-id"
 
 	LabelWorkloadPort = "explorer.chunks.cloud/workload-port"
 )
@@ -26,11 +25,10 @@ func SystemWorkloadLabels(name string) map[string]string {
 
 func InstanceLabels(instance *instancev1alpha1.Instance) map[string]string {
 	return map[string]string{
-		LabelWorkloadID:   instance.GetId(),
-		LabelWorkloadType: "instance",
-		LabelChunkID:      instance.GetChunk().GetId(),
-		LabelChunkName:    instance.GetChunk().GetName(),
-		LabelFlavorID:     instance.GetFlavor().GetId(),
-		LabelFlavorName:   instance.GetFlavor().GetName(),
+		LabelWorkloadID:      instance.GetId(),
+		LabelWorkloadType:    "instance",
+		LabelChunkID:         instance.GetChunk().GetId(),
+		LabelChunkName:       instance.GetChunk().GetName(),
+		LabelFlavorVersionID: instance.FlavorVersion.Id,
 	}
 }

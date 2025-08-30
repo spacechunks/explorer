@@ -70,7 +70,6 @@ func TestGetInstance(t *testing.T) {
 			pg.InsertNode(t)
 
 			if tt.create {
-				ins = fixture.Instance()
 				pg.CreateInstance(t, fixture.Node().ID, &ins)
 				_, err := pg.Pool.Exec(
 					ctx,
@@ -134,8 +133,9 @@ func TestAPIListInstances(t *testing.T) {
 					}),
 				}
 			})
-			i.ChunkFlavor = i.Chunk.Flavors[0]
-			i.Port = nil // port will not be saved when creating
+			i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
+			i.Port = nil                     // port will not be saved when creating
+			i.FlavorVersion.FileHashes = nil // not returned atm
 		}),
 		fixture.Instance(func(i *instance.Instance) {
 			i.ID = test.NewUUIDv7(t)
@@ -147,8 +147,9 @@ func TestAPIListInstances(t *testing.T) {
 					}),
 				}
 			})
-			i.ChunkFlavor = i.Chunk.Flavors[0]
-			i.Port = nil // port will not be saved when creating
+			i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
+			i.Port = nil                     // port will not be saved when creating
+			i.FlavorVersion.FileHashes = nil // not returned atm
 		}),
 	}
 
@@ -184,7 +185,7 @@ func TestAPIListInstances(t *testing.T) {
 		expected,
 		resp.GetInstances(),
 		protocmp.Transform(),
-		test.IgnoredProtoFlavorFields,
+		test.IgnoredProtoFlavorVersionFields,
 		test.IgnoredProtoChunkFields,
 		test.IgnoredProtoInstanceFields,
 	); d != "" {
@@ -192,12 +193,12 @@ func TestAPIListInstances(t *testing.T) {
 	}
 }
 
-func TestRunChunk(t *testing.T) {
+func TestRunFlavorVersion(t *testing.T) {
 	tests := []struct {
-		name     string
-		chunkID  string
-		flavorID string
-		err      error
+		name            string
+		chunkID         string
+		flavorVersionID string
+		err             error
 	}{
 		{
 			name: "can run chunk",
@@ -208,9 +209,9 @@ func TestRunChunk(t *testing.T) {
 			err:     postgres.ErrNotFound,
 		},
 		{
-			name:     "flavor not found",
-			flavorID: "NOTFOUND",
-			err:      apierrs.ErrFlavorNotFound.GRPCStatus().Err(),
+			name:            "flavor not found",
+			flavorVersionID: "NOTFOUND",
+			err:             apierrs.ErrFlavorVersionNotFound.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -226,6 +227,8 @@ func TestRunChunk(t *testing.T) {
 			pg.InsertNode(t)
 			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
+			v := c.Flavors[0].Versions[0]
+
 			expected := &instancev1alpha1.Instance{
 				Id: "",
 				Chunk: &chunkv1alpha1.Chunk{
@@ -236,8 +239,13 @@ func TestRunChunk(t *testing.T) {
 					CreatedAt:   timestamppb.New(c.CreatedAt),
 					UpdatedAt:   timestamppb.New(c.UpdatedAt),
 				},
-				Flavor: &chunkv1alpha1.Flavor{
-					Name: c.Flavors[0].Name,
+				FlavorVersion: &chunkv1alpha1.FlavorVersion{
+					Id:          v.ID,
+					Version:     v.Version,
+					Hash:        v.Hash,
+					FileHashes:  nil, // not returned atm
+					BuildStatus: chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(v.BuildStatus)]),
+					CreatedAt:   timestamppb.New(v.CreatedAt),
 				},
 				Ip:    fixture.Node().Addr.String(),
 				State: instancev1alpha1.InstanceState_PENDING,
@@ -247,8 +255,8 @@ func TestRunChunk(t *testing.T) {
 				tt.chunkID = c.ID
 			}
 
-			if tt.flavorID == "" {
-				tt.flavorID = c.Flavors[0].ID
+			if tt.flavorVersionID == "" {
+				tt.flavorVersionID = c.Flavors[0].Versions[0].ID
 			}
 
 			conn, err := grpc.NewClient(
@@ -259,9 +267,9 @@ func TestRunChunk(t *testing.T) {
 
 			client := instancev1alpha1.NewInstanceServiceClient(conn)
 
-			resp, err := client.RunChunk(ctx, &instancev1alpha1.RunChunkRequest{
-				ChunkId:  tt.chunkID,
-				FlavorId: tt.flavorID,
+			resp, err := client.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
+				ChunkId:         tt.chunkID,
+				FlavorVersionId: tt.flavorVersionID,
 			})
 
 			if tt.err != nil {
@@ -276,7 +284,7 @@ func TestRunChunk(t *testing.T) {
 				resp.GetInstance(),
 				protocmp.Transform(),
 				test.IgnoredProtoInstanceFields,
-				test.IgnoredProtoFlavorFields,
+				test.IgnoredProtoFlavorVersionFields,
 				test.IgnoredProtoChunkFields,
 			); d != "" {
 				t.Fatalf("diff (-want +got):\n%s", d)
@@ -307,7 +315,7 @@ func TestDiscoverInstances(t *testing.T) {
 							}),
 						}
 					})
-					i.ChunkFlavor = i.Chunk.Flavors[0]
+					i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
 				}),
 				fixture.Instance(func(i *instance.Instance) {
 					i.ID = test.NewUUIDv7(t)
@@ -319,13 +327,14 @@ func TestDiscoverInstances(t *testing.T) {
 							}),
 						}
 					})
-					i.ChunkFlavor = i.Chunk.Flavors[0]
+					i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
 				}),
 			},
 			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
 				ret := make([]*instancev1alpha1.Instance, 0, len(instances))
 				for _, ins := range instances {
-					ins.Port = nil // port will be nil at this point
+					ins.Port = nil                     // port will be nil at this point
+					ins.FlavorVersion.FileHashes = nil // not returned atm
 					ret = append(ret, instance.ToTransport(ins))
 				}
 				return ret
@@ -393,7 +402,7 @@ func TestDiscoverInstances(t *testing.T) {
 					resp.Instances,
 					protocmp.Transform(),
 					test.IgnoredProtoInstanceFields,
-					test.IgnoredProtoFlavorFields,
+					test.IgnoredProtoFlavorVersionFields,
 					test.IgnoredProtoChunkFields,
 				); d != "" {
 					t.Fatalf("diff (-want +got):\n%s", d)
@@ -424,6 +433,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			expected: fixture.Instance(func(i *instance.Instance) {
 				i.State = instance.CreationFailed
 				i.Port = ptr.Pointer(uint16(420))
+				i.FlavorVersion.FileHashes = nil // not returned atm
 			}),
 		},
 		{
@@ -481,7 +491,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 				resp.Instances,
 				expected,
 				protocmp.Transform(),
-				test.IgnoredProtoFlavorFields,
+				test.IgnoredProtoFlavorVersionFields,
 				test.IgnoredProtoChunkFields,
 			); d != "" {
 				t.Fatalf("diff (-want +got):\n%s", d)

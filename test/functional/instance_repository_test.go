@@ -55,8 +55,9 @@ func TestCreateInstance(t *testing.T) {
 
 	expected := fixture.Instance()
 	expected.Chunk = c
-	expected.ChunkFlavor = c.Flavors[0]
-	expected.Port = nil // port will not be saved when creating
+	expected.FlavorVersion = c.Flavors[0].Versions[0]
+	expected.Port = nil                     // port will not be saved when creating
+	expected.FlavorVersion.FileHashes = nil // will not be returned atm
 
 	actual, err := pg.DB.CreateInstance(ctx, expected, fixture.Node().ID)
 	require.NoError(t, err)
@@ -93,14 +94,16 @@ func TestDBListInstances(t *testing.T) {
 		fixture.Instance(func(i *instance.Instance) {
 			i.ID = test.NewUUIDv7(t)
 			i.Chunk = c
-			i.ChunkFlavor = c.Flavors[0]
-			i.Port = nil // port will not be saved when creating
+			i.FlavorVersion = c.Flavors[0].Versions[0]
+			i.Port = nil                     // port will not be saved when creating
+			i.FlavorVersion.FileHashes = nil // will not be returned atm
 		}),
 		fixture.Instance(func(i *instance.Instance) {
 			i.ID = test.NewUUIDv7(t)
 			i.Chunk = c
-			i.ChunkFlavor = c.Flavors[0]
-			i.Port = nil // port will not be saved when creating
+			i.FlavorVersion = c.Flavors[0].Versions[0]
+			i.Port = nil                     // port will not be saved when creating
+			i.FlavorVersion.FileHashes = nil // will not be returned atm
 		}),
 	}
 
@@ -153,7 +156,11 @@ func TestGetInstanceByID(t *testing.T) {
 
 			if tt.create {
 				pg.CreateChunk(t, &tt.expected.Chunk, fixture.CreateOptionsAll)
-				tt.expected.ChunkFlavor = tt.expected.Chunk.Flavors[0]
+
+				v := tt.expected.Chunk.Flavors[0].Versions[0]
+				v.FileHashes = nil // not returned atm
+
+				tt.expected.FlavorVersion = v
 
 				_, err := pg.DB.CreateInstance(ctx, tt.expected, fixture.Node().ID)
 				require.NoError(t, err)
@@ -226,14 +233,17 @@ func TestGetInstancesByNodeID(t *testing.T) {
 	for i := range chunks {
 		pg.CreateChunk(t, &chunks[i], fixture.CreateOptionsAll)
 
+		v := chunks[i].Flavors[0].Versions[0]
+		v.FileHashes = nil // not returned atm
+
 		ins := instance.Instance{
-			ID:          test.NewUUIDv7(t),
-			Chunk:       chunks[i],
-			ChunkFlavor: chunks[i].Flavors[0],
-			Address:     fixture.Node().Addr,
-			State:       instance.StatePending,
-			CreatedAt:   chunks[i].CreatedAt,
-			UpdatedAt:   chunks[i].UpdatedAt,
+			ID:            test.NewUUIDv7(t),
+			Chunk:         chunks[i],
+			FlavorVersion: v,
+			Address:       fixture.Node().Addr,
+			State:         instance.StatePending,
+			CreatedAt:     chunks[i].CreatedAt,
+			UpdatedAt:     chunks[i].UpdatedAt,
 		}
 
 		// see FIXME in GetInstancesByNodeID

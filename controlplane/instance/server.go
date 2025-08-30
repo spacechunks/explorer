@@ -73,16 +73,16 @@ func (s *Server) ListInstances(
 	}, nil
 }
 
-func (s *Server) RunChunk(
+func (s *Server) RunFlavorVersion(
 	ctx context.Context,
-	req *instancev1alpha1.RunChunkRequest,
-) (*instancev1alpha1.RunChunkResponse, error) {
-	ins, err := s.service.RunChunk(ctx, req.GetChunkId(), req.GetFlavorId())
+	req *instancev1alpha1.RunFlavorVersionRequest,
+) (*instancev1alpha1.RunFlavorVersionResponse, error) {
+	ins, err := s.service.RunFlavorVersion(ctx, req.GetChunkId(), req.GetFlavorVersionId())
 	if err != nil {
 		return nil, fmt.Errorf("run chunk: %w", err)
 	}
 
-	return &instancev1alpha1.RunChunkResponse{
+	return &instancev1alpha1.RunFlavorVersionResponse{
 		Instance: ToTransport(ins),
 	}, nil
 }

@@ -52,18 +52,13 @@ func TestReconciler(t *testing.T) {
 		labels := workload.InstanceLabels(ins)
 		labels[workload.LabelWorkloadPort] = "1"
 
-		baseURL := fmt.Sprintf(
-			"%s/%s/%s",
-			registryEndpoint,
-			ins.GetChunk().GetName(),
-			ins.GetFlavor().GetName(),
-		)
+		baseURL := fmt.Sprintf("%s/%s", registryEndpoint, ins.GetFlavorVersion().GetId())
 
 		return workload.Workload{
 			ID:               ins.GetId(),
-			Name:             ins.GetChunk().GetName() + "_" + ins.GetFlavor().GetName(),
-			BaseImage:        baseURL + "/base",
-			CheckpointImage:  baseURL + "/checkpoint",
+			Name:             ins.GetFlavorVersion().GetId(),
+			BaseImage:        baseURL + ":base",
+			CheckpointImage:  baseURL + ":checkpoint",
 			Namespace:        namespace,
 			Hostname:         ins.GetId(),
 			Labels:           labels,
@@ -449,8 +444,8 @@ func discoverInstance(
 		Chunk: &chunkv1alpha1.Chunk{
 			Name: "test-chunk",
 		},
-		Flavor: &chunkv1alpha1.Flavor{
-			Name: "test-flavor",
+		FlavorVersion: &chunkv1alpha1.FlavorVersion{
+			Id: "flavor-version-id",
 		},
 		State: state,
 	}

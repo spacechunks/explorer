@@ -21,6 +21,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/spacechunks/explorer/controlplane/chunk"
@@ -32,13 +33,13 @@ import (
 
 func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID string) (instance.Instance, error) {
 	params := query.CreateInstanceParams{
-		ID:        ins.ID,
-		ChunkID:   ins.Chunk.ID,
-		FlavorID:  ins.ChunkFlavor.ID,
-		NodeID:    nodeID,
-		State:     query.InstanceState(ins.State),
-		CreatedAt: ins.CreatedAt,
-		UpdatedAt: ins.UpdatedAt,
+		ID:              ins.ID,
+		ChunkID:         ins.Chunk.ID,
+		FlavorVersionID: ins.FlavorVersion.ID,
+		NodeID:          nodeID,
+		State:           query.InstanceState(ins.State),
+		CreatedAt:       ins.CreatedAt,
+		UpdatedAt:       ins.UpdatedAt,
 	}
 
 	var ret instance.Instance
@@ -96,29 +97,42 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 				UpdatedAt: row.UpdatedAt.UTC(),
 				Chunk: chunk.Chunk{
 					ID:          row.ID_3,
-					Name:        row.Name_2,
+					Name:        row.Name,
 					Description: row.Description,
 					Tags:        row.Tags,
 					CreatedAt:   row.CreatedAt_3.UTC(),
-					UpdatedAt:   row.UpdatedAt_3.UTC(),
+					UpdatedAt:   row.UpdatedAt_2.UTC(),
+				},
+				FlavorVersion: chunk.FlavorVersion{
+					ID:         row.ID_2,
+					Version:    row.Version,
+					Hash:       row.Hash,
+					ChangeHash: row.ChangeHash,
+
+					// FIXME: for now those are not needed anywhere, so they are not included in the query
+					FileHashes: nil,
+
+					FilesUploaded: row.FilesUploaded,
+					BuildStatus:   chunk.BuildStatus(row.BuildStatus),
+					CreatedAt:     row.CreatedAt_2.UTC(),
 				},
 			}
 
 			flavors := make([]chunk.Flavor, 0, len(rows))
 			for _, instanceRow := range v {
 				f := chunk.Flavor{
-					ID:        instanceRow.ID_2,
-					Name:      instanceRow.Name,
-					CreatedAt: instanceRow.CreatedAt_2.UTC(),
-					UpdatedAt: instanceRow.UpdatedAt_2.UTC(),
+					ID:        instanceRow.ID_4,
+					Name:      instanceRow.Name_2,
+					CreatedAt: instanceRow.CreatedAt_4.UTC(),
+					UpdatedAt: instanceRow.UpdatedAt_3.UTC(),
 				}
-
-				if instanceRow.FlavorID == f.ID {
-					i.ChunkFlavor = f
-				}
-
 				flavors = append(flavors, f)
 			}
+
+			sort.Slice(flavors, func(i, j int) bool {
+				// the latest flavor will be the first entry in the slice
+				return flavors[i].CreatedAt.Before(flavors[j].CreatedAt)
+			})
 
 			i.Chunk.Flavors = flavors
 			ret = append(ret, i)
@@ -169,17 +183,21 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 				ID: row.ID,
 				Chunk: chunk.Chunk{
 					ID:          row.ID_3,
-					Name:        row.Name_2,
+					Name:        row.Name,
 					Description: row.Description,
 					Tags:        row.Tags,
 					CreatedAt:   row.CreatedAt_3.UTC(),
-					UpdatedAt:   row.UpdatedAt_3.UTC(),
+					UpdatedAt:   row.UpdatedAt_2.UTC(),
 				},
-				ChunkFlavor: chunk.Flavor{
-					ID:        row.ID_2,
-					Name:      row.Name,
-					CreatedAt: row.CreatedAt_2.UTC(),
-					UpdatedAt: row.UpdatedAt_2.UTC(),
+				FlavorVersion: chunk.FlavorVersion{
+					ID:            row.ID_2,
+					Version:       row.Version,
+					Hash:          row.Hash,
+					ChangeHash:    row.ChangeHash,
+					FileHashes:    nil,
+					FilesUploaded: row.FilesUploaded,
+					BuildStatus:   chunk.BuildStatus(row.BuildStatus),
+					CreatedAt:     row.CreatedAt_2.UTC(),
 				},
 				Address:   row.Address,
 				State:     instance.State(row.State),
@@ -274,11 +292,21 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 		UpdatedAt: row.UpdatedAt.UTC(),
 		Chunk: chunk.Chunk{
 			ID:          row.ID_3,
-			Name:        row.Name_2,
+			Name:        row.Name,
 			Description: row.Description,
 			Tags:        row.Tags,
 			CreatedAt:   row.CreatedAt_3.UTC(),
-			UpdatedAt:   row.UpdatedAt_3.UTC(),
+			UpdatedAt:   row.UpdatedAt_2.UTC(),
+		},
+		FlavorVersion: chunk.FlavorVersion{
+			ID:            row.ID_2,
+			Version:       row.Version,
+			Hash:          row.Hash,
+			ChangeHash:    row.ChangeHash,
+			FileHashes:    nil,
+			FilesUploaded: row.FilesUploaded,
+			BuildStatus:   chunk.BuildStatus(row.BuildStatus),
+			CreatedAt:     row.CreatedAt_2.UTC(),
 		},
 	}
 
@@ -293,17 +321,18 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 	for _, instanceRow := range rows {
 		f := chunk.Flavor{
 			ID:        instanceRow.ID_2,
-			Name:      instanceRow.Name,
+			Name:      instanceRow.Name_2,
 			CreatedAt: instanceRow.CreatedAt_2.UTC(),
 			UpdatedAt: instanceRow.UpdatedAt_2.UTC(),
 		}
 
-		if instanceRow.FlavorID == f.ID {
-			ret.ChunkFlavor = f
-		}
-
 		flavors = append(flavors, f)
 	}
+
+	sort.Slice(flavors, func(i, j int) bool {
+		// the latest flavor will be the first entry in the slice
+		return flavors[i].CreatedAt.Before(flavors[j].CreatedAt)
+	})
 
 	ret.Chunk.Flavors = flavors
 	return ret, nil

@@ -84,8 +84,8 @@ SET default_table_access_method = heap;
 --
 
 CREATE TABLE public.blobs (
-    hash character(16) NOT NULL,
-    data bytea NOT NULL,
+    hash character varying(16) NOT NULL,
+    data bytea,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -110,7 +110,7 @@ CREATE TABLE public.chunks (
 
 CREATE TABLE public.flavor_version_files (
     flavor_version_id uuid NOT NULL,
-    file_hash character(16),
+    file_hash character varying(16) NOT NULL,
     file_path character varying(4096) NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -153,7 +153,7 @@ CREATE TABLE public.flavors (
 CREATE TABLE public.instances (
     id uuid NOT NULL,
     chunk_id uuid NOT NULL,
-    flavor_id uuid NOT NULL,
+    flavor_version_id uuid NOT NULL,
     node_id uuid NOT NULL,
     port integer,
     state public.instance_state DEFAULT 'PENDING'::public.instance_state NOT NULL,
@@ -502,11 +502,11 @@ ALTER TABLE ONLY public.instances
 
 
 --
--- Name: instances instances_flavor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: instances instances_flavor_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.instances
-    ADD CONSTRAINT instances_flavor_id_fkey FOREIGN KEY (flavor_id) REFERENCES public.flavors(id);
+    ADD CONSTRAINT instances_flavor_version_id_fkey FOREIGN KEY (flavor_version_id) REFERENCES public.flavor_versions(id);
 
 
 --

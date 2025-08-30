@@ -76,6 +76,7 @@ var (
 		//        instance. but for now it's not necessary.
 		"Chunk.Flavors.Versions",
 		"ChunkFlavor.Versions",
+		"FlavorVersion.CreatedAt",
 	}
 
 	IgnoredChunkFields = []string{
