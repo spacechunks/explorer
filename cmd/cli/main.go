@@ -20,6 +20,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -28,10 +29,11 @@ import (
 	"runtime"
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
 	clicmd "github.com/spacechunks/explorer/cli/cmd"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
 func main() {
@@ -40,7 +42,9 @@ func main() {
 		log.Fatalf("Config error: %v", err)
 	}
 
-	conn, err := grpc.NewClient(cfg.ControlPlaneEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(cfg.ControlPlaneEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+		InsecureSkipVerify: true,
+	})))
 	if err != nil {
 		die("Failed to create gRPC client", err)
 	}
@@ -48,8 +52,9 @@ func main() {
 	var (
 		ctx   = context.Background()
 		state = cli.State{
-			Config: cfg,
-			Client: chunkv1alpha1.NewChunkServiceClient(conn),
+			Config:         cfg,
+			Client:         chunkv1alpha1.NewChunkServiceClient(conn),
+			InstanceClient: instancev1alpha1.NewInstanceServiceClient(conn),
 		}
 	)
 
