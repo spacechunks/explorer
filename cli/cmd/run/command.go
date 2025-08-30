@@ -22,6 +22,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
@@ -36,8 +37,8 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 		}
 
 		var (
-			chunkID    = args[0]
-			flavorName = args[1]
+			chunkID         = args[0]
+			flavorVersionID = args[1]
 		)
 
 		c, err := state.Client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
@@ -47,28 +48,31 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 			return fmt.Errorf("failed to get chunk: %w", err)
 		}
 
-		f := cli.FindFlavor(c.Chunk.Flavors, func(f *chunkv1alpha1.Flavor) bool {
-			return f.Name == flavorName
-		})
-
-		if f == nil {
-			return fmt.Errorf("flavor %s not found", flavorName)
-		}
-
 		// TODO: find flavor
 
-		resp, err := state.InstanceClient.RunChunk(ctx, &instancev1alpha1.RunChunkRequest{
-			ChunkId:  c.Chunk.Id,
-			FlavorId: f.Id,
+		resp, err := state.InstanceClient.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
+			ChunkId:         c.Chunk.Id,
+			FlavorVersionId: flavorVersionID,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to run chunk: %w", err)
 		}
 
-		fmt.Printf("Address: %s:%d\n", resp.Instance.Ip, resp.Instance.Port)
-		fmt.Printf("State: %s\n", resp.Instance.State)
+		t := time.NewTicker(1 * time.Second)
+		for {
+			select {
+			case <-t.C:
+				resp, err := state.InstanceClient.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
+					Id: resp.Instance.Id,
+				})
+				if err != nil {
+					fmt.Printf("failed to get instance: %v\n", err)
+					break
+				}
 
-		return nil
+				fmt.Printf("%s:%d (%s)\n", resp.Instance.Ip, resp.Instance.Port, resp.Instance.State)
+			}
+		}
 	}
 
 	return &cobra.Command{
