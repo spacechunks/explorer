@@ -59,20 +59,18 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 		}
 
 		t := time.NewTicker(1 * time.Second)
-		for {
-			select {
-			case <-t.C:
-				resp, err := state.InstanceClient.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
-					Id: resp.Instance.Id,
-				})
-				if err != nil {
-					fmt.Printf("failed to get instance: %v\n", err)
-					break
-				}
-
-				fmt.Printf("%s:%d (%s)\n", resp.Instance.Ip, resp.Instance.Port, resp.Instance.State)
+		for range t.C {
+			resp, err := state.InstanceClient.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
+				Id: resp.Instance.Id,
+			})
+			if err != nil {
+				fmt.Printf("failed to get instance: %v\n", err)
+				break
 			}
+
+			fmt.Printf("%s:%d (%s)\n", resp.Instance.Ip, resp.Instance.Port, resp.Instance.State)
 		}
+		return nil
 	}
 
 	return &cobra.Command{
