@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync/atomic"
 	"time"
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
@@ -39,13 +40,16 @@ type buildUpdate struct {
 }
 
 type builder struct {
-	client  chunkv1alpha1.ChunkServiceClient
-	updates chan buildUpdate
+	client       chunkv1alpha1.ChunkServiceClient
+	updates      chan buildUpdate
+	buildCounter *atomic.Int32
 }
 
 func (b builder) build(ctx context.Context, chunkID string, local localFlavor, createRemote bool) {
 	// TODO: remove create flavor call, because we can create the flavor in the control plane
 	//       when creating the flavor version if needed.
+	b.buildCounter.Add(1)
+	defer b.buildCounter.Add(-1)
 
 	var flavorID string
 	if createRemote {
@@ -174,9 +178,32 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 				return f.Id == flavorID
 			})
 
+			status := flavor.Versions[0].BuildStatus
+
 			b.updates <- buildUpdate{
 				flavor:      local,
-				buildStatus: ptr.Pointer(flavor.Versions[0].BuildStatus.String()),
+				buildStatus: ptr.Pointer(status.String()),
+			}
+
+			if status == chunkv1alpha1.BuildStatus_COMPLETED ||
+				status == chunkv1alpha1.BuildStatus_IMAGE_BUILD_FAILED ||
+				status == chunkv1alpha1.BuildStatus_CHECKPOINT_BUILD_FAILED {
+				return
+			}
+
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (b builder) OnUpdate(ctx context.Context, f func(update buildUpdate)) {
+	for {
+		select {
+		case u := <-b.updates:
+			f(u)
+			if b.buildCounter.Load() == 0 {
+				return
 			}
 		case <-ctx.Done():
 			return
