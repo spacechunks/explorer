@@ -16,28 +16,38 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package cmd
+package list
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/rodaine/table"
+	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
-	"github.com/spacechunks/explorer/cli/cmd/list"
-	"github.com/spacechunks/explorer/cli/cmd/publish"
-	"github.com/spacechunks/explorer/cli/cmd/run"
 	"github.com/spf13/cobra"
 )
 
-func newChunkCommand(ctx context.Context, state cli.State) *cobra.Command {
-	c := &cobra.Command{
-		Use:   "chunk",
-		Short: "TBD",
-		Long:  "TBD",
+func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
+	run := func(cmd *cobra.Command, args []string) error {
+		resp, err := state.Client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{})
+		if err != nil {
+			return fmt.Errorf("error while listing chunks: %w", err)
+		}
+
+		t := table.New("Name", "Description", "Tags", "ID")
+		for _, c := range resp.Chunks {
+			t.AddRow(c.Name, c.Description, strings.Join(c.Tags, ","), c.Id)
+		}
+		t.Print()
+
+		return nil
 	}
 
-	c.AddCommand(publish.NewCommand(ctx, state))
-	c.AddCommand(run.NewCommand(ctx, state))
-	c.AddCommand(list.NewCommand(ctx, state))
-
-	return c
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all available chunks",
+		RunE:  run,
+	}
 }
