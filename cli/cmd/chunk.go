@@ -22,6 +22,7 @@ import (
 	"context"
 
 	"github.com/spacechunks/explorer/cli"
+	"github.com/spacechunks/explorer/cli/cmd/inspect"
 	"github.com/spacechunks/explorer/cli/cmd/list"
 	"github.com/spacechunks/explorer/cli/cmd/publish"
 	"github.com/spacechunks/explorer/cli/cmd/run"
@@ -38,6 +39,7 @@ func newChunkCommand(ctx context.Context, state cli.State) *cobra.Command {
 	c.AddCommand(publish.NewCommand(ctx, state))
 	c.AddCommand(run.NewCommand(ctx, state))
 	c.AddCommand(list.NewCommand(ctx, state))
+	c.AddCommand(inspect.NewCommand(ctx, state))
 
 	return c
 }
