@@ -93,7 +93,7 @@ functests-controlplane:
 				   go test -v ./test/functional/controlplane
 
 .PHONY: functests-cni
-functests-cni: $(CNI_PLUGINS) $(TEST_IMG)
+functests-cni: $(CNI_PLUGINS)
 	$(RUN) $(SUDO) CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin go test -v ./test/functional/cni
 
 .PHONY: functests-database
@@ -111,7 +111,7 @@ functests-platformd:
 				   go test -v ./test/functional/platformd
 
 .PHONY: functests-shared
-functests-shared:
+functests-shared: $(TEST_IMG)
 	$(RUN) $(SUDO) go test -v ./test/functional/shared
 
 $(TEST_IMG):
