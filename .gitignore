@@ -7,9 +7,10 @@ dev/cni/netglue
 dev/platformd/platformd
 dev/controlplane/controlplane
 dev/test
+dev/cli/chunk
+dev/cli/explorer
 /cmd/test
 img.tar.gz
 unpack-img.tar.gz
 repack-img.tar.gz
 .golangci.bck.yaml
-dev/cli/chunk
