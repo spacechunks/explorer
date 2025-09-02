@@ -18,7 +18,10 @@
 
 package cli
 
-import chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+import (
+	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+)
 
 var DefaultConfig = Config{
 	ControlPlaneEndpoint: "localhost:9010",
@@ -29,6 +32,7 @@ type Config struct {
 }
 
 type State struct {
-	Config Config
-	Client chunkv1alpha1.ChunkServiceClient
+	Config         Config
+	Client         chunkv1alpha1.ChunkServiceClient
+	InstanceClient instancev1alpha1.InstanceServiceClient
 }

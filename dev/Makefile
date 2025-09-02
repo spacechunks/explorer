@@ -1,7 +1,8 @@
 .PHONY: cli
 cli:
 	go build -o cli/explorer ../cmd/cli/main.go
-	cd cli && ./explorer chunk publish
+	#cd cli && ./explorer chunk publish
+	cd cli && ./explorer chunk run 0198fb5f-e59e-7794-87f9-e34bd32a0e1b 0198fb5f-e5d4-769c-9828-b9ddd59e4ddc
 
 .PHONY: cp
 cp:
@@ -27,6 +28,11 @@ upload-pd:
 	@limactl shell xcomp GOOS=linux GOARCH=arm64 go build -o platformd/platformd ../cmd/platformd/main.go
 	scp platformd/platformd root@$(PLATFORMD_STAGE_HOST):/usr/bin/platformd
 	#scp platformd/platformd.service root@$(PLATFORMD_STAGE_HOST):/lib/systemd/system/platformd.service
+
+.PHONY: upload-ng
+upload-ng:
+	@limactl shell xcomp GOOS=linux GOARCH=arm64 go build -o cni/netglue ../cmd/netglue/main.go
+	scp cni/netglue root@$(PLATFORMD_STAGE_HOST):/opt/cni/bin/netglue
 
 .PHONY: t
 t:

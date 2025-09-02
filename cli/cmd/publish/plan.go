@@ -25,6 +25,7 @@ import (
 
 	"github.com/rodaine/table"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	"github.com/spacechunks/explorer/cli"
 )
 
 type conflictKind string
@@ -62,7 +63,7 @@ func newPlan(cfg publishConfig, chunk *chunkv1alpha1.Chunk) (plan, error) {
 			hash:    hash,
 		}
 
-		remote := findFlavor(chunk.Flavors, func(item *chunkv1alpha1.Flavor) bool {
+		remote := cli.FindFlavor(chunk.Flavors, func(item *chunkv1alpha1.Flavor) bool {
 			return f.Name == item.Name
 		})
 		if remote == nil {
