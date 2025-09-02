@@ -85,7 +85,7 @@ e2etests:
 	$(SUDO) go test ./test/e2e/...
 
 .PHONY: functests-controlplane
-functests-controlplane:
+functests-controlplane: $(TEST_IMG)
 	$(RUN) $(SUDO) FUNCTESTS_POSTGRES_IMAGE=postgres:17 \
 				   FUNCTESTS_POSTGRES_USER=spc \
 				   FUNCTESTS_POSTGRES_PASS=test123 \
