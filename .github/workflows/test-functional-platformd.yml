@@ -1,10 +1,10 @@
-name: test-unit
+name: test-functional-platformd
 on:
   pull_request:
 permissions:
   contents: read
 jobs:
-  test-unit:
+  test-functional:
     name: test
     runs-on: ubuntu-latest
     steps:
@@ -12,5 +12,4 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: 1.25.0
-      - uses: docker/setup-buildx-action@v3
-      - run: make unittests
+      - run: make functests-platformd
