@@ -70,8 +70,11 @@ func newPlan(cfg publishConfig, chunk *chunkv1alpha1.Chunk) (plan, error) {
 			continue
 		}
 
-		// TODO: exclude from conflicts if flavor version is currently being built
-		//       enable retry if build is failed
+		// TODO:
+		// - exclude from conflicts if flavor version is currently being built
+		// - enable retry if build is failed
+		// - do not add conflict if versions exists, but files have not been uploaded
+
 		if found := slices.ContainsFunc(remote.Versions, func(v *chunkv1alpha1.FlavorVersion) bool {
 			return f.Version == v.Version
 		}); found {
@@ -92,7 +95,10 @@ func newPlan(cfg publishConfig, chunk *chunkv1alpha1.Chunk) (plan, error) {
 			continue
 		}
 
-		prevVersion := remote.Versions[0] // the latest one is always first
+		prevVersion := &chunkv1alpha1.FlavorVersion{}
+		if len(remote.Versions) > 0 {
+			prevVersion = remote.Versions[0] // the latest one is always first
+		}
 
 		fmt.Println(prevVersion.Version)
 		for _, fh := range prevVersion.FileHashes {

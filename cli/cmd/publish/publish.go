@@ -29,6 +29,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync/atomic"
 
 	"github.com/goccy/go-yaml"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
@@ -202,8 +203,9 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 		}
 
 		b := builder{
-			client:  state.Client,
-			updates: make(chan buildUpdate),
+			client:       state.Client,
+			updates:      make(chan buildUpdate),
+			buildCounter: &atomic.Int32{},
 		}
 
 		for _, added := range plan.addedFlavors {
@@ -226,47 +228,48 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 
 		// this builds the following line in the terminal and redraws it once we receive an update
 		// <flavor1>: <status> | <flavor2>: <status> | <flavor3>: <status> etc...
-		for {
-			select {
-			case u := <-b.updates:
-				fmt.Print("\033[2K") // clear current line
-				updates[u.flavor.name] = u
-				keys := slices.Collect(maps.Keys(updates))
-				slices.Sort(keys)
-				c := 0
-				for _, k := range keys {
-					upd := updates[k]
-					c++
-					fmt.Printf("%s: ", upd.flavor.name)
-					if u.err != nil {
-						fmt.Printf("%s%s%s\n", Red, upd.err.Error(), Reset)
-					}
+		b.OnUpdate(ctx, func(u buildUpdate) {
+			fmt.Print("\033[2K") // clear current line
+			updates[u.flavor.name] = u
 
-					if u.uploadProgress != nil {
-						fmt.Printf("Uploading (%d%%)", *upd.uploadProgress)
-					}
+			var (
+				keys = slices.Collect(maps.Keys(updates))
+				c    = 0
+			)
 
-					if upd.buildStatus != nil {
-						if *u.buildStatus == "COMPLETED" {
-							fmt.Printf("%s%s%s", Green, *upd.buildStatus, Reset)
-						} else if strings.Contains(*u.buildStatus, "FAILED") {
-							fmt.Printf("%s%s%s", Red, *upd.buildStatus, Reset)
-						} else {
-							fmt.Printf("%s", *upd.buildStatus)
-						}
-					}
+			slices.Sort(keys)
 
-					if c != len(updates) {
-						fmt.Print(" | ")
+			for _, k := range keys {
+				upd := updates[k]
+				c++
+				fmt.Printf("%s: ", upd.flavor.name)
+				if upd.err != nil {
+					fmt.Printf("%s%s%s\n", Red, upd.err.Error(), Reset)
+				}
+
+				if upd.uploadProgress != nil {
+					fmt.Printf("Uploading (%d%%)", *upd.uploadProgress)
+				}
+
+				if upd.buildStatus != nil {
+					if *upd.buildStatus == "COMPLETED" {
+						fmt.Printf("%s%s%s", Green, *upd.buildStatus, Reset)
+					} else if strings.Contains(*upd.buildStatus, "FAILED") {
+						fmt.Printf("%s%s%s", Red, *upd.buildStatus, Reset)
+					} else {
+						fmt.Printf("%s", *upd.buildStatus)
 					}
 				}
 
-				fmt.Print("\r")
-
-			case <-ctx.Done():
-				return nil
+				if c != len(updates) {
+					fmt.Print(" | ")
+				}
 			}
-		}
+
+			fmt.Print("\r")
+		})
+
+		return nil
 	}
 
 	return &cobra.Command{
