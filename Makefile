@@ -84,16 +84,35 @@ e2etests:
 	GOOS=linux GOARCH=arm64 go build -o ./dev/ptpnat ./cmd/ptpnat/main.go
 	$(SUDO) go test ./test/e2e/...
 
-.PHONY: functests
-functests: $(CNI_PLUGINS) $(TEST_IMG)
-	$(RUN) $(SUDO) FUNCTESTS_ENVOY_IMAGE=docker.io/envoyproxy/envoy:v1.31.4 \
-				   FUNCTESTS_ENVOY_CONFIG=../../dev/platformd/envoy-xds.yaml \
-				   FUNCTESTS_POSTGRES_IMAGE=postgres:17 \
+.PHONY: functests-controlplane
+functests-controlplane:
+	$(RUN) $(SUDO) FUNCTESTS_POSTGRES_IMAGE=postgres:17 \
 				   FUNCTESTS_POSTGRES_USER=spc \
 				   FUNCTESTS_POSTGRES_PASS=test123 \
 				   FUNCTESTS_POSTGRES_DB=explorer \
-				   CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin \
-				   go test -v $(ARGS)
+				   go test -v ./test/functional/controlplane
+
+.PHONY: functests-cni
+functests-cni: $(CNI_PLUGINS) $(TEST_IMG)
+	$(RUN) $(SUDO) CNI_PATH=$(shell pwd)/$(CNI_PLUGINS)/bin go test -v ./test/functional/cni
+
+.PHONY: functests-database
+functests-database:
+	$(RUN) $(SUDO) FUNCTESTS_POSTGRES_IMAGE=postgres:17 \
+				   FUNCTESTS_POSTGRES_USER=spc \
+				   FUNCTESTS_POSTGRES_PASS=test123 \
+				   FUNCTESTS_POSTGRES_DB=explorer \
+				   go test -v ./test/functional/database
+
+.PHONY: functests-platformd
+functests-platformd:
+	$(RUN) $(SUDO) FUNCTESTS_ENVOY_IMAGE=docker.io/envoyproxy/envoy:v1.31.4 \
+                   FUNCTESTS_ENVOY_CONFIG=../../../dev/platformd/envoy-xds.yaml \
+				   go test -v ./test/functional/platformd
+
+.PHONY: functests-shared
+functests-shared:
+	$(RUN) $(SUDO) go test -v ./test/functional/shared
 
 $(TEST_IMG):
 	@docker build -t test-img -f $(IMG_TESTDATA_DIR)/Dockerfile $(IMG_TESTDATA_DIR)
