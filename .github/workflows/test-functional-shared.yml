@@ -1,4 +1,4 @@
-name: test-functional-controlplane
+name: test-functional-shared
 on:
   pull_request:
 permissions:
@@ -12,4 +12,4 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: 1.25.0
-      - run: make functests-controlplane
+      - run: make functests-shared
