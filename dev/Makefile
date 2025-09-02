@@ -2,8 +2,9 @@
 cli:
 	go build -o cli/explorer ../cmd/cli/main.go
 	#cd cli && ./explorer chunk publish
-	cd cli && ./explorer chunk run 0198fb5f-e59e-7794-87f9-e34bd32a0e1b 0198fb5f-e5d4-769c-9828-b9ddd59e4ddc
-
+	#cd cli && ./explorer chunk run 0198fb5f-e59e-7794-87f9-e34bd32a0e1b 0198fb5f-e5d4-769c-9828-b9ddd59e4ddc
+	#cd cli && ./explorer chunk list
+	cd cli && ./explorer chunk inspect TestChunk
 .PHONY: cp
 cp:
 	go build -o controlplane/controlplane ../cmd/controlplane/main.go

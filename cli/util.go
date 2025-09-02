@@ -18,7 +18,10 @@
 
 package cli
 
-import chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+import (
+	"github.com/rodaine/table"
+	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+)
 
 func FindFlavor(flavors []*chunkv1alpha1.Flavor, filter func(f *chunkv1alpha1.Flavor) bool) *chunkv1alpha1.Flavor {
 	for _, f := range flavors {
@@ -28,4 +31,28 @@ func FindFlavor(flavors []*chunkv1alpha1.Flavor, filter func(f *chunkv1alpha1.Fl
 		return f
 	}
 	return nil
+}
+
+// Section is a table with no column headers. the main purpose
+// of this is to align values when printing, so they are on the
+// same level. here's an example:
+// what we don't want:
+//
+//	ID: 0198fb5f-e59e-7794-87f9-e34bd32a0e1b
+//	Name: TestChunk
+//	Description: this is a description
+//	Tags: tag1,tag2
+//
+// what we want:
+//
+//	ID:            0198fb5f-e59e-7794-87f9-e34bd32a0e1b
+//	Name:          TestChunk
+//	Description:   this is a description
+//	Tags:          tag1,tag2
+func Section() table.Table {
+	t := table.New("", "")
+	t.WithHeaderFormatter(func(s string, i ...any) string {
+		return ""
+	})
+	return t
 }

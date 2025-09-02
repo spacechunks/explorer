@@ -23,7 +23,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/rodaine/table"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
 )
@@ -149,24 +148,17 @@ func (p plan) print() {
 		indent1        = " "
 		indent2        = "  "
 		indent3        = "   "
-		tbl            = func() table.Table {
-			t := table.New("", "")
-			t.WithHeaderFormatter(func(s string, i ...any) string {
-				return ""
-			})
-			return t
-		}
 	)
 
 	if len(p.addedFlavors) > 0 {
 		fmt.Println("New flavors:")
 		for _, fl := range p.addedFlavors {
-			t := tbl()
-			t.AddRow(Green+indent1+fl.name+":", "")
-			t.AddRow(indent2+addPrefix+"Version:", fl.version)
-			t.AddRow(indent2+addPrefix+"Path:", fl.path)
-			t.AddRow(indent2+addPrefix+"Files:", "")
-			t.Print()
+			sec := cli.Section()
+			sec.AddRow(Green+indent1+fl.name+":", "")
+			sec.AddRow(indent2+addPrefix+"Version:", fl.version)
+			sec.AddRow(indent2+addPrefix+"Path:", fl.path)
+			sec.AddRow(indent2+addPrefix+"Files:", "")
+			sec.Print()
 			for _, fi := range fl.files {
 				fmt.Println(indent3, addPrefix, fi.Path)
 			}
@@ -176,12 +168,12 @@ func (p plan) print() {
 	if len(p.changedFlavors) > 0 {
 		fmt.Println(Reset + "\nModified flavors:")
 		for _, fl := range p.changedFlavors {
-			t := tbl()
-			t.AddRow(Yellow+indent1+fl.onDisk.name+":", "")
-			t.AddRow(indent2+modPrefix+"Version:", fmt.Sprintf("%s -> %s", fl.prevVersion, fl.onDisk.version))
-			t.AddRow(indent2+modPrefix+"Path:", fl.onDisk.path)
-			t.AddRow(indent2+modPrefix+"Files:", "")
-			t.Print()
+			sec := cli.Section()
+			sec.AddRow(Yellow+indent1+fl.onDisk.name+":", "")
+			sec.AddRow(indent2+modPrefix+"Version:", fmt.Sprintf("%s -> %s", fl.prevVersion, fl.onDisk.version))
+			sec.AddRow(indent2+modPrefix+"Path:", fl.onDisk.path)
+			sec.AddRow(indent2+modPrefix+"Files:", "")
+			sec.Print()
 			for _, path := range fl.addedFiles {
 				fmt.Println(indent3, addPrefix, path)
 			}
