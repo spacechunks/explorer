@@ -40,11 +40,18 @@ type ControlPlaneRunOption func(*ControlPlaneRunOptions)
 
 type ControlPlaneRunOptions struct {
 	OCIRegistryEndpoint string
+	FakeS3Endpoint      string
 }
 
 func WithOCIRegistryEndpoint(endpoint string) ControlPlaneRunOption {
 	return func(opts *ControlPlaneRunOptions) {
 		opts.OCIRegistryEndpoint = endpoint
+	}
+}
+
+func WithFakeS3Endpoint(endpoint string) ControlPlaneRunOption {
+	return func(opts *ControlPlaneRunOptions) {
+		opts.FakeS3Endpoint = endpoint
 	}
 }
 
@@ -54,11 +61,15 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 
 	defaultOpts := ControlPlaneRunOptions{
 		OCIRegistryEndpoint: "http://localhost:5000",
+		FakeS3Endpoint:      "http://localhost:3080",
 	}
 
 	for _, opt := range opts {
 		opt(&defaultOpts)
 	}
+
+	require.NoError(t, os.Setenv("AWS_ENDPOINT_URL", defaultOpts.FakeS3Endpoint))
+	require.NoError(t, os.Setenv("AWS_REGION", "us-east-1"))
 
 	var (
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil)).With("service", "control-plane")
@@ -72,8 +83,15 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 				OCIRegistryPass:               OCIRegistryPass,
 				BaseImage:                     fmt.Sprintf("%s/base-image:latest", defaultOpts.OCIRegistryEndpoint),
 				ImageCacheDir:                 t.TempDir(),
+				ImagePlatform:                 "",
 				CheckpointJobTimeout:          20 * time.Second,
 				CheckpointStatusCheckInterval: 1 * time.Second,
+				Bucket:                        "explorer",
+				AccessKey:                     "accesskey",
+				SecretKey:                     "secretkey",
+				// should stay at 2 seconds so TestGetUploadURLRenews passes
+				PresignedURLExpiry: 2 * time.Second,
+				UsePathStyle:       true,
 			})
 	)
 
