@@ -26,6 +26,9 @@ import (
 	"net"
 	"time"
 
+	awscfg "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -70,6 +73,16 @@ func (s *Server) Run(ctx context.Context) error {
 		return fmt.Errorf("connect to database: %w", err)
 	}
 
+	s3cfg, err := awscfg.LoadDefaultConfig(
+		ctx,
+		awscfg.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(s.cfg.AccessKey, s.cfg.SecretKey, ""),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("aws config: %w", err)
+	}
+
 	var (
 		db         = postgres.NewDB(s.logger, pool)
 		blobStore  = blob.NewPGStore(db)
@@ -103,10 +116,25 @@ func (s *Server) Run(ctx context.Context) error {
 			grpc.MaxRecvMsgSize(s.cfg.MaxGRPCMessageSize),
 			grpc.UnaryInterceptor(errorInterceptor(s.logger)),
 		)
-		chunkService = chunk.NewService(db, blobStore, db, s.cfg.OCIRegistry, s.cfg.BaseImage)
-		chunkServer  = chunk.NewServer(chunkService)
-		insService   = instance.NewService(s.logger, db, db, chunkService)
-		insServer    = instance.NewServer(insService)
+
+		s3client = s3.NewFromConfig(s3cfg, func(o *s3.Options) {
+			o.UsePathStyle = s.cfg.UsePathStyle
+		})
+
+		chunkService = chunk.NewService(
+			db,
+			blobStore,
+			db,
+			s3.NewPresignClient(s3client),
+			chunk.Config{
+				Registry:           s.cfg.OCIRegistry,
+				BaseImage:          s.cfg.BaseImage,
+				Bucket:             s.cfg.Bucket,
+				PresignedURLExpiry: s.cfg.PresignedURLExpiry,
+			})
+		chunkServer = chunk.NewServer(chunkService)
+		insService  = instance.NewService(s.logger, db, db, chunkService)
+		insServer   = instance.NewServer(insService)
 	)
 
 	instancev1alpha1.RegisterInstanceServiceServer(grpcServer, insServer)

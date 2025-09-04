@@ -199,3 +199,25 @@ func (s *Server) BuildFlavorVersion(
 ) (*chunkv1alpha1.BuildFlavorVersionResponse, error) {
 	return &chunkv1alpha1.BuildFlavorVersionResponse{}, s.service.BuildFlavorVersion(ctx, req.GetFlavorVersionId())
 }
+
+func (s *Server) GetUploadURL(
+	ctx context.Context,
+	req *chunkv1alpha1.GetUploadURLRequest,
+) (*chunkv1alpha1.GetUploadURLResponse, error) {
+	if _, err := uuid.Parse(req.GetFlavorVersionId()); err != nil {
+		return nil, apierrs.ErrInvalidChunkID
+	}
+
+	if req.GetTarballHash() == "" {
+		return nil, apierrs.ErrInvalidHash
+	}
+
+	url, err := s.service.GetUploadURL(ctx, req.GetFlavorVersionId(), req.GetTarballHash())
+	if err != nil {
+		return nil, fmt.Errorf("upload url: %w", err)
+	}
+
+	return &chunkv1alpha1.GetUploadURLResponse{
+		Url: url,
+	}, nil
+}

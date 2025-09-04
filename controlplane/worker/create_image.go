@@ -123,6 +123,8 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		})
 	}
 
+	// TODO: perform config file adjustments
+
 	img, err := image.AppendLayer(baseImg, f)
 	if err != nil {
 		return fmt.Errorf("append layer: %w", err)

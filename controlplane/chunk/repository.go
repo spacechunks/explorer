@@ -20,6 +20,7 @@ package chunk
 
 import (
 	"context"
+	"time"
 )
 
 type Repository interface {
@@ -43,4 +44,5 @@ type Repository interface {
 	MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error
 	FlavorVersionByID(ctx context.Context, id string) (FlavorVersion, error)
 	UpdateFlavorVersionBuildStatus(ctx context.Context, flavorVersionID string, status BuildStatus) error
+	UpdateFlavorVersionPresignedURLData(ctx context.Context, flavorVersionID string, date time.Time, url string) error
 }

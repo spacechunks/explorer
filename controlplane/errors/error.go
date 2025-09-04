@@ -52,9 +52,11 @@ var (
 	ErrFlavorNameExists       = New(codes.AlreadyExists, "flavor name already exists")
 	ErrFlavorVersionExists    = New(codes.AlreadyExists, "flavor version already exists")
 	ErrHashMismatch           = New(codes.FailedPrecondition, "hash does not match")
+	ErrInvalidHash            = New(codes.InvalidArgument, "invalid hash")
 	ErrFilesAlreadyExist      = New(codes.AlreadyExists, "files already exist")
 	ErrFlavorNotFound         = New(codes.NotFound, "flavor does not exist")
 	ErrFlavorFilesNotUploaded = New(codes.FailedPrecondition, "flavor files have not been uploaded")
+	ErrFlavorFilesUploaded    = New(codes.AlreadyExists, "flavor files have already been uploaded")
 	ErrFlavorVersionNotFound  = New(codes.NotFound, "flavor version does not exist")
 )
 

@@ -32,4 +32,9 @@ type Config struct {
 	ImagePlatform                 string
 	CheckpointJobTimeout          time.Duration
 	CheckpointStatusCheckInterval time.Duration
+	Bucket                        string
+	AccessKey                     string
+	SecretKey                     string
+	PresignedURLExpiry            time.Duration
+	UsePathStyle                  bool
 }
