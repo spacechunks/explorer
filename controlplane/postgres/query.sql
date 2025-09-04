@@ -109,6 +109,12 @@ UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1;
 -- name: UpdateFlavorVersionBuildStatus :exec
 UPDATE flavor_versions SET build_status = $1 WHERE id = $2;
 
+-- name: UpdateFlavorVersionPresignedURLData :exec
+UPDATE flavor_versions SET
+    presigned_url_expiry_date = $1,
+    presigned_url = $2
+WHERE id = $3;
+
 /*
  * BLOB STORE
  */

@@ -22,6 +22,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"sort"
 	"strings"
@@ -942,6 +943,166 @@ func TestBuildFlavorVersion(t *testing.T) {
 					}
 				}
 			}
+		})
+	}
+}
+
+func TestGetUploadURLWorks(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
+	)
+
+	fixture.RunFakeS3(t)
+	fixture.RunControlPlane(t, pg)
+
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	conn, err := grpc.NewClient(
+		fixture.ControlPlaneAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+
+	client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+	resp, err := client.GetUploadURL(ctx, &chunkv1alpha1.GetUploadURLRequest{
+		FlavorVersionId: c.Flavors[0].Versions[0].ID,
+		TarballHash:     "blabla",
+	})
+	require.NoError(t, err)
+
+	u, err := url.Parse(resp.Url)
+	require.NoError(t, err)
+
+	require.Equal(t, "blabla", u.Query().Get("X-Amz-Checksum-Sha256"))
+}
+
+func TestGetUploadURLRenews(t *testing.T) {
+	tests := []struct {
+		name   string
+		wait   time.Duration
+		equals bool
+	}{
+		{
+			name:   "does not renew",
+			wait:   1 * time.Second,
+			equals: true,
+		},
+		{
+			name:   "renews",
+			wait:   2 * time.Second,
+			equals: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+				c   = fixture.Chunk()
+			)
+
+			fixture.RunFakeS3(t)
+			fixture.RunControlPlane(t, pg)
+
+			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+			resp1, err := client.GetUploadURL(ctx, &chunkv1alpha1.GetUploadURLRequest{
+				FlavorVersionId: c.Flavors[0].Versions[0].ID,
+				TarballHash:     "blabla",
+			})
+			require.NoError(t, err)
+
+			time.Sleep(tt.wait)
+
+			resp2, err := client.GetUploadURL(ctx, &chunkv1alpha1.GetUploadURLRequest{
+				FlavorVersionId: c.Flavors[0].Versions[0].ID,
+				TarballHash:     "blabla",
+			})
+			require.NoError(t, err)
+
+			if tt.equals {
+				require.Equal(t, resp1.Url, resp2.Url)
+			} else {
+				require.NotEqual(t, resp1.Url, resp2.Url)
+			}
+		})
+	}
+}
+
+func TestGetUploadURLRequestValidations(t *testing.T) {
+	tests := []struct {
+		name string
+		req  *chunkv1alpha1.GetUploadURLRequest
+		err  error
+	}{
+		{
+			name: "invalid flavor version id",
+			req: &chunkv1alpha1.GetUploadURLRequest{
+				FlavorVersionId: "blabla",
+				TarballHash:     "blabla",
+			},
+			err: apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
+		},
+		{
+			name: "invalid tarball hash",
+			req: &chunkv1alpha1.GetUploadURLRequest{
+				FlavorVersionId: test.NewUUIDv7(t),
+				TarballHash:     "",
+			},
+			err: apierrs.ErrInvalidHash.GRPCStatus().Err(),
+		},
+		{
+			name: "files not uploaded",
+			req:  &chunkv1alpha1.GetUploadURLRequest{},
+			err:  apierrs.ErrFlavorFilesUploaded.GRPCStatus().Err(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+				c   = fixture.Chunk()
+			)
+
+			fixture.RunFakeS3(t)
+			fixture.RunControlPlane(t, pg)
+
+			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+			if errors.Is(tt.err, apierrs.ErrFlavorFilesUploaded.GRPCStatus().Err()) {
+				q := `UPDATE flavor_versions SET files_uploaded = true WHERE id = $1`
+				_, err := pg.Pool.Exec(ctx, q, c.Flavors[0].Versions[0].ID)
+				require.NoError(t, err)
+
+				tt.req = &chunkv1alpha1.GetUploadURLRequest{
+					FlavorVersionId: c.Flavors[0].Versions[0].ID,
+					TarballHash:     "blabla",
+				}
+			}
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+			_, err = client.GetUploadURL(ctx, tt.req)
+
+			require.ErrorIs(t, err, tt.err)
 		})
 	}
 }

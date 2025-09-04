@@ -114,6 +114,23 @@ service ChunkService {
   // - FAILED_PRECONDITION:
   //   - the flavor version files have not been uploaded yet.
   rpc BuildFlavorVersion(BuildFlavorVersionRequest) returns (BuildFlavorVersionResponse);
+
+  // GetUploadURL returns a presigned URL for use with a S3 client. If the expiry date
+  // is reached the client can call this endpoint again and will receive a new valid
+  // URL. Calling this endpoint multiple without the expiry date being reached will
+  // lead to the same URL being returned.
+  //
+  // Defined error codes:
+  // - NOT_FOUND:
+  //   - the targeted flavor version does not exist
+  // - ALREADY_EXISTS:
+  //   - the tarball has already been uploaded
+  // - INVALID_ARGUMENT:
+  //   - the provided flavor version id is invalid
+  //   - the provided tarball hash is empty or does not meet the requirements.
+  //     for more information about what requirements are expected see tarball_hash
+  //     documentation of GetUploadURLRequest
+  rpc GetUploadURL(GetUploadURLRequest) returns (GetUploadURLResponse);
 }
 
 message CreateChunkRequest {
@@ -197,4 +214,15 @@ message BuildFlavorVersionRequest {
 }
 
 message BuildFlavorVersionResponse {
+}
+
+message GetUploadURLRequest {
+  string flavor_version_id = 1;
+
+  // tarball_hash is the base64 encoded, 256-bit SHA256 digest of the tarball
+  string tarball_hash = 2;
+}
+
+message GetUploadURLResponse {
+  string url = 1;
 }

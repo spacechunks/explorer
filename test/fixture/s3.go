@@ -16,25 +16,28 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package controlplane
+package fixture
 
-import "time"
+import (
+	"context"
+	"net/http"
+	"testing"
 
-type Config struct {
-	ListenAddr                    string
-	DBConnString                  string
-	MaxGRPCMessageSize            int
-	OCIRegistry                   string
-	OCIRegistryUser               string
-	OCIRegistryPass               string
-	BaseImage                     string
-	ImageCacheDir                 string
-	ImagePlatform                 string
-	CheckpointJobTimeout          time.Duration
-	CheckpointStatusCheckInterval time.Duration
-	Bucket                        string
-	AccessKey                     string
-	SecretKey                     string
-	PresignedURLExpiry            time.Duration
-	UsePathStyle                  bool
+	"github.com/johannesboyne/gofakes3"
+	"github.com/johannesboyne/gofakes3/backend/s3mem"
+)
+
+func RunFakeS3(t *testing.T) string {
+	s := http.Server{
+		Addr:    ":3080",
+		Handler: gofakes3.New(s3mem.New()).Server(),
+	}
+
+	go s.ListenAndServe()
+
+	t.Cleanup(func() {
+		s.Shutdown(context.Background())
+	})
+
+	return "localhost:3080"
 }

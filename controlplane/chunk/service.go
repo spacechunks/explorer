@@ -20,6 +20,7 @@ package chunk
 
 import (
 	"context"
+	"time"
 
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/job"
@@ -39,28 +40,36 @@ type Service interface {
 		version FlavorVersion,
 	) (FlavorVersion, FlavorVersionDiff, error)
 	BuildFlavorVersion(ctx context.Context, versionID string) error
+	GetUploadURL(ctx context.Context, flavorVersionID string, tarballHash string) (string, error)
+}
+
+type Config struct {
+	Registry           string
+	BaseImage          string
+	Bucket             string
+	PresignedURLExpiry time.Duration
 }
 
 type svc struct {
 	repo      Repository
 	blobStore blob.Store
 	jobClient job.Client
-	registry  string
-	baseImage string
+	s3Client  s3Client
+	cfg       Config
 }
 
 func NewService(
 	repo Repository,
 	blobStore blob.Store,
 	jobClient job.Client,
-	registry string,
-	baseImage string,
+	s3Client s3Client,
+	cfg Config,
 ) Service {
 	return &svc{
 		repo:      repo,
 		blobStore: blobStore,
 		jobClient: jobClient,
-		registry:  registry,
-		baseImage: baseImage,
+		s3Client:  s3Client,
+		cfg:       cfg,
 	}
 }

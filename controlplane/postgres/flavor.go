@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
@@ -280,6 +281,19 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 			CreatedAt:     row.CreatedAt,
 		}
 
+		var expiryDate *time.Time
+		if row.PresignedUrlExpiryDate.Valid {
+			expiryDate = &row.PresignedUrlExpiryDate.Time
+		}
+
+		var presignedURL *string
+		if row.PresignedUrl.Valid {
+			presignedURL = &row.PresignedUrl.String
+		}
+
+		ret.PresignedURLExpiryDate = expiryDate
+		ret.PresignedURL = presignedURL
+
 		for _, r := range rows {
 			hashes = append(hashes, file.Hash{
 				Path: r.FilePath,
@@ -306,6 +320,27 @@ func (db *DB) UpdateFlavorVersionBuildStatus(
 		return q.UpdateFlavorVersionBuildStatus(ctx, query.UpdateFlavorVersionBuildStatusParams{
 			BuildStatus: query.BuildStatus(status),
 			ID:          flavorVersionID,
+		})
+	})
+}
+
+func (db *DB) UpdateFlavorVersionPresignedURLData(
+	ctx context.Context,
+	flavorVersionID string,
+	date time.Time,
+	url string,
+) error {
+	return db.do(ctx, func(q *query.Queries) error {
+		return q.UpdateFlavorVersionPresignedURLData(ctx, query.UpdateFlavorVersionPresignedURLDataParams{
+			ID: flavorVersionID,
+			PresignedUrlExpiryDate: pgtype.Timestamptz{
+				Valid: true,
+				Time:  date,
+			},
+			PresignedUrl: pgtype.Text{
+				Valid:  true,
+				String: url,
+			},
 		})
 	})
 }

@@ -45,6 +45,7 @@ const (
 	ChunkService_CreateFlavorVersion_FullMethodName = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
 	ChunkService_SaveFlavorFiles_FullMethodName     = "/chunk.v1alpha1.ChunkService/SaveFlavorFiles"
 	ChunkService_BuildFlavorVersion_FullMethodName  = "/chunk.v1alpha1.ChunkService/BuildFlavorVersion"
+	ChunkService_GetUploadURL_FullMethodName        = "/chunk.v1alpha1.ChunkService/GetUploadURL"
 )
 
 // ChunkServiceClient is the client API for ChunkService service.
@@ -138,6 +139,24 @@ type ChunkServiceClient interface {
 	// - FAILED_PRECONDITION:
 	//   - the flavor version files have not been uploaded yet.
 	BuildFlavorVersion(ctx context.Context, in *BuildFlavorVersionRequest, opts ...grpc.CallOption) (*BuildFlavorVersionResponse, error)
+	// GetUploadURL returns a presigned URL for use with a S3 client. If the expiry date
+	// is reached the client can call this endpoint again and will receive a new valid
+	// URL. Calling this endpoint multiple without the expiry date being reached will
+	// lead to the same URL being returned.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted flavor version does not exist
+	//
+	// - ALREADY_EXISTS:
+	//   - the tarball has already been uploaded
+	//
+	// - INVALID_ARGUMENT:
+	//   - the provided flavor version id is invalid
+	//   - the provided tarball hash is empty or does not meet the requirements.
+	//     for more information about what requirements are expected see tarball_hash
+	//     documentation of GetUploadURLRequest
+	GetUploadURL(ctx context.Context, in *GetUploadURLRequest, opts ...grpc.CallOption) (*GetUploadURLResponse, error)
 }
 
 type chunkServiceClient struct {
@@ -222,6 +241,16 @@ func (c *chunkServiceClient) BuildFlavorVersion(ctx context.Context, in *BuildFl
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BuildFlavorVersionResponse)
 	err := c.cc.Invoke(ctx, ChunkService_BuildFlavorVersion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chunkServiceClient) GetUploadURL(ctx context.Context, in *GetUploadURLRequest, opts ...grpc.CallOption) (*GetUploadURLResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUploadURLResponse)
+	err := c.cc.Invoke(ctx, ChunkService_GetUploadURL_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -319,6 +348,24 @@ type ChunkServiceServer interface {
 	// - FAILED_PRECONDITION:
 	//   - the flavor version files have not been uploaded yet.
 	BuildFlavorVersion(context.Context, *BuildFlavorVersionRequest) (*BuildFlavorVersionResponse, error)
+	// GetUploadURL returns a presigned URL for use with a S3 client. If the expiry date
+	// is reached the client can call this endpoint again and will receive a new valid
+	// URL. Calling this endpoint multiple without the expiry date being reached will
+	// lead to the same URL being returned.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted flavor version does not exist
+	//
+	// - ALREADY_EXISTS:
+	//   - the tarball has already been uploaded
+	//
+	// - INVALID_ARGUMENT:
+	//   - the provided flavor version id is invalid
+	//   - the provided tarball hash is empty or does not meet the requirements.
+	//     for more information about what requirements are expected see tarball_hash
+	//     documentation of GetUploadURLRequest
+	GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
 
@@ -352,6 +399,9 @@ func (UnimplementedChunkServiceServer) SaveFlavorFiles(context.Context, *SaveFla
 }
 func (UnimplementedChunkServiceServer) BuildFlavorVersion(context.Context, *BuildFlavorVersionRequest) (*BuildFlavorVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BuildFlavorVersion not implemented")
+}
+func (UnimplementedChunkServiceServer) GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUploadURL not implemented")
 }
 func (UnimplementedChunkServiceServer) mustEmbedUnimplementedChunkServiceServer() {}
 func (UnimplementedChunkServiceServer) testEmbeddedByValue()                      {}
@@ -518,6 +568,24 @@ func _ChunkService_BuildFlavorVersion_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChunkService_GetUploadURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUploadURLRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).GetUploadURL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_GetUploadURL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).GetUploadURL(ctx, req.(*GetUploadURLRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChunkService_ServiceDesc is the grpc.ServiceDesc for ChunkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -556,6 +624,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BuildFlavorVersion",
 			Handler:    _ChunkService_BuildFlavorVersion_Handler,
+		},
+		{
+			MethodName: "GetUploadURL",
+			Handler:    _ChunkService_GetUploadURL_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
