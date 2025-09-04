@@ -137,7 +137,7 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 
 		m := make(map[string][]chunkRelationsRow)
 		for _, r := range rows {
-			m[r.ID] = append(m[r.ID], chunkRelationsRow{
+			rel := chunkRelationsRow{
 				ChunkID:        r.ID,
 				ChunkName:      r.Name,
 				Description:    r.Description,
@@ -161,7 +161,23 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 
 				FilePath: r.FilePath.String,
 				FileHash: r.FileHash.String,
-			})
+			}
+
+			// sqlc is not able to generate a *time.Time from nullable timestamptz
+			var expiryDate *time.Time
+			if r.PresignedUrlExpiryDate.Valid {
+				expiryDate = &r.PresignedUrlExpiryDate.Time
+			}
+
+			var presignedURL *string
+			if r.PresignedUrl.Valid {
+				presignedURL = &r.PresignedUrl.String
+			}
+
+			rel.PresingedURLExpiryDate = expiryDate
+			rel.PresignedURL = presignedURL
+
+			m[r.ID] = append(m[r.ID])
 		}
 
 		for _, rows := range m {
@@ -189,7 +205,7 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 	relationRows := make([]chunkRelationsRow, 0, len(rows))
 
 	for _, r := range rows {
-		relationRows = append(relationRows, chunkRelationsRow{
+		rel := chunkRelationsRow{
 			ChunkID:        r.ID,
 			ChunkName:      r.Name,
 			Description:    r.Description,
@@ -213,7 +229,23 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 
 			FilePath: r.FilePath.String,
 			FileHash: r.FileHash.String,
-		})
+		}
+
+		// sqlc is not able to generate a *time.Time from nullable timestamptz
+		var expiryDate *time.Time
+		if r.PresignedUrlExpiryDate.Valid {
+			expiryDate = &r.PresignedUrlExpiryDate.Time
+		}
+
+		var presignedURL *string
+		if r.PresignedUrl.Valid {
+			presignedURL = &r.PresignedUrl.String
+		}
+
+		rel.PresingedURLExpiryDate = expiryDate
+		rel.PresignedURL = presignedURL
+
+		relationRows = append(relationRows)
 	}
 
 	return collectChunks(relationRows), nil
@@ -240,6 +272,8 @@ type chunkRelationsRow struct {
 	ChangeHash             string
 	FilesUploaded          bool
 	FlavorVersionCreatedAt time.Time
+	PresingedURLExpiryDate *time.Time
+	PresignedURL           *string
 
 	FilePath string
 	FileHash string
@@ -286,13 +320,15 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 			if !ok {
 				versionToFlavorMap[*r.FlavorVersionID] = *r.FlavorID
 				versionMap[*r.FlavorVersionID] = chunk.FlavorVersion{
-					ID:            *r.FlavorVersionID,
-					Version:       r.Version,
-					Hash:          r.Hash,
-					BuildStatus:   chunk.BuildStatus(r.BuildStatus),
-					ChangeHash:    r.ChangeHash,
-					FilesUploaded: r.FilesUploaded,
-					CreatedAt:     r.FlavorVersionCreatedAt,
+					ID:                     *r.FlavorVersionID,
+					Version:                r.Version,
+					Hash:                   r.Hash,
+					BuildStatus:            chunk.BuildStatus(r.BuildStatus),
+					ChangeHash:             r.ChangeHash,
+					FilesUploaded:          r.FilesUploaded,
+					CreatedAt:              r.FlavorVersionCreatedAt,
+					PresignedURLExpiryDate: r.PresingedURLExpiryDate,
+					PresignedURL:           r.PresignedURL,
 				}
 			}
 		}

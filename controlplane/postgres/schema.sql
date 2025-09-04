@@ -1,3 +1,6 @@
+-- Dumped from database version 17.2 (Debian 17.2-1.pgdg120+1)
+-- Dumped by pg_dump version 17.6
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -129,7 +132,9 @@ CREATE TABLE public.flavor_versions (
     version character varying(25) NOT NULL,
     files_uploaded boolean DEFAULT false NOT NULL,
     prev_version_id uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    presigned_url_expiry_date timestamp with time zone,
+    presigned_url character varying
 );
 
 
@@ -536,4 +541,5 @@ ALTER TABLE ONLY public.river_client_queue
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('00000000000000'),
-    ('20250515184448');
+    ('20250515184448'),
+    ('20250904143025');
