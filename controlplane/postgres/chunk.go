@@ -177,7 +177,7 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 			rel.PresingedURLExpiryDate = expiryDate
 			rel.PresignedURL = presignedURL
 
-			m[r.ID] = append(m[r.ID])
+			m[r.ID] = append(m[r.ID], rel)
 		}
 
 		for _, rows := range m {
@@ -245,7 +245,7 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 		rel.PresingedURLExpiryDate = expiryDate
 		rel.PresignedURL = presignedURL
 
-		relationRows = append(relationRows)
+		relationRows = append(relationRows, rel)
 	}
 
 	return collectChunks(relationRows), nil
