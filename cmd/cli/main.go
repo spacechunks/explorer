@@ -74,7 +74,7 @@ func createOrReadConfig() (cli.Config, error) {
 		return cli.Config{}, fmt.Errorf("determine home directory: %w", err)
 	}
 
-	cfgPath := cfgHome + "/config.yaml"
+	cfgPath := filepath.Join(cfgHome, "config.yaml")
 
 	cfg, err := cli.ReadYAMLFile[cli.Config](cfgPath)
 	if err != nil {
@@ -98,8 +98,11 @@ func configHome() (string, error) {
 
 	switch runtime.GOOS {
 	case "windows":
-		// %LOCALAPPDATA% should always be present, so no need to create it
-		return filepath.Join("%LOCALAPPDATA%", "explorer"), nil
+		dir, err := os.UserConfigDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get config dir: %w", err)
+		}
+		cfgHome = filepath.Join(dir, "explorer")
 	case "linux", "darwin":
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
