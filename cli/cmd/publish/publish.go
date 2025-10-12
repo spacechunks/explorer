@@ -299,12 +299,12 @@ func localFileHashes(flavorPath string) (string, []file.Hash, error) {
 	var (
 		fileHashes = make([]file.Hash, 0)
 		excluded   = []string{
-			"cache/.*",
-			"versions/.*",
-			"libraries/.*",
-			"logs/.*",
+			filepath.Join("cache", ".*"),
+			filepath.Join("versions", ".*"),
+			filepath.Join("libraries", ".*"),
+			filepath.Join("logs", ".*"),
+			filepath.Join("plugins", ".paper-remapped", ".*"),
 			"paper.*.jar",
-			"plugins/.paper-remapped/.*",
 		}
 	)
 
