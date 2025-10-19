@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"io"
 	"sort"
 	"strings"
 
@@ -52,8 +53,20 @@ func (f Hash) Equals(other merkletree.Content) (bool, error) {
 	return f.Hash == otherHash.Hash, nil
 }
 
-func ComputeHashStr(data []byte) string {
-	return fmt.Sprintf("%x", xxh3.Hash(data))
+// ComputeHashStr computes a xxh3 hash from the given io.ReadSeekCloser.
+// this is designed to be able to be used with large amounts of data.
+func ComputeHashStr(file io.ReadSeekCloser) (string, error) {
+	// in case we have a large file, we don't want to read the whole thing into memory.
+	hasher := xxh3.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", fmt.Errorf("copy: %w", err)
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return "", fmt.Errorf("seek: %w", err)
+	}
+
+	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
 }
 
 func HashTreeRootString(tree *merkletree.MerkleTree) string {

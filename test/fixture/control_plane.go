@@ -68,9 +68,6 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 		opt(&defaultOpts)
 	}
 
-	require.NoError(t, os.Setenv("AWS_ENDPOINT_URL", defaultOpts.FakeS3Endpoint))
-	require.NoError(t, os.Setenv("AWS_REGION", "us-east-1"))
-
 	var (
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil)).With("service", "control-plane")
 		server = controlplane.NewServer(

@@ -19,19 +19,43 @@
 package fixture
 
 import (
+	"bytes"
 	"context"
 	"net/http"
+	"os"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awscfg "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/johannesboyne/gofakes3"
 	"github.com/johannesboyne/gofakes3/backend/s3mem"
+	"github.com/stretchr/testify/require"
 )
 
-func RunFakeS3(t *testing.T) string {
-	s := http.Server{
+const (
+	Bucket = "explorer"
+)
+
+type FakeS3 struct {
+	Endpoint string
+	server   *http.Server
+}
+
+func RunFakeS3(t *testing.T) FakeS3 {
+	s := &http.Server{
 		Addr:    ":3080",
-		Handler: gofakes3.New(s3mem.New()).Server(),
+		Handler: gofakes3.New(s3mem.New(), gofakes3.WithAutoBucket(true)).Server(),
 	}
+
+	f := FakeS3{
+		Endpoint: "localhost:3080",
+		server:   s,
+	}
+
+	require.NoError(t, os.Setenv("AWS_ENDPOINT_URL", "http://localhost:3080"))
+	require.NoError(t, os.Setenv("AWS_REGION", "us-east-1"))
 
 	go s.ListenAndServe()
 
@@ -39,5 +63,30 @@ func RunFakeS3(t *testing.T) string {
 		s.Shutdown(context.Background())
 	})
 
-	return "localhost:3080"
+	return f
+}
+
+func NewS3Client(t *testing.T, ctx context.Context) *s3.Client {
+	s3cfg, err := awscfg.LoadDefaultConfig(
+		ctx,
+		// we have to set anything otherwise it doesn't work
+		awscfg.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider("key", "secret", ""),
+		),
+	)
+	require.NoError(t, err)
+
+	return s3.NewFromConfig(s3cfg)
+}
+
+func (f FakeS3) UploadObject(t *testing.T, key string, data []byte) {
+	ctx := context.Background()
+	c := NewS3Client(t, ctx)
+
+	_, err := c.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(Bucket),
+		Key:    aws.String(key),
+		Body:   bytes.NewReader(data),
+	})
+	require.NoError(t, err)
 }
