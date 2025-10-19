@@ -84,8 +84,11 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 
 	var (
+		s3client = s3.NewFromConfig(s3cfg, func(o *s3.Options) {
+			o.UsePathStyle = s.cfg.UsePathStyle
+		})
 		db         = postgres.NewDB(s.logger, pool)
-		blobStore  = blob.NewPGStore(db)
+		blobStore  = blob.NewS3Store("bla", s3client, s3.NewPresignClient(s3client))
 		imgService = image.NewService(s.logger, s.cfg.OCIRegistryUser, s.cfg.OCIRegistryPass, s.cfg.ImageCacheDir)
 	)
 
@@ -117,15 +120,10 @@ func (s *Server) Run(ctx context.Context) error {
 			grpc.UnaryInterceptor(errorInterceptor(s.logger)),
 		)
 
-		s3client = s3.NewFromConfig(s3cfg, func(o *s3.Options) {
-			o.UsePathStyle = s.cfg.UsePathStyle
-		})
-
 		chunkService = chunk.NewService(
 			db,
-			blobStore,
 			db,
-			s3.NewPresignClient(s3client),
+			blobStore,
 			chunk.Config{
 				Registry:           s.cfg.OCIRegistry,
 				BaseImage:          s.cfg.BaseImage,
@@ -209,7 +207,7 @@ func CreateRiverClient(
 	logger *slog.Logger,
 	chunkRepo chunk.Repository,
 	imgService image.Service,
-	blobStore blob.Store,
+	blobStore blob.S3Store,
 	pool *pgxpool.Pool,
 	checkpointTimeout time.Duration,
 	statusCheckInterval time.Duration,
@@ -222,9 +220,9 @@ func CreateRiverClient(
 	imgWorker := worker.NewCreateImageWorker(
 		logger.With("component", "image-worker"),
 		chunkRepo,
-		blobStore,
 		imgService,
 		jobClient,
+		blobStore,
 		imagePlatform,
 	)
 	if err := river.AddWorkerSafely[job.CreateImage](workers, imgWorker); err != nil {
