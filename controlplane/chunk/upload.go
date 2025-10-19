@@ -21,25 +21,16 @@ package chunk
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"time"
 
-	signerv4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 )
 
-type s3Client interface {
-	PresignPutObject(
-		ctx context.Context,
-		params *s3.PutObjectInput,
-		optFns ...func(*s3.PresignOptions),
-	) (*signerv4.PresignedHTTPRequest, error)
-}
-
 func (s *svc) GetUploadURL(ctx context.Context, flavorVersionID string, tarballHash string) (string, error) {
-	key := fmt.Sprintf("explorer/flavor-versions/%s/changeset.tgz", flavorVersionID)
+	// TODO: tarball size needs to be specified as well to prevent people from uploading too large files
+	//       if size > 1GB reject
+
+	key := fmt.Sprintf("explorer/flavor-versions/%s/changeset.tar.gz", flavorVersionID)
 
 	ver, err := s.repo.FlavorVersionByID(ctx, flavorVersionID)
 	if err != nil {
@@ -54,34 +45,19 @@ func (s *svc) GetUploadURL(ctx context.Context, flavorVersionID string, tarballH
 		return *ver.PresignedURL, nil
 	}
 
-	req, err := s.s3Client.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket:            &s.cfg.Bucket,
-		Key:               &key,
-		ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
-		ChecksumSHA256:    &tarballHash,
-	}, s3.WithPresignExpires(s.cfg.PresignedURLExpiry))
+	url, expiryDate, err := s.s3Store.PresignURL(ctx, key, tarballHash, s.cfg.PresignedURLExpiry)
 	if err != nil {
 		return "", fmt.Errorf("presign: %w", err)
-	}
-
-	reqURL, err := url.Parse(req.URL)
-	if err != nil {
-		return "", fmt.Errorf("parse url: %w", err)
-	}
-
-	date, err := time.Parse("20060102T150405Z", reqURL.Query().Get("X-Amz-Date"))
-	if err != nil {
-		return "", fmt.Errorf("parse date: %w", err)
 	}
 
 	if err := s.repo.UpdateFlavorVersionPresignedURLData(
 		ctx,
 		flavorVersionID,
-		date.Add(s.cfg.PresignedURLExpiry),
-		req.URL,
+		expiryDate,
+		url,
 	); err != nil {
 		return "", fmt.Errorf("update presigned url data: %w", err)
 	}
 
-	return req.URL, nil
+	return url, nil
 }
