@@ -24,7 +24,6 @@ import (
 
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/job"
-	"github.com/spacechunks/explorer/internal/file"
 )
 
 type Service interface {
@@ -33,7 +32,6 @@ type Service interface {
 	UpdateChunk(ctx context.Context, new Chunk) (Chunk, error)
 	ListChunks(ctx context.Context) ([]Chunk, error)
 	CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error)
-	SaveFlavorFiles(ctx context.Context, versionID string, files []file.Object) error
 	CreateFlavorVersion(
 		ctx context.Context,
 		flavorID string,
