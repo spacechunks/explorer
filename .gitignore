@@ -14,3 +14,4 @@ img.tar.gz
 unpack-img.tar.gz
 repack-img.tar.gz
 .golangci.bck.yaml
+__layer.tar

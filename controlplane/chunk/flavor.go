@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spacechunks/explorer/controlplane/blob"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/internal/file"
@@ -134,6 +133,9 @@ func (s *svc) CreateFlavorVersion(
 		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrHashMismatch
 	}
 
+	// TODO: clean all received paths using filepath.Clean to avoid
+	// possible path traversal techniques. relative paths are not allowed.
+
 	var (
 		unchanged = make([]file.Hash, 0)
 		changed   = make([]file.Hash, 0)
@@ -223,60 +225,10 @@ func (s *svc) CreateFlavorVersion(
 	return created, diff, nil
 }
 
-func (s *svc) SaveFlavorFiles(ctx context.Context, versionID string, files []file.Object) error {
-	version, err := s.repo.FlavorVersionByID(ctx, versionID)
-	if err != nil {
-		return fmt.Errorf("flavor version: %w", err)
-	}
-
-	file.SortFiles(files)
-
-	objs := make([]blob.Object, 0, len(files))
-	for _, f := range files {
-		fmt.Println("file: ", f.Path)
-		objs = append(objs, blob.Object{
-			Data: f.Data,
-		})
-	}
-
-	// FIXME: at some point refactor file upload to detect directly if
-	//        files have already been uploaded. currently only after
-	//       all files have been uploaded this check will be executed.
-	if version.FilesUploaded {
-		return apierrs.ErrFilesAlreadyExist
-	}
-
-	tree, err := file.HashTree(objs)
-	if err != nil {
-		return fmt.Errorf("tree files: %w", err)
-	}
-
-	fmt.Println("got: " + file.HashTreeRootString(tree))
-	fmt.Println("want: " + version.ChangeHash)
-
-	if file.HashTreeRootString(tree) != version.ChangeHash {
-		return apierrs.ErrHashMismatch
-	}
-
-	if err := s.blobStore.Put(ctx, objs); err != nil {
-		return fmt.Errorf("put files: %w", err)
-	}
-
-	if err := s.repo.MarkFlavorVersionFilesUploaded(ctx, versionID); err != nil {
-		return fmt.Errorf("mark flavor version: %w", err)
-	}
-
-	return nil
-}
-
 func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 	version, err := s.repo.FlavorVersionByID(ctx, versionID)
 	if err != nil {
 		return fmt.Errorf("flavor version: %w", err)
-	}
-
-	if !version.FilesUploaded {
-		return apierrs.ErrFlavorFilesNotUploaded
 	}
 
 	// do not fail the request if there is already a job running,

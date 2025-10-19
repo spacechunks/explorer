@@ -43,7 +43,6 @@ const (
 	ChunkService_ListChunks_FullMethodName          = "/chunk.v1alpha1.ChunkService/ListChunks"
 	ChunkService_CreateFlavor_FullMethodName        = "/chunk.v1alpha1.ChunkService/CreateFlavor"
 	ChunkService_CreateFlavorVersion_FullMethodName = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
-	ChunkService_SaveFlavorFiles_FullMethodName     = "/chunk.v1alpha1.ChunkService/SaveFlavorFiles"
 	ChunkService_BuildFlavorVersion_FullMethodName  = "/chunk.v1alpha1.ChunkService/BuildFlavorVersion"
 	ChunkService_GetUploadURL_FullMethodName        = "/chunk.v1alpha1.ChunkService/GetUploadURL"
 )
@@ -116,20 +115,6 @@ type ChunkServiceClient interface {
 	// - FAILED_PRECONDITION:
 	//   - the provided version hash does not match with the provided file hashes
 	CreateFlavorVersion(ctx context.Context, in *CreateFlavorVersionRequest, opts ...grpc.CallOption) (*CreateFlavorVersionResponse, error)
-	// SaveFlavorFiles is used to save the added and changed files that have been
-	// determined by CreateFlavorVersion to the blob store. Note that ONLY the added
-	// and changed files are accepted. If files are missing or unexpected files are
-	// present, the request will fail.
-	//
-	// Defined error codes:
-	// - ALREADY_EXISTS:
-	//   - files have already been uploaded
-	//
-	// - FAILED_PRECONDITION:
-	//   - the hash of the provided files does not match with the previous determined
-	//     hash of all newly added and changed files. this means that some files have
-	//     changed after creating the flavor version or are missing.
-	SaveFlavorFiles(ctx context.Context, in *SaveFlavorFilesRequest, opts ...grpc.CallOption) (*SaveFlavorFilesResponse, error)
 	// BuildFlavorVersion will initiate the process for building a checkpoint image.
 	// there are multiple steps involved. Calling this endpoint multiple times will
 	// have no effect, if the build process is ongoing. Build status can be retrieved
@@ -227,16 +212,6 @@ func (c *chunkServiceClient) CreateFlavorVersion(ctx context.Context, in *Create
 	return out, nil
 }
 
-func (c *chunkServiceClient) SaveFlavorFiles(ctx context.Context, in *SaveFlavorFilesRequest, opts ...grpc.CallOption) (*SaveFlavorFilesResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SaveFlavorFilesResponse)
-	err := c.cc.Invoke(ctx, ChunkService_SaveFlavorFiles_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *chunkServiceClient) BuildFlavorVersion(ctx context.Context, in *BuildFlavorVersionRequest, opts ...grpc.CallOption) (*BuildFlavorVersionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BuildFlavorVersionResponse)
@@ -325,20 +300,6 @@ type ChunkServiceServer interface {
 	// - FAILED_PRECONDITION:
 	//   - the provided version hash does not match with the provided file hashes
 	CreateFlavorVersion(context.Context, *CreateFlavorVersionRequest) (*CreateFlavorVersionResponse, error)
-	// SaveFlavorFiles is used to save the added and changed files that have been
-	// determined by CreateFlavorVersion to the blob store. Note that ONLY the added
-	// and changed files are accepted. If files are missing or unexpected files are
-	// present, the request will fail.
-	//
-	// Defined error codes:
-	// - ALREADY_EXISTS:
-	//   - files have already been uploaded
-	//
-	// - FAILED_PRECONDITION:
-	//   - the hash of the provided files does not match with the previous determined
-	//     hash of all newly added and changed files. this means that some files have
-	//     changed after creating the flavor version or are missing.
-	SaveFlavorFiles(context.Context, *SaveFlavorFilesRequest) (*SaveFlavorFilesResponse, error)
 	// BuildFlavorVersion will initiate the process for building a checkpoint image.
 	// there are multiple steps involved. Calling this endpoint multiple times will
 	// have no effect, if the build process is ongoing. Build status can be retrieved
@@ -393,9 +354,6 @@ func (UnimplementedChunkServiceServer) CreateFlavor(context.Context, *CreateFlav
 }
 func (UnimplementedChunkServiceServer) CreateFlavorVersion(context.Context, *CreateFlavorVersionRequest) (*CreateFlavorVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateFlavorVersion not implemented")
-}
-func (UnimplementedChunkServiceServer) SaveFlavorFiles(context.Context, *SaveFlavorFilesRequest) (*SaveFlavorFilesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SaveFlavorFiles not implemented")
 }
 func (UnimplementedChunkServiceServer) BuildFlavorVersion(context.Context, *BuildFlavorVersionRequest) (*BuildFlavorVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BuildFlavorVersion not implemented")
@@ -532,24 +490,6 @@ func _ChunkService_CreateFlavorVersion_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChunkService_SaveFlavorFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SaveFlavorFilesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChunkServiceServer).SaveFlavorFiles(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ChunkService_SaveFlavorFiles_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChunkServiceServer).SaveFlavorFiles(ctx, req.(*SaveFlavorFilesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _ChunkService_BuildFlavorVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BuildFlavorVersionRequest)
 	if err := dec(in); err != nil {
@@ -616,10 +556,6 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateFlavorVersion",
 			Handler:    _ChunkService_CreateFlavorVersion_Handler,
-		},
-		{
-			MethodName: "SaveFlavorFiles",
-			Handler:    _ChunkService_SaveFlavorFiles_Handler,
 		},
 		{
 			MethodName: "BuildFlavorVersion",

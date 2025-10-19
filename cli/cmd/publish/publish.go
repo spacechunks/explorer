@@ -329,10 +329,10 @@ func localFileHashes(flavorPath string) (string, []file.Hash, error) {
 			}
 		}
 
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
+		//data, err := os.ReadFile(path)
+		//if err != nil {
+		//	return err
+		//}
 
 		// the containers that are being built by the controlplane
 		// are linux only, so use the linux path separator, if we are
@@ -352,7 +352,7 @@ func localFileHashes(flavorPath string) (string, []file.Hash, error) {
 		// uploaded files, but the chances of this happening should be quite small.
 		fileHashes = append(fileHashes, file.Hash{
 			Path: rel,
-			Hash: file.ComputeHashStr(data),
+			//Hash: file.ComputeHashStr(data),
 		})
 
 		return nil

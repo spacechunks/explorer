@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/docker/docker/api/types/container"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spacechunks/explorer/controlplane"
@@ -118,15 +119,15 @@ func (p *Postgres) CreateRiverClient(t *testing.T) {
 
 	var (
 		ctx        = context.Background()
-		blobStore  = blob.NewPGStore(p.DB)
 		imgService = image.NewService(p.logger, OCIRegsitryUser, OCIRegistryPass, t.TempDir())
+		s3client   = NewS3Client(t, ctx)
 	)
 
 	riverClient, err := controlplane.CreateRiverClient(
 		p.logger,
 		p.DB,
 		imgService,
-		blobStore,
+		blob.NewS3Store(Bucket, s3client, s3.NewPresignClient(s3client)),
 		p.Pool,
 		5*time.Second,
 		1*time.Second,
@@ -231,16 +232,16 @@ func (p *Postgres) CreateFlavorVersion(t *testing.T, flavorID string, version *c
 }
 
 func (p *Postgres) CreateBlobs(t *testing.T, version chunk.FlavorVersion) {
-	var objs []blob.Object
-	for _, fh := range version.FileHashes {
-		objs = append(objs, blob.Object{
-			Hash: fh.Hash,
-			Data: []byte(fh.Path),
-		})
-	}
-
-	err := p.DB.BulkWriteBlobs(context.Background(), objs)
-	require.NoError(t, err)
+	//var objs []blob.Object
+	//for _, fh := range version.FileHashes {
+	//	objs = append(objs, blob.Object{
+	//		Hash: fh.Hash,
+	//		Data: []byte(fh.Path),
+	//	})
+	//}
+	//
+	//err := p.DB.BulkWriteBlobs(context.Background(), objs)
+	//require.NoError(t, err)
 }
 
 func (p *Postgres) InsertNode(t *testing.T) {

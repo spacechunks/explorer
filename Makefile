@@ -90,7 +90,7 @@ functests-controlplane: $(TEST_IMG)
 				   FUNCTESTS_POSTGRES_USER=spc \
 				   FUNCTESTS_POSTGRES_PASS=test123 \
 				   FUNCTESTS_POSTGRES_DB=explorer \
-				   go test -v ./test/functional/controlplane
+				   go test -v ./test/functional/controlplane $(ARGS)
 
 .PHONY: functests-cni
 functests-cni: $(CNI_PLUGINS)

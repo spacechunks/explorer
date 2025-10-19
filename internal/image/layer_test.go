@@ -19,42 +19,59 @@
 package image_test
 
 import (
+	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/spacechunks/explorer/internal/file"
+	"github.com/google/go-cmp/cmp"
 	"github.com/spacechunks/explorer/internal/image"
 	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
+	"github.com/spacechunks/explorer/internal/tarhelper"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAppendLayer(t *testing.T) {
-	layerFiles := []file.Object{
-		{
-			Path: "/opt/paper/test1",
-			Data: []byte("test1"),
-		},
-		{
-			Path: "/opt/paper/test",
-			Data: []byte("helll"),
-		},
-		{
-			Path: "/opt/paper/dir/test2",
-			Data: []byte("test2"),
-		},
-	}
-
 	base := imgtestdata.Image(t)
 
-	actual, err := image.AppendLayer(base, layerFiles)
+	actual, err := image.AppendLayer(base, "./testdata/layertest")
 	require.NoError(t, err)
 
-	layer, err := image.LayerFromFiles(layerFiles)
+	layers, err := actual.Layers()
 	require.NoError(t, err)
 
-	dig, err := layer.Digest()
-	require.NoError(t, err)
+	want := []string{
+		"opt",
+		"opt/paper",
+		"opt/paper/file2",
+		"opt/paper/testdir",
+		"opt/paper/testdir/file1",
+	}
 
-	// throws an error if digest is not found
-	_, err = actual.LayerByDigest(dig)
-	require.NoError(t, err)
+	tmpDir := t.TempDir()
+
+	for _, l := range layers {
+		rc, err := l.Compressed()
+		require.NoError(t, err)
+
+		defer rc.Close()
+
+		h, err := l.Digest()
+		require.NoError(t, err)
+
+		dest := filepath.Join(tmpDir, h.Hex)
+
+		paths, err := tarhelper.Untar(rc, dest)
+		require.NoError(t, err)
+
+		got := make([]string, 0)
+		for _, p := range paths {
+			got = append(got, strings.ReplaceAll(p, dest+"/", ""))
+		}
+
+		if d := cmp.Diff(want, got); d == "" {
+			return
+		} else {
+			t.Logf("diff -want +got\n%s", d)
+		}
+	}
 }

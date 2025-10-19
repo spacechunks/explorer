@@ -129,7 +129,7 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 			}
 			return
 		}
-		files = append(files, &chunkv1alpha1.File{
+		files = append(files, &chunkv1alpha1.File{ //nolint:staticcheck
 			Path: local.serverRelPath(f.Path),
 			Data: data,
 		})
@@ -142,16 +142,16 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 
 	time.Sleep(5 * time.Second)
 
-	if _, err := b.client.SaveFlavorFiles(ctx, &chunkv1alpha1.SaveFlavorFilesRequest{
-		FlavorVersionId: versionReq.Version.Id,
-		Files:           files,
-	}); err != nil {
-		b.updates <- buildUpdate{
-			flavor: local,
-			err:    fmt.Errorf("error while saving flavor files: %w", err),
-		}
-		return
-	}
+	//if _, err := b.client.SaveFlavorFiles(ctx, &chunkv1alpha1.SaveFlavorFilesRequest{
+	//	FlavorVersionId: versionReq.Version.Id,
+	//	Files:           files,
+	//}); err != nil {
+	//	b.updates <- buildUpdate{
+	//		flavor: local,
+	//		err:    fmt.Errorf("error while saving flavor files: %w", err),
+	//	}
+	//	return
+	//}
 
 	if _, err := b.client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{
 		FlavorVersionId: versionReq.Version.Id,

@@ -21,10 +21,10 @@ package worker
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
-	"maps"
-	"slices"
-	"sort"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/riverqueue/river"
@@ -33,13 +33,14 @@ import (
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
+	"github.com/spacechunks/explorer/internal/tarhelper"
 )
 
 type CreateImageWorker struct {
 	logger *slog.Logger
 	river.WorkerDefaults[job.CreateImage]
 	repo          chunk.Repository
-	blobStore     blob.Store
+	store         blob.S3Store
 	imgService    image.Service
 	jobClient     job.Client
 	imagePlatform string
@@ -48,15 +49,15 @@ type CreateImageWorker struct {
 func NewCreateImageWorker(
 	logger *slog.Logger,
 	repo chunk.Repository,
-	blobStore blob.Store,
 	imgSvc image.Service,
 	jobClient job.Client,
+	store blob.S3Store,
 	imagePlatform string,
 ) *CreateImageWorker {
 	return &CreateImageWorker{
 		logger:        logger,
 		repo:          repo,
-		blobStore:     blobStore,
+		store:         store,
 		imgService:    imgSvc,
 		jobClient:     jobClient,
 		imagePlatform: imagePlatform,
@@ -98,34 +99,60 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		return fmt.Errorf("flavor version: %w", err)
 	}
 
-	hashToPath := make(map[string]string, len(version.FileHashes))
+	var (
+		rootDir       = fmt.Sprintf("/tmp/%d", riverJob.ID)
+		filesDir      = rootDir + "/files"
+		serverRootDir = filesDir + "/opt/paper"
+	)
 
-	for _, fh := range version.FileHashes {
-		hashToPath[fh.Hash] = fh.Path
-	}
+	defer func() {
+		if err := os.RemoveAll(rootDir); err != nil {
+			w.logger.ErrorContext(
+				ctx,
+				"failed to remove files",
+				"flavor_version_id", riverJob.Args.FlavorVersionID,
+				"river_job_id", riverJob.ID,
+				"err", err,
+			)
+		}
+	}()
 
-	// needed for testing to have a consistent order
-	hashes := slices.Collect(maps.Keys(hashToPath))
-	sort.Slice(hashes, func(i, j int) bool {
-		return strings.Compare(hashes[i], hashes[j]) < 0
-	})
-
-	objs, err := w.blobStore.Get(ctx, hashes)
+	tb, err := os.Create("changeset.tar.gz")
 	if err != nil {
-		return fmt.Errorf("get objs: %w", err)
+		return fmt.Errorf("open file: %w", err)
 	}
 
-	f := make([]file.Object, 0, len(objs))
-	for _, obj := range objs {
-		f = append(f, file.Object{
-			Path: hashToPath[obj.Hash],
-			Data: obj.Data,
-		})
+	defer tb.Close()
+
+	if err := w.store.WriteTo(ctx, blob.ChangeSetKey(version.ID), tb); err != nil {
+		return fmt.Errorf("write tarball: %w", err)
 	}
 
-	// TODO: perform config file adjustments
+	if _, err := tb.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("seek: %w", err)
+	}
 
-	img, err := image.AppendLayer(baseImg, f)
+	// the server root dir we use in our base image is /opt/paper
+	// so all files should be located right there.
+	paths, err := tarhelper.Untar(tb, serverRootDir)
+	if err != nil {
+		return fmt.Errorf("untar files: %w", err)
+	}
+
+	if err := w.upload(ctx, paths); err != nil {
+		return fmt.Errorf("upload files: %w", err)
+	}
+
+	if err := w.downloadMissing(ctx, serverRootDir, version.FileHashes, paths); err != nil {
+		return fmt.Errorf("download missing: %w", err)
+	}
+
+	// TODO: adjust configs
+
+	// it is VERY important we specify the parent of the server root directory,
+	// because only paths starting INSIDE the passed directory are preserved.
+	// so, in our case we specify files/opt/paper to keep the /opt/paper prefix.
+	img, err := image.AppendLayer(baseImg, filesDir)
 	if err != nil {
 		return fmt.Errorf("append layer: %w", err)
 	}
@@ -147,6 +174,65 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 			BaseImageURL:    ref,
 		}); err != nil {
 		return fmt.Errorf("insert create checkpoint job: %w", err)
+	}
+
+	return nil
+}
+
+func (w *CreateImageWorker) upload(ctx context.Context, filePaths []string) error {
+	objs := make([]blob.Object, 0)
+
+	for _, p := range filePaths {
+		obj, err := blob.NewFromFile(p)
+		if err != nil {
+			return fmt.Errorf("new object: %w", err)
+		}
+
+		objs = append(objs, obj)
+	}
+
+	// store will check if there are any duplicates
+	if err := w.store.Put(ctx, blob.CASKeyPrefix, objs); err != nil {
+		return fmt.Errorf("upload objects: %w", err)
+	}
+
+	return nil
+}
+
+func (w *CreateImageWorker) downloadMissing(ctx context.Context, dest string, all []file.Hash, have []string) error {
+	var (
+		want    = make([]file.Hash, 0)
+		cleaned = make(map[string]struct{}, len(have))
+	)
+
+	for _, s := range have {
+		// strip out /tmp/123/opt/paper/ from /tmp/123/opt/paper/plugins/test.jar
+		// so we are left with plugins/test.jar. this is needed, so we can do
+		// a simple == check when comparing paths later.
+		cleaned[strings.Replace(s, dest+"/", "", 1)] = struct{}{}
+	}
+
+	for _, fh := range all {
+		if _, ok := cleaned[fh.Path]; !ok {
+			want = append(want, fh)
+		}
+	}
+
+	for _, wantHash := range want {
+		path := filepath.Join(dest, wantHash.Path)
+
+		if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
+			return fmt.Errorf("mkdir %s: %w", path, err)
+		}
+
+		f, err := os.Create(path)
+		if err != nil {
+			return fmt.Errorf("create file: %w", err)
+		}
+
+		if err := w.store.WriteTo(ctx, blob.CASKeyPrefix+"/"+wantHash.Hash, f); err != nil {
+			return fmt.Errorf("write file: %w", err)
+		}
 	}
 
 	return nil
