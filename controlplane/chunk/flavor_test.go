@@ -69,7 +69,7 @@ func TestCreateFlavor(t *testing.T) {
 			var (
 				ctx      = context.Background()
 				mockRepo = mock.NewMockChunkRepository(t)
-				svc      = chunk.NewService(mockRepo, nil, nil, nil, chunk.Config{})
+				svc      = chunk.NewService(mockRepo, nil, nil, chunk.Config{})
 			)
 
 			tt.prep(mockRepo)
@@ -240,7 +240,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			var (
 				ctx      = context.Background()
 				mockRepo = mock.NewMockChunkRepository(t)
-				svc      = chunk.NewService(mockRepo, nil, nil, nil, chunk.Config{})
+				svc      = chunk.NewService(mockRepo, nil, nil, chunk.Config{})
 			)
 
 			tt.prep(mockRepo, tt.newVersion, tt.prevVersion)
