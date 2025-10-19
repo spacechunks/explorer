@@ -86,7 +86,7 @@ func TestImageWorkerCreatesImageWithNoMissingFiles(t *testing.T) {
 		}))
 	)
 
-	pg, endpoint, baseImgRef := setup(t, ctx, c, auth, testdata.InitialChangeSetFile)
+	pg, endpoint, baseImgRef := setup(t, ctx, c, auth, testdata.FullChangeSetFile)
 
 	flavorVersionID := c.Flavors[0].Versions[0].ID
 
@@ -125,7 +125,7 @@ func TestImageWorkerCreatesImageWithMissingFilesDownloadedFromBlobStore(t *testi
 		})
 	)
 
-	pg, endpoint, baseImgRef := setup(t, ctx, c, auth, testdata.AddedChangeSetFile)
+	pg, endpoint, baseImgRef := setup(t, ctx, c, auth, testdata.AddTestFileChangeSet)
 
 	var (
 		flavorVersionID = c.Flavors[0].Versions[0].ID
