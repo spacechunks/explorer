@@ -52,24 +52,21 @@ type Config struct {
 
 type svc struct {
 	repo      Repository
-	blobStore blob.Store
 	jobClient job.Client
-	s3Client  s3Client
+	s3Store   blob.S3Store
 	cfg       Config
 }
 
 func NewService(
 	repo Repository,
-	blobStore blob.Store,
 	jobClient job.Client,
-	s3Client s3Client,
+	s3Store blob.S3Store,
 	cfg Config,
 ) Service {
 	return &svc{
 		repo:      repo,
-		blobStore: blobStore,
 		jobClient: jobClient,
-		s3Client:  s3Client,
+		s3Store:   s3Store,
 		cfg:       cfg,
 	}
 }
