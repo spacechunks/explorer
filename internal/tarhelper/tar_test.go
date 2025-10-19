@@ -20,6 +20,8 @@ package tarhelper_test
 
 import (
 	"bytes"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/spacechunks/explorer/internal/tarhelper"
@@ -30,8 +32,21 @@ import (
 func TestUntar(t *testing.T) {
 	dir := t.TempDir()
 
-	paths, err := tarhelper.Untar(bytes.NewReader(testdata.TarFile), dir)
+	want := []string{
+		dir + "/dir/dir1/test2",
+		dir + "/dir/test1",
+	}
+
+	got, err := tarhelper.Untar(bytes.NewReader(testdata.TarFile), dir)
 	require.NoError(t, err)
 
-	require.Equal(t, []string{dir + "/dir/dir1/test2", dir + "/dir/test1"}, paths)
+	sort.Slice(want, func(i, j int) bool {
+		return strings.Compare(want[i], want[j]) < 0
+	})
+
+	sort.Slice(got, func(i, j int) bool {
+		return strings.Compare(got[i], got[j]) < 0
+	})
+
+	require.Equal(t, want, got)
 }
