@@ -52,7 +52,13 @@ var auth = remote.WithAuth(&image.Auth{
 	Password: fixture.OCIRegistryPass,
 })
 
-func setup(t *testing.T, ctx context.Context, c *chunk.Chunk, auth remote.Option, changeSet []byte) (*fixture.Postgres, string, name.Reference) {
+func setup(
+	t *testing.T,
+	ctx context.Context,
+	c *chunk.Chunk,
+	auth remote.Option,
+	changeSet []byte,
+) (*fixture.Postgres, string, name.Reference) {
 	var (
 		pg       = fixture.NewPostgres()
 		endpoint = fixture.RunRegistry(t)
@@ -133,7 +139,7 @@ func TestImageWorkerCreatesImageWithMissingFilesDownloadedFromBlobStore(t *testi
 		objs            = make([]blob.Object, 0)
 	)
 
-	err := filepath.WalkDir("./testdata/serverdata", func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir("./testdata/serverdata", func(path string, d fs.DirEntry, _ error) error {
 		if d.IsDir() {
 			return nil
 		}
@@ -243,7 +249,7 @@ func checkLayers(t *testing.T, img ociv1.Image, want []string) {
 
 		got := make([]string, 0)
 		for _, p := range paths {
-			got = append(got, strings.Replace(p, dest+"/", "", -1))
+			got = append(got, strings.ReplaceAll(p, dest+"/", ""))
 		}
 
 		sort.Slice(got, func(i, j int) bool {

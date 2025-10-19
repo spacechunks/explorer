@@ -65,7 +65,7 @@ func TestAppendLayer(t *testing.T) {
 
 		got := make([]string, 0)
 		for _, p := range paths {
-			got = append(got, strings.Replace(p, dest+"/", "", -1))
+			got = append(got, strings.ReplaceAll(p, dest+"/", ""))
 		}
 
 		if d := cmp.Diff(want, got); d == "" {
@@ -73,8 +73,5 @@ func TestAppendLayer(t *testing.T) {
 		} else {
 			t.Logf("diff -want +got\n%s", d)
 		}
-
 	}
-
-	t.Fail()
 }
