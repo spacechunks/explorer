@@ -129,7 +129,7 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 			}
 			return
 		}
-		files = append(files, &chunkv1alpha1.File{
+		files = append(files, &chunkv1alpha1.File{ //nolint:staticcheck
 			Path: local.serverRelPath(f.Path),
 			Data: data,
 		})
