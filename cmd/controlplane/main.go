@@ -41,7 +41,6 @@ func main() {
 		fs                       = flag.NewFlagSet("controlplane", flag.ContinueOnError)
 		listenAddr               = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                                                   //nolint:lll
 		pgConnString             = fs.String("postgres-dsn", "", "connection string in the form of postgres://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]")                                    //nolint:lll
-		grpcMaxMessageSize       = fs.Uint("grpc-max-message-size", 4000000, "maximum grpc message size in bytes")                                                                                                //nolint:lll
 		ociRegistry              = fs.String("oci-registry", "", "registry to use to pull and push images")                                                                                                       //nolint:lll
 		ociRegistryUser          = fs.String("oci-registry-user", "", "oci registry username used for authentication against configured oci registry")                                                            //nolint:lll
 		ociRegistryPass          = fs.String("oci-registry-pass", "", "oci registry password used for authentication against configured oci registry")                                                            //nolint:lll
@@ -50,6 +49,11 @@ func main() {
 		imagePlatform            = fs.String("image-platform", "linux/amd64", "the platform that will be specified when pulling the base image. must match with all configured platformd hosts e.g. linux/amd64") //nolint:lll
 		checkJobTimeout          = fs.Duration("checkpoint-job-timeout", 5*time.Minute, "when to abort the checkpointing job")                                                                                    //nolint:lll
 		checkStatusCheckInterval = fs.Duration("checkpoint-status-check-interval", 3*time.Second, "how often the status check endpoint for a checkpoint should be called")                                        //nolint:lll
+		bucket                   = fs.String("bucket", "explorer-data", "bucket to use for storing change sets and backend for content-addressable storage")                                                      //nolint:lll
+		accessKey                = fs.String("access-key", "", "access key to use for accessing the bucket")                                                                                                      //nolint:lll
+		secretKey                = fs.String("secret-key", "", "secret key to use for accessing the bucket")                                                                                                      //nolint:lll
+		presignedURLExpiry       = fs.Duration("presinged-url-expiry", 5*time.Minute, "when to expire the presigned URL")                                                                                         //nolint:lll
+		usePathStyle             = fs.Bool("use-path-style", true, "whether to use path style to access the bucket")                                                                                              //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
@@ -61,7 +65,6 @@ func main() {
 		cfg = controlplane.Config{
 			ListenAddr:                    *listenAddr,
 			DBConnString:                  *pgConnString,
-			MaxGRPCMessageSize:            int(*grpcMaxMessageSize),
 			OCIRegistry:                   *ociRegistry,
 			OCIRegistryUser:               *ociRegistryUser,
 			OCIRegistryPass:               *ociRegistryPass,
@@ -70,6 +73,11 @@ func main() {
 			ImagePlatform:                 *imagePlatform,
 			CheckpointJobTimeout:          *checkJobTimeout,
 			CheckpointStatusCheckInterval: *checkStatusCheckInterval,
+			Bucket:                        *bucket,
+			AccessKey:                     *accessKey,
+			SecretKey:                     *secretKey,
+			PresignedURLExpiry:            *presignedURLExpiry,
+			UsePathStyle:                  *usePathStyle,
 		}
 		ctx    = context.Background()
 		server = controlplane.NewServer(logger, cfg)

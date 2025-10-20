@@ -23,7 +23,6 @@ import "time"
 type Config struct {
 	ListenAddr                    string
 	DBConnString                  string
-	MaxGRPCMessageSize            int
 	OCIRegistry                   string
 	OCIRegistryUser               string
 	OCIRegistryPass               string

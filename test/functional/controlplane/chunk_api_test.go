@@ -21,6 +21,7 @@ package controlplane
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"slices"
 	"sort"
@@ -29,13 +30,19 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/internal/file"
+	"github.com/spacechunks/explorer/internal/image"
+	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
+	"github.com/spacechunks/explorer/test/functional/controlplane/testdata"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -630,124 +637,127 @@ func TestCreateFlavorVersion(t *testing.T) {
 	}
 }
 
-//func TestBuildFlavorVersion(t *testing.T) {
-//	tests := []struct {
-//		name string
-//		err  error
-//	}{
-//		//{
-//		//	name: "works",
-//		//},
-//		//{
-//		//	name: "files not uploaded",
-//		//	err:  apierrs.ErrFlavorFilesNotUploaded.GRPCStatus().Err(),
-//		//},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			var (
-//				ctx      = context.Background()
-//				pg       = fixture.NewPostgres()
-//				endpoint = fixture.RunRegistry(t)
-//				c        = fixture.Chunk()
-//				auth     = remote.WithAuth(&image.Auth{
-//					Username: fixture.OCIRegsitryUser,
-//					Password: fixture.OCIRegistryPass,
-//				})
-//			)
-//
-//			fixture.RunControlPlane(t, pg, fixture.WithOCIRegistryEndpoint(endpoint))
-//			fixture.RunFakeCRI(t)
-//			fixture.RunCheckpointAPIFixtures(t, fixture.OCIRegsitryUser, fixture.OCIRegistryPass)
-//
-//			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
-//
-//			var (
-//				flavor  = c.Flavors[0]
-//				version = flavor.Versions[0]
-//			)
-//
-//			pg.CreateBlobs(t, version)
-//			pg.InsertNode(t)
-//
-//			// push base image needed for testing
-//
-//			pusher, err := remote.NewPusher(auth)
-//			require.NoError(t, err)
-//
-//			baseImgRef, err := name.ParseReference(fmt.Sprintf("%s/%s", endpoint, fixture.BaseImage))
-//			require.NoError(t, err)
-//
-//			err = pusher.Push(ctx, baseImgRef, imgtestdata.Image(t))
-//			require.NoError(t, err)
-//
-//			conn, err := grpc.NewClient(
-//				fixture.ControlPlaneAddr,
-//				grpc.WithTransportCredentials(insecure.NewCredentials()),
-//			)
-//			require.NoError(t, err)
-//
-//			client := chunkv1alpha1.NewChunkServiceClient(conn)
-//
-//			if !errors.Is(tt.err, apierrs.ErrFlavorFilesNotUploaded.GRPCStatus().Err()) {
-//				_, err := pg.Pool.Exec(ctx, "UPDATE flavor_versions SET files_uploaded = true WHERE id = $1", version.ID)
-//				require.NoError(t, err)
-//			}
-//
-//			_, err = client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{
-//				FlavorVersionId: version.ID,
-//			})
-//
-//			if tt.err != nil {
-//				require.ErrorIs(t, err, tt.err)
-//				return
-//			}
-//
-//			require.NoError(t, err)
-//
-//			var (
-//				timeoutCtx, cancel = context.WithTimeout(ctx, 20*time.Second)
-//				ticker             = time.NewTicker(200 * time.Millisecond)
-//			)
-//
-//			defer cancel()
-//
-//			for {
-//				select {
-//				case <-timeoutCtx.Done():
-//					t.Fatal("timout reached")
-//					return
-//				case <-ticker.C:
-//					reg, err := name.NewRegistry(endpoint)
-//					require.NoError(t, err)
-//
-//					p, err := remote.NewPuller(auth)
-//					require.NoError(t, err)
-//
-//					cat, err := p.Catalog(ctx, reg)
-//					require.NoError(t, err)
-//
-//					if !slices.Contains(cat, version.ID) {
-//						continue
-//					}
-//
-//					h, err := p.Lister(ctx, reg.Repo(version.ID))
-//					require.NoError(t, err)
-//
-//					for h.HasNext() {
-//						tags, err := h.Next(ctx)
-//						require.NoError(t, err)
-//
-//						if slices.Contains(tags.Tags, "checkpoint") {
-//							// FIXME: test that state is set to completed
-//							return
-//						}
-//					}
-//				}
-//			}
-//		})
-//	}
-//}
+func TestBuildFlavorVersion(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+	}{
+		//{
+		//	name: "works",
+		//},
+		{
+			name: "files not uploaded",
+			err:  apierrs.ErrFlavorFilesNotUploaded.GRPCStatus().Err(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				c   = fixture.Chunk(func(tmp *chunk.Chunk) {
+					tmp.Flavors[0].Versions[0].FileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
+				})
+				auth = remote.WithAuth(&image.Auth{
+					Username: fixture.OCIRegsitryUser,
+					Password: fixture.OCIRegistryPass,
+				})
+			)
+
+			var (
+				pg       = fixture.NewPostgres()
+				endpoint = fixture.RunRegistry(t)
+				fakes3   = fixture.RunFakeS3(t)
+			)
+			fixture.RunControlPlane(
+				t,
+				pg,
+				fixture.WithOCIRegistryEndpoint(endpoint),
+				fixture.WithFakeS3Endpoint(fakes3.Endpoint),
+			)
+			fixture.RunFakeCRI(t)
+			fixture.RunCheckpointAPIFixtures(t, fixture.OCIRegsitryUser, fixture.OCIRegistryPass)
+
+			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+			pg.InsertNode(t)
+
+			flavorVersionID := c.Flavors[0].Versions[0].ID
+
+			if tt.err == nil {
+				fakes3.UploadObject(t, blob.ChangeSetKey(flavorVersionID), testdata.FullChangeSetFile)
+			}
+
+			// push base image needed for testing
+
+			pusher, err := remote.NewPusher(auth)
+			require.NoError(t, err)
+
+			baseImgRef, err := name.ParseReference(fmt.Sprintf("%s/%s", endpoint, fixture.BaseImage))
+			require.NoError(t, err)
+
+			err = pusher.Push(ctx, baseImgRef, imgtestdata.Image(t))
+			require.NoError(t, err)
+
+			conn, err := grpc.NewClient(
+				fixture.ControlPlaneAddr,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+			)
+			require.NoError(t, err)
+
+			client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+			_, err = client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{
+				FlavorVersionId: flavorVersionID,
+			})
+
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			var (
+				timeoutCtx, cancel = context.WithTimeout(ctx, 20*time.Second)
+				ticker             = time.NewTicker(200 * time.Millisecond)
+			)
+
+			defer cancel()
+
+			for {
+				select {
+				case <-timeoutCtx.Done():
+					t.Fatal("timout reached")
+					return
+				case <-ticker.C:
+					reg, err := name.NewRegistry(endpoint)
+					require.NoError(t, err)
+
+					p, err := remote.NewPuller(auth)
+					require.NoError(t, err)
+
+					cat, err := p.Catalog(ctx, reg)
+					require.NoError(t, err)
+
+					if !slices.Contains(cat, flavorVersionID) {
+						continue
+					}
+
+					h, err := p.Lister(ctx, reg.Repo(flavorVersionID))
+					require.NoError(t, err)
+
+					for h.HasNext() {
+						tags, err := h.Next(ctx)
+						require.NoError(t, err)
+
+						if slices.Contains(tags.Tags, "checkpoint") && slices.Contains(tags.Tags, "base") {
+							return
+						}
+					}
+				}
+			}
+		})
+	}
+}
 
 func TestGetUploadURLWorks(t *testing.T) {
 	var (
