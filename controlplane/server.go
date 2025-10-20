@@ -88,7 +88,7 @@ func (s *Server) Run(ctx context.Context) error {
 			o.UsePathStyle = s.cfg.UsePathStyle
 		})
 		db         = postgres.NewDB(s.logger, pool)
-		blobStore  = blob.NewS3Store("bla", s3client, s3.NewPresignClient(s3client))
+		blobStore  = blob.NewS3Store(s.cfg.Bucket, s3client, s3.NewPresignClient(s3client))
 		imgService = image.NewService(s.logger, s.cfg.OCIRegistryUser, s.cfg.OCIRegistryPass, s.cfg.ImageCacheDir)
 	)
 
@@ -113,10 +113,6 @@ func (s *Server) Run(ctx context.Context) error {
 	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
-			// this option is important to set, because
-			// flavor file upload will exceed the default
-			// size of 4mb.
-			grpc.MaxRecvMsgSize(s.cfg.MaxGRPCMessageSize),
 			grpc.UnaryInterceptor(errorInterceptor(s.logger)),
 		)
 
