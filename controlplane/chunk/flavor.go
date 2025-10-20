@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spacechunks/explorer/controlplane/blob"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/internal/file"
@@ -229,6 +230,21 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 	version, err := s.repo.FlavorVersionByID(ctx, versionID)
 	if err != nil {
 		return fmt.Errorf("flavor version: %w", err)
+	}
+
+	if !version.FilesUploaded {
+		exists, err := s.s3Store.ObjectExists(ctx, blob.ChangeSetKey(versionID))
+		if err != nil {
+			return fmt.Errorf("changeset exists : %w", err)
+		}
+
+		if !exists {
+			return apierrs.ErrFlavorFilesNotUploaded
+		}
+
+		if err := s.repo.MarkFlavorVersionFilesUploaded(ctx, versionID); err != nil {
+			return fmt.Errorf("mark files: %w", err)
+		}
 	}
 
 	// do not fail the request if there is already a job running,

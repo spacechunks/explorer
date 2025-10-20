@@ -74,7 +74,6 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 			logger, controlplane.Config{
 				ListenAddr:                    ControlPlaneAddr,
 				DBConnString:                  pg.ConnString,
-				MaxGRPCMessageSize:            1_000_000_000,
 				OCIRegistry:                   defaultOpts.OCIRegistryEndpoint,
 				OCIRegistryUser:               OCIRegsitryUser,
 				OCIRegistryPass:               OCIRegistryPass,
@@ -83,12 +82,12 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 				ImagePlatform:                 "",
 				CheckpointJobTimeout:          20 * time.Second,
 				CheckpointStatusCheckInterval: 1 * time.Second,
-				Bucket:                        "explorer",
+				Bucket:                        Bucket,
 				AccessKey:                     "accesskey",
 				SecretKey:                     "secretkey",
 				// should stay at 2 seconds so TestGetUploadURLRenews passes
 				PresignedURLExpiry: 2 * time.Second,
-				UsePathStyle:       true,
+				UsePathStyle:       false,
 			})
 	)
 
