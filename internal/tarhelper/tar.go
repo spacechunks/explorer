@@ -25,7 +25,44 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+func TarFiles(rootDir string, files []*os.File, dest string) error {
+	df, err := os.Create(dest)
+	if err != nil {
+		return fmt.Errorf("create: %w", err)
+	}
+
+	gzw := gzip.NewWriter(df)
+	defer gzw.Close()
+
+	tw := tar.NewWriter(gzw)
+	defer tw.Close()
+
+	for _, f := range files {
+		info, err := f.Stat()
+		if err != nil {
+			return fmt.Errorf("stat %s: %w", f.Name(), err)
+		}
+
+		name := strings.ReplaceAll(f.Name(), filepath.Clean(rootDir)+"/", "")
+
+		if err := tw.WriteHeader(&tar.Header{
+			Typeflag: tar.TypeReg,
+			Name:     name,
+			Size:     info.Size(),
+		}); err != nil {
+			return fmt.Errorf("tar header: %w", err)
+		}
+
+		if _, err := io.Copy(tw, f); err != nil {
+			return fmt.Errorf("copy: %w", err)
+		}
+	}
+
+	return nil
+}
 
 func Untar(r io.Reader, dest string) ([]string, error) {
 	gzr, err := gzip.NewReader(r)
