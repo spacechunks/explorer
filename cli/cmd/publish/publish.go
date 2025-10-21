@@ -206,6 +206,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 			client:       state.Client,
 			updates:      make(chan buildUpdate),
 			buildCounter: &atomic.Int32{},
+			changeSetDir: os.TempDir(),
 		}
 
 		for _, added := range plan.addedFlavors {
@@ -329,11 +330,6 @@ func localFileHashes(flavorPath string) (string, []file.Hash, error) {
 			}
 		}
 
-		//data, err := os.ReadFile(path)
-		//if err != nil {
-		//	return err
-		//}
-
 		// the containers that are being built by the controlplane
 		// are linux only, so use the linux path separator, if we are
 		// using the cli on windows or any other platform that does not
@@ -346,13 +342,25 @@ func localFileHashes(flavorPath string) (string, []file.Hash, error) {
 		// we remove everything so we are left with only plugins/myplugin.jar
 		rel := strings.ReplaceAll(tmp, filepath.Clean(flavorPath)+"/", "")
 
+		f, err := os.Open(path)
+		if err != nil {
+			return fmt.Errorf("error while opening file: %w", err)
+		}
+
+		defer f.Close()
+
+		hash, err := file.ComputeHashStr(f)
+		if err != nil {
+			return fmt.Errorf("error while computing hash: %w", err)
+		}
+
 		// use file hashes here, so we don't have to keep the whole files content in ram.
 		// we'll read the content later again, when uploading the files to the server.
 		// drawback here is that if files change in between, the server will reject the
 		// uploaded files, but the chances of this happening should be quite small.
 		fileHashes = append(fileHashes, file.Hash{
 			Path: rel,
-			//Hash: file.ComputeHashStr(data),
+			Hash: hash,
 		})
 
 		return nil
