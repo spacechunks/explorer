@@ -27,6 +27,7 @@ import (
 
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/platformd/cri"
+	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"github.com/spacechunks/explorer/test"
 	mocky "github.com/stretchr/testify/mock"
@@ -167,27 +168,27 @@ func TestGetWorkloadHealth(t *testing.T) {
 	tests := []struct {
 		name     string
 		state    runtimev1.ContainerState
-		expected workload.HealthStatus
+		expected status.WorkloadHealthStatus
 	}{
 		{
 			name:     "HEALTHY: ContainerState_CONTAINER_RUNNING",
 			state:    runtimev1.ContainerState_CONTAINER_RUNNING,
-			expected: workload.HealthStatusHealthy,
+			expected: status.WorkloadHealthStatusHealthy,
 		},
 		{
 			name:     "UNHEALTHY: ContainerState_CONTAINER_CREATED",
 			state:    runtimev1.ContainerState_CONTAINER_CREATED,
-			expected: workload.HealthStatusUnhealthy,
+			expected: status.WorkloadHealthStatusUnhealthy,
 		},
 		{
 			name:     "UNHEALTHY: ContainerState_CONTAINER_UNKNOWN",
 			state:    runtimev1.ContainerState_CONTAINER_UNKNOWN,
-			expected: workload.HealthStatusUnhealthy,
+			expected: status.WorkloadHealthStatusUnhealthy,
 		},
 		{
 			name:     "UNHEALTHY: ContainerState_CONTAINER_EXITED",
 			state:    runtimev1.ContainerState_CONTAINER_EXITED,
-			expected: workload.HealthStatusUnhealthy,
+			expected: status.WorkloadHealthStatusUnhealthy,
 		},
 	}
 	for _, tt := range tests {
@@ -219,10 +220,10 @@ func TestGetWorkloadHealth(t *testing.T) {
 					},
 				}, nil)
 
-			status, err := svc.GetWorkloadHealth(ctx, "")
+			st, err := svc.GetWorkloadHealth(ctx, "")
 			require.NoError(t, err)
 
-			require.Equal(t, tt.expected, status)
+			require.Equal(t, tt.expected, st)
 		})
 	}
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/platformd/cri"
+	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"github.com/spacechunks/explorer/test"
 	mocky "github.com/stretchr/testify/mock"
@@ -38,15 +39,14 @@ import (
 )
 
 type prepArgs struct {
-	svc         *ServiceImpl
-	mockCRISvc  *mock.MockCriService
-	mockImgSvc  *mock.MockImageService
-	cfg         Config
-	checkID     string
-	podID       string
-	ctrID       string
-	baseRef     name.Reference
-	mockWlStore *mock.MockWorkloadStatusStore
+	svc        *ServiceImpl
+	mockCRISvc *mock.MockCriService
+	mockImgSvc *mock.MockImageService
+	cfg        Config
+	checkID    string
+	podID      string
+	ctrID      string
+	baseRef    name.Reference
 }
 
 func TestCheckpoint(t *testing.T) {
@@ -54,7 +54,7 @@ func TestCheckpoint(t *testing.T) {
 		name  string
 		cfg   Config
 		err   error
-		state State
+		state status.CheckpointState
 		prep  func(args prepArgs)
 	}{
 		{
@@ -69,7 +69,7 @@ func TestCheckpoint(t *testing.T) {
 				RegistryUser:             "user",
 				RegistryPass:             "pass",
 			},
-			state: StateCompleted,
+			state: status.CheckpointStateCompleted,
 			prep: func(args prepArgs) {
 				prepUntilContainerAttach(
 					args.svc,
@@ -82,16 +82,7 @@ func TestCheckpoint(t *testing.T) {
 						Username: args.cfg.RegistryUser,
 						Password: args.cfg.RegistryPass,
 					},
-					args.mockWlStore,
 				)
-
-				args.mockWlStore.EXPECT().
-					Get(args.checkID).
-					Return(&workload.Status{
-						State: workload.StateRunning,
-						Port:  1,
-					})
-				args.mockWlStore.EXPECT().Del(args.checkID)
 
 				fileLoc := fmt.Sprintf("%s/%s", args.cfg.CheckpointFileDir, args.checkID)
 
@@ -123,7 +114,7 @@ func TestCheckpoint(t *testing.T) {
 				RegistryUser:             "user",
 				RegistryPass:             "pass",
 			},
-			state: StateContainerWaitReadyFailed,
+			state: status.CheckpointStateContainerWaitReadyFailed,
 			err:   context.DeadlineExceeded,
 			prep: func(args prepArgs) {
 				prepUntilContainerAttach(
@@ -137,15 +128,7 @@ func TestCheckpoint(t *testing.T) {
 						Username: args.cfg.RegistryUser,
 						Password: args.cfg.RegistryPass,
 					},
-					args.mockWlStore,
 				)
-				args.mockWlStore.EXPECT().
-					Get(args.checkID).
-					Return(&workload.Status{
-						State: workload.StateRunning,
-						Port:  1,
-					})
-				args.mockWlStore.EXPECT().Del(args.checkID)
 			},
 		},
 	}
@@ -161,8 +144,7 @@ func TestCheckpoint(t *testing.T) {
 
 				mockImgSvc  = mock.NewMockImageService(t)
 				mockCRISvc  = mock.NewMockCriService(t)
-				statusStore = NewStore()
-				wlStore     = mock.NewMockWorkloadStatusStore(t)
+				statusStore = status.NewMemStore()
 				mockExecer  = func(url string) (remotecommand.Executor, error) {
 					return &test.RemoteCmdExecutor{}, nil
 				}
@@ -174,7 +156,6 @@ func TestCheckpoint(t *testing.T) {
 					mockImgSvc,
 					statusStore,
 					mockExecer,
-					wlStore,
 					workload.NewPortAllocator(1, 1),
 				)
 			)
@@ -183,15 +164,14 @@ func TestCheckpoint(t *testing.T) {
 			require.NoError(t, err)
 
 			tt.prep(prepArgs{
-				svc:         svc,
-				mockCRISvc:  mockCRISvc,
-				mockImgSvc:  mockImgSvc,
-				cfg:         tt.cfg,
-				checkID:     checkID,
-				podID:       podID,
-				ctrID:       ctrID,
-				baseRef:     baseRef,
-				mockWlStore: wlStore,
+				svc:        svc,
+				mockCRISvc: mockCRISvc,
+				mockImgSvc: mockImgSvc,
+				cfg:        tt.cfg,
+				checkID:    checkID,
+				podID:      podID,
+				ctrID:      ctrID,
+				baseRef:    baseRef,
 			})
 
 			err = svc.checkpoint(ctx, checkID, baseRef)
@@ -202,8 +182,8 @@ func TestCheckpoint(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			status := statusStore.Get(checkID)
-			require.Equal(t, tt.state, status.State)
+			st := statusStore.Get(checkID)
+			require.Equal(t, tt.state, st.CheckpointStatus.State)
 		})
 	}
 }
@@ -216,7 +196,6 @@ func prepUntilContainerAttach(
 	mockCRISvc *mock.MockCriService,
 	baseRef name.Reference,
 	auth cri.RegistryAuth,
-	mockWlStore *mock.MockWorkloadStatusStore,
 ) {
 	mockCRISvc.EXPECT().
 		EnsureImage(mocky.Anything, baseRef.String(), auth).
@@ -231,11 +210,6 @@ func prepUntilContainerAttach(
 		}, nil)
 
 	podCfg := svc.podConfig(checkID)
-
-	mockWlStore.EXPECT().Update(checkID, workload.Status{
-		State: workload.StateRunning,
-		Port:  1,
-	})
 
 	mockCRISvc.EXPECT().
 		RunContainer(mocky.Anything, &runtimev1.CreateContainerRequest{

@@ -16,54 +16,67 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package workload_test
+package status_test
 
 import (
 	"testing"
 
-	"github.com/spacechunks/explorer/platformd/workload"
+	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStatusStoreUpdate(t *testing.T) {
 	tests := []struct {
 		name     string
-		status   workload.Status
-		expected workload.Status
+		status   status.Status
+		expected status.Status
 	}{
 		{
-			name: "update port only",
-			status: workload.Status{
-				Port: 1337,
+			name: "workload update port only",
+			status: status.Status{
+				WorkloadStatus: &status.WorkloadStatus{
+					Port: 1337,
+				},
 			},
-			expected: workload.Status{
-				Port: 1337,
-			},
-		},
-		{
-			name: "update state only",
-			status: workload.Status{
-				State: workload.StateDeleted,
-			},
-			expected: workload.Status{
-				State: workload.StateDeleted,
+			expected: status.Status{
+				WorkloadStatus: &status.WorkloadStatus{
+					Port: 1337,
+				},
 			},
 		},
 		{
-			name: "update both port and state",
-			status: workload.Status{
-				State: workload.StateDeleted,
-				Port:  1337,
+			name: "workload update state only",
+			status: status.Status{
+				WorkloadStatus: &status.WorkloadStatus{
+					State: status.WorkloadStateDeleted,
+				},
 			},
-			expected: workload.Status{
-				State: workload.StateDeleted,
-				Port:  1337,
+			expected: status.Status{
+				WorkloadStatus: &status.WorkloadStatus{
+					State: status.WorkloadStateDeleted,
+				},
 			},
 		},
+		{
+			name: "workload update both port and state",
+			status: status.Status{
+				WorkloadStatus: &status.WorkloadStatus{
+					State: status.WorkloadStateDeleted,
+					Port:  1337,
+				},
+			},
+			expected: status.Status{
+				WorkloadStatus: &status.WorkloadStatus{
+					State: status.WorkloadStateDeleted,
+					Port:  1337,
+				},
+			},
+		},
+		// TODO: add tests for checkpoint status
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := workload.NewStore()
+			store := status.NewMemStore()
 			store.Update("abc", tt.status)
 			acutal := store.Get("abc")
 			require.Equal(t, tt.expected, *acutal)
@@ -72,10 +85,12 @@ func TestStatusStoreUpdate(t *testing.T) {
 }
 
 func TestStatusStoreDelete(t *testing.T) {
-	store := workload.NewStore()
-	store.Update("abc", workload.Status{
-		State: workload.StateDeleted,
-		Port:  1337,
+	store := status.NewMemStore()
+	store.Update("abc", status.Status{
+		WorkloadStatus: &status.WorkloadStatus{
+			State: status.WorkloadStateDeleted,
+			Port:  1337,
+		},
 	})
 	store.Del("abc")
 	require.Nil(t, store.Get("abc"))
@@ -83,16 +98,18 @@ func TestStatusStoreDelete(t *testing.T) {
 
 func TestStatusStoreView(t *testing.T) {
 	var (
-		store  = workload.NewStore()
-		status = workload.Status{
-			State: workload.StateDeleted,
-			Port:  1337,
+		store = status.NewMemStore()
+		st    = status.Status{
+			WorkloadStatus: &status.WorkloadStatus{
+				State: status.WorkloadStateDeleted,
+				Port:  1337,
+			},
 		}
-		expected = map[string]workload.Status{
-			"abc": status,
+		expected = map[string]status.Status{
+			"abc": st,
 		}
 	)
-	store.Update("abc", status)
+	store.Update("abc", st)
 
 	view := store.View()
 	require.Equal(t, expected, view)

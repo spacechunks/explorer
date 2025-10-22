@@ -66,11 +66,13 @@ func (s *Server) CheckpointStatus(
 		return nil, status.Errorf(codes.InvalidArgument, "invalid checkpoint id: %v", err)
 	}
 
-	if s := s.service.CheckpointStatus(req.CheckpointId); s != nil {
+	if s := s.service.CheckpointStatus(req.CheckpointId); s != nil && s.CheckpointStatus != nil {
 		return &checkpointv1alpha1.CheckpointStatusResponse{
 			Status: &checkpointv1alpha1.CheckpointStatus{
-				State:   checkpointv1alpha1.CheckpointState(checkpointv1alpha1.CheckpointState_value[string(s.State)]),
-				Message: s.Message,
+				State: checkpointv1alpha1.CheckpointState(
+					checkpointv1alpha1.CheckpointState_value[string(s.CheckpointStatus.State)],
+				),
+				Message: s.CheckpointStatus.Message,
 			},
 		}, nil
 	}

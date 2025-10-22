@@ -18,27 +18,6 @@
 
 package workload
 
-type State string
-
-var (
-	StateCreating       State = "CREATING"
-	StateRunning        State = "RUNNING"
-	StateDeleted        State = "DELETED"
-	StateCreationFailed State = "CREATION_FAILED"
-)
-
-type HealthStatus string
-
-var (
-	HealthStatusHealthy   HealthStatus = "HEALTHY"
-	HealthStatusUnhealthy HealthStatus = "UNHEALTHY"
-)
-
-type Status struct {
-	State State
-	Port  uint16
-}
-
 type Workload struct {
 	ID              string
 	CheckpointImage string

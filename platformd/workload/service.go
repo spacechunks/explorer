@@ -9,13 +9,14 @@ import (
 	"time"
 
 	"github.com/spacechunks/explorer/platformd/cri"
+	"github.com/spacechunks/explorer/platformd/status"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
 type Service interface {
 	RunWorkload(ctx context.Context, w Workload, attempt uint) error
 	RemoveWorkload(ctx context.Context, id string) error
-	GetWorkloadHealth(ctx context.Context, id string) (HealthStatus, error)
+	GetWorkloadHealth(ctx context.Context, id string) (status.WorkloadHealthStatus, error)
 }
 
 type svc struct {
@@ -140,7 +141,7 @@ func (s *svc) RemoveWorkload(ctx context.Context, id string) error {
 // GetWorkloadHealth checks whether a container can be found for the given workload.
 // if it cannot be found, or the status is CREATED, EXITED or UNKNOWN, the workload
 // is considered unhealthy.
-func (s *svc) GetWorkloadHealth(ctx context.Context, id string) (HealthStatus, error) {
+func (s *svc) GetWorkloadHealth(ctx context.Context, id string) (status.WorkloadHealthStatus, error) {
 	resp, err := s.criService.ListContainers(ctx, &runtimev1.ListContainersRequest{
 		Filter: &runtimev1.ContainerFilter{
 			LabelSelector: map[string]string{
@@ -149,21 +150,21 @@ func (s *svc) GetWorkloadHealth(ctx context.Context, id string) (HealthStatus, e
 		},
 	})
 	if err != nil {
-		return HealthStatusUnhealthy, fmt.Errorf("list containers: %w", err)
+		return status.WorkloadHealthStatusUnhealthy, fmt.Errorf("list containers: %w", err)
 	}
 
 	if len(resp.GetContainers()) == 0 {
-		return HealthStatusUnhealthy, nil
+		return status.WorkloadHealthStatusUnhealthy, nil
 	}
 
 	switch resp.GetContainers()[0].State {
 	case runtimev1.ContainerState_CONTAINER_RUNNING:
-		return HealthStatusHealthy, nil
+		return status.WorkloadHealthStatusHealthy, nil
 	case runtimev1.ContainerState_CONTAINER_EXITED,
 		runtimev1.ContainerState_CONTAINER_CREATED,
 		runtimev1.ContainerState_CONTAINER_UNKNOWN:
-		return HealthStatusUnhealthy, nil
+		return status.WorkloadHealthStatusUnhealthy, nil
 	}
 
-	return HealthStatusHealthy, nil
+	return status.WorkloadHealthStatusHealthy, nil
 }

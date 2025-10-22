@@ -32,6 +32,7 @@ import (
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/cri"
+	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"k8s.io/client-go/tools/remotecommand"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
@@ -43,17 +44,16 @@ type RemoteCMDExecutorFactory func(url string) (remotecommand.Executor, error)
 
 type Service interface {
 	CreateCheckpoint(ctx context.Context, baseRef name.Reference) (string, error)
-	CheckpointStatus(checkpointID string) *Status
+	CheckpointStatus(checkpointID string) *status.Status
 }
 
 type ServiceImpl struct {
-	logger              *slog.Logger
-	criService          cri.Service
-	imgService          image.Service
-	cfg                 Config
-	statusStore         StatusStore
-	workloadStatusStore workload.StatusStore
-	portAlloc           *workload.PortAllocator
+	logger      *slog.Logger
+	criService  cri.Service
+	imgService  image.Service
+	cfg         Config
+	statusStore status.Store
+	portAlloc   *workload.PortAllocator
 
 	// this factory function allows us to inject a mock executor for testing.
 	newRemoteCMDExecutor RemoteCMDExecutorFactory
@@ -64,9 +64,8 @@ func NewService(
 	cfg Config,
 	criService cri.Service,
 	imgService image.Service,
-	statusStore StatusStore,
+	statusStore status.Store,
 	newRemoteCMDExecutor RemoteCMDExecutorFactory,
-	workloadStatusStore workload.StatusStore,
 	portAlloc *workload.PortAllocator,
 
 ) *ServiceImpl {
@@ -76,7 +75,6 @@ func NewService(
 		imgService:           imgService,
 		cfg:                  cfg,
 		statusStore:          statusStore,
-		workloadStatusStore:  workloadStatusStore,
 		portAlloc:            portAlloc,
 		newRemoteCMDExecutor: newRemoteCMDExecutor,
 	}
@@ -97,7 +95,7 @@ func (s *ServiceImpl) CreateCheckpoint(ctx context.Context, baseRef name.Referen
 	return id.String(), nil
 }
 
-func (s *ServiceImpl) CheckpointStatus(checkpointID string) *Status {
+func (s *ServiceImpl) CheckpointStatus(checkpointID string) *status.Status {
 	return s.statusStore.Get(checkpointID)
 }
 
@@ -105,8 +103,12 @@ func (s *ServiceImpl) CheckpointStatus(checkpointID string) *Status {
 // that have failed or completed successfully.
 func (s *ServiceImpl) CollectGarbage(ctx context.Context) error {
 	keep := make(map[string]bool)
-	for id, status := range s.statusStore.View() {
-		if status.State == StateRunning {
+	for id, st := range s.statusStore.View() {
+		if st.CheckpointStatus == nil {
+			continue
+		}
+
+		if st.CheckpointStatus.State == status.CheckpointStateRunning {
 			keep[id] = true
 		}
 
@@ -118,8 +120,14 @@ func (s *ServiceImpl) CollectGarbage(ctx context.Context) error {
 		// checkpoint completion (or failure). removing them instantly
 		// could lead to callers pulling the status endpoint to not
 		// see the updated status.
-		if status.CompletedAt != nil && time.Now().After(status.CompletedAt.Add(s.cfg.StatusRetentionPeriod)) {
+		if st.CheckpointStatus.CompletedAt != nil &&
+			time.Now().After(st.CheckpointStatus.CompletedAt.Add(s.cfg.StatusRetentionPeriod)) {
+			// FIXME: we should probably make sure we only delete the entry
+			//        if the pod is also gone. because once we remove from
+			//        the store, the cni will not have port information
+			//        which is needed to remove bpf map entries
 			s.statusStore.Del(id)
+			s.portAlloc.Free(st.CheckpointStatus.Port)
 		}
 	}
 
@@ -196,11 +204,13 @@ func (s *ServiceImpl) CollectGarbage(ctx context.Context) error {
 func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Reference) (ret error) {
 	s.logger.InfoContext(ctx, "creating checkpoint", "checkpoint", id, "baseRef", baseRef.String())
 
-	s.statusStore.Update(id, Status{
-		State: StateRunning,
+	s.statusStore.Update(id, status.Status{
+		CheckpointStatus: &status.CheckpointStatus{
+			State: status.CheckpointStateRunning,
+		},
 	})
 
-	state := StateCompleted
+	state := status.CheckpointStateCompleted
 
 	defer func() {
 		var msg string
@@ -208,26 +218,20 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 			msg = ret.Error()
 		}
 
-		s.statusStore.Update(id, Status{
-			State:       state,
-			Message:     msg,
-			CompletedAt: ptr.Pointer(time.Now()),
+		s.statusStore.Update(id, status.Status{
+			CheckpointStatus: &status.CheckpointStatus{
+				State:       state,
+				Message:     msg,
+				CompletedAt: ptr.Pointer(time.Now()),
+			},
 		})
-
-		status := s.workloadStatusStore.Get(id)
-		if status == nil {
-			return
-		}
-
-		s.portAlloc.Free(status.Port)
-		s.workloadStatusStore.Del(id)
 	}()
 
 	if _, err := s.criService.EnsureImage(ctx, baseRef.String(), cri.RegistryAuth{
 		Username: s.cfg.RegistryUser,
 		Password: s.cfg.RegistryPass,
 	}); err != nil {
-		state = StatePullBaseImageFailed
+		state = status.CheckpointStatePullBaseImageFailed
 		return fmt.Errorf("pull base image: %w", err)
 	}
 
@@ -240,7 +244,7 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 
 	ctrID, err := s.waitContainerReady(ctx, id, baseRef.String(), s.cfg.ContainerReadyTimeout)
 	if err != nil {
-		state = StateContainerWaitReadyFailed
+		state = status.CheckpointStateContainerWaitReadyFailed
 		return fmt.Errorf("wait ctr ready: %w", err)
 	}
 
@@ -254,18 +258,18 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 		Location:    location,
 		Timeout:     s.cfg.CheckpointTimeoutSeconds,
 	}); err != nil {
-		state = StateContainerCheckpointFailed
+		state = status.CheckpointStateContainerCheckpointFailed
 		return fmt.Errorf("checkpoint container: %w", err)
 	}
 
 	img, err := image.FromCheckpoint(location, runtime.GOARCH, "/bin/sh", time.Now())
 	if err != nil {
-		state = StatePushCheckpointFailed
+		state = status.CheckpointStatePushCheckpointFailed
 		return fmt.Errorf("create image: %w", err)
 	}
 
 	if err := s.imgService.Push(ctx, img, baseRef.Context().Tag("checkpoint").String()); err != nil {
-		state = StatePushCheckpointFailed
+		state = status.CheckpointStatePushCheckpointFailed
 		return fmt.Errorf("push image: %w", err)
 	}
 
@@ -312,9 +316,11 @@ func (s *ServiceImpl) runAndAttachContainer(ctx context.Context, id string, base
 		return "", "", fmt.Errorf("allocate port: %w", err)
 	}
 
-	s.workloadStatusStore.Update(id, workload.Status{
-		State: workload.StateRunning,
-		Port:  port,
+	s.statusStore.Update(id, status.Status{
+		CheckpointStatus: &status.CheckpointStatus{
+			State: status.CheckpointStateRunning,
+			Port:  port,
+		},
 	})
 
 	runPodResp, err := s.criService.RunPodSandbox(ctx, &runtimev1.RunPodSandboxRequest{

@@ -29,6 +29,7 @@ import (
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/platformd/checkpoint"
 	"github.com/spacechunks/explorer/platformd/cri"
+	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
@@ -70,11 +71,10 @@ func RunCheckpointAPIFixtures(t *testing.T, registryUser string, registryPass st
 			},
 			cri.NewService(logger.With("component", "cri-service"), rtClient, imgClient),
 			image.NewService(logger.With("component", "image-service"), registryUser, registryPass, t.TempDir()),
-			checkpoint.NewStore(),
+			status.NewMemStore(),
 			func(url string) (remotecommand.Executor, error) {
 				return &test.RemoteCmdExecutor{}, nil
 			},
-			workload.NewStore(),
 			workload.NewPortAllocator(5000, 6000),
 		)
 		checkServ = checkpoint.NewServer(svc)

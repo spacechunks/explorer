@@ -15,6 +15,7 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/platformd/garbage"
+	"github.com/spacechunks/explorer/platformd/status"
 	"google.golang.org/grpc/credentials"
 	"k8s.io/client-go/tools/remotecommand"
 
@@ -104,8 +105,8 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			xds.NewMap(proxyNodeID, xdsCfg),
 		)
 
-		portAlloc = workload.NewPortAllocator(cfg.MinPort, cfg.MaxPort)
-		wlStore   = workload.NewStore()
+		portAlloc   = workload.NewPortAllocator(cfg.MinPort, cfg.MaxPort)
+		statusStore = status.NewMemStore()
 
 		checkSvcLogger = s.logger.With("component", "checkpoint-service")
 		checkSvc       = checkpoint.NewService(
@@ -124,16 +125,15 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			},
 			criSvc,
 			image.NewService(checkSvcLogger, cfg.RegistryUser, cfg.RegistryPass, "/tmp"),
-			checkpoint.NewStore(),
+			statusStore,
 			func(url string) (remotecommand.Executor, error) {
 				return checkpoint.NewSPDYExecutor(url)
 			},
-			wlStore,
 			portAlloc,
 		)
 
 		proxyServer = proxy.NewServer(proxySvc)
-		wlServer    = workload.NewServer(wlStore)
+		wlServer    = workload.NewServer(statusStore)
 		checkServer = checkpoint.NewServer(checkSvc)
 		reconciler  = newReconciler(s.logger, reconcilerConfig{
 			MaxAttempts:       cfg.MaxAttempts,
@@ -141,7 +141,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			NodeID:            cfg.NodeID,
 			WorkloadNamespace: cfg.WorkloadNamespace,
 			RegistryEndpoint:  cfg.RegistryEndpoint,
-		}, insClient, wlSvc, wlStore, portAlloc)
+		}, insClient, wlSvc, statusStore, portAlloc)
 		gc = garbage.NewExecutor(s.logger, 1*time.Second, checkSvc)
 	)
 

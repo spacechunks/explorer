@@ -20,16 +20,29 @@ package workload
 
 import (
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/platformd/status"
 )
 
-func WorkloadStatusToTransport(status Status) *workloadv1alpha2.WorkloadStatus {
-	return &workloadv1alpha2.WorkloadStatus{
-		State: StateToTransport(status.State),
-		Port:  uint32(status.Port),
+func StatusToTransport(st status.Status) *workloadv1alpha2.WorkloadStatus {
+	wst := &workloadv1alpha2.WorkloadStatus{}
+
+	if st.WorkloadStatus != nil {
+		return &workloadv1alpha2.WorkloadStatus{
+			State: StateToTransport(st.WorkloadStatus.State),
+			Port:  uint32(st.WorkloadStatus.Port),
+		}
 	}
+
+	if st.CheckpointStatus != nil {
+		return &workloadv1alpha2.WorkloadStatus{
+			Port: uint32(st.CheckpointStatus.Port),
+		}
+	}
+
+	return wst
 }
 
-func StateToTransport(state State) workloadv1alpha2.WorkloadState {
+func StateToTransport(state status.WorkloadState) workloadv1alpha2.WorkloadState {
 	num, ok := workloadv1alpha2.WorkloadState_value[string(state)]
 	if !ok {
 		return workloadv1alpha2.WorkloadState_UNKNOWN

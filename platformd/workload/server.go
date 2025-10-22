@@ -23,14 +23,15 @@ import (
 	"fmt"
 
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/platformd/status"
 )
 
 type Server struct {
 	workloadv1alpha2.UnimplementedWorkloadServiceServer
-	store StatusStore
+	store status.Store
 }
 
-func NewServer(store StatusStore) *Server {
+func NewServer(store status.Store) *Server {
 	return &Server{
 		store: store,
 	}
@@ -49,7 +50,7 @@ func (s *Server) WorkloadStatus(
 		return nil, fmt.Errorf("workload not found")
 	}
 
-	transport := WorkloadStatusToTransport(*domain)
+	transport := StatusToTransport(*domain)
 
 	return &workloadv1alpha2.WorkloadStatusResponse{
 		Status: transport,
