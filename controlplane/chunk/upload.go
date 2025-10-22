@@ -44,7 +44,12 @@ func (s *svc) GetUploadURL(ctx context.Context, flavorVersionID string, tarballH
 		return *ver.PresignedURL, nil
 	}
 
-	url, expiryDate, err := s.s3Store.PresignURL(ctx, blob.ChangeSetKey(flavorVersionID), tarballHash, s.cfg.PresignedURLExpiry)
+	url, expiryDate, err := s.s3Store.PresignURL(
+		ctx,
+		blob.ChangeSetKey(flavorVersionID),
+		tarballHash,
+		s.cfg.PresignedURLExpiry,
+	)
 	if err != nil {
 		return "", fmt.Errorf("presign: %w", err)
 	}
