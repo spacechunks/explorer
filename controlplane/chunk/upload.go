@@ -23,14 +23,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/spacechunks/explorer/controlplane/blob"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 )
 
 func (s *svc) GetUploadURL(ctx context.Context, flavorVersionID string, tarballHash string) (string, error) {
 	// TODO: tarball size needs to be specified as well to prevent people from uploading too large files
 	//       if size > 1GB reject
-
-	key := fmt.Sprintf("explorer/flavor-versions/%s/changeset.tar.gz", flavorVersionID)
 
 	ver, err := s.repo.FlavorVersionByID(ctx, flavorVersionID)
 	if err != nil {
@@ -45,7 +44,7 @@ func (s *svc) GetUploadURL(ctx context.Context, flavorVersionID string, tarballH
 		return *ver.PresignedURL, nil
 	}
 
-	url, expiryDate, err := s.s3Store.PresignURL(ctx, key, tarballHash, s.cfg.PresignedURLExpiry)
+	url, expiryDate, err := s.s3Store.PresignURL(ctx, blob.ChangeSetKey(flavorVersionID), tarballHash, s.cfg.PresignedURLExpiry)
 	if err != nil {
 		return "", fmt.Errorf("presign: %w", err)
 	}

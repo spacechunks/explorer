@@ -9,7 +9,7 @@ RUN go build -o bin ./cmd/conncheck ./cmd/controlplane
 
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates
-WORKDIR /prog
+WORKDIR /bin
 COPY --from=builder /build/bin/conncheck conncheck
 COPY --from=builder /build/bin/controlplane controlplane
-ENTRYPOINT ["/prog/controlplane"]
+ENTRYPOINT ["/bin/controlplane"]
