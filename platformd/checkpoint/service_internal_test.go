@@ -83,18 +83,7 @@ func TestCheckpoint(t *testing.T) {
 						Username: args.cfg.RegistryUser,
 						Password: args.cfg.RegistryPass,
 					},
-					args.mockStatusStore,
 				)
-
-				//args.mockStatusStore.EXPECT().
-				//	Get(args.checkID).
-				//	Return(&status.Status{
-				//		CheckpointStatus: &status.CheckpointStatus{
-				//			State: status.CheckpointStateRunning,
-				//			Port:  1,
-				//		},
-				//	})
-				//args.mockStatusStore.EXPECT().Del(args.checkID)
 
 				fileLoc := fmt.Sprintf("%s/%s", args.cfg.CheckpointFileDir, args.checkID)
 
@@ -140,17 +129,7 @@ func TestCheckpoint(t *testing.T) {
 						Username: args.cfg.RegistryUser,
 						Password: args.cfg.RegistryPass,
 					},
-					args.mockStatusStore,
 				)
-				//args.mockStatusStore.EXPECT().
-				//	Get(args.checkID).
-				//	Return(&status.Status{
-				//		CheckpointStatus: &status.CheckpointStatus{
-				//			State: status.CheckpointStateRunning,
-				//			Port:  1,
-				//		},
-				//	})
-				//args.mockStatusStore.EXPECT().Del(args.checkID)
 			},
 		},
 	}
@@ -195,7 +174,6 @@ func TestCheckpoint(t *testing.T) {
 				podID:      podID,
 				ctrID:      ctrID,
 				baseRef:    baseRef,
-				//mockStatusStore: s,
 			})
 
 			err = svc.checkpoint(ctx, checkID, baseRef)
@@ -220,7 +198,6 @@ func prepUntilContainerAttach(
 	mockCRISvc *mock.MockCriService,
 	baseRef name.Reference,
 	auth cri.RegistryAuth,
-	mockStatusStore *mock.MockStatusStore,
 ) {
 	mockCRISvc.EXPECT().
 		EnsureImage(mocky.Anything, baseRef.String(), auth).
@@ -235,13 +212,6 @@ func prepUntilContainerAttach(
 		}, nil)
 
 	podCfg := svc.podConfig(checkID)
-
-	//mockStatusStore.EXPECT().Update(checkID, status.Status{
-	//	CheckpointStatus: &status.CheckpointStatus{
-	//		State: status.CheckpointStateRunning,
-	//		Port:  1,
-	//	},
-	//})
 
 	mockCRISvc.EXPECT().
 		RunContainer(mocky.Anything, &runtimev1.CreateContainerRequest{
