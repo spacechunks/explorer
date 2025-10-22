@@ -30,10 +30,12 @@ packages:
   github.com/spacechunks/explorer/platformd/cri:
     interfaces:
       Service:
+  github.com/spacechunks/explorer/platformd/status:
+    interfaces:
+      Store:
   github.com/spacechunks/explorer/platformd/workload:
     interfaces:
       Service:
-      StatusStore:
   github.com/spacechunks/explorer/controlplane/chunk:
     interfaces:
       Repository:
