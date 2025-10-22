@@ -67,7 +67,6 @@ func (s *Server) CheckpointStatus(
 	}
 
 	if s := s.service.CheckpointStatus(req.CheckpointId); s != nil && s.CheckpointStatus != nil {
-
 		return &checkpointv1alpha1.CheckpointStatusResponse{
 			Status: &checkpointv1alpha1.CheckpointStatus{
 				State: checkpointv1alpha1.CheckpointState(
