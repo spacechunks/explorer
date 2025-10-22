@@ -120,7 +120,8 @@ func (s *ServiceImpl) CollectGarbage(ctx context.Context) error {
 		// checkpoint completion (or failure). removing them instantly
 		// could lead to callers pulling the status endpoint to not
 		// see the updated status.
-		if st.CheckpointStatus.CompletedAt != nil && time.Now().After(st.CheckpointStatus.CompletedAt.Add(s.cfg.StatusRetentionPeriod)) {
+		if st.CheckpointStatus.CompletedAt != nil &&
+			time.Now().After(st.CheckpointStatus.CompletedAt.Add(s.cfg.StatusRetentionPeriod)) {
 			// FIXME: we should probably make sure we only delete the entry
 			//        if the pod is also gone. because once we remove from
 			//        the store, the cni will not have port information

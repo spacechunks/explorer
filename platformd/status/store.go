@@ -80,7 +80,6 @@ func (s *MemStore) Update(id string, new Status) {
 		}
 		s.data[id] = curr
 	}
-
 }
 
 func (s *MemStore) Get(id string) *Status {

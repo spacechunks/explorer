@@ -70,7 +70,9 @@ func (s *Server) CheckpointStatus(
 
 		return &checkpointv1alpha1.CheckpointStatusResponse{
 			Status: &checkpointv1alpha1.CheckpointStatus{
-				State:   checkpointv1alpha1.CheckpointState(checkpointv1alpha1.CheckpointState_value[string(s.CheckpointStatus.State)]),
+				State: checkpointv1alpha1.CheckpointState(
+					checkpointv1alpha1.CheckpointState_value[string(s.CheckpointStatus.State)],
+				),
 				Message: s.CheckpointStatus.Message,
 			},
 		}, nil

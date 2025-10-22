@@ -39,15 +39,14 @@ import (
 )
 
 type prepArgs struct {
-	svc             *ServiceImpl
-	mockCRISvc      *mock.MockCriService
-	mockImgSvc      *mock.MockImageService
-	cfg             Config
-	checkID         string
-	podID           string
-	ctrID           string
-	baseRef         name.Reference
-	mockStatusStore *mock.MockStatusStore
+	svc        *ServiceImpl
+	mockCRISvc *mock.MockCriService
+	mockImgSvc *mock.MockImageService
+	cfg        Config
+	checkID    string
+	podID      string
+	ctrID      string
+	baseRef    name.Reference
 }
 
 func TestCheckpoint(t *testing.T) {
@@ -146,8 +145,7 @@ func TestCheckpoint(t *testing.T) {
 				mockImgSvc  = mock.NewMockImageService(t)
 				mockCRISvc  = mock.NewMockCriService(t)
 				statusStore = status.NewMemStore()
-				//statusStoreStore = mock.NewMockStatusStore(t)
-				mockExecer = func(url string) (remotecommand.Executor, error) {
+				mockExecer  = func(url string) (remotecommand.Executor, error) {
 					return &test.RemoteCmdExecutor{}, nil
 				}
 
