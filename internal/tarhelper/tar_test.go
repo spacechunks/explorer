@@ -36,7 +36,7 @@ func TestTarFiles(t *testing.T) {
 	dest := dir + "/tarfs.tar.gz"
 
 	files := make([]*os.File, 0)
-	err := filepath.Walk("./testdata/dir", func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk("./testdata/dir", func(path string, info os.FileInfo, _ error) error {
 		if info.IsDir() {
 			return nil
 		}
