@@ -19,8 +19,13 @@
 package publish
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -30,6 +35,7 @@ import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
 	"github.com/spacechunks/explorer/internal/ptr"
+	"github.com/spacechunks/explorer/internal/tarhelper"
 )
 
 type buildUpdate struct {
@@ -43,6 +49,7 @@ type builder struct {
 	client       chunkv1alpha1.ChunkServiceClient
 	updates      chan buildUpdate
 	buildCounter *atomic.Int32
+	changeSetDir string
 }
 
 func (b builder) build(ctx context.Context, chunkID string, local localFlavor, createRemote bool) {
@@ -106,7 +113,7 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 		return
 	}
 
-	files := make([]*chunkv1alpha1.File, 0, len(local.files))
+	files := make([]*os.File, 0, len(local.files))
 	for _, f := range local.files {
 		isAdded := slices.ContainsFunc(versionReq.AddedFiles, func(added *chunkv1alpha1.FileHashes) bool {
 			return added.Hash == f.Hash
@@ -121,37 +128,88 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 		}
 
 		localPath := filepath.Join(local.path, f.Path)
-		data, err := os.ReadFile(localPath)
+		f, err := os.Open(localPath)
 		if err != nil {
 			b.updates <- buildUpdate{
 				flavor: local,
-				err:    fmt.Errorf("error while reading file %s: %w", localPath, err),
+				err:    fmt.Errorf("error while opening file %s: %w", localPath, err),
 			}
 			return
 		}
-		files = append(files, &chunkv1alpha1.File{ //nolint:staticcheck
-			Path: local.serverRelPath(f.Path),
-			Data: data,
-		})
+
+		files = append(files, f)
+	}
+
+	changeSet := filepath.Join(b.changeSetDir, versionReq.Version.Id+".tar.gz")
+
+	if err := tarhelper.TarFiles(local.path, files, changeSet); err != nil {
+		b.updates <- buildUpdate{
+			flavor: local,
+			err:    fmt.Errorf("error while taring files: %w", err),
+		}
+		return
+	}
+
+	data, err := os.ReadFile(changeSet)
+	if err != nil {
+		b.updates <- buildUpdate{
+			flavor: local,
+			err:    fmt.Errorf("error while reading change set: %w", err),
+		}
+	}
+
+	digest := sha256.Sum256(data)
+
+	uploadURLResp, err := b.client.GetUploadURL(ctx, &chunkv1alpha1.GetUploadURLRequest{
+		FlavorVersionId: versionReq.Version.Id,
+		TarballHash:     base64.StdEncoding.EncodeToString(digest[:]),
+	})
+	if err != nil {
+		b.updates <- buildUpdate{
+			flavor: local,
+			err:    fmt.Errorf("error while getting upload url: %w", err),
+		}
+		return
+	}
+
+	req, err := http.NewRequest(http.MethodPut, uploadURLResp.Url, bytes.NewReader(data))
+	if err != nil {
+		b.updates <- buildUpdate{
+			flavor: local,
+			err:    fmt.Errorf("error while creating upload url: %w", err),
+		}
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		b.updates <- buildUpdate{
+			flavor: local,
+			err:    fmt.Errorf("error while uploading: %w", err),
+		}
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		upd := buildUpdate{
+			flavor: local,
+			err:    fmt.Errorf("error while uploading: unexpected status code: %d", resp.StatusCode),
+		}
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			b.updates <- upd
+			return
+		}
+		fmt.Println(string(body))
+		b.updates <- upd
+		return
 	}
 
 	b.updates <- buildUpdate{
 		flavor:         local,
 		uploadProgress: ptr.Pointer(uint(0)),
 	}
-
-	time.Sleep(5 * time.Second)
-
-	//if _, err := b.client.SaveFlavorFiles(ctx, &chunkv1alpha1.SaveFlavorFilesRequest{
-	//	FlavorVersionId: versionReq.Version.Id,
-	//	Files:           files,
-	//}); err != nil {
-	//	b.updates <- buildUpdate{
-	//		flavor: local,
-	//		err:    fmt.Errorf("error while saving flavor files: %w", err),
-	//	}
-	//	return
-	//}
 
 	if _, err := b.client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{
 		FlavorVersionId: versionReq.Version.Id,

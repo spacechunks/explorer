@@ -31,11 +31,6 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-type Object struct {
-	Path string
-	Data []byte
-}
-
 type Hash struct {
 	Path string
 	Hash string
@@ -85,12 +80,6 @@ func HashTree[T merkletree.Content](hashes []T) (*merkletree.MerkleTree, error) 
 		return nil, err
 	}
 	return tree, nil
-}
-
-func SortFiles(objs []Object) {
-	sort.Slice(objs, func(i, j int) bool {
-		return strings.Compare(objs[i].Path, objs[j].Path) < 0
-	})
 }
 
 func SortHashes(hashes []Hash) {
