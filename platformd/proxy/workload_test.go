@@ -25,7 +25,7 @@ import (
 
 	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	"github.com/google/go-cmp/cmp"
-	proxy2 "github.com/spacechunks/explorer/platformd/proxy"
+	"github.com/spacechunks/explorer/platformd/proxy"
 	"github.com/spacechunks/explorer/platformd/proxy/xds"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -35,8 +35,8 @@ import (
 func TestWorkloadResourceGroupConfig(t *testing.T) {
 	var (
 		wlID             = "abc"
-		httpListenerAddr = netip.MustParseAddrPort(fmt.Sprintf("127.0.0.1:%d", proxy2.HTTPPort))
-		tcpListenerAddr  = netip.MustParseAddrPort(fmt.Sprintf("127.0.0.1:%d", proxy2.TCPPort))
+		httpListenerAddr = netip.MustParseAddrPort(fmt.Sprintf("127.0.0.1:%d", proxy.HTTPPort))
+		tcpListenerAddr  = netip.MustParseAddrPort(fmt.Sprintf("127.0.0.1:%d", proxy.TCPPort))
 
 		expectedTCPListener = fmt.Sprintf(`
 {
@@ -69,7 +69,7 @@ func TestWorkloadResourceGroupConfig(t *testing.T) {
       }
     }
   ]
-}`, wlID, tcpListenerAddr.Addr().String(), tcpListenerAddr.Port(), wlID, proxy2.OriginalDstClusterName)
+}`, wlID, tcpListenerAddr.Addr().String(), tcpListenerAddr.Port(), wlID, proxy.OriginalDstClusterName)
 
 		//nolint:lll
 		expectedHTTPListener = fmt.Sprintf(`
@@ -147,7 +147,7 @@ func TestWorkloadResourceGroupConfig(t *testing.T) {
       }
     }
   ]
-}`, wlID, httpListenerAddr.Addr().String(), httpListenerAddr.Port(), wlID, wlID, proxy2.OriginalDstClusterName)
+}`, wlID, httpListenerAddr.Addr().String(), httpListenerAddr.Port(), wlID, wlID, proxy.OriginalDstClusterName)
 	)
 
 	tcpLis := &listenerv3.Listener{}
@@ -160,7 +160,7 @@ func TestWorkloadResourceGroupConfig(t *testing.T) {
 		Listeners: []*listenerv3.Listener{tcpLis, httpLis},
 	}
 
-	actualRG, err := proxy2.WorkloadResources(wlID, httpListenerAddr, tcpListenerAddr, proxy2.OriginalDstClusterName)
+	actualRG, err := proxy.WorkloadResources(wlID, httpListenerAddr, tcpListenerAddr, proxy.OriginalDstClusterName)
 	require.NoError(t, err)
 
 	d := cmp.Diff(expectedRG, actualRG, protocmp.Transform())

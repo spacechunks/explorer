@@ -28,7 +28,7 @@ import (
 	endpointv3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	listenerv3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	"github.com/google/go-cmp/cmp"
-	proxy2 "github.com/spacechunks/explorer/platformd/proxy"
+	"github.com/spacechunks/explorer/platformd/proxy"
 	"github.com/spacechunks/explorer/platformd/proxy/xds"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -38,7 +38,7 @@ import (
 func TestDNSClusterConfig(t *testing.T) {
 	var (
 		expected = &clusterv3.Cluster{
-			Name: proxy2.DNSClusterName,
+			Name: proxy.DNSClusterName,
 			ClusterDiscoveryType: &clusterv3.Cluster_Type{
 				Type: clusterv3.Cluster_EDS,
 			},
@@ -49,7 +49,7 @@ func TestDNSClusterConfig(t *testing.T) {
 			},
 			LbPolicy: clusterv3.Cluster_ROUND_ROBIN,
 		}
-		actual = proxy2.DNSClusterResource()
+		actual = proxy.DNSClusterResource()
 	)
 
 	d := cmp.Diff(expected, actual, protocmp.Transform())
@@ -191,7 +191,7 @@ func TestDNSResourceGroupConfig(t *testing.T) {
 		CLAS:      []*endpointv3.ClusterLoadAssignment{udpCLA, tcpCLA},
 	}
 
-	actualRG, err := proxy2.DNSListenerResourceGroup("", clusterName, listenerAddr, upstreamAddr)
+	actualRG, err := proxy.DNSListenerResourceGroup(wlID, clusterName, listenerAddr, upstreamAddr)
 	require.NoError(t, err)
 
 	d := cmp.Diff(expectedRG, actualRG, protocmp.Transform())
