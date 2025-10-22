@@ -12,7 +12,7 @@ import (
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	routerv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
 	httpconnmgr "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
-	xds2 "github.com/spacechunks/explorer/platformd/proxy/xds"
+	"github.com/spacechunks/explorer/platformd/proxy/xds"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -35,18 +35,18 @@ func WorkloadResources(
 	httpListenerAddr netip.AddrPort,
 	tcpListenerAddr netip.AddrPort,
 	originalDstClusterName string,
-) (xds2.ResourceGroup, error) {
+) (xds.ResourceGroup, error) {
 	httpLis, err := httpListener(workloadID, httpListenerAddr, originalDstClusterName)
 	if err != nil {
-		return xds2.ResourceGroup{}, fmt.Errorf("create http listener: %w", err)
+		return xds.ResourceGroup{}, fmt.Errorf("create http listener: %w", err)
 	}
 
 	tcpLis, err := tcpListener(workloadID, tcpListenerAddr, originalDstClusterName)
 	if err != nil {
-		return xds2.ResourceGroup{}, fmt.Errorf("create tcp listener: %w", err)
+		return xds.ResourceGroup{}, fmt.Errorf("create tcp listener: %w", err)
 	}
 
-	return xds2.ResourceGroup{
+	return xds.ResourceGroup{
 		Listeners: []*listenerv3.Listener{
 			tcpLis,
 			httpLis,
