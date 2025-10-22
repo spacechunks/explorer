@@ -132,7 +132,7 @@ func TestDNSResourceGroupConfig(t *testing.T) {
 
 		expectedUDPCLA = fmt.Sprintf(`
 {
-  "clusterName": "test-dns-%s",
+  "clusterName": "test-dns",
   "endpoints": [
     {
       "lbEndpoints": [
@@ -150,11 +150,11 @@ func TestDNSResourceGroupConfig(t *testing.T) {
       ]
     }
   ]
-}`, wlID, upstreamAddr.Addr().String(), upstreamAddr.Port())
+}`, upstreamAddr.Addr().String(), upstreamAddr.Port())
 
 		expectedTCPCLA = fmt.Sprintf(`
 {
-  "clusterName": "test-dns-%s",
+  "clusterName": "test-dns",
   "endpoints": [
     {
       "lbEndpoints": [
@@ -171,7 +171,7 @@ func TestDNSResourceGroupConfig(t *testing.T) {
       ]
     }
   ]
-}`, wlID, upstreamAddr.Addr().String(), upstreamAddr.Port())
+}`, upstreamAddr.Addr().String(), upstreamAddr.Port())
 	)
 
 	udpLis := &listenerv3.Listener{}
