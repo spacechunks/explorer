@@ -11,6 +11,7 @@ import (
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/checkpoint"
+	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -24,8 +25,8 @@ func TestCollectGarbage(t *testing.T) {
 	tests := []struct {
 		name               string
 		cfg                checkpoint.Config
-		storeItems         map[string]checkpoint.Status
-		expectedStoreItems map[string]checkpoint.Status
+		storeItems         map[string]status.Status
+		expectedStoreItems map[string]status.Status
 	}{
 		{
 			name: "one running one completed both still in store",
@@ -33,22 +34,30 @@ func TestCollectGarbage(t *testing.T) {
 				CheckpointFileDir:     t.TempDir(),
 				StatusRetentionPeriod: 60 * time.Second,
 			},
-			storeItems: map[string]checkpoint.Status{
+			storeItems: map[string]status.Status{
 				"1": {
-					State: checkpoint.StateRunning,
+					CheckpointStatus: &status.CheckpointStatus{
+						State: status.CheckpointStateRunning,
+					},
 				},
 				"2": {
-					State:       checkpoint.StateCompleted,
-					CompletedAt: ptr.Pointer(now),
+					CheckpointStatus: &status.CheckpointStatus{
+						State:       status.CheckpointStateCompleted,
+						CompletedAt: ptr.Pointer(now),
+					},
 				},
 			},
-			expectedStoreItems: map[string]checkpoint.Status{
+			expectedStoreItems: map[string]status.Status{
 				"1": {
-					State: checkpoint.StateRunning,
+					CheckpointStatus: &status.CheckpointStatus{
+						State: status.CheckpointStateRunning,
+					},
 				},
 				"2": {
-					State:       checkpoint.StateCompleted,
-					CompletedAt: ptr.Pointer(now),
+					CheckpointStatus: &status.CheckpointStatus{
+						State:       status.CheckpointStateCompleted,
+						CompletedAt: ptr.Pointer(now),
+					},
 				},
 			},
 		},
@@ -58,29 +67,35 @@ func TestCollectGarbage(t *testing.T) {
 				CheckpointFileDir:     t.TempDir(),
 				StatusRetentionPeriod: 1 * time.Second,
 			},
-			storeItems: map[string]checkpoint.Status{
+			storeItems: map[string]status.Status{
 				"1": {
-					State: checkpoint.StateRunning,
+					CheckpointStatus: &status.CheckpointStatus{
+						State: status.CheckpointStateRunning,
+					},
 				},
 				"2": {
-					State: checkpoint.StateCompleted,
-					CompletedAt: ptr.Pointer(
-						time.Date(
-							now.Year(),
-							now.Month(),
-							now.Day(),
-							now.Hour(),
-							now.Minute(),
-							now.Second()-1,
-							0,
-							now.Location(),
+					CheckpointStatus: &status.CheckpointStatus{
+						State: status.CheckpointStateCompleted,
+						CompletedAt: ptr.Pointer(
+							time.Date(
+								now.Year(),
+								now.Month(),
+								now.Day(),
+								now.Hour(),
+								now.Minute(),
+								now.Second()-1,
+								0,
+								now.Location(),
+							),
 						),
-					),
+					},
 				},
 			},
-			expectedStoreItems: map[string]checkpoint.Status{
+			expectedStoreItems: map[string]status.Status{
 				"1": {
-					State: checkpoint.StateRunning,
+					CheckpointStatus: &status.CheckpointStatus{
+						State: status.CheckpointStateRunning,
+					},
 				},
 			},
 		},
@@ -90,7 +105,7 @@ func TestCollectGarbage(t *testing.T) {
 			var (
 				ctx        = context.Background()
 				logger     = slog.New(slog.NewTextHandler(os.Stdout, nil))
-				store      = checkpoint.NewStore()
+				store      = status.NewMemStore()
 				mockCRISvc = mock.NewMockCriService(t)
 				svc        = checkpoint.NewService(
 					logger,
@@ -99,7 +114,6 @@ func TestCollectGarbage(t *testing.T) {
 					nil,
 					store,
 					nil,
-					workload.NewStore(),
 					workload.NewPortAllocator(1, 1),
 				)
 			)
@@ -110,7 +124,7 @@ func TestCollectGarbage(t *testing.T) {
 
 			pods := make([]*runtimev1.PodSandbox, 0, len(store.View()))
 
-			for id, status := range store.View() {
+			for id, st := range store.View() {
 				path := tt.cfg.CheckpointFileDir + "/" + id
 				err := os.WriteFile(path, []byte{}, 0777)
 				require.NoError(t, err)
@@ -122,7 +136,7 @@ func TestCollectGarbage(t *testing.T) {
 					},
 				})
 
-				if status.State == checkpoint.StateRunning {
+				if st.CheckpointStatus.State == status.CheckpointStateRunning {
 					continue
 				}
 
@@ -154,9 +168,9 @@ func TestCollectGarbage(t *testing.T) {
 			err := svc.CollectGarbage(ctx)
 			require.NoError(t, err)
 
-			for id, status := range store.View() {
+			for id, st := range store.View() {
 				_, err := os.Stat(tt.cfg.CheckpointFileDir + "/" + id)
-				if status.State == checkpoint.StateRunning {
+				if st.CheckpointStatus.State == status.CheckpointStateRunning {
 					require.NoError(t, err)
 					continue
 				}

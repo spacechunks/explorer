@@ -16,60 +16,74 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package checkpoint
+package status
 
 import (
 	"maps"
 	"sync"
-	"time"
 )
 
-type Status struct {
-	State       State
-	Message     string
-	CompletedAt *time.Time
-}
-
-type State string
-
-const (
-	StateRunning                   State = "RUNNING"
-	StatePullBaseImageFailed       State = "PULL_BASE_IMAGE_FAILED"
-	StateContainerWaitReadyFailed  State = "CONTAINER_WAIT_READY_FAILED"
-	StateContainerCheckpointFailed State = "CONTAINER_CHECKPOINT_FAILED"
-	StatePushCheckpointFailed      State = "PUSH_CHECKPOINT_FAILED"
-	StateCompleted                 State = "COMPLETED"
-)
-
-// TODO: this is basically copy pasta from workload status store.
-//       at some point evaluate if a single status store solution
-//       is possible.
-
-type StatusStore interface {
-	Get(id string) *Status
+type Store interface {
 	Update(id string, status Status)
-	View() map[string]Status
+	Get(id string) *Status
 	Del(id string)
+	View() map[string]Status
 }
 
-func NewStore() StatusStore {
-	return &inmemStore{
+func NewMemStore() *MemStore {
+	return &MemStore{
 		data: make(map[string]Status),
 	}
 }
 
-type inmemStore struct {
+type MemStore struct {
 	data map[string]Status
 	mu   sync.Mutex
 }
 
-func (s *inmemStore) Update(id string, new Status) {
+func (s *MemStore) Update(id string, new Status) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.data[id] = new
+
+	curr, ok := s.data[id]
+	if !ok {
+		s.data[id] = new
+		return
+	}
+
+	if curr.WorkloadStatus != nil {
+		if new.WorkloadStatus.State != "" {
+			curr.WorkloadStatus.State = new.WorkloadStatus.State
+		}
+
+		if new.WorkloadStatus.Port != 0 {
+			curr.WorkloadStatus.Port = new.WorkloadStatus.Port
+		}
+		s.data[id] = curr
+	}
+
+	if curr.CheckpointStatus != nil {
+		if new.CheckpointStatus.State != "" {
+			curr.CheckpointStatus.State = new.CheckpointStatus.State
+		}
+
+		if new.CheckpointStatus.Port != 0 {
+			curr.CheckpointStatus.Port = new.CheckpointStatus.Port
+		}
+
+		if new.CheckpointStatus.CompletedAt != nil {
+			curr.CheckpointStatus.CompletedAt = new.CheckpointStatus.CompletedAt
+		}
+
+		if new.CheckpointStatus.Message != "" {
+			curr.CheckpointStatus.Message = new.CheckpointStatus.Message
+		}
+		s.data[id] = curr
+	}
+
 }
 
-func (s *inmemStore) Get(id string) *Status {
+func (s *MemStore) Get(id string) *Status {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if status, ok := s.data[id]; ok {
@@ -78,14 +92,14 @@ func (s *inmemStore) Get(id string) *Status {
 	return nil
 }
 
-func (s *inmemStore) Del(id string) {
+func (s *MemStore) Del(id string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.data, id)
 }
 
 // View returns a copy of the current state of the underlying map
-func (s *inmemStore) View() map[string]Status {
+func (s *MemStore) View() map[string]Status {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

@@ -30,11 +30,12 @@ import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/internal/mock"
+	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"github.com/spacechunks/explorer/test"
 	mocky "github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 func TestReconciler(t *testing.T) {
@@ -70,14 +71,14 @@ func TestReconciler(t *testing.T) {
 
 	tests := []struct {
 		name string
-		prep func(*mock.MockWorkloadService, *mock.MockV1alpha1InstanceServiceClient, *mock.MockWorkloadStatusStore)
+		prep func(*mock.MockWorkloadService, *mock.MockV1alpha1InstanceServiceClient, *mock.MockStatusStore)
 	}{
 		{
 			name: "instance PENDING: create workload",
 			prep: func(
 				wlSvc *mock.MockWorkloadService,
 				insClient *mock.MockV1alpha1InstanceServiceClient,
-				store *mock.MockWorkloadStatusStore,
+				store *mock.MockStatusStore,
 			) {
 				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_PENDING)
 
@@ -89,20 +90,26 @@ func TestReconciler(t *testing.T) {
 					Once()
 				store.EXPECT().
 					Get(ins.GetId()).
-					Return(&workload.Status{
-						State: workload.StateRunning,
-						Port:  1,
+					Return(&status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateRunning,
+							Port:  1,
+						},
 					}).
 					NotBefore(veryFirstGetCall)
 
 				store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						State: workload.StateCreating,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateCreating,
+						},
 					})
 
 				store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						Port: 1,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							Port: 1,
+						},
 					})
 
 				wlSvc.EXPECT().
@@ -110,14 +117,18 @@ func TestReconciler(t *testing.T) {
 					Return(nil)
 
 				store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						State: workload.StateRunning,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateRunning,
+						},
 					})
 
-				store.EXPECT().View().Return(map[string]workload.Status{
+				store.EXPECT().View().Return(map[string]status.Status{
 					ins.GetId(): {
-						State: workload.StateRunning,
-						Port:  1,
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateRunning,
+							Port:  1,
+						},
 					},
 				})
 
@@ -134,31 +145,39 @@ func TestReconciler(t *testing.T) {
 			prep: func(
 				wlSvc *mock.MockWorkloadService,
 				insClient *mock.MockV1alpha1InstanceServiceClient,
-				store *mock.MockWorkloadStatusStore,
+				store *mock.MockStatusStore,
 			) {
 				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_PENDING)
 
 				store.EXPECT().
 					Get(ins.GetId()).
-					Return(&workload.Status{
-						State: workload.StateCreating,
+					Return(&status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateCreating,
+						},
 					})
 
 				attemptCalls := store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						State: workload.StateCreating,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateCreating,
+						},
 					}).
 					Times(int(maxAttempts))
 
 				store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						State: workload.StateCreationFailed,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateCreationFailed,
+						},
 					}).
 					NotBefore(attemptCalls)
 
 				updatePortCall := store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						Port: 1,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							Port: 1,
+						},
 					}).Call
 
 				for i := 0; i < int(maxAttempts); i++ {
@@ -173,9 +192,11 @@ func TestReconciler(t *testing.T) {
 					Return(nil).
 					Times(int(maxAttempts))
 
-				store.EXPECT().View().Return(map[string]workload.Status{
+				store.EXPECT().View().Return(map[string]status.Status{
 					ins.GetId(): {
-						State: workload.StateCreationFailed,
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateCreationFailed,
+						},
 					},
 				})
 
@@ -189,38 +210,48 @@ func TestReconciler(t *testing.T) {
 			prep: func(
 				wlSvc *mock.MockWorkloadService,
 				insClient *mock.MockV1alpha1InstanceServiceClient,
-				store *mock.MockWorkloadStatusStore,
+				store *mock.MockStatusStore,
 			) {
 				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_CREATING)
 
 				veryFirstGetCall := store.EXPECT().
 					Get(ins.GetId()).
-					Return(&workload.Status{
-						State: workload.StateCreating,
+					Return(&status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateCreating,
+						},
 					}).
 					Once()
 				store.EXPECT().
 					Get(ins.GetId()).
-					Return(&workload.Status{
-						State: workload.StateRunning,
-						Port:  1,
+					Return(&status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateRunning,
+							Port:  1,
+						},
 					}).
 					NotBefore(veryFirstGetCall)
 
 				store.EXPECT().
 					Get(ins.GetId()).
-					Return(&workload.Status{
-						State: workload.StateCreating,
+					Return(&status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateCreating,
+						},
 					})
 
 				store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						State: workload.StateCreating,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateCreating,
+						},
 					})
 
 				updatePortCall := store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						Port: 1,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							Port: 1,
+						},
 					}).Call
 
 				wlSvc.EXPECT().
@@ -229,14 +260,18 @@ func TestReconciler(t *testing.T) {
 					NotBefore(updatePortCall)
 
 				store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						State: workload.StateRunning,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateRunning,
+						},
 					})
 
-				store.EXPECT().View().Return(map[string]workload.Status{
+				store.EXPECT().View().Return(map[string]status.Status{
 					ins.GetId(): {
-						State: workload.StateRunning,
-						Port:  1,
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateRunning,
+							Port:  1,
+						},
 					},
 				})
 
@@ -248,7 +283,7 @@ func TestReconciler(t *testing.T) {
 			prep: func(
 				wlSvc *mock.MockWorkloadService,
 				insClient *mock.MockV1alpha1InstanceServiceClient,
-				store *mock.MockWorkloadStatusStore,
+				store *mock.MockStatusStore,
 			) {
 				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_DELETING)
 
@@ -257,13 +292,17 @@ func TestReconciler(t *testing.T) {
 					Return(nil)
 
 				store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						State: workload.StateDeleted,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateDeleted,
+						},
 					})
 
-				store.EXPECT().View().Return(map[string]workload.Status{
+				store.EXPECT().View().Return(map[string]status.Status{
 					ins.GetId(): {
-						State: workload.StateDeleted,
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateDeleted,
+						},
 					},
 				})
 
@@ -277,22 +316,26 @@ func TestReconciler(t *testing.T) {
 			prep: func(
 				wlSvc *mock.MockWorkloadService,
 				insClient *mock.MockV1alpha1InstanceServiceClient,
-				store *mock.MockWorkloadStatusStore,
+				store *mock.MockStatusStore,
 			) {
 				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_DELETING)
 
 				wlSvc.EXPECT().
 					RemoveWorkload(mocky.Anything, ins.GetId()).
-					Return(status.New(codes.NotFound, "not found").Err())
+					Return(grpcstatus.New(codes.NotFound, "not found").Err())
 
 				store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						State: workload.StateDeleted,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateDeleted,
+						},
 					})
 
-				store.EXPECT().View().Return(map[string]workload.Status{
+				store.EXPECT().View().Return(map[string]status.Status{
 					ins.GetId(): {
-						State: workload.StateDeleted,
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateDeleted,
+						},
 					},
 				})
 
@@ -306,14 +349,14 @@ func TestReconciler(t *testing.T) {
 			prep: func(
 				wlSvc *mock.MockWorkloadService,
 				insClient *mock.MockV1alpha1InstanceServiceClient,
-				store *mock.MockWorkloadStatusStore,
+				store *mock.MockStatusStore,
 			) {
 				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_RUNNING)
 				wlSvc.EXPECT().
 					GetWorkloadHealth(mocky.Anything, ins.GetId()).
-					Return(workload.HealthStatusHealthy, nil)
+					Return(status.WorkloadHealthStatusHealthy, nil)
 
-				store.EXPECT().View().Return(map[string]workload.Status{})
+				store.EXPECT().View().Return(map[string]status.Status{})
 				insClient.EXPECT().ReceiveInstanceStatusReports(
 					mocky.Anything, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
 						Reports: []*instancev1alpha1.InstanceStatusReport{},
@@ -326,25 +369,29 @@ func TestReconciler(t *testing.T) {
 			prep: func(
 				wlSvc *mock.MockWorkloadService,
 				insClient *mock.MockV1alpha1InstanceServiceClient,
-				store *mock.MockWorkloadStatusStore,
+				store *mock.MockStatusStore,
 			) {
 				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_RUNNING)
 				wlSvc.EXPECT().
 					GetWorkloadHealth(mocky.Anything, ins.GetId()).
-					Return(workload.HealthStatusUnhealthy, nil)
+					Return(status.WorkloadHealthStatusUnhealthy, nil)
 
 				wlSvc.EXPECT().
 					RemoveWorkload(mocky.Anything, ins.GetId()).
 					Return(nil)
 
 				store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						State: workload.StateDeleted,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateDeleted,
+						},
 					})
 
-				store.EXPECT().View().Return(map[string]workload.Status{
+				store.EXPECT().View().Return(map[string]status.Status{
 					ins.GetId(): {
-						State: workload.StateDeleted,
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateDeleted,
+						},
 					},
 				})
 
@@ -358,25 +405,29 @@ func TestReconciler(t *testing.T) {
 			prep: func(
 				wlSvc *mock.MockWorkloadService,
 				insClient *mock.MockV1alpha1InstanceServiceClient,
-				store *mock.MockWorkloadStatusStore,
+				store *mock.MockStatusStore,
 			) {
 				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_RUNNING)
 				wlSvc.EXPECT().
 					GetWorkloadHealth(mocky.Anything, ins.GetId()).
-					Return(workload.HealthStatusUnhealthy, nil)
+					Return(status.WorkloadHealthStatusUnhealthy, nil)
 
 				wlSvc.EXPECT().
 					RemoveWorkload(mocky.Anything, ins.GetId()).
 					Return(nil)
 
 				store.EXPECT().
-					Update(ins.GetId(), workload.Status{
-						State: workload.StateDeleted,
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateDeleted,
+						},
 					})
 
-				store.EXPECT().View().Return(map[string]workload.Status{
+				store.EXPECT().View().Return(map[string]status.Status{
 					ins.GetId(): {
-						State: workload.StateDeleted,
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateDeleted,
+						},
 					},
 				})
 
@@ -400,7 +451,7 @@ func TestReconciler(t *testing.T) {
 			var (
 				ctx        = context.Background()
 				logger     = slog.New(slog.NewTextHandler(os.Stdout, nil))
-				mockStore  = mock.NewMockWorkloadStatusStore(t)
+				mockStore  = mock.NewMockStatusStore(t)
 				mockWlSvc  = mock.NewMockWorkloadService(t)
 				mockInsSvc = mock.NewMockV1alpha1InstanceServiceClient(t)
 				syncer     = newReconciler(

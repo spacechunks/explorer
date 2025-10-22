@@ -28,6 +28,7 @@ import (
 	"time"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
@@ -69,7 +70,7 @@ type reconciler struct {
 
 	insClient instancev1alpha1.InstanceServiceClient
 	wlService workload.Service
-	store     workload.StatusStore
+	store     status.Store
 	portAlloc *workload.PortAllocator
 
 	attempts map[string]uint
@@ -93,7 +94,7 @@ func newReconciler(
 	cfg reconcilerConfig,
 	insClient instancev1alpha1.InstanceServiceClient,
 	wlService workload.Service,
-	store workload.StatusStore,
+	store status.Store,
 	portAlloc *workload.PortAllocator,
 ) reconciler {
 	return reconciler{
@@ -177,7 +178,8 @@ func (r *reconciler) tick(ctx context.Context) {
 			}
 			continue
 		default:
-			r.logger.InfoContext(ctx, "skipping instance", "state", ins.GetState()) // TODO: debug
+			// TODO: if creation failed remove pod
+			//r.logger.InfoContext(ctx, "skipping instance", "state", ins.GetState()) // TODO: debug
 			continue
 		}
 	}
@@ -188,11 +190,16 @@ func (r *reconciler) tick(ctx context.Context) {
 	)
 
 	for k, v := range statuses {
-		r.logger.InfoContext(ctx, "instance status", "instance_id", k, "state", v.State, "port", v.Port)
+		if v.WorkloadStatus == nil {
+			continue
+		}
+
+		wst := v.WorkloadStatus
+
 		items = append(items, &instancev1alpha1.InstanceStatusReport{
 			InstanceId: k,
-			Port:       uint32(v.Port),
-			State:      instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(v.State)]),
+			Port:       uint32(wst.Port),
+			State:      instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(wst.State)]),
 		})
 	}
 
@@ -204,8 +211,17 @@ func (r *reconciler) tick(ctx context.Context) {
 		return
 	}
 
+	// we deliberately remove statuses from the store AFTER sending the
+	// reports to the control plane succeeds. this is, so we don't have
+	// inconsistencies in the control plane.
 	for k, v := range statuses {
-		if v.State == workload.StateDeleted || v.State == workload.StateCreationFailed {
+		if v.WorkloadStatus == nil {
+			continue
+		}
+
+		wst := v.WorkloadStatus
+
+		if wst.State == status.WorkloadStateDeleted || wst.State == status.WorkloadStateCreationFailed {
 			r.store.Del(k)
 		}
 	}
@@ -229,22 +245,28 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 	// successfully, because the state update did not reach
 	// the control plane yet or a bug in the control plane does
 	// not update states correctly.
-	if status := r.store.Get(id); status != nil && status.State != workload.StateCreating {
+	if st := r.store.Get(id); st != nil &&
+		st.WorkloadStatus != nil &&
+		st.WorkloadStatus.State != status.WorkloadStateCreating {
 		r.logger.InfoContext(ctx, "skip")
 		return nil
 	}
 
 	if attempt >= r.cfg.MaxAttempts {
-		r.store.Update(id, workload.Status{
-			State: workload.StateCreationFailed,
+		r.store.Update(id, status.Status{
+			WorkloadStatus: &status.WorkloadStatus{
+				State: status.WorkloadStateCreationFailed,
+			},
 		})
 		return errMaxAttemptsReached
 	}
 
 	attempt++
 
-	r.store.Update(id, workload.Status{
-		State: workload.StateCreating,
+	r.store.Update(id, status.Status{
+		WorkloadStatus: &status.WorkloadStatus{
+			State: status.WorkloadStateCreating,
+		},
 	})
 
 	port, err := r.portAlloc.Allocate()
@@ -255,8 +277,10 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 	// port needs to be updated BEFORE calling RunWorkload
 	// so netglue can be aware of the host port that has been
 	// allocated.
-	r.store.Update(id, workload.Status{
-		Port: port,
+	r.store.Update(id, status.Status{
+		WorkloadStatus: &status.WorkloadStatus{
+			Port: port,
+		},
 	})
 
 	var (
@@ -301,8 +325,10 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 		return fmt.Errorf("run workload: %w", err)
 	}
 
-	r.store.Update(id, workload.Status{
-		State: workload.StateRunning,
+	r.store.Update(id, status.Status{
+		WorkloadStatus: &status.WorkloadStatus{
+			State: status.WorkloadStateRunning,
+		},
 	})
 	return nil
 }
@@ -310,16 +336,20 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 func (r *reconciler) handleInstanceDeleting(ctx context.Context, instance *instancev1alpha1.Instance) error {
 	if err := r.wlService.RemoveWorkload(ctx, instance.GetId()); err != nil {
 		if isNotFound(err) {
-			r.store.Update(instance.GetId(), workload.Status{
-				State: workload.StateDeleted,
+			r.store.Update(instance.GetId(), status.Status{
+				WorkloadStatus: &status.WorkloadStatus{
+					State: status.WorkloadStateDeleted,
+				},
 			})
 			return nil
 		}
 		return fmt.Errorf("remove workload: %w", err)
 	}
 
-	r.store.Update(instance.GetId(), workload.Status{
-		State: workload.StateDeleted,
+	r.store.Update(instance.GetId(), status.Status{
+		WorkloadStatus: &status.WorkloadStatus{
+			State: status.WorkloadStateDeleted,
+		},
 	})
 
 	return nil
@@ -331,7 +361,7 @@ func (r *reconciler) handleInstanceRunning(ctx context.Context, instance *instan
 		return fmt.Errorf("get workload health: %w", err)
 	}
 
-	if health == workload.HealthStatusHealthy {
+	if health == status.WorkloadHealthStatusHealthy {
 		return nil
 	}
 
@@ -339,16 +369,20 @@ func (r *reconciler) handleInstanceRunning(ctx context.Context, instance *instan
 		// can happen if control plane update fails, but workload has already been deleted.
 		// this also enables manual deletion of pods, can come in handy when debugging.
 		if isNotFound(err) {
-			r.store.Update(instance.GetId(), workload.Status{
-				State: workload.StateDeleted,
+			r.store.Update(instance.GetId(), status.Status{
+				WorkloadStatus: &status.WorkloadStatus{
+					State: status.WorkloadStateDeleted,
+				},
 			})
 			return nil
 		}
 		return fmt.Errorf("remove workload: %w", err)
 	}
 
-	r.store.Update(instance.GetId(), workload.Status{
-		State: workload.StateDeleted,
+	r.store.Update(instance.GetId(), status.Status{
+		WorkloadStatus: &status.WorkloadStatus{
+			State: status.WorkloadStateDeleted,
+		},
 	})
 
 	return nil
