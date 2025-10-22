@@ -164,7 +164,13 @@ func readListener(t *testing.T) []*listenerv3.Listener {
 
 // createListeners creates listeners on the envoy side by calling ProxyServiceClient.CreateListeners
 // and returning the expected listeners for later checks.
-func createListeners(t *testing.T, ctx context.Context, workloadID string, ip string, client proxyv1alpha1.ProxyServiceClient) []*listenerv3.Listener {
+func createListeners(
+	t *testing.T,
+	ctx context.Context,
+	workloadID string,
+	ip string,
+	client proxyv1alpha1.ProxyServiceClient,
+) []*listenerv3.Listener {
 	_, err := client.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
 		WorkloadID: workloadID,
 		Ip:         ip,
