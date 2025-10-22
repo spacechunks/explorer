@@ -12,7 +12,7 @@ import (
 	routev3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	routerv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
 	httpconnmgr "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
-	xds2 "github.com/spacechunks/explorer/platformd/proxy/xds"
+	"github.com/spacechunks/explorer/platformd/proxy/xds"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -35,18 +35,18 @@ func WorkloadResources(
 	httpListenerAddr netip.AddrPort,
 	tcpListenerAddr netip.AddrPort,
 	originalDstClusterName string,
-) (xds2.ResourceGroup, error) {
+) (xds.ResourceGroup, error) {
 	httpLis, err := httpListener(workloadID, httpListenerAddr, originalDstClusterName)
 	if err != nil {
-		return xds2.ResourceGroup{}, fmt.Errorf("create http listener: %w", err)
+		return xds.ResourceGroup{}, fmt.Errorf("create http listener: %w", err)
 	}
 
 	tcpLis, err := tcpListener(workloadID, tcpListenerAddr, originalDstClusterName)
 	if err != nil {
-		return xds2.ResourceGroup{}, fmt.Errorf("create tcp listener: %w", err)
+		return xds.ResourceGroup{}, fmt.Errorf("create tcp listener: %w", err)
 	}
 
-	return xds2.ResourceGroup{
+	return xds.ResourceGroup{
 		Listeners: []*listenerv3.Listener{
 			tcpLis,
 			httpLis,
@@ -55,11 +55,15 @@ func WorkloadResources(
 }
 
 func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*listenerv3.Listener, error) {
-	tcpLis, err := xds2.TCPProxyListener(xds2.ListenerConfig{
+	// listener names have to be unique, otherwise the listener will be
+	// removed from existing resources when applied. that's why it is
+	// extremely important to use the workloadID in the listeners name
+	// to make it unique.
+	tcpLis, err := xds.TCPProxyListener(xds.ListenerConfig{
 		ListenerName: "tcp-" + workloadID,
 		Addr:         addr,
 		Proto:        corev3.SocketAddress_TCP,
-	}, xds2.TCPProxyConfig{
+	}, xds.TCPProxyConfig{
 		StatPrefix:  workloadID,
 		ClusterName: clusterName,
 	})
@@ -67,7 +71,7 @@ func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*l
 		return nil, fmt.Errorf("create listener: %w", err)
 	}
 
-	dst, err := xds2.OriginalDstListenerFilter()
+	dst, err := xds.OriginalDstListenerFilter()
 	if err != nil {
 		return nil, fmt.Errorf("original dst filter: %v", err)
 	}
@@ -77,7 +81,11 @@ func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*l
 }
 
 func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*listenerv3.Listener, error) {
-	httpLis := xds2.CreateListener(xds2.ListenerConfig{
+	// listener names have to be unique, otherwise the listener will be
+	// removed from existing resources when applied. that's why it is
+	// extremely important to use the workloadID in the listeners name
+	// to make it unique.
+	httpLis := xds.CreateListener(xds.ListenerConfig{
 		ListenerName: "http-" + workloadID,
 		StatPrefix:   workloadID,
 		Addr:         addr,
@@ -107,7 +115,7 @@ func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*
 		},
 	}
 
-	dst, err := xds2.OriginalDstListenerFilter()
+	dst, err := xds.OriginalDstListenerFilter()
 	if err != nil {
 		return nil, fmt.Errorf("original dst filter: %v", err)
 	}
@@ -117,7 +125,7 @@ func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*
 }
 
 func httpConnenctionManager(workloadID string, clusterName string) (*httpconnmgr.HttpConnectionManager, error) {
-	alog, err := xds2.JSONStdoutAccessLog(nil)
+	alog, err := xds.JSONStdoutAccessLog(nil)
 	if err != nil {
 		return nil, fmt.Errorf("create access log: %w", err)
 	}

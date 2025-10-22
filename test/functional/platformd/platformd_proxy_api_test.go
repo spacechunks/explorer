@@ -44,43 +44,30 @@ import (
 
 func TestCreateListener(t *testing.T) {
 	var (
-		ctx  = context.Background()
-		wlID = "abc"
-		ip   = "127.0.0.1"
+		ctx = context.Background()
+		c   = proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
 	)
 
 	fixture.RunProxyAPIFixtures(ctx, t)
 
-	c := proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
-
-	_, err := c.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
-		WorkloadID: wlID,
-		Ip:         ip,
-	})
-	require.NoError(t, err)
+	var (
+		// ips used here have to be present on some interface on the machine the
+		// tests are being executed.
+		abcListeners = createListeners(t, ctx, "abc", "127.0.0.1", c)
+		defListeners = createListeners(t, ctx, "def", "127.0.0.2", c)
+	)
 
 	// FIXME(yannic): implement some sort of WaitReady function into
 	//                proxy package, that blocks until envoy has connected.
 	time.Sleep(10 * time.Second)
 
-	dnsRG, err := proxy.DNSListenerResourceGroup(
-		proxy.DNSClusterName,
-		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.DNSPort)),
-		fixture.DNSUpstream,
-	)
-	require.NoError(t, err)
-
-	wlRG, err := proxy.WorkloadResources(wlID,
-		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.HTTPPort)),
-		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.TCPPort)),
-		proxy.OriginalDstClusterName,
-	)
-	require.NoError(t, err)
-
 	var (
 		actual   = readListener(t)
-		expected = append(dnsRG.Listeners, wlRG.Listeners...)
+		expected = make([]*listenerv3.Listener, 0)
 	)
+
+	expected = append(expected, abcListeners...)
+	expected = append(expected, defListeners...)
 
 	// we have to sort both arrays, otherwise the Diff later
 	// will fail, because items in the slices are not in the ´
@@ -95,7 +82,7 @@ func TestCreateListener(t *testing.T) {
 
 	d := cmp.Diff(expected, actual, protocmp.Transform())
 	if d != "" {
-		t.Fatal(d)
+		t.Fatalf("diff (-want +got):\n%s", d)
 	}
 }
 
@@ -103,20 +90,14 @@ func TestDeleteListener(t *testing.T) {
 	var (
 		ctx  = context.Background()
 		wlID = "abc"
-		ip   = "127.0.0.1"
+		c    = proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
 	)
 
 	fixture.RunProxyAPIFixtures(ctx, t)
 
-	c := proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
+	createListeners(t, ctx, wlID, "127.0.0.1", c)
 
-	_, err := c.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
-		WorkloadID: wlID,
-		Ip:         ip,
-	})
-	require.NoError(t, err)
-
-	_, err = c.DeleteListeners(ctx, &proxyv1alpha1.DeleteListenersRequest{
+	_, err := c.DeleteListeners(ctx, &proxyv1alpha1.DeleteListenersRequest{
 		WorkloadID: wlID,
 	})
 	require.NoError(t, err)
@@ -179,4 +160,38 @@ func readListener(t *testing.T) []*listenerv3.Listener {
 		ret = append(ret, &lis)
 	}
 	return ret
+}
+
+// createListeners creates listeners on the envoy side by calling ProxyServiceClient.CreateListeners
+// and returning the expected listeners for later checks.
+func createListeners(
+	t *testing.T,
+	ctx context.Context,
+	workloadID string,
+	ip string,
+	client proxyv1alpha1.ProxyServiceClient,
+) []*listenerv3.Listener {
+	_, err := client.CreateListeners(ctx, &proxyv1alpha1.CreateListenersRequest{
+		WorkloadID: workloadID,
+		Ip:         ip,
+	})
+	require.NoError(t, err)
+
+	dnsRG, err := proxy.DNSListenerResourceGroup(
+		workloadID,
+		proxy.DNSClusterName,
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.DNSPort)),
+		fixture.DNSUpstream,
+	)
+	require.NoError(t, err)
+
+	wlRG, err := proxy.WorkloadResources(
+		workloadID,
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.HTTPPort)),
+		netip.MustParseAddrPort(fmt.Sprintf("%s:%d", ip, proxy.TCPPort)),
+		proxy.OriginalDstClusterName,
+	)
+	require.NoError(t, err)
+
+	return append(dnsRG.Listeners, wlRG.Listeners...)
 }

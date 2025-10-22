@@ -108,7 +108,7 @@ functests-database:
 functests-platformd:
 	$(RUN) $(SUDO) FUNCTESTS_ENVOY_IMAGE=docker.io/envoyproxy/envoy:v1.31.4 \
                    FUNCTESTS_ENVOY_CONFIG=../../../dev/platformd/envoy-xds.yaml \
-				   go test -v ./test/functional/platformd
+				   go test -v ./test/functional/platformd $(ARGS)
 
 .PHONY: functests-shared
 functests-shared: $(TEST_IMG)

@@ -7,7 +7,7 @@ import (
 	"net/netip"
 
 	clusterv3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	xds2 "github.com/spacechunks/explorer/platformd/proxy/xds"
+	"github.com/spacechunks/explorer/platformd/proxy/xds"
 )
 
 type Service interface {
@@ -19,10 +19,10 @@ type Service interface {
 type proxyService struct {
 	logger      *slog.Logger
 	cfg         Config
-	resourceMap xds2.Map
+	resourceMap xds.Map
 }
 
-func NewService(logger *slog.Logger, cfg Config, resourceMap xds2.Map) Service {
+func NewService(logger *slog.Logger, cfg Config, resourceMap xds.Map) Service {
 	return &proxyService{
 		logger:      logger,
 		cfg:         cfg,
@@ -38,7 +38,7 @@ func NewService(logger *slog.Logger, cfg Config, resourceMap xds2.Map) Service {
 //   - dns cluster where dns traffic from all workloads will be
 //     routed to.
 func (s *proxyService) ApplyGlobalResources(ctx context.Context) error {
-	rg := xds2.ResourceGroup{
+	rg := xds.ResourceGroup{
 		Clusters: []*clusterv3.Cluster{
 			DNSClusterResource(),
 			OriginalDstClusterResource(),
@@ -63,12 +63,17 @@ func (s *proxyService) CreateListeners(ctx context.Context, workloadID string, a
 		return fmt.Errorf("create workload resources: %w", err)
 	}
 
-	drg, err := DNSListenerResourceGroup(DNSClusterName, netip.AddrPortFrom(addr, DNSPort), s.cfg.DNSUpstream)
+	drg, err := DNSListenerResourceGroup(
+		workloadID,
+		DNSClusterName,
+		netip.AddrPortFrom(addr, DNSPort),
+		s.cfg.DNSUpstream,
+	)
 	if err != nil {
 		return fmt.Errorf("create dns resources: %w", err)
 	}
 
-	merged := xds2.ResourceGroup{}
+	merged := xds.ResourceGroup{}
 	merged.Listeners = append(wrg.Listeners, drg.Listeners...)
 	merged.Clusters = append(wrg.Clusters, drg.Clusters...)
 	merged.CLAS = append(wrg.CLAS, drg.CLAS...)
