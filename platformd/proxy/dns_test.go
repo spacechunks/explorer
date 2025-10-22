@@ -60,13 +60,14 @@ func TestDNSClusterConfig(t *testing.T) {
 
 func TestDNSResourceGroupConfig(t *testing.T) {
 	var (
+		wlID         = "abc"
 		clusterName  = "test-dns"
 		listenerAddr = netip.MustParseAddrPort("127.0.0.1:9053")
 		upstreamAddr = netip.MustParseAddrPort("127.0.0.3:53")
 
 		expectedUDPListener = fmt.Sprintf(`
 {
-  "name":  "dns_udp",
+  "name":  "dns_udp-%s",
   "address":  {
     "socketAddress":  {
       "protocol": "UDP",
@@ -102,11 +103,11 @@ func TestDNSResourceGroupConfig(t *testing.T) {
       "maxRxDatagramSize": "9000"
     }
   }
-}`, listenerAddr.Addr().String(), listenerAddr.Port())
+}`, wlID, listenerAddr.Addr().String(), listenerAddr.Port())
 
 		expectedTCPListener = fmt.Sprintf(`
 {
-  "name":  "dns_tcp",
+  "name":  "dns_tcp-%s",
   "address":  {
     "socketAddress":  {
       "address": "%s",
@@ -127,11 +128,11 @@ func TestDNSResourceGroupConfig(t *testing.T) {
       ]
     }
   ]
-}`, listenerAddr.Addr().String(), listenerAddr.Port())
+}`, wlID, listenerAddr.Addr().String(), listenerAddr.Port())
 
 		expectedUDPCLA = fmt.Sprintf(`
 {
-  "clusterName": "test-dns",
+  "clusterName": "test-dns-%s",
   "endpoints": [
     {
       "lbEndpoints": [
@@ -149,11 +150,11 @@ func TestDNSResourceGroupConfig(t *testing.T) {
       ]
     }
   ]
-}`, upstreamAddr.Addr().String(), upstreamAddr.Port())
+}`, wlID, upstreamAddr.Addr().String(), upstreamAddr.Port())
 
 		expectedTCPCLA = fmt.Sprintf(`
 {
-  "clusterName": "test-dns",
+  "clusterName": "test-dns-%s",
   "endpoints": [
     {
       "lbEndpoints": [
@@ -170,7 +171,7 @@ func TestDNSResourceGroupConfig(t *testing.T) {
       ]
     }
   ]
-}`, upstreamAddr.Addr().String(), upstreamAddr.Port())
+}`, wlID, upstreamAddr.Addr().String(), upstreamAddr.Port())
 	)
 
 	udpLis := &listenerv3.Listener{}
@@ -190,7 +191,7 @@ func TestDNSResourceGroupConfig(t *testing.T) {
 		CLAS:      []*endpointv3.ClusterLoadAssignment{udpCLA, tcpCLA},
 	}
 
-	actualRG, err := proxy2.DNSListenerResourceGroup(clusterName, listenerAddr, upstreamAddr)
+	actualRG, err := proxy2.DNSListenerResourceGroup("", clusterName, listenerAddr, upstreamAddr)
 	require.NoError(t, err)
 
 	d := cmp.Diff(expectedRG, actualRG, protocmp.Transform())

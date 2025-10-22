@@ -66,6 +66,7 @@ func TestCreateListeners(t *testing.T) {
 	require.NoError(t, err)
 
 	drg, err := proxy2.DNSListenerResourceGroup(
+		wlID,
 		proxy2.DNSClusterName,
 		netip.AddrPortFrom(addr, proxy2.DNSPort),
 		dnsUpstream,
