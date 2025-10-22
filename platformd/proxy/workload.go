@@ -55,6 +55,10 @@ func WorkloadResources(
 }
 
 func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*listenerv3.Listener, error) {
+	// listener names have to be unique, otherwise the listener will be
+	// removed from existing resources when applied. that's why it is
+	// extremely important to use the workloadID in the listeners name
+	// to make it unique.
 	tcpLis, err := xds2.TCPProxyListener(xds2.ListenerConfig{
 		ListenerName: "tcp-" + workloadID,
 		Addr:         addr,
@@ -77,6 +81,10 @@ func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*l
 }
 
 func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*listenerv3.Listener, error) {
+	// listener names have to be unique, otherwise the listener will be
+	// removed from existing resources when applied. that's why it is
+	// extremely important to use the workloadID in the listeners name
+	// to make it unique.
 	httpLis := xds2.CreateListener(xds2.ListenerConfig{
 		ListenerName: "http-" + workloadID,
 		StatPrefix:   workloadID,

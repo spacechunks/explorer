@@ -34,15 +34,16 @@ func DNSClusterResource() *clusterv3.Cluster {
 }
 
 func DNSListenerResourceGroup(
+	workloadID string,
 	clusterName string,
 	listenerAddr netip.AddrPort,
 	upstreamAddr netip.AddrPort,
 ) (xds2.ResourceGroup, error) {
-	udpCLA, udpListener, err := dnsUDPResources(clusterName, listenerAddr, upstreamAddr)
+	udpCLA, udpListener, err := dnsUDPResources(workloadID, clusterName, listenerAddr, upstreamAddr)
 	if err != nil {
 		return xds2.ResourceGroup{}, fmt.Errorf("udp resources: %w", err)
 	}
-	tcpCLA, tcpListener, err := dnsTCPResources(clusterName, listenerAddr, upstreamAddr)
+	tcpCLA, tcpListener, err := dnsTCPResources(workloadID, clusterName, listenerAddr, upstreamAddr)
 	if err != nil {
 		return xds2.ResourceGroup{}, fmt.Errorf("tcp resources: %w", err)
 	}
@@ -53,13 +54,17 @@ func DNSListenerResourceGroup(
 	}, nil
 }
 
-func dnsTCPResources(clusterName string, listenerAddr, upstreamAddr netip.AddrPort) (
+func dnsTCPResources(workloadID string, clusterName string, listenerAddr, upstreamAddr netip.AddrPort) (
 	*endpointv3.ClusterLoadAssignment,
 	*listenerv3.Listener,
 	error,
 ) {
+	// listener names have to be unique, otherwise the listener will be
+	// removed from existing resources when applied. that's why it is
+	// extremely important to use the workloadID in the listeners name
+	// to make it unique.
 	l, err := xds2.TCPProxyListener(xds2.ListenerConfig{
-		ListenerName: "dns_tcp",
+		ListenerName: "dns_tcp-" + workloadID,
 		Addr:         listenerAddr,
 		Proto:        corev3.SocketAddress_TCP,
 	}, xds2.TCPProxyConfig{
@@ -73,7 +78,7 @@ func dnsTCPResources(clusterName string, listenerAddr, upstreamAddr netip.AddrPo
 	return xds2.CreateCLA(clusterName, upstreamAddr, corev3.SocketAddress_TCP), l, nil
 }
 
-func dnsUDPResources(clusterName string, listenerAddr, upstreamAddr netip.AddrPort) (
+func dnsUDPResources(workloadID string, clusterName string, listenerAddr, upstreamAddr netip.AddrPort) (
 	*endpointv3.ClusterLoadAssignment,
 	*listenerv3.Listener,
 	error,
@@ -111,8 +116,12 @@ func dnsUDPResources(clusterName string, listenerAddr, upstreamAddr netip.AddrPo
 		return nil, nil, fmt.Errorf("filter to any: %w", err)
 	}
 
+	// listener names have to be unique, otherwise the listener will be
+	// removed from existing resources when applied. that's why it is
+	// extremely important to use the workloadID in the listeners name
+	// to make it unique.
 	l := xds2.CreateListener(xds2.ListenerConfig{
-		ListenerName: "dns_udp",
+		ListenerName: "dns_udp-" + workloadID,
 		Addr:         listenerAddr,
 		Proto:        corev3.SocketAddress_UDP,
 	})

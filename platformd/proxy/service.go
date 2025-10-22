@@ -63,7 +63,12 @@ func (s *proxyService) CreateListeners(ctx context.Context, workloadID string, a
 		return fmt.Errorf("create workload resources: %w", err)
 	}
 
-	drg, err := DNSListenerResourceGroup(DNSClusterName, netip.AddrPortFrom(addr, DNSPort), s.cfg.DNSUpstream)
+	drg, err := DNSListenerResourceGroup(
+		workloadID,
+		DNSClusterName,
+		netip.AddrPortFrom(addr, DNSPort),
+		s.cfg.DNSUpstream,
+	)
 	if err != nil {
 		return fmt.Errorf("create dns resources: %w", err)
 	}
