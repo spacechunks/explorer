@@ -59,11 +59,11 @@ func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*l
 	// removed from existing resources when applied. that's why it is
 	// extremely important to use the workloadID in the listeners name
 	// to make it unique.
-	tcpLis, err := xds2.TCPProxyListener(xds2.ListenerConfig{
+	tcpLis, err := xds.TCPProxyListener(xds.ListenerConfig{
 		ListenerName: "tcp-" + workloadID,
 		Addr:         addr,
 		Proto:        corev3.SocketAddress_TCP,
-	}, xds2.TCPProxyConfig{
+	}, xds.TCPProxyConfig{
 		StatPrefix:  workloadID,
 		ClusterName: clusterName,
 	})
@@ -71,7 +71,7 @@ func tcpListener(workloadID string, addr netip.AddrPort, clusterName string) (*l
 		return nil, fmt.Errorf("create listener: %w", err)
 	}
 
-	dst, err := xds2.OriginalDstListenerFilter()
+	dst, err := xds.OriginalDstListenerFilter()
 	if err != nil {
 		return nil, fmt.Errorf("original dst filter: %v", err)
 	}
@@ -85,7 +85,7 @@ func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*
 	// removed from existing resources when applied. that's why it is
 	// extremely important to use the workloadID in the listeners name
 	// to make it unique.
-	httpLis := xds2.CreateListener(xds2.ListenerConfig{
+	httpLis := xds.CreateListener(xds.ListenerConfig{
 		ListenerName: "http-" + workloadID,
 		StatPrefix:   workloadID,
 		Addr:         addr,
@@ -115,7 +115,7 @@ func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*
 		},
 	}
 
-	dst, err := xds2.OriginalDstListenerFilter()
+	dst, err := xds.OriginalDstListenerFilter()
 	if err != nil {
 		return nil, fmt.Errorf("original dst filter: %v", err)
 	}
@@ -125,7 +125,7 @@ func httpListener(workloadID string, addr netip.AddrPort, clusterName string) (*
 }
 
 func httpConnenctionManager(workloadID string, clusterName string) (*httpconnmgr.HttpConnectionManager, error) {
-	alog, err := xds2.JSONStdoutAccessLog(nil)
+	alog, err := xds.JSONStdoutAccessLog(nil)
 	if err != nil {
 		return nil, fmt.Errorf("create access log: %w", err)
 	}
