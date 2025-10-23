@@ -251,6 +251,14 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 	// TODO: check if checkpoint is already present and then only build image and push
 	location := fmt.Sprintf("%s/%s", s.cfg.CheckpointFileDir, id)
 
+	// immediately checkpointing after canceling the attach stream in waitContainerReady
+	// leads to this error consistently appearing:
+	//
+	//		CRIU checkpointing failed -52: check CRIU logfile <path>: Invalid exchange\n : exit status 1
+	//
+	// after some trial and error, it appears that waiting 4 seconds fixes this problem.
+	time.Sleep(4 * time.Second)
+
 	s.logger.InfoContext(ctx, "checkpointing container", "checkpoint_id", id, "container_id", ctrID)
 
 	if _, err := s.criService.CheckpointContainer(ctx, &runtimev1.CheckpointContainerRequest{
