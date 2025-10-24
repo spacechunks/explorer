@@ -501,15 +501,15 @@ func TestCreateFlavorVersion(t *testing.T) {
 	}{
 		{
 			name:       "create initial version",
-			newVersion: fixture.FlavorVersion(t),
+			newVersion: fixture.FlavorVersion(),
 			diff: chunk.FlavorVersionDiff{
-				Added: fixture.FlavorVersion(t).FileHashes,
+				Added: fixture.FlavorVersion().FileHashes,
 			},
 		},
 		{
 			name:        "create second version with changed files",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion(t)),
-			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
+			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
 					// plugins/myplugin/config.json not present -> its removed
@@ -550,14 +550,14 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version already exists",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion(t)),
-			newVersion:  fixture.FlavorVersion(t),
+			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			newVersion:  fixture.FlavorVersion(),
 			err:         apierrs.ErrFlavorVersionExists.GRPCStatus().Err(),
 		},
 		{
 			name:        "version hash mismatch",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion(t)),
-			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
+			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
 				v.Version = "v2"
 				v.Hash = "wrong-hash"
 			}),
@@ -565,8 +565,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "duplicate version",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion(t)),
-			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
+			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
 				v.Version = "v2"
 			}),
 			err: apierrs.FlavorVersionDuplicate("v1").GRPCStatus().Err(),

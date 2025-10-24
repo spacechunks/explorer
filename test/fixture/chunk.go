@@ -25,7 +25,6 @@ import (
 	"net/netip"
 	"sort"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/cbergoon/merkletree"
@@ -74,7 +73,8 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 		ID:   "019532bb-5582-7608-9a08-bb742a8174aa",
 		Name: "flavorABC",
 		Versions: []chunk.FlavorVersion{
-			FlavorVersion(nil, func(v *chunk.FlavorVersion) {
+			// the latest flavor has to be first
+			FlavorVersion(func(v *chunk.FlavorVersion) {
 				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
@@ -84,7 +84,7 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 					},
 				}
 			}),
-			FlavorVersion(nil, func(v *chunk.FlavorVersion) {
+			FlavorVersion(func(v *chunk.FlavorVersion) {
 				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
 				v.Version = "v1"
 			}),
@@ -100,7 +100,7 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 	return flavor
 }
 
-func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.FlavorVersion {
+func FlavorVersion(mod ...func(v *chunk.FlavorVersion)) chunk.FlavorVersion {
 	version := chunk.FlavorVersion{
 		Version:    "v1",
 		ChangeHash: "kkkkkkkkkkkkkkkk",
@@ -123,8 +123,8 @@ func FlavorVersion(t *testing.T, mod ...func(v *chunk.FlavorVersion)) chunk.Flav
 		CreatedAt:     time.Time{},
 	}
 
-	for _, mod := range mod {
-		mod(&version)
+	for _, fn := range mod {
+		fn(&version)
 	}
 
 	sort.Slice(version.FileHashes, func(i, j int) bool {

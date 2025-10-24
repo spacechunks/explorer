@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -189,9 +190,17 @@ func (p *Postgres) CreateFlavor(t *testing.T, chunkID string, f *chunk.Flavor, o
 	createdFlavor.Versions = tmp
 
 	if opts.WithFlavorVersions {
+		// insert versions in reverse order to ensure that
+		// the latest version actually has the most recent timestamp.
+		// since the latest version is the first in the list, inserting
+		// without reversing the slice would mean that the latest
+		// version has the oldest timestamp and the oldest version has
+		// the most recent timestamp.
+		slices.Reverse(createdFlavor.Versions)
 		for i := range createdFlavor.Versions {
 			p.CreateFlavorVersion(t, createdFlavor.ID, &createdFlavor.Versions[i])
 		}
+		slices.Reverse(createdFlavor.Versions) // reverse again to our desired ordering latest -> oldest
 	}
 
 	*f = createdFlavor

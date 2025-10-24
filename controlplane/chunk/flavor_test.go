@@ -98,8 +98,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 	}{
 		{
 			name:        "works",
-			prevVersion: fixture.FlavorVersion(t),
-			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
+			prevVersion: fixture.FlavorVersion(),
+			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
 					// plugins/myplugin/config.json not present -> its removed
@@ -162,8 +162,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version hash mismatch",
-			prevVersion: fixture.FlavorVersion(t),
-			newVersion: fixture.FlavorVersion(t, func(v *chunk.FlavorVersion) {
+			prevVersion: fixture.FlavorVersion(),
+			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
 				v.Hash = "some-not-matching-hash"
 				v.FileHashes = []file.Hash{
 					// plugins/myplugin/config.json not present -> its removed
@@ -202,8 +202,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version already exists",
-			prevVersion: fixture.FlavorVersion(t),
-			newVersion:  fixture.FlavorVersion(t),
+			prevVersion: fixture.FlavorVersion(),
+			newVersion:  fixture.FlavorVersion(),
 			prep: func(
 				repo *mock.MockChunkRepository,
 				newVersion chunk.FlavorVersion,
@@ -217,8 +217,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version is duplicate",
-			prevVersion: fixture.FlavorVersion(t),
-			newVersion:  fixture.FlavorVersion(t),
+			prevVersion: fixture.FlavorVersion(),
+			newVersion:  fixture.FlavorVersion(),
 			prep: func(
 				repo *mock.MockChunkRepository,
 				newVersion chunk.FlavorVersion,
@@ -232,7 +232,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					FlavorVersionByHash(mocky.Anything, newVersion.Hash).
 					Return(newVersion.Hash, nil)
 			},
-			err: apierrs.FlavorVersionDuplicate(fixture.FlavorVersion(t).Version),
+			err: apierrs.FlavorVersionDuplicate(fixture.FlavorVersion().Version),
 		},
 	}
 	for _, tt := range tests {
