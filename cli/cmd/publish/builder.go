@@ -156,6 +156,12 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 			flavor: local,
 			err:    fmt.Errorf("error while reading change set: %w", err),
 		}
+		return
+	}
+
+	progReader := &progressReader{
+		size:  float64(len(data)),
+		inner: bytes.NewReader(data),
 	}
 
 	digest := sha256.Sum256(data)
@@ -172,7 +178,7 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 		return
 	}
 
-	req, err := http.NewRequest(http.MethodPut, uploadURLResp.Url, bytes.NewReader(data))
+	req, err := http.NewRequest(http.MethodPut, uploadURLResp.Url, progReader)
 	if err != nil {
 		b.updates <- buildUpdate{
 			flavor: local,
@@ -181,14 +187,23 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 		return
 	}
 
+	progReader.OnProgress(func(progress uint) {
+		b.updates <- buildUpdate{
+			flavor:         local,
+			uploadProgress: &progress,
+		}
+	})
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		b.updates <- buildUpdate{
 			flavor: local,
 			err:    fmt.Errorf("error while uploading: %w", err),
 		}
+		progReader.StopReporting()
 		return
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -204,11 +219,6 @@ func (b builder) build(ctx context.Context, chunkID string, local localFlavor, c
 		fmt.Println(string(body))
 		b.updates <- upd
 		return
-	}
-
-	b.updates <- buildUpdate{
-		flavor:         local,
-		uploadProgress: ptr.Pointer(uint(0)),
 	}
 
 	if _, err := b.client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{
