@@ -100,11 +100,6 @@ func newPlan(cfg publishConfig, chunk *chunkv1alpha1.Chunk) (plan, error) {
 			prevVersion = remote.Versions[0] // the latest one is always first
 		}
 
-		fmt.Println(prevVersion.Version)
-		for _, fh := range prevVersion.FileHashes {
-			fmt.Println(fh)
-		}
-
 		added, changed, removed := local.fileDiff(prevVersion.FileHashes)
 
 		p.changedFlavors = append(p.changedFlavors, changedFlavor{
