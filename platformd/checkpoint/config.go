@@ -33,4 +33,5 @@ type Config struct {
 	ListenAddr               string
 	StatusRetentionPeriod    time.Duration
 	ContainerReadyTimeout    time.Duration
+	WaitAfterServerInit      time.Duration
 }

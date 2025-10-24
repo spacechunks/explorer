@@ -254,10 +254,14 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 	// immediately checkpointing after canceling the attach stream in waitContainerReady
 	// leads to this error consistently appearing:
 	//
-	//		CRIU checkpointing failed -52: check CRIU logfile <path>: Invalid exchange\n : exit status 1
+	//		Error (criu/sk-inet.c:191): inet: Connected TCP socket, consider using --tcp-established option.
 	//
-	// after some trial and error, it appears that waiting 4 seconds fixes this problem.
-	time.Sleep(4 * time.Second)
+	// the problem is, that there seems to be an open tcp connection which blocks criu
+	// from checkpointing. i don't know where this is coming from, my workaround for
+	// now is to just wait a bit.
+	// FIXME: possible solution could be to cut internet access after the server has
+	// initialized.
+	time.Sleep(s.cfg.WaitAfterServerInit)
 
 	s.logger.InfoContext(ctx, "checkpointing container", "checkpoint_id", id, "container_id", ctrID)
 
