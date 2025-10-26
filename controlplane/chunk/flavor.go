@@ -111,14 +111,14 @@ func (s *svc) CreateFlavorVersion(
 		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrFlavorVersionExists
 	}
 
-	dupVersion, err := s.repo.FlavorVersionByHash(ctx, version.Hash)
-	if err != nil {
-		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("flavor version by hash: %w", err)
-	}
-
-	if dupVersion != "" {
-		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.FlavorVersionDuplicate(dupVersion)
-	}
+	//dupVersion, err := s.repo.FlavorVersionByHash(ctx, version.Hash)
+	//if err != nil {
+	//	return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("flavor version by hash: %w", err)
+	//}
+	//
+	//if dupVersion != "" {
+	//	return FlavorVersion{}, FlavorVersionDiff{}, apierrs.FlavorVersionDuplicate(dupVersion)
+	//}
 
 	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
 	if err != nil {

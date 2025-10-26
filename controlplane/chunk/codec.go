@@ -84,12 +84,13 @@ func FlavorVersionToDomain(transport *chunkv1alpha1.FlavorVersion) FlavorVersion
 
 func FlavorVersionToTransport(domain FlavorVersion) *chunkv1alpha1.FlavorVersion {
 	return &chunkv1alpha1.FlavorVersion{
-		Id:          domain.ID,
-		Version:     domain.Version,
-		Hash:        domain.Hash,
-		BuildStatus: chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(domain.BuildStatus)]),
-		FileHashes:  FileHashSliceToTransport(domain.FileHashes),
-		CreatedAt:   timestamppb.New(domain.CreatedAt),
+		Id:            domain.ID,
+		Version:       domain.Version,
+		Hash:          domain.Hash,
+		FileHashes:    FileHashSliceToTransport(domain.FileHashes),
+		BuildStatus:   chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(domain.BuildStatus)]),
+		FilesUploaded: domain.FilesUploaded,
+		CreatedAt:     timestamppb.New(domain.CreatedAt),
 	}
 }
 

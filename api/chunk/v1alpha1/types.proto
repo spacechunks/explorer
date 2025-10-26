@@ -74,9 +74,9 @@ message FlavorVersion {
   string version = 3;
   string hash = 4;
   repeated FileHashes file_hashes = 5;
-  BuildStatus build_status = 6;
-  // TODO: add files uploaded
-  google.protobuf.Timestamp created_at = 7;
+  BuildStatus build_status = 7;
+  bool files_uploaded = 8;
+  google.protobuf.Timestamp created_at = 9;
 }
 
 message FileHashes {
