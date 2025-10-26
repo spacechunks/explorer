@@ -187,14 +187,6 @@ message CreateFlavorVersionResponse {
   repeated FileHashes added_files = 4;
 }
 
-message SaveFlavorFilesRequest {
-  string flavor_version_id = 1;
-  repeated File files = 2;
-}
-
-message SaveFlavorFilesResponse {
-}
-
 message BuildFlavorVersionRequest {
   string flavor_version_id = 1;
 }

@@ -173,17 +173,6 @@ func (q *Queries) FlavorNameExists(ctx context.Context, arg FlavorNameExistsPara
 	return exists, err
 }
 
-const flavorVersionByHash = `-- name: FlavorVersionByHash :one
-SELECT version FROM flavor_versions WHERE hash = $1
-`
-
-func (q *Queries) FlavorVersionByHash(ctx context.Context, hash string) (string, error) {
-	row := q.db.QueryRow(ctx, flavorVersionByHash, hash)
-	var version string
-	err := row.Scan(&version)
-	return version, err
-}
-
 const flavorVersionByID = `-- name: FlavorVersionByID :many
 SELECT id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, flavor_version_id, file_hash, file_path, f.created_at FROM flavor_versions v
     JOIN flavor_version_files f ON f.flavor_version_id = v.id

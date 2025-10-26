@@ -563,14 +563,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 			}),
 			err: apierrs.ErrHashMismatch.GRPCStatus().Err(),
 		},
-		{
-			name:        "duplicate version",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
-			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
-				v.Version = "v2"
-			}),
-			err: apierrs.FlavorVersionDuplicate("v1").GRPCStatus().Err(),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -584,7 +576,9 @@ func TestCreateFlavorVersion(t *testing.T) {
 			pg.CreateChunk(t, &c, fixture.CreateOptions{
 				WithFlavors: true,
 			})
-			pg.DB.CreateFlavor(ctx, c.ID, fixture.Flavor())
+
+			_, err := pg.DB.CreateFlavor(ctx, c.ID, fixture.Flavor())
+			require.NoError(t, err)
 
 			conn, err := grpc.NewClient(
 				fixture.ControlPlaneAddr,
@@ -602,7 +596,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			//tt.newVersion.FlavorID = c.Flavors[0].ID
 			version := chunk.FlavorVersionToTransport(tt.newVersion)
 
 			resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
@@ -642,9 +635,9 @@ func TestBuildFlavorVersion(t *testing.T) {
 		name string
 		err  error
 	}{
-		//{
-		//	name: "works",
-		//},
+		{
+			name: "works",
+		},
 		{
 			name: "files not uploaded",
 			err:  apierrs.ErrFlavorFilesNotUploaded.GRPCStatus().Err(),
@@ -750,6 +743,11 @@ func TestBuildFlavorVersion(t *testing.T) {
 						require.NoError(t, err)
 
 						if slices.Contains(tags.Tags, "checkpoint") && slices.Contains(tags.Tags, "base") {
+							actualChunk, err := client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
+								Id: c.ID,
+							})
+							require.NoError(t, err)
+							require.True(t, actualChunk.Chunk.Flavors[0].Versions[0].FilesUploaded)
 							return
 						}
 					}

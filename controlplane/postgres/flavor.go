@@ -111,26 +111,6 @@ func (db *DB) FlavorVersionExists(ctx context.Context, flavorID string, version 
 	return ret, nil
 }
 
-func (db *DB) FlavorVersionByHash(ctx context.Context, hash string) (string, error) {
-	var ret string
-	if err := db.do(ctx, func(q *query.Queries) error {
-		version, err := q.FlavorVersionByHash(ctx, hash)
-		if err != nil {
-			// if no row is found this means we are fine
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil
-			}
-			return err
-		}
-		ret = version
-		return nil
-	}); err != nil {
-		return "", err
-	}
-
-	return ret, nil
-}
-
 func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.FlavorVersion, error) {
 	var ret chunk.FlavorVersion
 	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
