@@ -20,16 +20,16 @@ package cli
 
 import (
 	"github.com/rodaine/table"
-	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 )
 
-func FindFlavor(flavors []*chunkv1alpha1.Flavor, filter func(f *chunkv1alpha1.Flavor) bool) *chunkv1alpha1.Flavor {
-	for _, f := range flavors {
+func Find[T any](s []*T, filter func(i *T) bool) *T {
+	for _, f := range s {
 		if !filter(f) {
 			continue
 		}
 		return f
 	}
+
 	return nil
 }
 

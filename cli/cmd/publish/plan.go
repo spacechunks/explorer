@@ -27,21 +27,74 @@ import (
 	"github.com/spacechunks/explorer/cli"
 )
 
-type conflictKind string
-
-const (
-	conflictKindVersionExists     conflictKind = "VersionExists"
-	conflictKindVersionHashExists conflictKind = "VersionHashExists"
+var (
+	Reset          = "\033[0m"
+	Red            = "\033[31m"
+	Green          = "\033[32m"
+	Yellow         = "\033[33m"
+	Cyan           = "\033[36m"
+	addPrefix      = Green + "+" + " "
+	modPrefix      = Yellow + "~" + " "
+	rmPrefix       = Red + "-" + " "
+	conflictPrefix = Red + "x" + " "
+	indent1        = " "
+	indent2        = "  "
+	indent3        = "   "
 )
 
-type conflict struct {
-	kind   conflictKind
+type conflict interface {
+	Print()
+	Flavor() localFlavor
+}
+
+type versionMismatchConflict struct {
+	flavor     localFlavor
+	remoteHash string
+}
+
+func (c versionMismatchConflict) Flavor() localFlavor {
+	return c.flavor
+}
+
+func (c versionMismatchConflict) Print() {
+	fmt.Printf("%s - Hash of local files differs from what is found in the control plane.\n", indent2)
+	fmt.Printf("%s   This is caused by chaning the local files.\n", indent2)
+	fmt.Printf("%s   Local: %s, Control plane: %s. \n", indent2, c.flavor.hash, c.remoteHash)
+}
+
+type versionExistConflict struct {
 	flavor localFlavor
+}
+
+func (c versionExistConflict) Flavor() localFlavor {
+	return c.flavor
+}
+
+func (c versionExistConflict) Print() {
+	fmt.Printf("%s - A Flavor with version %s already exists.\n", indent2, c.flavor.version)
+}
+
+type versionHashExistsConflict struct {
+	flavor localFlavor
+}
+
+func (c versionHashExistsConflict) Flavor() localFlavor {
+	return c.flavor
+}
+
+func (c versionHashExistsConflict) Print() {
+	fmt.Printf("%s - A version  with the same set of files exist.\n", indent2)
+}
+
+type actionable struct {
+	flavor localFlavor
+	phase  buildPhase
 }
 
 type plan struct {
 	addedFlavors   []localFlavor
 	changedFlavors []changedFlavor
+	actionables    []actionable
 	conflicts      []conflict
 }
 
@@ -62,52 +115,108 @@ func newPlan(cfg publishConfig, chunk *chunkv1alpha1.Chunk) (plan, error) {
 			hash:    hash,
 		}
 
-		remote := cli.FindFlavor(chunk.Flavors, func(item *chunkv1alpha1.Flavor) bool {
+		remote := cli.Find(chunk.Flavors, func(item *chunkv1alpha1.Flavor) bool {
 			return f.Name == item.Name
 		})
+
 		if remote == nil {
 			p.addedFlavors = append(p.addedFlavors, local)
 			continue
 		}
 
-		// TODO:
-		// - exclude from conflicts if flavor version is currently being built
-		// - enable retry if build is failed
-		// - do not add conflict if versions exists, but files have not been uploaded
+		// first we should check if there are any conflicts
 
-		if found := slices.ContainsFunc(remote.Versions, func(v *chunkv1alpha1.FlavorVersion) bool {
+		remoteVersion := cli.Find(remote.Versions, func(v *chunkv1alpha1.FlavorVersion) bool {
 			return f.Version == v.Version
-		}); found {
-			p.conflicts = append(p.conflicts, conflict{
-				kind:   conflictKindVersionExists,
+		})
+
+		// now we need to check if we have to re-add or if the current flavor we have on disk
+		// is to be considered "changed"
+
+		if remoteVersion == nil {
+			if c := checkHashes(local, remote); c != nil {
+				p.conflicts = append(p.conflicts, c)
+				continue
+			}
+
+			// if the remote version has not been created yet, BUT
+			// there are previous versions present, it means that
+			// this flavor has changed.
+			if len(remote.Versions) > 0 {
+				var (
+					prevVersion             = remote.Versions[0] // the latest published one is always first
+					added, changed, removed = local.fileDiff(prevVersion.FileHashes)
+				)
+
+				p.changedFlavors = append(p.changedFlavors, changedFlavor{
+					onDisk:        local,
+					prevVersion:   prevVersion.Version,
+					addedFiles:    added,
+					modifiedFiles: changed,
+					removedFiles:  removed,
+				})
+				continue
+			}
+
+			// if the remote version is missing, BUT we don't have any previous versions
+			// could indicate, that calling the create flavor version endpoint did not
+			// succeed.
+			p.addedFlavors = append(p.addedFlavors, local)
+			continue
+		}
+
+		// at this point we reached a state where the version has been successfully
+		// created in the control plane, but now we need to figure out some key things:
+		// - have the files been uploaded? no -> retry
+		// - are we already in a building the version? yes -> just watch
+		// - has the build failed? yes -> retry
+
+		if !remoteVersion.FilesUploaded {
+			if local.hash != remoteVersion.Hash {
+				p.conflicts = append(p.conflicts, versionMismatchConflict{
+					flavor:     local,
+					remoteHash: remoteVersion.Hash,
+				})
+				continue
+			}
+
+			p.actionables = append(p.actionables, actionable{
 				flavor: local,
+				phase:  buildPhaseUpload,
 			})
 			continue
 		}
 
+		// if the version exists on the controlplane, files have been uploaded, BUT
+		// we find changes in the local filesystem => notify the user that this version
+		// already exists on the control plane, because we can assume that the user
+		// wanted to publish changes, but forgot to bump the version.
 		if found := slices.ContainsFunc(remote.Versions, func(v *chunkv1alpha1.FlavorVersion) bool {
-			return local.hash == v.Hash
+			return local.hash != v.Hash && v.Version == local.version
 		}); found {
-			p.conflicts = append(p.conflicts, conflict{
-				kind:   conflictKindVersionHashExists,
+			p.conflicts = append(p.conflicts, versionExistConflict{
 				flavor: local,
 			})
 			continue
 		}
 
-		prevVersion := &chunkv1alpha1.FlavorVersion{}
-		if len(remote.Versions) > 0 {
-			prevVersion = remote.Versions[0] // the latest one is always first
+		if remoteVersion.BuildStatus == chunkv1alpha1.BuildStatus_COMPLETED {
+			continue
 		}
 
-		added, changed, removed := local.fileDiff(prevVersion.FileHashes)
+		if remoteVersion.BuildStatus == chunkv1alpha1.BuildStatus_PENDING ||
+			remoteVersion.BuildStatus == chunkv1alpha1.BuildStatus_IMAGE_BUILD ||
+			remoteVersion.BuildStatus == chunkv1alpha1.BuildStatus_CHECKPOINT_BUILD {
+			p.actionables = append(p.actionables, actionable{
+				flavor: local,
+				phase:  buildPhaseBuildComplete,
+			})
+			continue
+		}
 
-		p.changedFlavors = append(p.changedFlavors, changedFlavor{
-			onDisk:        local,
-			prevVersion:   prevVersion.Version,
-			addedFiles:    added,
-			modifiedFiles: changed,
-			removedFiles:  removed,
+		p.actionables = append(p.actionables, actionable{
+			flavor: local,
+			phase:  buildPhaseTriggerBuild,
 		})
 	}
 
@@ -137,19 +246,10 @@ func (p plan) print() {
 	//     x There is already a flavor version having the same files
 	//     x Version: v3
 
-	var (
-		Reset          = "\033[0m"
-		Red            = "\033[31m"
-		Green          = "\033[32m"
-		Yellow         = "\033[33m"
-		addPrefix      = Green + "+" + " "
-		modPrefix      = Yellow + "~" + " "
-		rmPrefix       = Red + "-" + " "
-		conflictPrefix = Red + "x" + " "
-		indent1        = " "
-		indent2        = "  "
-		indent3        = "   "
-	)
+	if (len(p.addedFlavors) == 0) && (len(p.changedFlavors) == 0) && (len(p.actionables) == 0) && (len(p.conflicts) == 0) {
+		fmt.Println("Nothing to do.")
+		return
+	}
 
 	if len(p.addedFlavors) > 0 {
 		fmt.Println("New flavors:")
@@ -175,35 +275,41 @@ func (p plan) print() {
 			sec.AddRow(indent2+modPrefix+"Path:", fl.onDisk.path)
 			sec.AddRow(indent2+modPrefix+"Files:", "")
 			sec.Print()
-			for _, path := range fl.addedFiles {
-				fmt.Println(indent3, addPrefix, path)
+			for _, fh := range fl.addedFiles {
+				fmt.Println(indent3, addPrefix, fh.Path)
 			}
-			for _, path := range fl.modifiedFiles {
-				fmt.Println(indent3, modPrefix, path)
+			for _, fh := range fl.modifiedFiles {
+				fmt.Println(indent3, modPrefix, fh.Path)
 			}
-			for _, path := range fl.removedFiles {
-				fmt.Println(indent3, rmPrefix, path)
+			for _, fh := range fl.removedFiles {
+				fmt.Println(indent3, rmPrefix, fh.Path)
 			}
+		}
+	}
+
+	if len(p.actionables) > 0 {
+		fmt.Println(Reset + "\nActions to be performed for the following flavors: ")
+		for _, a := range p.actionables {
+			sec := cli.Section()
+			if a.phase == buildPhaseUpload {
+				sec.AddRow(Cyan+indent1+a.flavor.name+" => ", "Retry uploading files")
+			}
+			if a.phase == buildPhaseTriggerBuild {
+				sec.AddRow(Cyan+indent1+a.flavor.name+" => ", "Retry triggering build")
+			}
+			sec.Print()
 		}
 	}
 
 	if len(p.conflicts) > 0 {
 		fmt.Println(Reset + "\nConflicts: ")
 		for _, c := range p.conflicts {
-			fmt.Printf("%s%s%s:\n", indent1, conflictPrefix, c.flavor.name)
-
-			if c.kind == conflictKindVersionExists {
-				fmt.Printf("%s%s A Flavor with version %s already exists.\n", indent2, "-", c.flavor.version)
-			}
-
-			if c.kind == conflictKindVersionHashExists {
-				fmt.Printf("%s%s A version  with the same set of files exist.\n", indent2, "-")
-				// TODO: provide version which is the same
-			}
+			fmt.Printf("%s%s%s:\n", indent1, conflictPrefix, c.Flavor().name)
+			c.Print()
 		}
 		versions := make([]string, 0, len(p.conflicts))
 		for _, c := range p.conflicts {
-			versions = append(versions, c.flavor.name)
+			versions = append(versions, c.Flavor().name)
 		}
 		fmt.Printf(
 			"\nWARNING: Flavors %s contain conflicts and will NOT be published when proceeding.\n",
@@ -212,6 +318,17 @@ func (p plan) print() {
 	}
 
 	fmt.Println(Reset)
+}
+
+func checkHashes(local localFlavor, remote *chunkv1alpha1.Flavor) conflict {
+	if found := slices.ContainsFunc(remote.Versions, func(v *chunkv1alpha1.FlavorVersion) bool {
+		return local.hash == v.Hash
+	}); found {
+		return versionHashExistsConflict{
+			flavor: local,
+		}
+	}
+	return nil
 }
 
 //func test() {
