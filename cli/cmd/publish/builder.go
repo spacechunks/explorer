@@ -246,7 +246,7 @@ func (b builder) handleUpload(ctx context.Context, data *buildData) error {
 	}
 
 	var (
-		added   = make([]file.Hash, 0)
+		added   []file.Hash
 		changed = make([]file.Hash, 0)
 	)
 
