@@ -231,7 +231,7 @@ func (w *CreateImageWorker) downloadMissing(ctx context.Context, dest string, al
 		}
 
 		if err := w.store.WriteTo(ctx, blob.CASKeyPrefix+"/"+wantHash.Hash, f); err != nil {
-			return fmt.Errorf("write file: %w", err)
+			return fmt.Errorf("write file (%s/%s): %w", wantHash.Path, wantHash.Hash, err)
 		}
 	}
 

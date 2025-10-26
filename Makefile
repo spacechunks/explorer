@@ -102,7 +102,7 @@ functests-database:
 				   FUNCTESTS_POSTGRES_USER=spc \
 				   FUNCTESTS_POSTGRES_PASS=test123 \
 				   FUNCTESTS_POSTGRES_DB=explorer \
-				   go test -v ./test/functional/database
+				   go test -v ./test/functional/database $(ARGS)
 
 .PHONY: functests-platformd
 functests-platformd:

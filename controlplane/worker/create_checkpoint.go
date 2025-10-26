@@ -65,6 +65,7 @@ func NewCheckpointWorker(
 }
 
 func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[job.CreateCheckpoint]) (ret error) {
+	w.logger.Debug("started checkpointing")
 	defer func() {
 		if ret == nil {
 			return
@@ -157,6 +158,10 @@ func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[j
 
 			return fmt.Errorf("checkpointing failed: %v", statusResp.Status.Message)
 		case <-ctx.Done():
+			w.logger.ErrorContext(ctx, "context cancelled",
+				"flavor_version_id", riverJob.Args.FlavorVersionID,
+				"checkpoint_id", resp.CheckpointId,
+			)
 			return ctx.Err()
 		}
 	}
