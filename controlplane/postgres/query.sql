@@ -76,9 +76,6 @@ WHERE id = $1;
 SELECT * FROM flavor_versions WHERE flavor_id = $1
 ORDER BY created_at DESC LIMIT 1;
 
--- name: FlavorVersionByHash :one
-SELECT version FROM flavor_versions WHERE hash = $1;
-
 -- name: FlavorVersionExists :one
 SELECT EXISTS(
     SELECT 1 FROM flavor_versions

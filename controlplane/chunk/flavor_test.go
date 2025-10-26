@@ -148,10 +148,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(false, nil)
 
 				repo.EXPECT().
-					FlavorVersionByHash(mocky.Anything, newVersion.Hash).
-					Return("", nil)
-
-				repo.EXPECT().
 					LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).
 					Return(prevVersion, nil)
 
@@ -189,10 +185,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
 					Return(false, nil)
-
-				repo.EXPECT().
-					FlavorVersionByHash(mocky.Anything, newVersion.Hash).
-					Return("", nil)
 
 				repo.EXPECT().
 					LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).

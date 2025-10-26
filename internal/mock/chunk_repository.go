@@ -314,63 +314,6 @@ func (_c *MockChunkRepository_FlavorNameExists_Call) RunAndReturn(run func(conte
 	return _c
 }
 
-// FlavorVersionByHash provides a mock function with given fields: ctx, hash
-func (_m *MockChunkRepository) FlavorVersionByHash(ctx context.Context, hash string) (string, error) {
-	ret := _m.Called(ctx, hash)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FlavorVersionByHash")
-	}
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
-		return rf(ctx, hash)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
-		r0 = rf(ctx, hash)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, hash)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockChunkRepository_FlavorVersionByHash_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FlavorVersionByHash'
-type MockChunkRepository_FlavorVersionByHash_Call struct {
-	*mock.Call
-}
-
-// FlavorVersionByHash is a helper method to define mock.On call
-//   - ctx context.Context
-//   - hash string
-func (_e *MockChunkRepository_Expecter) FlavorVersionByHash(ctx interface{}, hash interface{}) *MockChunkRepository_FlavorVersionByHash_Call {
-	return &MockChunkRepository_FlavorVersionByHash_Call{Call: _e.mock.On("FlavorVersionByHash", ctx, hash)}
-}
-
-func (_c *MockChunkRepository_FlavorVersionByHash_Call) Run(run func(ctx context.Context, hash string)) *MockChunkRepository_FlavorVersionByHash_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockChunkRepository_FlavorVersionByHash_Call) Return(_a0 string, _a1 error) *MockChunkRepository_FlavorVersionByHash_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockChunkRepository_FlavorVersionByHash_Call) RunAndReturn(run func(context.Context, string) (string, error)) *MockChunkRepository_FlavorVersionByHash_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // FlavorVersionByID provides a mock function with given fields: ctx, id
 func (_m *MockChunkRepository) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVersion, error) {
 	ret := _m.Called(ctx, id)

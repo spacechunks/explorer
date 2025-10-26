@@ -32,7 +32,6 @@ type Repository interface {
 	CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error)
 	FlavorNameExists(ctx context.Context, chunkID string, name string) (bool, error)
 	FlavorVersionExists(ctx context.Context, flavorID string, version string) (bool, error)
-	FlavorVersionByHash(ctx context.Context, hash string) (string, error)
 	LatestFlavorVersion(ctx context.Context, flavorID string) (FlavorVersion, error)
 	CreateFlavorVersion(
 		ctx context.Context,
