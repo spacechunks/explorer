@@ -68,7 +68,8 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 				break
 			}
 
-			fmt.Printf("%s:%d (%s)\n", resp.Instance.Ip, resp.Instance.Port, resp.Instance.State)
+			fmt.Printf("%s:%d (%s)", resp.Instance.Ip, resp.Instance.Port, resp.Instance.State)
+			fmt.Print("\r")
 		}
 		return nil
 	}

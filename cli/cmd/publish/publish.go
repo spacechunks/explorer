@@ -62,9 +62,9 @@ type flavorConfig struct {
 type changedFlavor struct {
 	onDisk        localFlavor
 	prevVersion   string
-	addedFiles    []string
-	modifiedFiles []string
-	removedFiles  []string
+	addedFiles    []file.Hash
+	modifiedFiles []file.Hash
+	removedFiles  []file.Hash
 }
 
 type localFlavor struct {
@@ -79,7 +79,7 @@ func (f localFlavor) serverRelPath(path string) string {
 	return strings.ReplaceAll(path, filepath.Clean(f.path)+"/", "")
 }
 
-func (f localFlavor) fileDiff(apiHashes []*chunkv1alpha1.FileHashes) ([]string, []string, []string) {
+func (f localFlavor) fileDiff(apiHashes []*chunkv1alpha1.FileHashes) ([]file.Hash, []file.Hash, []file.Hash) {
 	prevMap := make(map[string]*chunkv1alpha1.FileHashes, len(apiHashes))
 	for _, ah := range apiHashes {
 		prevMap[ah.Path] = ah
@@ -91,9 +91,9 @@ func (f localFlavor) fileDiff(apiHashes []*chunkv1alpha1.FileHashes) ([]string, 
 	}
 
 	var (
-		added    []string
-		modified []string
-		removed  []string
+		added    []file.Hash
+		modified []file.Hash
+		removed  []file.Hash
 	)
 
 	for _, prev := range slices.Collect(maps.Values(prevMap)) {
@@ -104,13 +104,16 @@ func (f localFlavor) fileDiff(apiHashes []*chunkv1alpha1.FileHashes) ([]string, 
 				continue
 			}
 
-			modified = append(modified, onDisk.Path)
+			modified = append(modified, onDisk)
 			continue
 		}
 
 		// it does not exist on disk, but was previously present, this means
 		// the file has been deleted.
-		removed = append(removed, prev.Path)
+		removed = append(removed, file.Hash{
+			Hash: prev.Hash,
+			Path: prev.Path,
+		})
 	}
 
 	for _, onDisk := range slices.Collect(maps.Values(local)) {
@@ -119,7 +122,7 @@ func (f localFlavor) fileDiff(apiHashes []*chunkv1alpha1.FileHashes) ([]string, 
 		}
 
 		// the on disk file was not previously present, this means it is new
-		added = append(added, onDisk.Path)
+		added = append(added, onDisk)
 	}
 
 	return added, modified, removed
@@ -188,6 +191,11 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 			return nil
 		}
 
+		if len(plan.addedFlavors)+len(plan.changedFlavors)+len(plan.actionables) == 0 {
+			fmt.Println("Nothing to publish.")
+			return nil
+		}
+
 		if chunk.Id == "" {
 			fmt.Println("Chunk does not exist, creating new Chunk.")
 			resp, err := state.Client.CreateChunk(ctx, &chunkv1alpha1.CreateChunkRequest{
@@ -210,11 +218,27 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 		}
 
 		for _, added := range plan.addedFlavors {
-			go b.build(ctx, chunk.Id, added, true)
+			go b.build(ctx, buildData{
+				chunkID: chunk.Id,
+				local:   added,
+				phase:   buildPhasePrerequisites,
+			})
 		}
 
 		for _, changed := range plan.changedFlavors {
-			go b.build(ctx, chunk.Id, changed.onDisk, false)
+			go b.build(ctx, buildData{
+				chunkID: chunk.Id,
+				local:   changed.onDisk,
+				phase:   buildPhasePrerequisites,
+			})
+		}
+
+		for _, a := range plan.actionables {
+			go b.build(ctx, buildData{
+				chunkID: chunk.Id,
+				local:   a.flavor,
+				phase:   a.phase,
+			})
 		}
 
 		var (
@@ -231,7 +255,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 		// <flavor1>: <status> | <flavor2>: <status> | <flavor3>: <status> etc...
 		b.OnUpdate(ctx, func(u buildUpdate) {
 			fmt.Print("\033[2K") // clear current line
-			updates[u.flavor.name] = u
+			updates[u.data.local.name] = u
 
 			var (
 				keys = slices.Collect(maps.Keys(updates))
@@ -243,7 +267,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 			for _, k := range keys {
 				upd := updates[k]
 				c++
-				fmt.Printf("%s: ", upd.flavor.name)
+				fmt.Printf("%s: ", upd.data.local.name)
 				if upd.err != nil {
 					fmt.Printf("%s%s%s\n", Red, upd.err.Error(), Reset)
 				}

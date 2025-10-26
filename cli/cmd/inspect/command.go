@@ -33,27 +33,19 @@ import (
 func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 	run := func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			return fmt.Errorf("chunk name is missing")
+			return fmt.Errorf("chunk id is missing")
 		}
 
 		// TODO: replace by GetChunkRequest with name filter
 
-		resp, err := state.Client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{})
+		resp, err := state.Client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
+			Id: args[0],
+		})
 		if err != nil {
-			return fmt.Errorf("error while listing chunks: %w", err)
+			return fmt.Errorf("error while getting chunk: %w", err)
 		}
 
-		var found *chunkv1alpha1.Chunk
-		for _, c := range resp.Chunks {
-			if c.Name != args[0] {
-				continue
-			}
-			found = c
-		}
-
-		if found == nil {
-			return fmt.Errorf("chunk %s not found", args[0])
-		}
+		found := resp.GetChunk()
 
 		var (
 			indent1 = " "
