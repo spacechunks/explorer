@@ -222,7 +222,6 @@ func (b builder) handlePrerequisites(ctx context.Context, data *buildData) error
 }
 
 func (b builder) handleUpload(ctx context.Context, data *buildData) error {
-	fmt.Println("DOWNLOAWDOAWDOAWDOAWODAWD")
 	resp, err := b.client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
 		Id: data.chunkID,
 	})
