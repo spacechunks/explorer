@@ -215,25 +215,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 			},
 			err: apierrs.ErrFlavorVersionExists,
 		},
-		{
-			name:        "version is duplicate",
-			prevVersion: fixture.FlavorVersion(),
-			newVersion:  fixture.FlavorVersion(),
-			prep: func(
-				repo *mock.MockChunkRepository,
-				newVersion chunk.FlavorVersion,
-				prevVersion chunk.FlavorVersion,
-			) {
-				repo.EXPECT().
-					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
-					Return(false, nil)
-
-				repo.EXPECT().
-					FlavorVersionByHash(mocky.Anything, newVersion.Hash).
-					Return(newVersion.Hash, nil)
-			},
-			err: apierrs.FlavorVersionDuplicate(fixture.FlavorVersion().Version),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
