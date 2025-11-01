@@ -13,6 +13,34 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const allMinecraftVersions = `-- name: AllMinecraftVersions :many
+/*
+ * MINECRAFT VERSIONS
+ */
+
+SELECT version FROM minecraft_versions
+`
+
+func (q *Queries) AllMinecraftVersions(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, allMinecraftVersions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var version string
+		if err := rows.Scan(&version); err != nil {
+			return nil, err
+		}
+		items = append(items, version)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const chunkExists = `-- name: ChunkExists :one
 SELECT EXISTS(
     SELECT 1 FROM chunks

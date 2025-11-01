@@ -208,6 +208,11 @@ type Instance struct {
 	UpdatedAt       time.Time
 }
 
+type MinecraftVersion struct {
+	Version   string
+	CreatedAt pgtype.Timestamptz
+}
+
 type Node struct {
 	ID                    string
 	Name                  string
