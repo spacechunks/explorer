@@ -77,6 +77,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 				versionData := cli.Section()
 				versionData.AddRow(indent3+v.Version+":", "")
 				versionData.AddRow(indent4+"ID:", v.Id)
+				versionData.AddRow(indent4+"Minecraft version"+":", v.MinecraftVersion)
 				versionData.AddRow(indent4+"Created at:", fmtTime(v.CreatedAt))
 				versionData.AddRow(indent4+"Build status:", v.BuildStatus)
 				versionData.Print()
