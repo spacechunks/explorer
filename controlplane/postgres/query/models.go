@@ -188,7 +188,7 @@ type FlavorVersion struct {
 	CreatedAt              time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
-	MinecraftVersion       pgtype.Text
+	MinecraftVersion       string
 }
 
 type FlavorVersionFile struct {
