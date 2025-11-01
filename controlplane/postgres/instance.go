@@ -118,7 +118,7 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 					CreatedAt:     row.CreatedAt_2.UTC(),
 				},
 			}
-			
+
 			flavors := make([]chunk.Flavor, 0, len(rows))
 			for _, instanceRow := range v {
 				f := chunk.Flavor{
