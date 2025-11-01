@@ -240,12 +240,13 @@ func TestRunFlavorVersion(t *testing.T) {
 					UpdatedAt:   timestamppb.New(c.UpdatedAt),
 				},
 				FlavorVersion: &chunkv1alpha1.FlavorVersion{
-					Id:          v.ID,
-					Version:     v.Version,
-					Hash:        v.Hash,
-					FileHashes:  nil, // not returned atm
-					BuildStatus: chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(v.BuildStatus)]),
-					CreatedAt:   timestamppb.New(v.CreatedAt),
+					Id:               v.ID,
+					Version:          v.Version,
+					MinecraftVersion: fixture.MinecraftVersion,
+					Hash:             v.Hash,
+					FileHashes:       nil, // not returned atm
+					BuildStatus:      chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(v.BuildStatus)]),
+					CreatedAt:        timestamppb.New(v.CreatedAt),
 				},
 				Ip:    fixture.Node().Addr.String(),
 				State: instancev1alpha1.InstanceState_PENDING,
