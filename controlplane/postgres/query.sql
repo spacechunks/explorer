@@ -87,9 +87,9 @@ SELECT * FROM flavor_version_files WHERE flavor_version_id = $1;
 
 -- name: CreateFlavorVersion :exec
 INSERT INTO flavor_versions
-    (id, flavor_id, hash, change_hash, version, prev_version_id, created_at)
+    (id, flavor_id, hash, change_hash, version, prev_version_id, minecraft_version, created_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7);
+    ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: BulkInsertFlavorFileHashes :batchexec
 INSERT INTO flavor_version_files
@@ -174,3 +174,8 @@ DELETE FROM instances WHERE id = $1;
 -- name: AllMinecraftVersions :many
 SELECT version FROM minecraft_versions;
 
+-- name: MinecraftVersionExists :one
+SELECT EXISTS(
+    SELECT 1 FROM minecraft_versions
+    WHERE version = $1
+);

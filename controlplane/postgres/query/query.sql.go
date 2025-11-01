@@ -120,19 +120,20 @@ func (q *Queries) CreateFlavor(ctx context.Context, arg CreateFlavorParams) erro
 
 const createFlavorVersion = `-- name: CreateFlavorVersion :exec
 INSERT INTO flavor_versions
-    (id, flavor_id, hash, change_hash, version, prev_version_id, created_at)
+    (id, flavor_id, hash, change_hash, version, prev_version_id, minecraft_version, created_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+    ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type CreateFlavorVersionParams struct {
-	ID            string
-	FlavorID      string
-	Hash          string
-	ChangeHash    string
-	Version       string
-	PrevVersionID *string
-	CreatedAt     time.Time
+	ID               string
+	FlavorID         string
+	Hash             string
+	ChangeHash       string
+	Version          string
+	PrevVersionID    *string
+	MinecraftVersion pgtype.Text
+	CreatedAt        time.Time
 }
 
 func (q *Queries) CreateFlavorVersion(ctx context.Context, arg CreateFlavorVersionParams) error {
@@ -143,6 +144,7 @@ func (q *Queries) CreateFlavorVersion(ctx context.Context, arg CreateFlavorVersi
 		arg.ChangeHash,
 		arg.Version,
 		arg.PrevVersionID,
+		arg.MinecraftVersion,
 		arg.CreatedAt,
 	)
 	return err
@@ -202,7 +204,7 @@ func (q *Queries) FlavorNameExists(ctx context.Context, arg FlavorNameExistsPara
 }
 
 const flavorVersionByID = `-- name: FlavorVersionByID :many
-SELECT id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, flavor_version_id, file_hash, file_path, f.created_at FROM flavor_versions v
+SELECT id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, f.created_at FROM flavor_versions v
     JOIN flavor_version_files f ON f.flavor_version_id = v.id
 WHERE id = $1
 `
@@ -219,6 +221,7 @@ type FlavorVersionByIDRow struct {
 	CreatedAt              time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
+	MinecraftVersion       pgtype.Text
 	FlavorVersionID        string
 	FileHash               string
 	FilePath               string
@@ -246,6 +249,7 @@ func (q *Queries) FlavorVersionByID(ctx context.Context, id string) ([]FlavorVer
 			&i.CreatedAt,
 			&i.PresignedUrlExpiryDate,
 			&i.PresignedUrl,
+			&i.MinecraftVersion,
 			&i.FlavorVersionID,
 			&i.FileHash,
 			&i.FilePath,
@@ -321,7 +325,7 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 }
 
 const getChunkByID = `-- name: GetChunkByID :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, flavor_version_id, file_hash, file_path, vf.created_at FROM chunks c
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
@@ -351,6 +355,7 @@ type GetChunkByIDRow struct {
 	CreatedAt_3            pgtype.Timestamptz
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
+	MinecraftVersion       pgtype.Text
 	FlavorVersionID        *string
 	FileHash               pgtype.Text
 	FilePath               pgtype.Text
@@ -390,6 +395,7 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 			&i.CreatedAt_3,
 			&i.PresignedUrlExpiryDate,
 			&i.PresignedUrl,
+			&i.MinecraftVersion,
 			&i.FlavorVersionID,
 			&i.FileHash,
 			&i.FilePath,
@@ -406,7 +412,7 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 }
 
 const getInstance = `-- name: GetInstance :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
@@ -434,6 +440,7 @@ type GetInstanceRow struct {
 	CreatedAt_2            time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
+	MinecraftVersion       pgtype.Text
 	ID_3                   string
 	Name                   string
 	Description            string
@@ -481,6 +488,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.CreatedAt_2,
 			&i.PresignedUrlExpiryDate,
 			&i.PresignedUrl,
+			&i.MinecraftVersion,
 			&i.ID_3,
 			&i.Name,
 			&i.Description,
@@ -509,7 +517,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 }
 
 const getInstancesByNodeID = `-- name: GetInstancesByNodeID :many
-SELECT i.id, chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
+SELECT i.id, chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
@@ -536,6 +544,7 @@ type GetInstancesByNodeIDRow struct {
 	CreatedAt_2            time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
+	MinecraftVersion       pgtype.Text
 	ID_3                   string
 	Name                   string
 	Description            string
@@ -578,6 +587,7 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 			&i.CreatedAt_2,
 			&i.PresignedUrlExpiryDate,
 			&i.PresignedUrl,
+			&i.MinecraftVersion,
 			&i.ID_3,
 			&i.Name,
 			&i.Description,
@@ -601,7 +611,7 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 }
 
 const latestFlavorVersionByFlavorID = `-- name: LatestFlavorVersionByFlavorID :one
-SELECT id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, created_at, presigned_url_expiry_date, presigned_url FROM flavor_versions WHERE flavor_id = $1
+SELECT id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, created_at, presigned_url_expiry_date, presigned_url, minecraft_version FROM flavor_versions WHERE flavor_id = $1
 ORDER BY created_at DESC LIMIT 1
 `
 
@@ -620,12 +630,13 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 		&i.CreatedAt,
 		&i.PresignedUrlExpiryDate,
 		&i.PresignedUrl,
+		&i.MinecraftVersion,
 	)
 	return i, err
 }
 
 const listChunks = `-- name: ListChunks :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, flavor_version_id, file_hash, file_path, vf.created_at FROM chunks c
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
@@ -654,6 +665,7 @@ type ListChunksRow struct {
 	CreatedAt_3            pgtype.Timestamptz
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
+	MinecraftVersion       pgtype.Text
 	FlavorVersionID        *string
 	FileHash               pgtype.Text
 	FilePath               pgtype.Text
@@ -692,6 +704,7 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 			&i.CreatedAt_3,
 			&i.PresignedUrlExpiryDate,
 			&i.PresignedUrl,
+			&i.MinecraftVersion,
 			&i.FlavorVersionID,
 			&i.FileHash,
 			&i.FilePath,
@@ -708,7 +721,7 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 }
 
 const listFlavorsByChunkID = `-- name: ListFlavorsByChunkID :many
-SELECT f.id, chunk_id, name, f.created_at, updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, flavor_version_id, file_hash, file_path, vf.created_at FROM flavors f
+SELECT f.id, chunk_id, name, f.created_at, updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at FROM flavors f
     JOIN flavor_versions v ON v.flavor_id = f.id
     JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
 WHERE chunk_id = $1
@@ -731,6 +744,7 @@ type ListFlavorsByChunkIDRow struct {
 	CreatedAt_2            time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
+	MinecraftVersion       pgtype.Text
 	FlavorVersionID        string
 	FileHash               string
 	FilePath               string
@@ -763,6 +777,7 @@ func (q *Queries) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]L
 			&i.CreatedAt_2,
 			&i.PresignedUrlExpiryDate,
 			&i.PresignedUrl,
+			&i.MinecraftVersion,
 			&i.FlavorVersionID,
 			&i.FileHash,
 			&i.FilePath,
@@ -779,7 +794,7 @@ func (q *Queries) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]L
 }
 
 const listInstances = `-- name: ListInstances :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
@@ -806,6 +821,7 @@ type ListInstancesRow struct {
 	CreatedAt_2            time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
+	MinecraftVersion       pgtype.Text
 	ID_3                   string
 	Name                   string
 	Description            string
@@ -853,6 +869,7 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 			&i.CreatedAt_2,
 			&i.PresignedUrlExpiryDate,
 			&i.PresignedUrl,
+			&i.MinecraftVersion,
 			&i.ID_3,
 			&i.Name,
 			&i.Description,
@@ -887,6 +904,20 @@ UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1
 func (q *Queries) MarkFlavorVersionFilesUploaded(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, markFlavorVersionFilesUploaded, id)
 	return err
+}
+
+const minecraftVersionExists = `-- name: MinecraftVersionExists :one
+SELECT EXISTS(
+    SELECT 1 FROM minecraft_versions
+    WHERE version = $1
+)
+`
+
+func (q *Queries) MinecraftVersionExists(ctx context.Context, version string) (bool, error) {
+	row := q.db.QueryRow(ctx, minecraftVersionExists, version)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const randomNode = `-- name: RandomNode :one

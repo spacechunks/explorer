@@ -148,6 +148,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(false, nil)
 
 				repo.EXPECT().
+					MinecraftVersionExists(mocky.Anything, newVersion.MinecraftVersion).
+					Return(true, nil)
+
+				repo.EXPECT().
 					LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).
 					Return(prevVersion, nil)
 
@@ -187,6 +191,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(false, nil)
 
 				repo.EXPECT().
+					MinecraftVersionExists(mocky.Anything, newVersion.MinecraftVersion).
+					Return(true, nil)
+
+				repo.EXPECT().
 					LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).
 					Return(prevVersion, nil)
 			},
@@ -206,6 +214,25 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(true, nil)
 			},
 			err: apierrs.ErrFlavorVersionExists,
+		},
+		{
+			name:        "minecraft version unsupported",
+			prevVersion: fixture.FlavorVersion(),
+			newVersion:  fixture.FlavorVersion(),
+			prep: func(
+				repo *mock.MockChunkRepository,
+				newVersion chunk.FlavorVersion,
+				prevVersion chunk.FlavorVersion,
+			) {
+				repo.EXPECT().
+					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
+					Return(false, nil)
+
+				repo.EXPECT().
+					MinecraftVersionExists(mocky.Anything, newVersion.MinecraftVersion).
+					Return(false, nil)
+			},
+			err: apierrs.ErrMinecraftVersionNotSupported,
 		},
 	}
 	for _, tt := range tests {

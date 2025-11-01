@@ -36,7 +36,10 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-const FlavorID = "019532bb-5582-7608-9a08-bb742a8174aa"
+const (
+	FlavorID         = "019532bb-5582-7608-9a08-bb742a8174aa"
+	MinecraftVersion = "1.21.10"
+)
 
 func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
 	c := chunk.Chunk{
@@ -118,9 +121,10 @@ func FlavorVersion(mod ...func(v *chunk.FlavorVersion)) chunk.FlavorVersion {
 				Hash: "pppppppppppppppp",
 			},
 		},
-		BuildStatus:   chunk.BuildStatusPending,
-		FilesUploaded: false,
-		CreatedAt:     time.Time{},
+		MinecraftVersion: MinecraftVersion,
+		BuildStatus:      chunk.BuildStatusPending,
+		FilesUploaded:    false,
+		CreatedAt:        time.Time{},
 	}
 
 	for _, fn := range mod {

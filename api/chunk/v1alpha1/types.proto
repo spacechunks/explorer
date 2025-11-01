@@ -76,7 +76,8 @@ message FlavorVersion {
   repeated FileHashes file_hashes = 5;
   BuildStatus build_status = 7;
   bool files_uploaded = 8;
-  google.protobuf.Timestamp created_at = 9;
+  string minecraft_version = 9;
+  google.protobuf.Timestamp created_at = 10;
 }
 
 message FileHashes {

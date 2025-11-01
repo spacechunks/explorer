@@ -488,9 +488,7 @@ func TestCreateFlavor(t *testing.T) {
 }
 
 func TestCreateFlavorVersion(t *testing.T) {
-	var (
-		c = fixture.Chunk()
-	)
+	c := fixture.Chunk()
 
 	tests := []struct {
 		name        string
@@ -562,6 +560,15 @@ func TestCreateFlavorVersion(t *testing.T) {
 				v.Hash = "wrong-hash"
 			}),
 			err: apierrs.ErrHashMismatch.GRPCStatus().Err(),
+		},
+		{
+			name:        "unsupported minecraft version",
+			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
+				v.Version = "v2"
+				v.MinecraftVersion = "abcdef"
+			}),
+			err: apierrs.ErrMinecraftVersionNotSupported.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -925,19 +932,6 @@ func TestGetSupportedMinecraftVersions(t *testing.T) {
 
 	fixture.RunControlPlane(t, pg)
 
-	versions := []string{
-		"1.8.8.",
-		"1.21.1",
-		"1.20.4",
-		"1.21.10",
-		"1.21.5",
-	}
-
-	for _, v := range versions {
-		_, err := pg.Pool.Exec(ctx, "INSERT INTO minecraft_versions VALUES ($1)", v)
-		require.NoError(t, err)
-	}
-
 	conn, err := grpc.NewClient(
 		fixture.ControlPlaneAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -949,10 +943,7 @@ func TestGetSupportedMinecraftVersions(t *testing.T) {
 	resp, err := client.GetSupportedMinecraftVersions(ctx, &chunkv1alpha1.GetSupportedMinecraftVersionsRequest{})
 	require.NoError(t, err)
 
-	sort.Strings(versions)
-	sort.Strings(resp.Versions)
-
-	if d := cmp.Diff(versions, resp.Versions); d != "" {
+	if d := cmp.Diff([]string{"1.21.10"}, resp.Versions); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
 }

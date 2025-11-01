@@ -1,3 +1,4 @@
+
 -- Dumped from database version 17.2 (Debian 17.2-1.pgdg120+1)
 -- Dumped by pg_dump version 17.6
 
@@ -134,7 +135,8 @@ CREATE TABLE public.flavor_versions (
     prev_version_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     presigned_url_expiry_date timestamp with time zone,
-    presigned_url character varying
+    presigned_url character varying,
+    minecraft_version character varying
 );
 
 
@@ -173,7 +175,7 @@ CREATE TABLE public.instances (
 
 CREATE TABLE public.minecraft_versions (
     version character varying NOT NULL,
-    created_at timestamp with time zone
+    created_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -502,6 +504,14 @@ ALTER TABLE ONLY public.flavor_versions
 
 
 --
+-- Name: flavor_versions flavor_versions_minecraft_version_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavor_versions
+    ADD CONSTRAINT flavor_versions_minecraft_version_fkey FOREIGN KEY (minecraft_version) REFERENCES public.minecraft_versions(version);
+
+
+--
 -- Name: flavors flavors_chunk_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -546,6 +556,7 @@ ALTER TABLE ONLY public.river_client_queue
 --
 
 
+
 --
 -- Dbmate schema migrations
 --
@@ -555,4 +566,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250515184448'),
     ('20250904143025'),
     ('20251026194426'),
-    ('20251101155256');
+    ('20251101155256'),
+    ('20251101180433');
