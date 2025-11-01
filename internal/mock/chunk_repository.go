@@ -705,6 +705,64 @@ func (_c *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call) RunAndReturn(
 	return _c
 }
 
+// SupportedMinecraftVersions provides a mock function with given fields: ctx
+func (_m *MockChunkRepository) SupportedMinecraftVersions(ctx context.Context) ([]string, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SupportedMinecraftVersions")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]string, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []string); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockChunkRepository_SupportedMinecraftVersions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SupportedMinecraftVersions'
+type MockChunkRepository_SupportedMinecraftVersions_Call struct {
+	*mock.Call
+}
+
+// SupportedMinecraftVersions is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockChunkRepository_Expecter) SupportedMinecraftVersions(ctx interface{}) *MockChunkRepository_SupportedMinecraftVersions_Call {
+	return &MockChunkRepository_SupportedMinecraftVersions_Call{Call: _e.mock.On("SupportedMinecraftVersions", ctx)}
+}
+
+func (_c *MockChunkRepository_SupportedMinecraftVersions_Call) Run(run func(ctx context.Context)) *MockChunkRepository_SupportedMinecraftVersions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_SupportedMinecraftVersions_Call) Return(_a0 []string, _a1 error) *MockChunkRepository_SupportedMinecraftVersions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockChunkRepository_SupportedMinecraftVersions_Call) RunAndReturn(run func(context.Context) ([]string, error)) *MockChunkRepository_SupportedMinecraftVersions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateChunk provides a mock function with given fields: ctx, _a1
 func (_m *MockChunkRepository) UpdateChunk(ctx context.Context, _a1 chunk.Chunk) (chunk.Chunk, error) {
 	ret := _m.Called(ctx, _a1)
