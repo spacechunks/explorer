@@ -1,4 +1,3 @@
-
 -- Dumped from database version 17.2 (Debian 17.2-1.pgdg120+1)
 -- Dumped by pg_dump version 17.6
 
@@ -136,7 +135,7 @@ CREATE TABLE public.flavor_versions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     presigned_url_expiry_date timestamp with time zone,
     presigned_url character varying,
-    minecraft_version character varying
+    minecraft_version character varying NOT NULL
 );
 
 
@@ -567,4 +566,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250904143025'),
     ('20251026194426'),
     ('20251101155256'),
-    ('20251101180433');
+    ('20251101180433'),
+    ('20251101204811');

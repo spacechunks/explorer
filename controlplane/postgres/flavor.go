@@ -172,16 +172,13 @@ func (db *DB) CreateFlavorVersion(
 
 	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		createParams := query.CreateFlavorVersionParams{
-			ID:       id.String(),
-			FlavorID: flavorID,
-			Hash:     version.Hash,
-			Version:  version.Version,
-			MinecraftVersion: pgtype.Text{
-				String: version.MinecraftVersion,
-				Valid:  true,
-			},
-			ChangeHash: version.ChangeHash,
-			CreatedAt:  now,
+			ID:               id.String(),
+			FlavorID:         flavorID,
+			Hash:             version.Hash,
+			Version:          version.Version,
+			MinecraftVersion: version.MinecraftVersion,
+			ChangeHash:       version.ChangeHash,
+			CreatedAt:        now,
 		}
 
 		if prevVersionID != "" {
@@ -256,13 +253,14 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 
 		row := rows[0]
 		ret = chunk.FlavorVersion{
-			ID:            row.ID,
-			Version:       row.Version,
-			Hash:          row.Hash,
-			ChangeHash:    row.ChangeHash,
-			BuildStatus:   chunk.BuildStatus(row.BuildStatus),
-			FilesUploaded: row.FilesUploaded,
-			CreatedAt:     row.CreatedAt,
+			ID:               row.ID,
+			Version:          row.Version,
+			MinecraftVersion: row.MinecraftVersion,
+			Hash:             row.Hash,
+			ChangeHash:       row.ChangeHash,
+			BuildStatus:      chunk.BuildStatus(row.BuildStatus),
+			FilesUploaded:    row.FilesUploaded,
+			CreatedAt:        row.CreatedAt,
 		}
 
 		var expiryDate *time.Time

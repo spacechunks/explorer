@@ -104,10 +104,11 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 					UpdatedAt:   row.UpdatedAt_2.UTC(),
 				},
 				FlavorVersion: chunk.FlavorVersion{
-					ID:         row.ID_2,
-					Version:    row.Version,
-					Hash:       row.Hash,
-					ChangeHash: row.ChangeHash,
+					ID:               row.ID_2,
+					Version:          row.Version,
+					MinecraftVersion: row.MinecraftVersion,
+					Hash:             row.Hash,
+					ChangeHash:       row.ChangeHash,
 
 					// FIXME: for now those are not needed anywhere, so they are not included in the query
 					FileHashes: nil,
@@ -117,11 +118,7 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 					CreatedAt:     row.CreatedAt_2.UTC(),
 				},
 			}
-
-			if row.MinecraftVersion.Valid {
-				i.FlavorVersion.MinecraftVersion = row.MinecraftVersion.String
-			}
-
+			
 			flavors := make([]chunk.Flavor, 0, len(rows))
 			for _, instanceRow := range v {
 				f := chunk.Flavor{
@@ -184,11 +181,6 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 				port = ptr.Pointer(uint16(*row.Port))
 			}
 
-			mcVersion := ""
-			if row.MinecraftVersion.Valid {
-				mcVersion = row.MinecraftVersion.String
-			}
-
 			ret = append(ret, instance.Instance{
 				ID: row.ID,
 				Chunk: chunk.Chunk{
@@ -202,7 +194,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 				FlavorVersion: chunk.FlavorVersion{
 					ID:               row.ID_2,
 					Version:          row.Version,
-					MinecraftVersion: mcVersion,
+					MinecraftVersion: row.MinecraftVersion,
 					Hash:             row.Hash,
 					ChangeHash:       row.ChangeHash,
 					FileHashes:       nil,
@@ -311,19 +303,16 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 			UpdatedAt:   row.UpdatedAt_2.UTC(),
 		},
 		FlavorVersion: chunk.FlavorVersion{
-			ID:            row.ID_2,
-			Version:       row.Version,
-			Hash:          row.Hash,
-			ChangeHash:    row.ChangeHash,
-			FileHashes:    nil,
-			FilesUploaded: row.FilesUploaded,
-			BuildStatus:   chunk.BuildStatus(row.BuildStatus),
-			CreatedAt:     row.CreatedAt_2.UTC(),
+			ID:               row.ID_2,
+			Version:          row.Version,
+			MinecraftVersion: row.MinecraftVersion,
+			Hash:             row.Hash,
+			ChangeHash:       row.ChangeHash,
+			FileHashes:       nil,
+			FilesUploaded:    row.FilesUploaded,
+			BuildStatus:      chunk.BuildStatus(row.BuildStatus),
+			CreatedAt:        row.CreatedAt_2.UTC(),
 		},
-	}
-
-	if row.MinecraftVersion.Valid {
-		ret.FlavorVersion.MinecraftVersion = row.MinecraftVersion.String
 	}
 
 	var port *uint16

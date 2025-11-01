@@ -132,7 +132,7 @@ type CreateFlavorVersionParams struct {
 	ChangeHash       string
 	Version          string
 	PrevVersionID    *string
-	MinecraftVersion pgtype.Text
+	MinecraftVersion string
 	CreatedAt        time.Time
 }
 
@@ -221,7 +221,7 @@ type FlavorVersionByIDRow struct {
 	CreatedAt              time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
-	MinecraftVersion       pgtype.Text
+	MinecraftVersion       string
 	FlavorVersionID        string
 	FileHash               string
 	FilePath               string
@@ -440,7 +440,7 @@ type GetInstanceRow struct {
 	CreatedAt_2            time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
-	MinecraftVersion       pgtype.Text
+	MinecraftVersion       string
 	ID_3                   string
 	Name                   string
 	Description            string
@@ -544,7 +544,7 @@ type GetInstancesByNodeIDRow struct {
 	CreatedAt_2            time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
-	MinecraftVersion       pgtype.Text
+	MinecraftVersion       string
 	ID_3                   string
 	Name                   string
 	Description            string
@@ -744,7 +744,7 @@ type ListFlavorsByChunkIDRow struct {
 	CreatedAt_2            time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
-	MinecraftVersion       pgtype.Text
+	MinecraftVersion       string
 	FlavorVersionID        string
 	FileHash               string
 	FilePath               string
@@ -821,7 +821,7 @@ type ListInstancesRow struct {
 	CreatedAt_2            time.Time
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
-	MinecraftVersion       pgtype.Text
+	MinecraftVersion       string
 	ID_3                   string
 	Name                   string
 	Description            string
