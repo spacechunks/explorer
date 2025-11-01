@@ -161,7 +161,7 @@ func (b builder) build(ctx context.Context, data buildData) {
 	}
 }
 
-func (b builder) OnUpdate(ctx context.Context, f func(update buildUpdate)) {
+func (b builder) Wait(ctx context.Context, f func(update buildUpdate)) {
 	for {
 		select {
 		case u := <-b.updates:

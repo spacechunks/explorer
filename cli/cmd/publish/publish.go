@@ -237,58 +237,21 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 			})
 		}
 
-		var (
-			Reset = "\033[0m"
-			Red   = "\033[31m"
-			Green = "\033[32m"
-		)
-
 		updates := make(map[string]buildUpdate)
 
 		fmt.Println("\nNow waiting for updates:")
 
 		// this builds the following line in the terminal and redraws it once we receive an update
 		// <flavor1>: <status> | <flavor2>: <status> | <flavor3>: <status> etc...
-		b.OnUpdate(ctx, func(u buildUpdate) {
+		b.Wait(ctx, func(u buildUpdate) {
 			fmt.Print("\033[2K") // clear current line
 			updates[u.data.local.name] = u
-
-			var (
-				keys = slices.Collect(maps.Keys(updates))
-				c    = 0
-			)
-
-			slices.Sort(keys)
-
-			for _, k := range keys {
-				upd := updates[k]
-				c++
-				fmt.Printf("%s: ", upd.data.local.name)
-				if upd.err != nil {
-					fmt.Printf("%s%s%s\n", Red, upd.err.Error(), Reset)
-				}
-
-				if upd.uploadProgress != nil {
-					fmt.Printf("Uploading (%d%%)", *upd.uploadProgress)
-				}
-
-				if upd.buildStatus != nil {
-					if *upd.buildStatus == "COMPLETED" {
-						fmt.Printf("%s%s%s", Green, *upd.buildStatus, Reset)
-					} else if strings.Contains(*upd.buildStatus, "FAILED") {
-						fmt.Printf("%s%s%s", Red, *upd.buildStatus, Reset)
-					} else {
-						fmt.Printf("%s", *upd.buildStatus)
-					}
-				}
-
-				if c != len(updates) {
-					fmt.Print(" | ")
-				}
-			}
-
+			display(updates)
 			fmt.Print("\r")
 		})
+
+		// have to re-draw again, because we clear the line in Wait
+		display(updates)
 
 		return nil
 	}
@@ -299,6 +262,42 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 		Long:         "TBD",
 		RunE:         run,
 		SilenceUsage: true,
+	}
+}
+
+func display(updates map[string]buildUpdate) {
+	var (
+		keys = slices.Collect(maps.Keys(updates))
+		c    = 0
+	)
+
+	slices.Sort(keys)
+
+	for _, k := range keys {
+		upd := updates[k]
+		c++
+		fmt.Printf("%s: ", upd.data.local.name)
+		if upd.err != nil {
+			fmt.Printf("%s%s%s\n", Red, upd.err.Error(), Reset)
+		}
+
+		if upd.uploadProgress != nil {
+			fmt.Printf("Uploading (%d%%)", *upd.uploadProgress)
+		}
+
+		if upd.buildStatus != nil {
+			if *upd.buildStatus == "COMPLETED" {
+				fmt.Printf("%s%s%s", Green, *upd.buildStatus, Reset)
+			} else if strings.Contains(*upd.buildStatus, "FAILED") {
+				fmt.Printf("%s%s%s", Red, *upd.buildStatus, Reset)
+			} else {
+				fmt.Printf("%s", *upd.buildStatus)
+			}
+		}
+
+		if c != len(updates) {
+			fmt.Print(" | ")
+		}
 	}
 }
 
