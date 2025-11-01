@@ -19,7 +19,9 @@
 package publish
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
@@ -86,6 +88,19 @@ func (c versionHashExistsConflict) Print() {
 	fmt.Printf("%s - A version  with the same set of files exist.\n", indent2)
 }
 
+type errorConflict struct {
+	flavor localFlavor
+	err    error
+}
+
+func (c errorConflict) Flavor() localFlavor {
+	return c.flavor
+}
+
+func (c errorConflict) Print() {
+	fmt.Printf("%s - An error occured: %v\n", indent2, c.err)
+}
+
 type actionable struct {
 	flavor localFlavor
 	phase  buildPhase
@@ -102,18 +117,31 @@ func newPlan(cfg publishConfig, chunk *chunkv1alpha1.Chunk) (plan, error) {
 	p := plan{}
 
 	for _, f := range cfg.Chunk.Flavors {
-		hash, fileHashes, err := localFileHashes(f.Path)
-		if err != nil {
-			return plan{}, fmt.Errorf("error while reading flavors from disk: %w", err)
-		}
-
 		local := localFlavor{
 			name:    f.Name,
 			version: f.Version,
 			path:    f.Path,
-			files:   fileHashes,
-			hash:    hash,
 		}
+
+		if _, err := os.Stat(f.Path); err != nil && errors.Is(err, os.ErrNotExist) {
+			p.conflicts = append(p.conflicts, errorConflict{
+				flavor: local,
+				err:    fmt.Errorf("file %s does not exist", f.Path),
+			})
+			continue
+		}
+
+		hash, fileHashes, err := localFileHashes(f.Path)
+		if err != nil {
+			p.conflicts = append(p.conflicts, errorConflict{
+				flavor: local,
+				err:    fmt.Errorf("reading flavors from disk: %w", err),
+			})
+			continue
+		}
+
+		local.files = fileHashes
+		local.hash = hash
 
 		remote := cli.Find(chunk.Flavors, func(item *chunkv1alpha1.Flavor) bool {
 			return f.Name == item.Name
