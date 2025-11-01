@@ -889,6 +889,20 @@ func (q *Queries) MarkFlavorVersionFilesUploaded(ctx context.Context, id string)
 	return err
 }
 
+const minecraftVersionExists = `-- name: MinecraftVersionExists :one
+SELECT EXISTS(
+    SELECT 1 FROM minecraft_versions
+    WHERE version = $1
+)
+`
+
+func (q *Queries) MinecraftVersionExists(ctx context.Context, version string) (bool, error) {
+	row := q.db.QueryRow(ctx, minecraftVersionExists, version)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const randomNode = `-- name: RandomNode :one
 /*
  * NODES

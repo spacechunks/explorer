@@ -174,3 +174,8 @@ DELETE FROM instances WHERE id = $1;
 -- name: AllMinecraftVersions :many
 SELECT version FROM minecraft_versions;
 
+-- name: MinecraftVersionExists :one
+SELECT EXISTS(
+    SELECT 1 FROM minecraft_versions
+    WHERE version = $1
+);

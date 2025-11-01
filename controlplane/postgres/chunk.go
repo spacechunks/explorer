@@ -208,6 +208,22 @@ func (db *DB) SupportedMinecraftVersions(ctx context.Context) ([]string, error) 
 	return ret, nil
 }
 
+func (db *DB) MinecraftVersionExists(ctx context.Context, version string) (bool, error) {
+	var ret bool
+	if err := db.do(ctx, func(q *query.Queries) error {
+		exists, err := q.MinecraftVersionExists(ctx, version)
+		if err != nil {
+			return err
+		}
+
+		ret = exists
+		return nil
+	}); err != nil {
+		return false, err
+	}
+	return ret, nil
+}
+
 func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (chunk.Chunk, error) {
 	rows, err := q.GetChunkByID(ctx, id)
 	if err != nil {
