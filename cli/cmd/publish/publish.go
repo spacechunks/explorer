@@ -68,11 +68,12 @@ type changedFlavor struct {
 }
 
 type localFlavor struct {
-	name    string
-	version string
-	path    string
-	hash    string
-	files   []file.Hash
+	name             string
+	version          string
+	minecraftVersion string
+	path             string
+	hash             string
+	files            []file.Hash
 }
 
 func (f localFlavor) serverRelPath(path string) string {
@@ -159,10 +160,6 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 			return fmt.Errorf("couldn't parse config file: %w", err)
 		}
 
-		// TODO: validate that only supported minecraft versions can be used
-		//       minecraft version concept needs implementation in control plane
-		//		 as well. (add field MinecraftVersion field to flavor version).
-
 		// TODO: get chunk by name
 		chunk, err := findChunk(ctx, state.Client, cfg.Chunk.Name)
 		if err != nil {
@@ -180,15 +177,23 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 			}
 		}
 
-		plan := newPlan(cfg, chunk)
-		plan.print()
-
-		if !prompt("Are you sure you want to publish? (y/n):") {
-			return nil
+		resp, err := state.Client.GetSupportedMinecraftVersions(
+			ctx,
+			&chunkv1alpha1.GetSupportedMinecraftVersionsRequest{},
+		)
+		if err != nil {
+			return fmt.Errorf("get minecraft versions: %w", err)
 		}
+
+		plan := newPlan(cfg, resp.Versions, chunk)
+		plan.print()
 
 		if len(plan.addedFlavors)+len(plan.changedFlavors)+len(plan.actionables) == 0 {
 			fmt.Println("Nothing to publish.")
+			return nil
+		}
+
+		if !prompt("Are you sure you want to publish? (y/n):") {
 			return nil
 		}
 

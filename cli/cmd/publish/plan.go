@@ -101,6 +101,20 @@ func (c errorConflict) Print() {
 	fmt.Printf("%s - An error occured: %v\n", indent2, c.err)
 }
 
+type versionNotSupporterConflict struct {
+	flavor            localFlavor
+	supportedVersions []string
+}
+
+func (c versionNotSupporterConflict) Flavor() localFlavor {
+	return c.flavor
+}
+
+func (c versionNotSupporterConflict) Print() {
+	fmt.Printf("%s - Provided version %s is not supported.\n", indent2, c.flavor.minecraftVersion)
+	fmt.Printf("%s   Supported versions are: %s\n", indent2, strings.Join(c.supportedVersions, ","))
+}
+
 type actionable struct {
 	flavor localFlavor
 	phase  buildPhase
@@ -113,14 +127,23 @@ type plan struct {
 	conflicts      []conflict
 }
 
-func newPlan(cfg publishConfig, chunk *chunkv1alpha1.Chunk) plan {
+func newPlan(cfg publishConfig, supportedVersions []string, chunk *chunkv1alpha1.Chunk) plan {
 	p := plan{}
 
 	for _, f := range cfg.Chunk.Flavors {
 		local := localFlavor{
-			name:    f.Name,
-			version: f.Version,
-			path:    f.Path,
+			name:             f.Name,
+			version:          f.Version,
+			path:             f.Path,
+			minecraftVersion: f.MinecraftVersion,
+		}
+
+		if !slices.Contains(supportedVersions, local.minecraftVersion) {
+			p.conflicts = append(p.conflicts, versionNotSupporterConflict{
+				flavor:            local,
+				supportedVersions: supportedVersions,
+			})
+			continue
 		}
 
 		if _, err := os.Stat(f.Path); err != nil && errors.Is(err, os.ErrNotExist) {
@@ -273,11 +296,6 @@ func (p plan) print() {
 	//  x MyFlavor 3
 	//     x There is already a flavor version having the same files
 	//     x Version: v3
-
-	if (len(p.addedFlavors) == 0) && (len(p.changedFlavors) == 0) && (len(p.actionables) == 0) && (len(p.conflicts) == 0) {
-		fmt.Println("Nothing to do.")
-		return
-	}
 
 	if len(p.addedFlavors) > 0 {
 		fmt.Println("New flavors:")
