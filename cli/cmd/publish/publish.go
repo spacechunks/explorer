@@ -180,11 +180,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 			}
 		}
 
-		plan, err := newPlan(cfg, chunk)
-		if err != nil {
-			return fmt.Errorf("error while creating plan: %w", err)
-		}
-
+		plan := newPlan(cfg, chunk)
 		plan.print()
 
 		if !prompt("Are you sure you want to publish? (y/n):") {
