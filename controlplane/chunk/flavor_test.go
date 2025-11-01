@@ -226,7 +226,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			) {
 				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
-					Return(true, nil)
+					Return(false, nil)
 
 				repo.EXPECT().
 					MinecraftVersionExists(mocky.Anything, newVersion.MinecraftVersion).
