@@ -65,6 +65,7 @@ type FlavorVersionDiff struct {
 type FlavorVersion struct {
 	ID                     string
 	Version                string
+	MinecraftVersion       string
 	Hash                   string
 	ChangeHash             string
 	FileHashes             []file.Hash
@@ -109,6 +110,15 @@ func (s *svc) CreateFlavorVersion(
 
 	if exists {
 		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrFlavorVersionExists
+	}
+
+	exists, err = s.repo.MinecraftVersionExists(ctx, version.MinecraftVersion)
+	if err != nil {
+		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("minecraft version exists: %w", err)
+	}
+
+	if !exists {
+		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrMinecraftVersionNotSupported
 	}
 
 	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
