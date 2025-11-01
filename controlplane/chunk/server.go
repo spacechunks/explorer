@@ -201,3 +201,16 @@ func (s *Server) GetUploadURL(
 		Url: url,
 	}, nil
 }
+
+func (s *Server) GetSupportedMinecraftVersions(
+	ctx context.Context,
+	_ *chunkv1alpha1.GetSupportedMinecraftVersionsRequest,
+) (*chunkv1alpha1.GetSupportedMinecraftVersionsResponse, error) {
+	versions, err := s.service.GetSupportedMinecraftVersions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &chunkv1alpha1.GetSupportedMinecraftVersionsResponse{
+		Versions: versions,
+	}, nil
+}
