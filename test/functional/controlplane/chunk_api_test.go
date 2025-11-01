@@ -488,9 +488,7 @@ func TestCreateFlavor(t *testing.T) {
 }
 
 func TestCreateFlavorVersion(t *testing.T) {
-	var (
-		c = fixture.Chunk()
-	)
+	c := fixture.Chunk()
 
 	tests := []struct {
 		name        string
@@ -562,6 +560,15 @@ func TestCreateFlavorVersion(t *testing.T) {
 				v.Hash = "wrong-hash"
 			}),
 			err: apierrs.ErrHashMismatch.GRPCStatus().Err(),
+		},
+		{
+			name:        "unsupported minecraft version",
+			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
+				v.Version = "v2"
+				v.MinecraftVersion = "abcdef"
+			}),
+			err: apierrs.ErrMinecraftVersionNotSupported.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {

@@ -103,6 +103,10 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	pool, err := pgxpool.New(ctx, p.ConnString)
 	require.NoError(t, err)
 
+	// seed data that is globally needed
+	_, err = pool.Exec(ctx, `INSERT INTO minecraft_versions (version) VALUES ($1)`, MinecraftVersion)
+	require.NoError(t, err)
+
 	p.Pool = pool
 	p.DB = postgres.NewDB(p.logger, pool)
 }
@@ -238,19 +242,6 @@ func (p *Postgres) CreateFlavorVersion(t *testing.T, flavorID string, version *c
 	created, err := p.DB.CreateFlavorVersion(ctx, flavorID, *version, "")
 	require.NoError(t, err)
 	*version = created
-}
-
-func (p *Postgres) CreateBlobs(t *testing.T, version chunk.FlavorVersion) {
-	//var objs []blob.Object
-	//for _, fh := range version.FileHashes {
-	//	objs = append(objs, blob.Object{
-	//		Hash: fh.Hash,
-	//		Data: []byte(fh.Path),
-	//	})
-	//}
-	//
-	//err := p.DB.BulkWriteBlobs(context.Background(), objs)
-	//require.NoError(t, err)
 }
 
 func (p *Postgres) InsertNode(t *testing.T) {
