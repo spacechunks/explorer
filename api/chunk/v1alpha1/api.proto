@@ -117,6 +117,8 @@ service ChunkService {
   //     for more information about what requirements are expected see tarball_hash
   //     documentation of GetUploadURLRequest
   rpc GetUploadURL(GetUploadURLRequest) returns (GetUploadURLResponse);
+
+  rpc GetSupportedMinecraftVersions(GetSupportedMinecraftVersionsRequest) returns (GetSupportedMinecraftVersionsResponse);
 }
 
 message CreateChunkRequest {
@@ -203,4 +205,11 @@ message GetUploadURLRequest {
 
 message GetUploadURLResponse {
   string url = 1;
+}
+
+message GetSupportedMinecraftVersionsRequest {
+}
+
+message GetSupportedMinecraftVersionsResponse {
+  repeated string versions = 1;
 }

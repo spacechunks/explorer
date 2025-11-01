@@ -44,4 +44,5 @@ type Repository interface {
 	FlavorVersionByID(ctx context.Context, id string) (FlavorVersion, error)
 	UpdateFlavorVersionBuildStatus(ctx context.Context, flavorVersionID string, status BuildStatus) error
 	UpdateFlavorVersionPresignedURLData(ctx context.Context, flavorVersionID string, date time.Time, url string) error
+	SupportedMinecraftVersions(ctx context.Context) ([]string, error)
 }

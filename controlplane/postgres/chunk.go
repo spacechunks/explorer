@@ -192,6 +192,22 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 	return ret, nil
 }
 
+func (db *DB) SupportedMinecraftVersions(ctx context.Context) ([]string, error) {
+	var ret []string
+	if err := db.do(ctx, func(q *query.Queries) error {
+		versions, err := q.AllMinecraftVersions(ctx)
+		if err != nil {
+			return err
+		}
+
+		ret = versions
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
 func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (chunk.Chunk, error) {
 	rows, err := q.GetChunkByID(ctx, id)
 	if err != nil {

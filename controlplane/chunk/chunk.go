@@ -101,6 +101,10 @@ func (s *svc) ListChunks(ctx context.Context) ([]Chunk, error) {
 	return ret, nil
 }
 
+func (s *svc) GetSupportedMinecraftVersions(ctx context.Context) ([]string, error) {
+	return s.repo.SupportedMinecraftVersions(ctx)
+}
+
 func validateChunkFields(chunk Chunk) error {
 	// FIXME:
 	//  - remove hardcoded limits for tags

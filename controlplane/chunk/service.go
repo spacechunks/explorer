@@ -39,6 +39,7 @@ type Service interface {
 	) (FlavorVersion, FlavorVersionDiff, error)
 	BuildFlavorVersion(ctx context.Context, versionID string) error
 	GetUploadURL(ctx context.Context, flavorVersionID string, tarballHash string) (string, error)
+	GetSupportedMinecraftVersions(ctx context.Context) ([]string, error)
 }
 
 type Config struct {

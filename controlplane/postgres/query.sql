@@ -166,3 +166,11 @@ WHERE id = $3;
 
 -- name: BulkDeleteInstances :batchexec
 DELETE FROM instances WHERE id = $1;
+
+/*
+ * MINECRAFT VERSIONS
+ */
+
+-- name: AllMinecraftVersions :many
+SELECT version FROM minecraft_versions;
+

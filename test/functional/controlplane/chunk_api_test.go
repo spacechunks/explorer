@@ -916,3 +916,43 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 		})
 	}
 }
+
+func TestGetSupportedMinecraftVersions(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	fixture.RunControlPlane(t, pg)
+
+	versions := []string{
+		"1.8.8.",
+		"1.21.1",
+		"1.20.4",
+		"1.21.10",
+		"1.21.5",
+	}
+
+	for _, v := range versions {
+		_, err := pg.Pool.Exec(ctx, "INSERT INTO minecraft_versions VALUES ($1)", v)
+		require.NoError(t, err)
+	}
+
+	conn, err := grpc.NewClient(
+		fixture.ControlPlaneAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+
+	client := chunkv1alpha1.NewChunkServiceClient(conn)
+
+	resp, err := client.GetSupportedMinecraftVersions(ctx, &chunkv1alpha1.GetSupportedMinecraftVersionsRequest{})
+	require.NoError(t, err)
+
+	sort.Strings(versions)
+	sort.Strings(resp.Versions)
+
+	if d := cmp.Diff(versions, resp.Versions); d != "" {
+		t.Errorf("mismatch (-want +got):\n%s", d)
+	}
+}

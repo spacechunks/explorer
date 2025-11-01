@@ -168,6 +168,16 @@ CREATE TABLE public.instances (
 
 
 --
+-- Name: minecraft_versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.minecraft_versions (
+    version character varying NOT NULL,
+    created_at timestamp with time zone
+);
+
+
+--
 -- Name: nodes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -363,6 +373,14 @@ ALTER TABLE ONLY public.instances
 
 
 --
+-- Name: minecraft_versions minecraft_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.minecraft_versions
+    ADD CONSTRAINT minecraft_versions_pkey PRIMARY KEY (version);
+
+
+--
 -- Name: nodes nodes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -416,13 +434,6 @@ ALTER TABLE ONLY public.river_queue
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
-
-
---
--- Name: flavor_hash_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX flavor_hash_idx ON public.flavor_versions USING btree (hash);
 
 
 --
@@ -542,4 +553,6 @@ ALTER TABLE ONLY public.river_client_queue
 INSERT INTO public.schema_migrations (version) VALUES
     ('00000000000000'),
     ('20250515184448'),
-    ('20250904143025');
+    ('20250904143025'),
+    ('20251026194426'),
+    ('20251101155256');

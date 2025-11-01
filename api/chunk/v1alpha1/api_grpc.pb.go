@@ -37,14 +37,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChunkService_CreateChunk_FullMethodName         = "/chunk.v1alpha1.ChunkService/CreateChunk"
-	ChunkService_GetChunk_FullMethodName            = "/chunk.v1alpha1.ChunkService/GetChunk"
-	ChunkService_UpdateChunk_FullMethodName         = "/chunk.v1alpha1.ChunkService/UpdateChunk"
-	ChunkService_ListChunks_FullMethodName          = "/chunk.v1alpha1.ChunkService/ListChunks"
-	ChunkService_CreateFlavor_FullMethodName        = "/chunk.v1alpha1.ChunkService/CreateFlavor"
-	ChunkService_CreateFlavorVersion_FullMethodName = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
-	ChunkService_BuildFlavorVersion_FullMethodName  = "/chunk.v1alpha1.ChunkService/BuildFlavorVersion"
-	ChunkService_GetUploadURL_FullMethodName        = "/chunk.v1alpha1.ChunkService/GetUploadURL"
+	ChunkService_CreateChunk_FullMethodName                   = "/chunk.v1alpha1.ChunkService/CreateChunk"
+	ChunkService_GetChunk_FullMethodName                      = "/chunk.v1alpha1.ChunkService/GetChunk"
+	ChunkService_UpdateChunk_FullMethodName                   = "/chunk.v1alpha1.ChunkService/UpdateChunk"
+	ChunkService_ListChunks_FullMethodName                    = "/chunk.v1alpha1.ChunkService/ListChunks"
+	ChunkService_CreateFlavor_FullMethodName                  = "/chunk.v1alpha1.ChunkService/CreateFlavor"
+	ChunkService_CreateFlavorVersion_FullMethodName           = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
+	ChunkService_BuildFlavorVersion_FullMethodName            = "/chunk.v1alpha1.ChunkService/BuildFlavorVersion"
+	ChunkService_GetUploadURL_FullMethodName                  = "/chunk.v1alpha1.ChunkService/GetUploadURL"
+	ChunkService_GetSupportedMinecraftVersions_FullMethodName = "/chunk.v1alpha1.ChunkService/GetSupportedMinecraftVersions"
 )
 
 // ChunkServiceClient is the client API for ChunkService service.
@@ -142,6 +143,7 @@ type ChunkServiceClient interface {
 	//     for more information about what requirements are expected see tarball_hash
 	//     documentation of GetUploadURLRequest
 	GetUploadURL(ctx context.Context, in *GetUploadURLRequest, opts ...grpc.CallOption) (*GetUploadURLResponse, error)
+	GetSupportedMinecraftVersions(ctx context.Context, in *GetSupportedMinecraftVersionsRequest, opts ...grpc.CallOption) (*GetSupportedMinecraftVersionsResponse, error)
 }
 
 type chunkServiceClient struct {
@@ -226,6 +228,16 @@ func (c *chunkServiceClient) GetUploadURL(ctx context.Context, in *GetUploadURLR
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetUploadURLResponse)
 	err := c.cc.Invoke(ctx, ChunkService_GetUploadURL_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chunkServiceClient) GetSupportedMinecraftVersions(ctx context.Context, in *GetSupportedMinecraftVersionsRequest, opts ...grpc.CallOption) (*GetSupportedMinecraftVersionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSupportedMinecraftVersionsResponse)
+	err := c.cc.Invoke(ctx, ChunkService_GetSupportedMinecraftVersions_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -327,6 +339,7 @@ type ChunkServiceServer interface {
 	//     for more information about what requirements are expected see tarball_hash
 	//     documentation of GetUploadURLRequest
 	GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error)
+	GetSupportedMinecraftVersions(context.Context, *GetSupportedMinecraftVersionsRequest) (*GetSupportedMinecraftVersionsResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
 
@@ -360,6 +373,9 @@ func (UnimplementedChunkServiceServer) BuildFlavorVersion(context.Context, *Buil
 }
 func (UnimplementedChunkServiceServer) GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUploadURL not implemented")
+}
+func (UnimplementedChunkServiceServer) GetSupportedMinecraftVersions(context.Context, *GetSupportedMinecraftVersionsRequest) (*GetSupportedMinecraftVersionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSupportedMinecraftVersions not implemented")
 }
 func (UnimplementedChunkServiceServer) mustEmbedUnimplementedChunkServiceServer() {}
 func (UnimplementedChunkServiceServer) testEmbeddedByValue()                      {}
@@ -526,6 +542,24 @@ func _ChunkService_GetUploadURL_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChunkService_GetSupportedMinecraftVersions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSupportedMinecraftVersionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).GetSupportedMinecraftVersions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_GetSupportedMinecraftVersions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).GetSupportedMinecraftVersions(ctx, req.(*GetSupportedMinecraftVersionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChunkService_ServiceDesc is the grpc.ServiceDesc for ChunkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -564,6 +598,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUploadURL",
 			Handler:    _ChunkService_GetUploadURL_Handler,
+		},
+		{
+			MethodName: "GetSupportedMinecraftVersions",
+			Handler:    _ChunkService_GetSupportedMinecraftVersions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
