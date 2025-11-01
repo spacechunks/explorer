@@ -113,7 +113,7 @@ type plan struct {
 	conflicts      []conflict
 }
 
-func newPlan(cfg publishConfig, chunk *chunkv1alpha1.Chunk) (plan, error) {
+func newPlan(cfg publishConfig, chunk *chunkv1alpha1.Chunk) plan {
 	p := plan{}
 
 	for _, f := range cfg.Chunk.Flavors {
@@ -248,7 +248,7 @@ func newPlan(cfg publishConfig, chunk *chunkv1alpha1.Chunk) (plan, error) {
 		})
 	}
 
-	return p, nil
+	return p
 }
 
 func (p plan) print() {
