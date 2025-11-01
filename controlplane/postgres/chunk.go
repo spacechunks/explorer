@@ -150,9 +150,10 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 				FlavorCreatedAt: r.CreatedAt_2.Time,
 				FlavorUpdatedAt: r.UpdatedAt_2.Time,
 
-				FlavorVersionID:        r.ID_3,
-				FlavorVersionFlavorID:  r.FlavorID,
-				Version:                r.Version.String,
+				FlavorVersionID:       r.ID_3,
+				FlavorVersionFlavorID: r.FlavorID,
+				Version:               r.Version.String,
+
 				Hash:                   r.Hash.String,
 				BuildStatus:            string(r.BuildStatus.BuildStatus),
 				ChangeHash:             r.ChangeHash.String,
@@ -174,8 +175,14 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 				presignedURL = &r.PresignedUrl.String
 			}
 
+			var mcVersion *string
+			if r.MinecraftVersion.Valid {
+				mcVersion = &r.MinecraftVersion.String
+			}
+
 			rel.PresingedURLExpiryDate = expiryDate
 			rel.PresignedURL = presignedURL
+			rel.MinecraftVersion = mcVersion
 
 			m[r.ID] = append(m[r.ID], rel)
 		}
@@ -274,8 +281,14 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 			presignedURL = &r.PresignedUrl.String
 		}
 
+		var mcVersion *string
+		if r.MinecraftVersion.Valid {
+			mcVersion = &r.MinecraftVersion.String
+		}
+
 		rel.PresingedURLExpiryDate = expiryDate
 		rel.PresignedURL = presignedURL
+		rel.MinecraftVersion = mcVersion
 
 		relationRows = append(relationRows, rel)
 	}
@@ -299,6 +312,7 @@ type chunkRelationsRow struct {
 	FlavorVersionID        *string
 	FlavorVersionFlavorID  *string
 	Version                string
+	MinecraftVersion       *string
 	Hash                   string
 	BuildStatus            string
 	ChangeHash             string
@@ -354,6 +368,7 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 				versionMap[*r.FlavorVersionID] = chunk.FlavorVersion{
 					ID:                     *r.FlavorVersionID,
 					Version:                r.Version,
+					MinecraftVersion:       *r.MinecraftVersion,
 					Hash:                   r.Hash,
 					BuildStatus:            chunk.BuildStatus(r.BuildStatus),
 					ChangeHash:             r.ChangeHash,

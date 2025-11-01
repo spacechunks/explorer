@@ -172,10 +172,14 @@ func (db *DB) CreateFlavorVersion(
 
 	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		createParams := query.CreateFlavorVersionParams{
-			ID:         id.String(),
-			FlavorID:   flavorID,
-			Hash:       version.Hash,
-			Version:    version.Version,
+			ID:       id.String(),
+			FlavorID: flavorID,
+			Hash:     version.Hash,
+			Version:  version.Version,
+			MinecraftVersion: pgtype.Text{
+				String: version.MinecraftVersion,
+				Valid:  true,
+			},
 			ChangeHash: version.ChangeHash,
 			CreatedAt:  now,
 		}
@@ -318,8 +322,8 @@ func (db *DB) UpdateFlavorVersionPresignedURLData(
 				Time:  date,
 			},
 			PresignedUrl: pgtype.Text{
-				Valid:  true,
 				String: url,
+				Valid:  true,
 			},
 		})
 	})
