@@ -173,6 +173,7 @@ func Instance(mod ...func(i *instance.Instance)) instance.Instance {
 		Address:       netip.MustParseAddr("198.51.100.1"),
 		State:         instance.StatePending,
 		Port:          ptr.Pointer(uint16(1337)),
+		Owner:         c.Owner,
 		CreatedAt:     time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
 		UpdatedAt:     time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
 	}

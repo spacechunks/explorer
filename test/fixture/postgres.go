@@ -226,6 +226,7 @@ func (p *Postgres) CreateInstance(t *testing.T, nodeID string, ins *instance.Ins
 	p.CreateChunk(t, &ins.Chunk, CreateOptions{
 		WithFlavors:        true,
 		WithFlavorVersions: true,
+		WithOwner:          true,
 	})
 
 	for _, f := range ins.Chunk.Flavors {

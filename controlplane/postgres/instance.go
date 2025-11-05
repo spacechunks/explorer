@@ -28,6 +28,7 @@ import (
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
+	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/internal/ptr"
 )
 
@@ -38,6 +39,7 @@ func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID 
 		FlavorVersionID: ins.FlavorVersion.ID,
 		NodeID:          nodeID,
 		State:           query.InstanceState(ins.State),
+		Owner:           &ins.Owner.ID,
 		CreatedAt:       ins.CreatedAt,
 		UpdatedAt:       ins.UpdatedAt,
 	}
@@ -116,6 +118,13 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 					FilesUploaded: row.FilesUploaded,
 					BuildStatus:   chunk.BuildStatus(row.BuildStatus),
 					CreatedAt:     row.CreatedAt_2.UTC(),
+				},
+				Owner: user.User{
+					ID:        row.ID_6,
+					Nickname:  row.Nickname,
+					Email:     row.Email,
+					CreatedAt: row.CreatedAt_6,
+					UpdatedAt: row.UpdatedAt_4,
 				},
 			}
 
@@ -201,6 +210,13 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 					FilesUploaded:    row.FilesUploaded,
 					BuildStatus:      chunk.BuildStatus(row.BuildStatus),
 					CreatedAt:        row.CreatedAt_2.UTC(),
+				},
+				Owner: user.User{
+					ID:        row.ID_5,
+					Nickname:  row.Nickname,
+					Email:     row.Email,
+					CreatedAt: row.CreatedAt_5,
+					UpdatedAt: row.UpdatedAt_3,
 				},
 				Address:   row.Address,
 				State:     instance.State(row.State),
@@ -312,6 +328,13 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 			FilesUploaded:    row.FilesUploaded,
 			BuildStatus:      chunk.BuildStatus(row.BuildStatus),
 			CreatedAt:        row.CreatedAt_2.UTC(),
+		},
+		Owner: user.User{
+			ID:        row.ID_5,
+			Nickname:  row.Nickname,
+			Email:     row.Email,
+			CreatedAt: row.CreatedAt_5,
+			UpdatedAt: row.UpdatedAt_3,
 		},
 	}
 

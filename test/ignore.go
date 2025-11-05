@@ -77,6 +77,9 @@ var (
 		"Chunk.Flavors.Versions",
 		"ChunkFlavor.Versions",
 		"FlavorVersion.CreatedAt",
+		"Owner.ID",
+		"Owner.CreatedAt",
+		"Owner.UpdatedAt",
 	}
 
 	IgnoredChunkFields = []string{
