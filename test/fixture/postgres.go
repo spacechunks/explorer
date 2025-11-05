@@ -38,6 +38,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
+	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
@@ -155,11 +156,13 @@ func (p *Postgres) CreateRiverClient(t *testing.T) {
 type CreateOptions struct {
 	WithFlavors        bool
 	WithFlavorVersions bool
+	WithOwner          bool
 }
 
 var CreateOptionsAll = CreateOptions{
 	WithFlavors:        true,
 	WithFlavorVersions: true,
+	WithOwner:          true,
 }
 
 // CreateChunk inserts a chunk and all flavors. it also updates
@@ -167,6 +170,11 @@ var CreateOptionsAll = CreateOptions{
 // like id or created_at have the correct value.
 func (p *Postgres) CreateChunk(t *testing.T, c *chunk.Chunk, opts CreateOptions) {
 	ctx := context.Background()
+
+	if opts.WithOwner {
+		p.CreateUser(t, &c.Owner)
+	}
+
 	createdChunk, err := p.DB.CreateChunk(ctx, *c)
 	require.NoError(t, err)
 
@@ -242,6 +250,13 @@ func (p *Postgres) CreateFlavorVersion(t *testing.T, flavorID string, version *c
 	created, err := p.DB.CreateFlavorVersion(ctx, flavorID, *version, "")
 	require.NoError(t, err)
 	*version = created
+}
+
+func (p *Postgres) CreateUser(t *testing.T, u *user.User) {
+	ctx := context.Background()
+	created, err := p.DB.CreateUser(ctx, *u)
+	require.NoError(t, err)
+	*u = created
 }
 
 func (p *Postgres) InsertNode(t *testing.T) {

@@ -60,6 +60,7 @@ func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
 				f.CreatedAt = time.Date(2024, 2, 23, 13, 12, 15, 0, time.UTC)
 			}),
 		},
+		Owner:     User(),
 		CreatedAt: time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
 		UpdatedAt: time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
 	}

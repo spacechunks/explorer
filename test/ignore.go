@@ -88,6 +88,15 @@ var (
 		"Flavors.CreatedAt",
 		"Flavors.UpdatedAt",
 		"Flavors.Versions.CreatedAt",
+		"Owner.ID",
+		"Owner.CreatedAt",
+		"Owner.UpdatedAt",
+	}
+
+	IgnoredUserFields = []string{
+		"ID",
+		"CreatedAt",
+		"UpdatedAt",
 	}
 )
 
