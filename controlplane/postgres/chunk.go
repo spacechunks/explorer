@@ -32,6 +32,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
+	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/internal/file"
 )
 
@@ -41,11 +42,14 @@ func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 		return chunk.Chunk{}, fmt.Errorf("generate id: %w", err)
 	}
 
+	fmt.Println("CCC", c.Owner.ID)
+
 	params := query.CreateChunkParams{
 		ID:          id.String(),
 		Name:        c.Name,
 		Description: c.Description,
 		Tags:        c.Tags,
+		Owner:       &c.Owner.ID,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -162,6 +166,12 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 
 				FilePath: r.FilePath.String,
 				FileHash: r.FileHash.String,
+
+				UserID:        *r.ID_4,
+				UserNickname:  r.Nickname.String,
+				UserEmail:     r.Email.String,
+				UserCreatedAt: r.CreatedAt_5.Time,
+				UserUpdatedAt: r.UpdatedAt_3.Time,
 			}
 
 			// sqlc is not able to generate a *time.Time from nullable timestamptz
@@ -263,6 +273,12 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 
 			FilePath: r.FilePath.String,
 			FileHash: r.FileHash.String,
+
+			UserID:        *r.ID_4,
+			UserNickname:  r.Nickname.String,
+			UserEmail:     r.Email.String,
+			UserCreatedAt: r.CreatedAt_5.Time,
+			UserUpdatedAt: r.UpdatedAt_3.Time,
 		}
 
 		// sqlc is not able to generate a *time.Time from nullable timestamptz
@@ -312,6 +328,12 @@ type chunkRelationsRow struct {
 
 	FilePath string
 	FileHash string
+
+	UserID        string
+	UserNickname  string
+	UserEmail     string
+	UserCreatedAt time.Time
+	UserUpdatedAt time.Time
 }
 
 func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
@@ -334,6 +356,13 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 			Tags:        row.Tags,
 			CreatedAt:   row.ChunkCreatedAt.UTC(),
 			UpdatedAt:   row.ChunkUpdatedAt.UTC(),
+			Owner: user.User{
+				ID:        row.UserID,
+				Nickname:  row.UserNickname,
+				Email:     row.UserEmail,
+				CreatedAt: row.UserCreatedAt,
+				UpdatedAt: row.UserUpdatedAt,
+			},
 		}
 	)
 

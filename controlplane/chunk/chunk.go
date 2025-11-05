@@ -25,6 +25,7 @@ import (
 	"unicode/utf8"
 
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/user"
 )
 
 const (
@@ -39,6 +40,7 @@ type Chunk struct {
 	Description string
 	Tags        []string
 	Flavors     []Flavor
+	Owner       user.User
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
