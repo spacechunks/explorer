@@ -29,6 +29,7 @@ import (
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -38,6 +39,7 @@ import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	checkpointv1alpha1 "github.com/spacechunks/explorer/api/platformd/checkpoint/v1alpha1"
+	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
@@ -45,6 +47,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/controlplane/postgres"
+	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
 	"google.golang.org/grpc"
@@ -110,12 +113,19 @@ func (s *Server) Run(ctx context.Context) error {
 
 	db.SetRiverClient(riverClient)
 
+	oidcProvider, err := oidc.NewProvider(ctx, s.cfg.OAuthIssuerURL)
+	if err != nil {
+		return fmt.Errorf("oidc provider: %w", err)
+	}
+
 	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
 			grpc.UnaryInterceptor(errorInterceptor(s.logger)),
 		)
 
+		userService  = user.NewService(db, oidcProvider, s.cfg.OAuthClientID, s.cfg.APITokenIssuer, s.cfg.APITokenExpiry)
+		userServer   = user.NewServer(userService)
 		chunkService = chunk.NewService(
 			db,
 			db,
@@ -133,6 +143,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 	instancev1alpha1.RegisterInstanceServiceServer(grpcServer, insServer)
 	chunkv1alpha1.RegisterChunkServiceServer(grpcServer, chunkServer)
+	userv1alpha1.RegisterUserServiceServer(grpcServer, userServer)
 
 	if err := riverClient.Start(ctx); err != nil {
 		return fmt.Errorf("start river client: %w", err)
