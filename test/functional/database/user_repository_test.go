@@ -61,6 +61,7 @@ func TestGetUserByEmail(t *testing.T) {
 	require.NoError(t, err)
 
 	actual, err := pg.DB.GetUserByEmail(ctx, expected.Email)
+	require.NoError(t, err)
 
 	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredUserFields...)); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)

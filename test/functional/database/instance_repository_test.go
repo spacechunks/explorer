@@ -219,6 +219,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 		fixture.Chunk(func(c *chunk.Chunk) {
 			c.ID = "01953e54-8ac5-7c1a-b468-dffdc26d2087"
 			c.Name = "chunk1"
+			c.Owner.Nickname = "user1"
 			c.Owner.Email = "user1@example.com"
 			c.Flavors = []chunk.Flavor{
 				fixture.Flavor(func(f *chunk.Flavor) {
@@ -230,6 +231,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 		fixture.Chunk(func(c *chunk.Chunk) {
 			c.ID = "01953e54-b686-764a-874f-dbc45b67152c"
 			c.Name = "chunk2"
+			c.Owner.Nickname = "user2"
 			c.Owner.Email = "user2@example.com"
 			c.Flavors = []chunk.Flavor{
 				fixture.Flavor(func(f *chunk.Flavor) {
