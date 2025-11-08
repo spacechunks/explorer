@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
@@ -64,4 +65,20 @@ func TestGetUserByEmail(t *testing.T) {
 	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredUserFields...)); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
+}
+
+func TestCreateUserWithExistingEmailFails(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		u   = fixture.User()
+	)
+
+	pg.Run(t, ctx)
+
+	_, err := pg.DB.CreateUser(ctx, u)
+	require.NoError(t, err)
+
+	_, err = pg.DB.CreateUser(ctx, u)
+	require.ErrorIs(t, err, apierrs.ErrAlreadyExists)
 }

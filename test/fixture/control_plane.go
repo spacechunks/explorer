@@ -32,8 +32,11 @@ import (
 )
 
 const (
-	ControlPlaneAddr = "localhost:9012"
-	BaseImage        = "base-image:latest"
+	ControlPlaneAddr   = "localhost:9012"
+	BaseImage          = "base-image:latest"
+	OAuthClientID      = "public-functest-client"
+	APITokenIssuer     = "functest-issuer.explorer.chunks.cloud"
+	APITokenSigningKey = "signing-key"
 )
 
 type ControlPlaneRunOption func(*ControlPlaneRunOptions)
@@ -41,6 +44,8 @@ type ControlPlaneRunOption func(*ControlPlaneRunOptions)
 type ControlPlaneRunOptions struct {
 	OCIRegistryEndpoint string
 	FakeS3Endpoint      string
+	OAuthClientID       string
+	OAuthIssuerURL      string
 }
 
 func WithOCIRegistryEndpoint(endpoint string) ControlPlaneRunOption {
@@ -55,6 +60,12 @@ func WithFakeS3Endpoint(endpoint string) ControlPlaneRunOption {
 	}
 }
 
+func WithOAuthIssuerEndpoint(issuerURL string) ControlPlaneRunOption {
+	return func(opts *ControlPlaneRunOptions) {
+		opts.OAuthIssuerURL = issuerURL
+	}
+}
+
 func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) {
 	ctx := context.Background()
 	pg.Run(t, ctx)
@@ -62,6 +73,7 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 	defaultOpts := ControlPlaneRunOptions{
 		OCIRegistryEndpoint: "http://localhost:5000",
 		FakeS3Endpoint:      "http://localhost:3080",
+		OAuthClientID:       OAuthClientID,
 	}
 
 	for _, opt := range opts {
@@ -88,6 +100,11 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 				// should stay at 2 seconds so TestGetUploadURLRenews passes
 				PresignedURLExpiry: 2 * time.Second,
 				UsePathStyle:       false,
+				OAuthClientID:      defaultOpts.OAuthClientID,
+				OAuthIssuerURL:     defaultOpts.OAuthIssuerURL,
+				APITokenIssuer:     APITokenIssuer,
+				APITokenExpiry:     5 * time.Second,
+				APITokenSigningKey: APITokenSigningKey,
 			})
 	)
 
