@@ -1,0 +1,54 @@
+/*
+ Chunk Explorer, a platform for hosting and discovering Minecraft servers.
+ Copyright (C) 2025 Yannic Rieger <oss@76k.io>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 3 of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+
+ You should have received a copy of the GNU Lesser General Public License
+ along with this program; if not, write to the Free Software Foundation,
+ Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
+syntax = "proto3";
+
+package user.v1alpha1;
+
+option go_package = "github.com/spacechunks/explorer/api/user/v1alpha1";
+
+import "user/v1alpha1/types.proto";
+import "google/protobuf/timestamp.proto";
+
+service UserService {
+  // Register registers a user to the Chunk Explorer.
+  //
+  // Defined error codes:
+  // - ALREADY_EXISTS:
+  //   - a user with the provided email or nickname does already exist
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+}
+
+message RegisterRequest {
+  string nickname = 1;
+  string id_token = 2;
+}
+
+message RegisterResponse {
+}
+
+message LoginRequest {
+  string id_token = 1;
+}
+
+message LoginResponse {
+  User user = 1;
+  string api_token = 2;
+}

@@ -134,8 +134,6 @@ message CreateChunkRequest {
   // be: pvp, adventure, single-player
   // Note that the limit is currently 4.
   repeated string tags = 3;
-
-  // User owner = 4;
 }
 
 message CreateChunkResponse {
