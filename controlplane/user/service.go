@@ -20,10 +20,13 @@ package user
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 )
 
 type User struct {
@@ -36,7 +39,7 @@ type User struct {
 
 type Service interface {
 	Register(ctx context.Context, nickname string, rawIDToken string) error
-	//Login(ctx context.Context, rawIDToken string) (User, []byte, error)
+	Login(ctx context.Context, rawIDToken string) (User, []byte, error)
 }
 
 type service struct {
@@ -45,6 +48,7 @@ type service struct {
 	clientID       string
 	issuer         string
 	apiTokenExpiry time.Duration
+	signingKey     *ecdsa.PrivateKey
 }
 
 type idTokenClaims struct {
@@ -57,6 +61,7 @@ func NewService(
 	oauthClientID string,
 	issuer string,
 	apiTokenExpiry time.Duration,
+	signingKey *ecdsa.PrivateKey,
 ) Service {
 	return &service{
 		repo:           repo,
@@ -64,6 +69,7 @@ func NewService(
 		clientID:       oauthClientID,
 		issuer:         issuer,
 		apiTokenExpiry: apiTokenExpiry,
+		signingKey:     signingKey,
 	}
 }
 
@@ -92,43 +98,43 @@ func (s *service) Register(ctx context.Context, nickname string, rawIDToken stri
 	return nil
 }
 
-//func (s *service) Login(ctx context.Context, rawIDToken string) (User, []byte, error) {
-//	verifier := s.provider.Verifier(&oidc.Config{
-//		ClientID: s.clientID,
-//	})
-//
-//	idTok, err := verifier.Verify(ctx, rawIDToken)
-//	if err != nil {
-//		return User{}, nil, fmt.Errorf("verify token: %w", err)
-//	}
-//
-//	var claims idTokenClaims
-//	if err := idTok.Claims(&claims); err != nil {
-//		return User{}, nil, fmt.Errorf("parse token claims: %w", err)
-//	}
-//
-//	u, err := s.repo.GetUserByEmail(ctx, claims.Email)
-//	if err != nil {
-//		return User{}, nil, fmt.Errorf("get user: %w", err)
-//	}
-//
-//	iss := time.Now()
-//	apiTok, err := jwt.NewBuilder().
-//		IssuedAt(iss).
-//		Issuer(s.issuer).
-//		Audience([]string{u.ID}).
-//		Expiration(iss.Add(s.apiTokenExpiry)).
-//		Claim("user_id", u.ID).
-//		Claim("email", claims.Email).
-//		Build()
-//	if err != nil {
-//		return User{}, nil, fmt.Errorf("create token: %w", err)
-//	}
-//
-//	signed, err := jwt.Sign(apiTok, jwt.WithKey(jwa.RS256(), "privkey")) // TODO: privkey
-//	if err != nil {
-//		return User{}, nil, fmt.Errorf("sign token: %w", err)
-//	}
-//
-//	return User{}, signed, nil
-//}
+func (s *service) Login(ctx context.Context, rawIDToken string) (User, []byte, error) {
+	verifier := s.provider.Verifier(&oidc.Config{
+		ClientID: s.clientID,
+	})
+
+	idTok, err := verifier.Verify(ctx, rawIDToken)
+	if err != nil {
+		return User{}, nil, fmt.Errorf("verify token: %w", err)
+	}
+
+	var claims idTokenClaims
+	if err := idTok.Claims(&claims); err != nil {
+		return User{}, nil, fmt.Errorf("parse token claims: %w", err)
+	}
+
+	u, err := s.repo.GetUserByEmail(ctx, claims.Email)
+	if err != nil {
+		return User{}, nil, fmt.Errorf("get user: %w", err)
+	}
+
+	iss := time.Now()
+	apiTok, err := jwt.NewBuilder().
+		IssuedAt(iss).
+		Issuer(s.issuer).
+		Audience([]string{s.issuer}).
+		Expiration(iss.Add(s.apiTokenExpiry)).
+		Claim("user_id", u.ID).
+		Claim("email", claims.Email).
+		Build()
+	if err != nil {
+		return User{}, nil, fmt.Errorf("create token: %w", err)
+	}
+
+	signed, err := jwt.Sign(apiTok, jwt.WithKey(jwa.ES256(), s.signingKey))
+	if err != nil {
+		return User{}, nil, fmt.Errorf("sign token: %w", err)
+	}
+
+	return u, signed, nil
+}

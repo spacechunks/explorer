@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
@@ -35,6 +36,10 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string) (user.User, erro
 	var ret user.User
 	if err := db.do(ctx, func(q *query.Queries) error {
 		u, err := q.UserByEmail(ctx, email)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apierrs.ErrNotFound
+		}
+
 		if err != nil {
 			return err
 		}

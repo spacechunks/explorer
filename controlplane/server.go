@@ -20,6 +20,8 @@ package controlplane
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -118,13 +120,27 @@ func (s *Server) Run(ctx context.Context) error {
 		return fmt.Errorf("oidc provider: %w", err)
 	}
 
+	pemBlock, _ := pem.Decode([]byte(s.cfg.APITokenSigningKey))
+
+	key, err := x509.ParseECPrivateKey(pemBlock.Bytes)
+	if err != nil {
+		return fmt.Errorf("parse ec private key: %w", err)
+	}
+
 	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
 			grpc.UnaryInterceptor(errorInterceptor(s.logger)),
 		)
 
-		userService  = user.NewService(db, oidcProvider, s.cfg.OAuthClientID, s.cfg.APITokenIssuer, s.cfg.APITokenExpiry)
+		userService = user.NewService(
+			db,
+			oidcProvider,
+			s.cfg.OAuthClientID,
+			s.cfg.APITokenIssuer,
+			s.cfg.APITokenExpiry,
+			key,
+		)
 		userServer   = user.NewServer(userService)
 		chunkService = chunk.NewService(
 			db,

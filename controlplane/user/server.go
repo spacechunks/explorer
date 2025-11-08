@@ -22,6 +22,7 @@ import (
 	"context"
 
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Server struct {
@@ -46,5 +47,17 @@ func (s Server) Register(
 }
 
 func (s Server) Login(ctx context.Context, req *userv1alpha1.LoginRequest) (*userv1alpha1.LoginResponse, error) {
-	return &userv1alpha1.LoginResponse{}, nil
+	user, apiKey, err := s.service.Login(ctx, req.IdToken)
+	if err != nil {
+		return nil, err
+	}
+	return &userv1alpha1.LoginResponse{
+		User: &userv1alpha1.User{
+			Id:        user.ID,
+			Nickname:  user.Nickname,
+			CreatedAt: timestamppb.New(user.CreatedAt),
+			UpdatedAt: timestamppb.New(user.UpdatedAt),
+		},
+		ApiToken: string(apiKey),
+	}, nil
 }

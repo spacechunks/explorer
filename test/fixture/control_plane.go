@@ -19,7 +19,13 @@
 package fixture
 
 import (
+	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"log/slog"
 	"os"
@@ -32,11 +38,10 @@ import (
 )
 
 const (
-	ControlPlaneAddr   = "localhost:9012"
-	BaseImage          = "base-image:latest"
-	OAuthClientID      = "public-functest-client"
-	APITokenIssuer     = "functest-issuer.explorer.chunks.cloud"
-	APITokenSigningKey = "signing-key"
+	ControlPlaneAddr = "localhost:9012"
+	BaseImage        = "base-image:latest"
+	OAuthClientID    = "public-functest-client"
+	APITokenIssuer   = "functest-issuer.explorer.chunks.cloud"
 )
 
 type ControlPlaneRunOption func(*ControlPlaneRunOptions)
@@ -80,6 +85,19 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 		opt(&defaultOpts)
 	}
 
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	der, err := x509.MarshalECPrivateKey(key)
+	require.NoError(t, err)
+
+	var keyPem bytes.Buffer
+	err = pem.Encode(&keyPem, &pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: der,
+	})
+	require.NoError(t, err)
+
 	var (
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil)).With("service", "control-plane")
 		server = controlplane.NewServer(
@@ -104,7 +122,7 @@ func RunControlPlane(t *testing.T, pg *Postgres, opts ...ControlPlaneRunOption) 
 				OAuthIssuerURL:     defaultOpts.OAuthIssuerURL,
 				APITokenIssuer:     APITokenIssuer,
 				APITokenExpiry:     5 * time.Second,
-				APITokenSigningKey: APITokenSigningKey,
+				APITokenSigningKey: keyPem.String(),
 			})
 	)
 

@@ -29,7 +29,10 @@ import (
  * common errors
  */
 
-var ErrNotFound = New(codes.NotFound, "resource does not exist")
+var (
+	ErrNotFound      = New(codes.NotFound, "resource does not exist")
+	ErrAlreadyExists = New(codes.AlreadyExists, "resource already exists")
+)
 
 /*
  * chunk related errors
