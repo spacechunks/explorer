@@ -103,7 +103,8 @@ CREATE TABLE public.chunks (
     description character varying(100) NOT NULL,
     tags character varying(25)[] NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    owner uuid
 );
 
 
@@ -164,7 +165,8 @@ CREATE TABLE public.instances (
     port integer,
     state public.instance_state DEFAULT 'PENDING'::public.instance_state NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    owner uuid
 );
 
 
@@ -311,6 +313,19 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: users; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.users (
+    id uuid NOT NULL,
+    nickname character varying(16) NOT NULL,
+    email character varying NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL
+);
+
+
+--
 -- Name: river_job id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -438,6 +453,22 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_email_key UNIQUE (email);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: flavor_version_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -484,6 +515,14 @@ CREATE INDEX river_job_state_and_finalized_at_index ON public.river_job USING bt
 --
 
 CREATE UNIQUE INDEX river_job_unique_idx ON public.river_job USING btree (unique_key) WHERE ((unique_key IS NOT NULL) AND (unique_states IS NOT NULL) AND public.river_job_state_in_bitmask(unique_states, state));
+
+
+--
+-- Name: chunks chunks_owner_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chunks
+    ADD CONSTRAINT chunks_owner_fkey FOREIGN KEY (owner) REFERENCES public.users(id);
 
 
 --
@@ -543,6 +582,14 @@ ALTER TABLE ONLY public.instances
 
 
 --
+-- Name: instances instances_owner_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.instances
+    ADD CONSTRAINT instances_owner_fkey FOREIGN KEY (owner) REFERENCES public.users(id);
+
+
+--
 -- Name: river_client_queue river_client_queue_river_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -567,4 +614,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20251026194426'),
     ('20251101155256'),
     ('20251101180433'),
-    ('20251101204811');
+    ('20251101204811'),
+    ('20251105222512');

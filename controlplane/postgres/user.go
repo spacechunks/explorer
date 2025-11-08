@@ -20,10 +20,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 	"github.com/spacechunks/explorer/controlplane/user"
 )
@@ -59,7 +62,7 @@ func (db *DB) CreateUser(ctx context.Context, u user.User) (user.User, error) {
 
 	now := time.Now()
 
-	if err := db.do(ctx, func(q *query.Queries) error {
+	err = db.do(ctx, func(q *query.Queries) error {
 		return q.CreateUser(ctx, query.CreateUserParams{
 			ID:        id.String(),
 			Nickname:  u.Nickname,
@@ -67,7 +70,17 @@ func (db *DB) CreateUser(ctx context.Context, u user.User) (user.User, error) {
 			CreatedAt: now,
 			UpdatedAt: now,
 		})
-	}); err != nil {
+	})
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		fmt.Println(err)
+		if pgErr.Code == "23505" {
+			return user.User{}, apierrs.ErrAlreadyExists
+		}
+	}
+
+	if err != nil {
 		return user.User{}, fmt.Errorf("create user: %w", err)
 	}
 

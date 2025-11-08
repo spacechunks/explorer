@@ -166,6 +166,7 @@ type Chunk struct {
 	Tags        []string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	Owner       *string
 }
 
 type Flavor struct {
@@ -207,6 +208,7 @@ type Instance struct {
 	State           InstanceState
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	Owner           *string
 }
 
 type MinecraftVersion struct {
@@ -279,4 +281,12 @@ type RiverQueue struct {
 
 type SchemaMigration struct {
 	Version string
+}
+
+type User struct {
+	ID        string
+	Nickname  string
+	Email     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
