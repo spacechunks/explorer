@@ -29,6 +29,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/node"
+	"github.com/spacechunks/explorer/controlplane/user"
 )
 
 type Service interface {
@@ -106,6 +107,7 @@ func (s *svc) RunFlavorVersion(ctx context.Context, chunkID string, flavorVersio
 		Chunk:         c,
 		FlavorVersion: ver,
 		State:         StatePending,
+		Owner:         user.User{}, // TODO: get user from api tok
 	}, n.ID)
 	if err != nil {
 		return Instance{}, fmt.Errorf("create instance: %w", err)

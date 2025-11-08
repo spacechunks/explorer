@@ -25,6 +25,7 @@ import (
 	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/user"
 )
 
 type Server struct {
@@ -54,6 +55,7 @@ func (s *Server) CreateChunk(
 		Name:        req.GetName(),
 		Description: req.GetDescription(),
 		Tags:        req.GetTags(),
+		Owner:       user.User{}, // TODO: get user id from provided api token
 	}
 
 	ret, err := s.service.CreateChunk(ctx, c)

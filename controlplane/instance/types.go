@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/user"
 )
 
 type Instance struct {
@@ -32,6 +33,7 @@ type Instance struct {
 	Address       netip.Addr
 	State         State
 	Port          *uint16
+	Owner         user.User
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
