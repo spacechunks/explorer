@@ -30,8 +30,6 @@ import (
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -69,28 +67,20 @@ func TestRegisterUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 			)
 
-			idp := fixture.RunIDP(t)
+			cp.Run(t)
 
-			fixture.RunControlPlane(t, pg, fixture.WithOAuthIssuerEndpoint(idp.Endpoint))
-
-			idTok := idp.IDToken(t)
+			idTok := cp.IDP.IDToken(t)
 
 			if tt.createdUser != nil {
-				pg.CreateUser(t, &tt.user)
+				cp.Postgres.CreateUser(t, &tt.user)
 			}
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
+			client := cp.UserClient(t)
 
-			client := userv1alpha1.NewUserServiceClient(conn)
-
-			_, err = client.Register(ctx, &userv1alpha1.RegisterRequest{
+			_, err := client.Register(ctx, &userv1alpha1.RegisterRequest{
 				Nickname: tt.user.Nickname,
 				IdToken:  idTok,
 			})
@@ -128,26 +118,18 @@ func TestLoginUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 			)
 
-			idp := fixture.RunIDP(t)
+			cp.Run(t)
 
-			fixture.RunControlPlane(t, pg, fixture.WithOAuthIssuerEndpoint(idp.Endpoint))
-
-			idTok := idp.IDToken(t)
+			idTok := cp.IDP.IDToken(t)
 
 			if tt.createUser {
-				pg.CreateUser(t, &tt.user)
+				cp.Postgres.CreateUser(t, &tt.user)
 			}
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
-
-			client := userv1alpha1.NewUserServiceClient(conn)
+			client := cp.UserClient(t)
 
 			resp, err := client.Login(ctx, &userv1alpha1.LoginRequest{
 				IdToken: idTok,

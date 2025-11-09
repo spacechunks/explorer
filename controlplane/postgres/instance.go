@@ -330,7 +330,7 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 			CreatedAt:        row.CreatedAt_2.UTC(),
 		},
 		Owner: user.User{
-			ID:        row.ID_5,
+			ID:        row.ID_6,
 			Nickname:  row.Nickname,
 			Email:     row.Email,
 			CreatedAt: row.CreatedAt_5,

@@ -20,12 +20,14 @@ package controlplane
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 	"time"
 
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
@@ -35,6 +37,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertype"
@@ -44,6 +48,7 @@ import (
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/contextkeys"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/job"
@@ -55,6 +60,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -73,6 +79,11 @@ func NewServer(logger *slog.Logger, cfg Config) *Server {
 }
 
 func (s *Server) Run(ctx context.Context) error {
+	oidcProvider, err := oidc.NewProvider(ctx, s.cfg.OAuthIssuerURL)
+	if err != nil {
+		return fmt.Errorf("oidc provider: %w", err)
+	}
+
 	pool, err := pgxpool.New(ctx, s.cfg.DBConnString)
 	if err != nil {
 		return fmt.Errorf("connect to database: %w", err)
@@ -115,11 +126,6 @@ func (s *Server) Run(ctx context.Context) error {
 
 	db.SetRiverClient(riverClient)
 
-	oidcProvider, err := oidc.NewProvider(ctx, s.cfg.OAuthIssuerURL)
-	if err != nil {
-		return fmt.Errorf("oidc provider: %w", err)
-	}
-
 	pemBlock, _ := pem.Decode([]byte(s.cfg.APITokenSigningKey))
 
 	key, err := x509.ParseECPrivateKey(pemBlock.Bytes)
@@ -130,7 +136,7 @@ func (s *Server) Run(ctx context.Context) error {
 	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
-			grpc.UnaryInterceptor(errorInterceptor(s.logger)),
+			grpc.ChainUnaryInterceptor(errorInterceptor(s.logger), authInterceptor(key)),
 		)
 
 		userService = user.NewService(
@@ -194,6 +200,37 @@ func (s *Server) Run(ctx context.Context) error {
 
 func (s *Server) Stop() {
 	s.stopCh <- struct{}{}
+}
+
+func authInterceptor(signingKey *ecdsa.PrivateKey) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		// we only need to check if it's the user server and login call.
+		// doing it like this, will not break anything if we change the
+		// version of the user api.
+		if strings.HasSuffix(info.FullMethod, "UserService/Register") ||
+			strings.HasSuffix(info.FullMethod, "UserService/Login") {
+			return handler(ctx, req)
+		}
+
+		md, ok := metadata.FromIncomingContext(ctx)
+		if !ok {
+			return nil, status.Errorf(codes.InvalidArgument, "missing metadata")
+		}
+
+		vals := md.Get("authorization")
+		if len(vals) == 0 {
+			return nil, cperrs.ErrAuthHeaderMissing
+		}
+
+		tok, err := jwt.Parse([]byte(vals[0]), jwt.WithKey(jwa.ES256(), signingKey))
+		if err != nil {
+			return nil, cperrs.ErrInvalidToken
+		}
+
+		ctx = context.WithValue(ctx, contextkeys.APIToken, tok)
+
+		return handler(ctx, req)
+	}
 }
 
 func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {

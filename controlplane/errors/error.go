@@ -35,6 +35,15 @@ var (
 )
 
 /*
+ * auth related errors
+ */
+
+var (
+	ErrAuthHeaderMissing = New(codes.Unauthenticated, "authorization header is missing")
+	ErrInvalidToken      = New(codes.Unauthenticated, "invalid token")
+)
+
+/*
  * chunk related errors
  */
 

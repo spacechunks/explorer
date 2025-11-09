@@ -20,6 +20,7 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -28,6 +29,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
@@ -36,8 +38,6 @@ import (
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -61,17 +61,16 @@ func TestGetInstance(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 				ins = fixture.Instance()
 			)
 
-			fixture.RunControlPlane(t, pg)
-
-			pg.InsertNode(t)
+			cp.Run(t)
+			cp.Postgres.InsertNode(t)
 
 			if tt.create {
-				pg.CreateInstance(t, fixture.Node().ID, &ins)
-				_, err := pg.Pool.Exec(
+				cp.Postgres.CreateInstance(t, fixture.Node().ID, &ins)
+				_, err := cp.Postgres.Pool.Exec(
 					ctx,
 					`UPDATE instances SET port = $1 WHERE id = $2`,
 					ins.Port,
@@ -80,13 +79,10 @@ func TestGetInstance(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
+			cp.AddUserAPIKey(t, &ctx, ins.Owner)
+			client := cp.InstanceClient(t)
 
-			client := instancev1alpha1.NewInstanceServiceClient(conn)
+			fmt.Println("AAAAA", ins.Owner.ID)
 
 			resp, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
 				Id: ins.ID,
@@ -115,12 +111,12 @@ func TestGetInstance(t *testing.T) {
 func TestAPIListInstances(t *testing.T) {
 	var (
 		ctx = context.Background()
-		pg  = fixture.NewPostgres()
+		cp  = fixture.NewControlPlane(t)
 	)
 
-	fixture.RunControlPlane(t, pg)
+	cp.Run(t)
 
-	pg.InsertNode(t)
+	cp.Postgres.InsertNode(t)
 
 	ins := []instance.Instance{
 		fixture.Instance(func(i *instance.Instance) {
@@ -153,17 +149,12 @@ func TestAPIListInstances(t *testing.T) {
 		}),
 	}
 
-	for _, i := range ins {
-		pg.CreateInstance(t, fixture.Node().ID, &i)
+	for idx := range ins {
+		cp.Postgres.CreateInstance(t, fixture.Node().ID, &ins[idx])
 	}
 
-	conn, err := grpc.NewClient(
-		fixture.ControlPlaneAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	require.NoError(t, err)
-
-	client := instancev1alpha1.NewInstanceServiceClient(conn)
+	cp.AddUserAPIKey(t, &ctx, ins[0].Owner)
+	client := cp.InstanceClient(t)
 
 	expected := make([]*instancev1alpha1.Instance, 0, len(ins))
 	for _, i := range ins {
@@ -188,6 +179,7 @@ func TestAPIListInstances(t *testing.T) {
 		test.IgnoredProtoFlavorVersionFields,
 		test.IgnoredProtoChunkFields,
 		test.IgnoredProtoInstanceFields,
+		test.IgnoredProtoUserFields,
 	); d != "" {
 		t.Fatalf("diff (-want +got):\n%s", d)
 	}
@@ -218,14 +210,14 @@ func TestRunFlavorVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 				c   = fixture.Chunk()
 			)
 
-			fixture.RunControlPlane(t, pg)
+			cp.Run(t)
 
-			pg.InsertNode(t)
-			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+			cp.Postgres.InsertNode(t)
+			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 			v := c.Flavors[0].Versions[0]
 
@@ -248,6 +240,12 @@ func TestRunFlavorVersion(t *testing.T) {
 					BuildStatus:      chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(v.BuildStatus)]),
 					CreatedAt:        timestamppb.New(v.CreatedAt),
 				},
+				Owner: &userv1alpha1.User{
+					Id:        c.Owner.ID,
+					Nickname:  c.Owner.Nickname,
+					CreatedAt: timestamppb.New(c.Owner.CreatedAt),
+					UpdatedAt: timestamppb.New(c.Owner.UpdatedAt),
+				},
 				Ip:    fixture.Node().Addr.String(),
 				State: instancev1alpha1.InstanceState_PENDING,
 			}
@@ -260,13 +258,8 @@ func TestRunFlavorVersion(t *testing.T) {
 				tt.flavorVersionID = c.Flavors[0].Versions[0].ID
 			}
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
-
-			client := instancev1alpha1.NewInstanceServiceClient(conn)
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			client := cp.InstanceClient(t)
 
 			resp, err := client.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
 				ChunkId:         tt.chunkID,
@@ -287,6 +280,7 @@ func TestRunFlavorVersion(t *testing.T) {
 				test.IgnoredProtoInstanceFields,
 				test.IgnoredProtoFlavorVersionFields,
 				test.IgnoredProtoChunkFields,
+				test.IgnoredProtoUserFields,
 			); d != "" {
 				t.Fatalf("diff (-want +got):\n%s", d)
 			}
@@ -354,7 +348,9 @@ func TestDiscoverInstances(t *testing.T) {
 		{
 			name:   "no node id returns error",
 			nodeID: "",
-			input:  []instance.Instance{},
+			input: []instance.Instance{
+				fixture.Instance(),
+			},
 			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
 				return nil
 			},
@@ -366,25 +362,20 @@ func TestDiscoverInstances(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 			)
 
-			fixture.RunControlPlane(t, pg)
+			cp.Run(t)
+			cp.Postgres.InsertNode(t)
 
-			pg.InsertNode(t)
-
-			for _, i := range tt.input {
-				pg.CreateInstance(t, fixture.Node().ID, &i)
+			for idx := range tt.input {
+				cp.Postgres.CreateInstance(t, fixture.Node().ID, &tt.input[idx])
 			}
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
+			cp.AddUserAPIKey(t, &ctx, tt.input[0].Owner)
 
 			var (
-				client   = instancev1alpha1.NewInstanceServiceClient(conn)
+				client   = cp.InstanceClient(t)
 				expected = tt.getExpected(tt.input)
 			)
 
@@ -405,6 +396,7 @@ func TestDiscoverInstances(t *testing.T) {
 					test.IgnoredProtoInstanceFields,
 					test.IgnoredProtoFlavorVersionFields,
 					test.IgnoredProtoChunkFields,
+					test.IgnoredProtoUserFields,
 				); d != "" {
 					t.Fatalf("diff (-want +got):\n%s", d)
 				}
@@ -419,13 +411,11 @@ func TestDiscoverInstances(t *testing.T) {
 func TestReceiveInstanceStatusReports(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    instance.Instance
 		report   instance.StatusReport
 		expected instance.Instance
 	}{
 		{
-			name:  "updates port and state successfully",
-			input: fixture.Instance(),
+			name: "updates port and state successfully",
 			report: instance.StatusReport{
 				InstanceID: fixture.Instance().ID,
 				State:      instance.CreationFailed,
@@ -438,8 +428,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			}),
 		},
 		{
-			name:  "updates with state = DELETED removes instance",
-			input: fixture.Instance(),
+			name: "updates with state = DELETED removes instance",
 			report: instance.StatusReport{
 				InstanceID: fixture.Instance().ID,
 				State:      instance.StateDeleted,
@@ -452,24 +441,21 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 				ins = fixture.Instance()
 			)
 
-			fixture.RunControlPlane(t, pg)
+			cp.Run(t)
 
-			pg.InsertNode(t)
-			pg.CreateInstance(t, fixture.Node().ID, &ins)
+			cp.Postgres.InsertNode(t)
+			cp.Postgres.CreateInstance(t, fixture.Node().ID, &ins)
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
+			cp.AddUserAPIKey(t, &ctx, ins.Owner)
+			client := cp.InstanceClient(t)
 
-			client := instancev1alpha1.NewInstanceServiceClient(conn)
+			tt.report.InstanceID = ins.ID
 
-			_, err = client.ReceiveInstanceStatusReports(ctx, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
+			_, err := client.ReceiveInstanceStatusReports(ctx, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
 				Reports: []*instancev1alpha1.InstanceStatusReport{
 					instance.StatusReportToTransport(tt.report),
 				},
@@ -483,6 +469,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 
 			var expected []*instancev1alpha1.Instance
 			if !reflect.DeepEqual(tt.expected, instance.Instance{}) {
+				tt.expected.Owner = ins.Owner
 				expected = []*instancev1alpha1.Instance{
 					instance.ToTransport(tt.expected),
 				}
@@ -494,6 +481,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 				protocmp.Transform(),
 				test.IgnoredProtoFlavorVersionFields,
 				test.IgnoredProtoChunkFields,
+				test.IgnoredProtoUserFields,
 			); d != "" {
 				t.Fatalf("diff (-want +got):\n%s", d)
 			}

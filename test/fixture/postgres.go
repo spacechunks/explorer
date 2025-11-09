@@ -20,6 +20,7 @@ package fixture
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -36,6 +37,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/controlplane/user"
@@ -179,9 +181,12 @@ func (p *Postgres) CreateChunk(t *testing.T, c *chunk.Chunk, opts CreateOptions)
 	require.NoError(t, err)
 
 	if opts.WithFlavors {
+		flavors := make([]chunk.Flavor, 0, len(c.Flavors))
 		for i := range c.Flavors {
-			p.CreateFlavor(t, createdChunk.ID, &createdChunk.Flavors[i], opts)
+			p.CreateFlavor(t, createdChunk.ID, &c.Flavors[i], opts)
+			flavors = append(flavors, c.Flavors[i])
 		}
+		createdChunk.Flavors = flavors
 	}
 
 	*c = createdChunk
@@ -223,11 +228,14 @@ func (p *Postgres) CreateFlavor(t *testing.T, chunkID string, f *chunk.Flavor, o
 // generated values of fields like id or created_at have the correct value.
 func (p *Postgres) CreateInstance(t *testing.T, nodeID string, ins *instance.Instance) {
 	ctx := context.Background()
+
 	p.CreateChunk(t, &ins.Chunk, CreateOptions{
 		WithFlavors:        true,
 		WithFlavorVersions: true,
 		WithOwner:          true,
 	})
+
+	p.CreateUser(t, &ins.Owner)
 
 	for _, f := range ins.Chunk.Flavors {
 		for _, v := range f.Versions {
@@ -255,9 +263,18 @@ func (p *Postgres) CreateFlavorVersion(t *testing.T, flavorID string, version *c
 
 func (p *Postgres) CreateUser(t *testing.T, u *user.User) {
 	ctx := context.Background()
-	created, err := p.DB.CreateUser(ctx, *u)
+	// in some tests we create multiple resource with the same user,
+	// so we should not fail if the user is already present, and instead
+	// return the already created user.
+	present, err := p.DB.GetUserByEmail(ctx, u.Email)
+	if errors.Is(err, cperrs.ErrNotFound) {
+		created, err := p.DB.CreateUser(ctx, *u)
+		require.NoError(t, err)
+		*u = created
+		return
+	}
 	require.NoError(t, err)
-	*u = created
+	*u = present
 }
 
 func (p *Postgres) InsertNode(t *testing.T) {

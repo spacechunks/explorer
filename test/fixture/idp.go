@@ -67,7 +67,11 @@ type IDP struct {
 	Endpoint string
 }
 
-func RunIDP(t *testing.T) IDP {
+func NewIDP() *IDP {
+	return &IDP{}
+}
+
+func (i *IDP) Run(t *testing.T) {
 	ctx := context.Background()
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -100,12 +104,10 @@ func RunIDP(t *testing.T) IDP {
 	ip, err := ctr.Host(ctx)
 	require.NoError(t, err)
 
-	return IDP{
-		Endpoint: "http://" + ip + ":3081",
-	}
+	i.Endpoint = "http://" + ip + ":3081"
 }
 
-func (i IDP) IDToken(t *testing.T) string {
+func (i *IDP) IDToken(t *testing.T) string {
 	form := url.Values{}
 	form.Set("grant_type", "password")
 	form.Set("scope", "openid profile email")

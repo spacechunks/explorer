@@ -42,8 +42,6 @@ func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 		return chunk.Chunk{}, fmt.Errorf("generate id: %w", err)
 	}
 
-	fmt.Println("CCC", c.Owner.ID)
-
 	params := query.CreateChunkParams{
 		ID:          id.String(),
 		Name:        c.Name,
@@ -54,19 +52,24 @@ func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 		UpdatedAt:   time.Now(),
 	}
 
-	if err := db.do(ctx, func(q *query.Queries) error {
+	var ret chunk.Chunk
+	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.CreateChunk(ctx, params); err != nil {
-			return err
+			return fmt.Errorf("create chunk: %w", err)
 		}
+
+		created, err := db.getChunkByID(ctx, q, id.String())
+		if err != nil {
+			return fmt.Errorf("get chunk: %w", err)
+		}
+
+		ret = created
 		return nil
 	}); err != nil {
 		return chunk.Chunk{}, err
 	}
 
-	c.ID = id.String()
-	c.CreatedAt = params.CreatedAt
-	c.UpdatedAt = params.UpdatedAt
-	return c, nil
+	return ret, nil
 }
 
 func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) {
