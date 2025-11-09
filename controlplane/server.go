@@ -236,10 +236,6 @@ func authInterceptor(logger *slog.Logger, signingKey *ecdsa.PrivateKey, issuer s
 			return nil, cperrs.ErrInvalidToken
 		}
 
-		//if iss, _ := tok.Issuer(); iss != issuer {
-		//	return nil, cperrs.ErrInvalidToken
-		//}
-
 		ctx = context.WithValue(ctx, contextkeys.APIToken, tok)
 
 		return handler(ctx, req)
