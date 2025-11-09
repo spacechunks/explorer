@@ -72,7 +72,12 @@ func (s *svc) ListInstances(ctx context.Context) ([]Instance, error) {
 	return l, nil
 }
 
-func (s *svc) RunFlavorVersion(ctx context.Context, chunkID string, flavorVersionID string, ownerID string) (Instance, error) {
+func (s *svc) RunFlavorVersion(
+	ctx context.Context,
+	chunkID string,
+	flavorVersionID string,
+	ownerID string,
+) (Instance, error) {
 	// TODO: at some point implement a more sophisticated node scheduling logic
 	n, err := s.nodeRepo.RandomNode(ctx)
 	if err != nil {
