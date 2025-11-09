@@ -136,7 +136,10 @@ func (s *Server) Run(ctx context.Context) error {
 	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
-			grpc.ChainUnaryInterceptor(errorInterceptor(s.logger), authInterceptor(key)),
+			grpc.ChainUnaryInterceptor(
+				errorInterceptor(s.logger),
+				authInterceptor(s.logger, key, s.cfg.APITokenIssuer),
+			),
 		)
 
 		userService = user.NewService(
@@ -202,7 +205,7 @@ func (s *Server) Stop() {
 	s.stopCh <- struct{}{}
 }
 
-func authInterceptor(signingKey *ecdsa.PrivateKey) grpc.UnaryServerInterceptor {
+func authInterceptor(logger *slog.Logger, signingKey *ecdsa.PrivateKey, issuer string) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		// we only need to check if it's the user server and login call.
 		// doing it like this, will not break anything if we change the
@@ -224,8 +227,18 @@ func authInterceptor(signingKey *ecdsa.PrivateKey) grpc.UnaryServerInterceptor {
 
 		tok, err := jwt.Parse([]byte(vals[0]), jwt.WithKey(jwa.ES256(), signingKey))
 		if err != nil {
+			logger.Error("failed to parse token", "err", err)
 			return nil, cperrs.ErrInvalidToken
 		}
+
+		if err := jwt.Validate(tok, jwt.WithIssuer(issuer), jwt.WithAudience(issuer)); err != nil {
+			logger.Error("failed to validate token", "err", err)
+			return nil, cperrs.ErrInvalidToken
+		}
+
+		//if iss, _ := tok.Issuer(); iss != issuer {
+		//	return nil, cperrs.ErrInvalidToken
+		//}
 
 		ctx = context.WithValue(ctx, contextkeys.APIToken, tok)
 

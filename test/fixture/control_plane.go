@@ -54,10 +54,9 @@ const (
 )
 
 type ControlPlane struct {
-	Postgres *Postgres
-	IDP      *IDP
-
-	signingKey *ecdsa.PrivateKey
+	Postgres   *Postgres
+	IDP        *IDP
+	SigningKey *ecdsa.PrivateKey
 }
 
 func NewControlPlane(t *testing.T) ControlPlane {
@@ -67,7 +66,7 @@ func NewControlPlane(t *testing.T) ControlPlane {
 	return ControlPlane{
 		Postgres:   NewPostgres(),
 		IDP:        NewIDP(),
-		signingKey: key,
+		SigningKey: key,
 	}
 }
 
@@ -105,7 +104,7 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 		opt(&defaultOpts)
 	}
 
-	der, err := x509.MarshalECPrivateKey(c.signingKey)
+	der, err := x509.MarshalECPrivateKey(c.SigningKey)
 	require.NoError(t, err)
 
 	var keyPem bytes.Buffer
@@ -160,11 +159,12 @@ func (c ControlPlane) AddUserAPIKey(t *testing.T, ctx *context.Context, u user.U
 	apiKey, err := jwt.NewBuilder().
 		IssuedAt(time.Now()).
 		Issuer(APITokenIssuer).
+		Audience([]string{APITokenIssuer}).
 		Claim("user_id", u.ID).
 		Build()
 	require.NoError(t, err)
 
-	signed, err := jwt.Sign(apiKey, jwt.WithKey(jwa.ES256(), c.signingKey))
+	signed, err := jwt.Sign(apiKey, jwt.WithKey(jwa.ES256(), c.SigningKey))
 	require.NoError(t, err)
 
 	md := metadata.Pairs("authorization", string(signed))
