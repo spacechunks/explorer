@@ -16,41 +16,26 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package instance
+package fixture
 
 import (
-	"net/netip"
 	"time"
 
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/user"
 )
 
-type Instance struct {
-	ID            string
-	Chunk         chunk.Chunk
-	FlavorVersion chunk.FlavorVersion
-	Address       netip.Addr
-	State         State
-	Port          *uint16
-	Owner         user.User
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+func User(mod ...func(c *user.User)) user.User {
+	u := user.User{
+		ID:        "019a5637-289e-74ad-b3fb-7534de25e0a9",
+		Nickname:  "test-user",
+		Email:     "test-user@example.com",
+		CreatedAt: time.Date(2025, 11, 5, 13, 12, 15, 0, time.UTC),
+		UpdatedAt: time.Date(2025, 11, 11, 10, 26, 0, 0, time.UTC),
+	}
+
+	for _, fn := range mod {
+		fn(&u)
+	}
+
+	return u
 }
-
-type StatusReport struct {
-	InstanceID string
-	State      State
-	Port       uint16
-}
-
-type State string
-
-const (
-	StatePending   State = "PENDING"
-	StateCreating  State = "CREATING"
-	StateRunning   State = "RUNNING"
-	StateDeleting  State = "DELETING"
-	StateDeleted   State = "DELETED"
-	CreationFailed State = "CREATION_FAILED"
-)

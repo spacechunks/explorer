@@ -29,7 +29,19 @@ import (
  * common errors
  */
 
-var ErrNotFound = New(codes.NotFound, "resource does not exist")
+var (
+	ErrNotFound      = New(codes.NotFound, "resource does not exist")
+	ErrAlreadyExists = New(codes.AlreadyExists, "resource already exists")
+)
+
+/*
+ * auth related errors
+ */
+
+var (
+	ErrAuthHeaderMissing = New(codes.Unauthenticated, "authorization header is missing")
+	ErrInvalidToken      = New(codes.Unauthenticated, "invalid token")
+)
 
 /*
  * chunk related errors

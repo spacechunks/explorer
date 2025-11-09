@@ -20,36 +20,47 @@ package controlplane
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 	"time"
 
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertype"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	checkpointv1alpha1 "github.com/spacechunks/explorer/api/platformd/checkpoint/v1alpha1"
+	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/contextkeys"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/controlplane/postgres"
+	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -68,6 +79,11 @@ func NewServer(logger *slog.Logger, cfg Config) *Server {
 }
 
 func (s *Server) Run(ctx context.Context) error {
+	oidcProvider, err := oidc.NewProvider(ctx, s.cfg.OAuthIssuerURL)
+	if err != nil {
+		return fmt.Errorf("oidc provider: %w", err)
+	}
+
 	pool, err := pgxpool.New(ctx, s.cfg.DBConnString)
 	if err != nil {
 		return fmt.Errorf("connect to database: %w", err)
@@ -110,12 +126,31 @@ func (s *Server) Run(ctx context.Context) error {
 
 	db.SetRiverClient(riverClient)
 
+	pemBlock, _ := pem.Decode([]byte(s.cfg.APITokenSigningKey))
+
+	key, err := x509.ParseECPrivateKey(pemBlock.Bytes)
+	if err != nil {
+		return fmt.Errorf("parse ec private key: %w", err)
+	}
+
 	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
-			grpc.UnaryInterceptor(errorInterceptor(s.logger)),
+			grpc.ChainUnaryInterceptor(
+				errorInterceptor(s.logger),
+				authInterceptor(s.logger, key, s.cfg.APITokenIssuer),
+			),
 		)
 
+		userService = user.NewService(
+			db,
+			oidcProvider,
+			s.cfg.OAuthClientID,
+			s.cfg.APITokenIssuer,
+			s.cfg.APITokenExpiry,
+			key,
+		)
+		userServer   = user.NewServer(userService)
 		chunkService = chunk.NewService(
 			db,
 			db,
@@ -133,6 +168,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 	instancev1alpha1.RegisterInstanceServiceServer(grpcServer, insServer)
 	chunkv1alpha1.RegisterChunkServiceServer(grpcServer, chunkServer)
+	userv1alpha1.RegisterUserServiceServer(grpcServer, userServer)
 
 	if err := riverClient.Start(ctx); err != nil {
 		return fmt.Errorf("start river client: %w", err)
@@ -167,6 +203,43 @@ func (s *Server) Run(ctx context.Context) error {
 
 func (s *Server) Stop() {
 	s.stopCh <- struct{}{}
+}
+
+func authInterceptor(logger *slog.Logger, signingKey *ecdsa.PrivateKey, issuer string) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		// we only need to check if it's the user server and login call.
+		// doing it like this, will not break anything if we change the
+		// version of the user api.
+		if strings.HasSuffix(info.FullMethod, "UserService/Register") ||
+			strings.HasSuffix(info.FullMethod, "UserService/Login") {
+			return handler(ctx, req)
+		}
+
+		md, ok := metadata.FromIncomingContext(ctx)
+		if !ok {
+			return nil, status.Errorf(codes.InvalidArgument, "missing metadata")
+		}
+
+		vals := md.Get("authorization")
+		if len(vals) == 0 {
+			return nil, cperrs.ErrAuthHeaderMissing
+		}
+
+		tok, err := jwt.Parse([]byte(vals[0]), jwt.WithKey(jwa.ES256(), signingKey))
+		if err != nil {
+			logger.Error("failed to parse token", "err", err)
+			return nil, cperrs.ErrInvalidToken
+		}
+
+		if err := jwt.Validate(tok, jwt.WithIssuer(issuer), jwt.WithAudience(issuer)); err != nil {
+			logger.Error("failed to validate token", "err", err)
+			return nil, cperrs.ErrInvalidToken
+		}
+
+		ctx = context.WithValue(ctx, contextkeys.APIToken, tok)
+
+		return handler(ctx, req)
+	}
 }
 
 func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {

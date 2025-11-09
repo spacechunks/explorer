@@ -11,9 +11,9 @@ SELECT * FROM nodes ORDER BY random() LIMIT 1;
 
 -- name: CreateChunk :exec
 INSERT INTO chunks
-    (id, name, description, tags, created_at, updated_at)
+    (id, name, description, tags, owner, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6);
+    ($1, $2, $3, $4, $5, $6, $7);
 
 -- TODO: read multiple
 -- name: GetChunkByID :many
@@ -21,6 +21,7 @@ SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
+    LEFT JOIN users u ON u.id = c.owner
 WHERE c.id = $1;
 
 -- name: UpdateChunk :exec
@@ -42,7 +43,8 @@ SELECT EXISTS(
 SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
-    LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id;
+    LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
+    LEFT JOIN users u ON u.id = c.owner;
 
 /*
  * FLAVORS
@@ -131,16 +133,17 @@ SELECT * FROM blobs WHERE hash = $1;
 
 -- name: CreateInstance :exec
 INSERT INTO instances
-    (id, chunk_id, flavor_version_id, node_id, state, created_at, updated_at)
+    (id, chunk_id, flavor_version_id, node_id, state, owner, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7);
+    ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: ListInstances :many
 SELECT * FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
-    JOIN nodes n ON i.node_id = n.id;
+    JOIN nodes n ON i.node_id = n.id
+    JOIN users u ON u.id = i.owner;
 
 -- name: GetInstance :many
 SELECT * FROM instances i
@@ -148,6 +151,7 @@ SELECT * FROM instances i
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
+    JOIN users u ON u.id = i.owner
 WHERE i.id = $1;
 
 -- name: GetInstancesByNodeID :many
@@ -155,6 +159,7 @@ SELECT * FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
+    JOIN users u ON u.id = i.owner
 WHERE i.node_id = $1;
 
 -- name: BulkUpdateInstanceStateAndPort :batchexec
@@ -179,3 +184,17 @@ SELECT EXISTS(
     SELECT 1 FROM minecraft_versions
     WHERE version = $1
 );
+
+/*
+ * USERS
+ */
+
+-- name: UserByEmail :one
+SELECT * FROM users WHERE email = $1;
+
+-- name: CreateUser :exec
+INSERT INTO users
+    (id, nickname, email, created_at, updated_at)
+VALUES
+    ($1, $2, $3, $4, $5);
+

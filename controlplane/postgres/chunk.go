@@ -32,6 +32,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
+	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/internal/file"
 )
 
@@ -46,23 +47,29 @@ func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 		Name:        c.Name,
 		Description: c.Description,
 		Tags:        c.Tags,
+		Owner:       &c.Owner.ID,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
 
-	if err := db.do(ctx, func(q *query.Queries) error {
+	var ret chunk.Chunk
+	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.CreateChunk(ctx, params); err != nil {
-			return err
+			return fmt.Errorf("create chunk: %w", err)
 		}
+
+		created, err := db.getChunkByID(ctx, q, id.String())
+		if err != nil {
+			return fmt.Errorf("get chunk: %w", err)
+		}
+
+		ret = created
 		return nil
 	}); err != nil {
 		return chunk.Chunk{}, err
 	}
 
-	c.ID = id.String()
-	c.CreatedAt = params.CreatedAt
-	c.UpdatedAt = params.UpdatedAt
-	return c, nil
+	return ret, nil
 }
 
 func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) {
@@ -162,6 +169,12 @@ func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
 
 				FilePath: r.FilePath.String,
 				FileHash: r.FileHash.String,
+
+				UserID:        *r.ID_4,
+				UserNickname:  r.Nickname.String,
+				UserEmail:     r.Email.String,
+				UserCreatedAt: r.CreatedAt_5.Time,
+				UserUpdatedAt: r.UpdatedAt_3.Time,
 			}
 
 			// sqlc is not able to generate a *time.Time from nullable timestamptz
@@ -263,6 +276,12 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (ch
 
 			FilePath: r.FilePath.String,
 			FileHash: r.FileHash.String,
+
+			UserID:        *r.ID_4,
+			UserNickname:  r.Nickname.String,
+			UserEmail:     r.Email.String,
+			UserCreatedAt: r.CreatedAt_5.Time,
+			UserUpdatedAt: r.UpdatedAt_3.Time,
 		}
 
 		// sqlc is not able to generate a *time.Time from nullable timestamptz
@@ -312,6 +331,12 @@ type chunkRelationsRow struct {
 
 	FilePath string
 	FileHash string
+
+	UserID        string
+	UserNickname  string
+	UserEmail     string
+	UserCreatedAt time.Time
+	UserUpdatedAt time.Time
 }
 
 func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
@@ -334,6 +359,13 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 			Tags:        row.Tags,
 			CreatedAt:   row.ChunkCreatedAt.UTC(),
 			UpdatedAt:   row.ChunkUpdatedAt.UTC(),
+			Owner: user.User{
+				ID:        row.UserID,
+				Nickname:  row.UserNickname,
+				Email:     row.UserEmail,
+				CreatedAt: row.UserCreatedAt,
+				UpdatedAt: row.UserUpdatedAt,
+			},
 		}
 	)
 

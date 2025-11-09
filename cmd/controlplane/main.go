@@ -52,8 +52,13 @@ func main() {
 		bucket                   = fs.String("bucket", "explorer-data", "bucket to use for storing change sets and backend for content-addressable storage")                                                      //nolint:lll
 		accessKey                = fs.String("access-key", "", "access key to use for accessing the bucket")                                                                                                      //nolint:lll
 		secretKey                = fs.String("secret-key", "", "secret key to use for accessing the bucket")                                                                                                      //nolint:lll
-		presignedURLExpiry       = fs.Duration("presinged-url-expiry", 5*time.Minute, "when to expire the presigned URL")                                                                                         //nolint:lll
+		presignedURLExpiry       = fs.Duration("presigned-url-expiry", 5*time.Minute, "when to expire the presigned URL")                                                                                         //nolint:lll
 		usePathStyle             = fs.Bool("use-path-style", true, "whether to use path style to access the bucket")                                                                                              //nolint:lll
+		idpOAuthClientID         = fs.String("idp-oauth-client-id", "", "oauth client ID to use for authentication")
+		idpOAuthIssuerEndpoint   = fs.String("idp-oauth-issuer-endpoint", "", "issuer endpoint to use for authentication")                                                            //nolint:lll
+		apiTokenIssuer           = fs.String("api-token-issuer", "", "issuer to use for api tokens issued by the control plane. this value will also be set as the tokens audience.") //nolint:lll
+		apiTokenExpiry           = fs.Duration("api-token-expiry", 10*time.Minute, "expiry of api tokens issued by the control plane")                                                //nolint:lll
+		apiTokenSigningKey       = fs.String("api-token-signing-key", "", "key used to sign api tokens issued by the control plane")                                                  //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
@@ -78,6 +83,11 @@ func main() {
 			SecretKey:                     *secretKey,
 			PresignedURLExpiry:            *presignedURLExpiry,
 			UsePathStyle:                  *usePathStyle,
+			OAuthClientID:                 *idpOAuthClientID,
+			OAuthIssuerURL:                *idpOAuthIssuerEndpoint,
+			APITokenIssuer:                *apiTokenIssuer,
+			APITokenExpiry:                *apiTokenExpiry,
+			APITokenSigningKey:            *apiTokenSigningKey,
 		}
 		ctx    = context.Background()
 		server = controlplane.NewServer(logger, cfg)

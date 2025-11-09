@@ -29,12 +29,13 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/node"
+	"github.com/spacechunks/explorer/controlplane/user"
 )
 
 type Service interface {
 	GetInstance(ctx context.Context, id string) (Instance, error)
 	ListInstances(ctx context.Context) ([]Instance, error)
-	RunFlavorVersion(ctx context.Context, chunkID string, flavorVersionID string) (Instance, error)
+	RunFlavorVersion(ctx context.Context, chunkID string, flavorVersionID string, ownerID string) (Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]Instance, error)
 	ReceiveInstanceStatusReports(ctx context.Context, reports []StatusReport) error
 }
@@ -71,7 +72,12 @@ func (s *svc) ListInstances(ctx context.Context) ([]Instance, error) {
 	return l, nil
 }
 
-func (s *svc) RunFlavorVersion(ctx context.Context, chunkID string, flavorVersionID string) (Instance, error) {
+func (s *svc) RunFlavorVersion(
+	ctx context.Context,
+	chunkID string,
+	flavorVersionID string,
+	ownerID string,
+) (Instance, error) {
 	// TODO: at some point implement a more sophisticated node scheduling logic
 	n, err := s.nodeRepo.RandomNode(ctx)
 	if err != nil {
@@ -106,6 +112,9 @@ func (s *svc) RunFlavorVersion(ctx context.Context, chunkID string, flavorVersio
 		Chunk:         c,
 		FlavorVersion: ver,
 		State:         StatePending,
+		Owner: user.User{
+			ID: ownerID,
+		},
 	}, n.ID)
 	if err != nil {
 		return Instance{}, fmt.Errorf("create instance: %w", err)

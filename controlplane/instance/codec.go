@@ -21,6 +21,7 @@ package instance
 import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -54,6 +55,12 @@ func ToTransport(ins Instance) *instancev1alpha1.Instance {
 			FileHashes:       chunk.FileHashSliceToTransport(ins.FlavorVersion.FileHashes),
 			BuildStatus:      chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(ins.FlavorVersion.BuildStatus)]),
 			CreatedAt:        timestamppb.New(ins.FlavorVersion.CreatedAt),
+		},
+		Owner: &userv1alpha1.User{
+			Id:        ins.Owner.ID,
+			Nickname:  ins.Owner.Nickname,
+			CreatedAt: timestamppb.New(ins.Owner.CreatedAt),
+			UpdatedAt: timestamppb.New(ins.Owner.UpdatedAt),
 		},
 		Ip:    ins.Address.String(),
 		Port:  port,

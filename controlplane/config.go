@@ -36,4 +36,9 @@ type Config struct {
 	SecretKey                     string
 	PresignedURLExpiry            time.Duration
 	UsePathStyle                  bool
+	OAuthClientID                 string
+	OAuthIssuerURL                string
+	APITokenIssuer                string
+	APITokenExpiry                time.Duration
+	APITokenSigningKey            string
 }

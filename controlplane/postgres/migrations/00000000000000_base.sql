@@ -4,7 +4,6 @@ CREATE TABLE IF NOT EXISTS chunks (
     name        VARCHAR(50)      NOT NULL,
     description VARCHAR(100)     NOT NULL,
     tags        VARCHAR(25)[]    NOT NULL,
---  owner       UUID             NOT NULL,
     created_at  TIMESTAMPTZ      NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ      NOT NULL DEFAULT now()
 );

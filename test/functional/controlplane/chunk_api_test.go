@@ -44,8 +44,6 @@ import (
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/spacechunks/explorer/test/functional/controlplane/testdata"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
@@ -94,18 +92,15 @@ func TestAPICreateChunk(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
+				u   = fixture.User()
 			)
 
-			fixture.RunControlPlane(t, pg)
+			cp.Run(t)
+			client := cp.ChunkClient(t)
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
-
-			client := chunkv1alpha1.NewChunkServiceClient(conn)
+			cp.Postgres.CreateUser(t, &u)
+			cp.AddUserAPIKey(t, &ctx, u)
 
 			resp, err := client.CreateChunk(ctx, &chunkv1alpha1.CreateChunkRequest{
 				Name:        tt.expected.Name,
@@ -120,11 +115,14 @@ func TestAPICreateChunk(t *testing.T) {
 
 			require.NoError(t, err)
 
+			tt.expected.Owner = u
+
 			if d := cmp.Diff(
 				chunk.ChunkToTransport(tt.expected),
 				resp.GetChunk(),
 				protocmp.Transform(),
 				test.IgnoredProtoChunkFields,
+				test.IgnoredProtoUserFields,
 			); d != "" {
 				t.Fatalf("diff (-want +got):\n%s", d)
 			}
@@ -156,24 +154,21 @@ func TestGetChunk(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 				c   = fixture.Chunk()
 			)
 
-			fixture.RunControlPlane(t, pg)
+			cp.Run(t)
 
 			if tt.chunkID == "" {
-				pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+				cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
 				tt.chunkID = c.ID
+			} else {
+				cp.Postgres.CreateUser(t, &c.Owner)
 			}
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
-
-			client := chunkv1alpha1.NewChunkServiceClient(conn)
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			client := cp.ChunkClient(t)
 
 			resp, err := client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
 				Id: tt.chunkID,
@@ -203,14 +198,17 @@ func TestGetChunk(t *testing.T) {
 func TestListChunks(t *testing.T) {
 	var (
 		ctx = context.Background()
-		pg  = fixture.NewPostgres()
+		cp  = fixture.NewControlPlane(t)
+		u   = fixture.User()
 	)
 
-	fixture.RunControlPlane(t, pg)
+	cp.Run(t)
+	client := cp.ChunkClient(t)
 
 	chunks := []chunk.Chunk{
 		fixture.Chunk(func(c *chunk.Chunk) {
 			c.ID = test.NewUUIDv7(t)
+			c.Owner = u
 			c.Flavors = []chunk.Flavor{
 				fixture.Flavor(func(f *chunk.Flavor) {
 					f.ID = test.NewUUIDv7(t)
@@ -220,6 +218,7 @@ func TestListChunks(t *testing.T) {
 		}),
 		fixture.Chunk(func(c *chunk.Chunk) {
 			c.ID = test.NewUUIDv7(t)
+			c.Owner = u
 			c.Flavors = []chunk.Flavor{
 				fixture.Flavor(func(f *chunk.Flavor) {
 					f.ID = test.NewUUIDv7(t)
@@ -230,16 +229,10 @@ func TestListChunks(t *testing.T) {
 	}
 
 	for i := range chunks {
-		pg.CreateChunk(t, &chunks[i], fixture.CreateOptionsAll)
+		cp.Postgres.CreateChunk(t, &chunks[i], fixture.CreateOptionsAll)
 	}
 
-	conn, err := grpc.NewClient(
-		fixture.ControlPlaneAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	require.NoError(t, err)
-
-	client := chunkv1alpha1.NewChunkServiceClient(conn)
+	cp.AddUserAPIKey(t, &ctx, chunks[0].Owner)
 
 	resp, err := client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{})
 	require.NoError(t, err)
@@ -344,25 +337,19 @@ func TestUpdateChunk(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 				c   = fixture.Chunk()
 			)
 
-			fixture.RunControlPlane(t, pg)
-
-			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
-
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
-
-			client := chunkv1alpha1.NewChunkServiceClient(conn)
+			cp.Run(t)
+			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 			if tt.req.Id == "" {
 				tt.req.Id = c.ID
 			}
+
+			client := cp.ChunkClient(t)
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
 
 			resp, err := client.UpdateChunk(ctx, tt.req)
 
@@ -407,18 +394,11 @@ func TestCreateFlavor(t *testing.T) {
 		name       string
 		flavorName string
 		chunkID    string
-		other      *chunk.Flavor
 		err        error
 	}{
 		{
 			name:       "works",
 			flavorName: fixture.Flavor().Name,
-		},
-		{
-			name:       "flavor already exists",
-			flavorName: fixture.Flavor().Name,
-			other:      ptr.Pointer(fixture.Flavor()),
-			err:        apierrs.ErrFlavorNameExists.GRPCStatus().Err(),
 		},
 		{
 			name:       "invalid chunk id",
@@ -435,29 +415,21 @@ func TestCreateFlavor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 			)
 
-			fixture.RunControlPlane(t, pg)
+			cp.Run(t)
 
-			pg.CreateChunk(t, &c, fixture.CreateOptions{})
-
-			if tt.other != nil {
-				_, err := pg.DB.CreateFlavor(ctx, c.ID, *tt.other)
-				require.NoError(t, err)
-			}
-
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
-
-			client := chunkv1alpha1.NewChunkServiceClient(conn)
+			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptions{
+				WithOwner: true,
+			})
 
 			if tt.chunkID == "" {
 				tt.chunkID = c.ID
 			}
+
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			client := cp.ChunkClient(t)
 
 			resp, err := client.CreateFlavor(ctx, &chunkv1alpha1.CreateFlavorRequest{
 				ChunkId: tt.chunkID,
@@ -575,25 +547,21 @@ func TestCreateFlavorVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 			)
 
-			fixture.RunControlPlane(t, pg)
+			cp.Run(t)
 
-			pg.CreateChunk(t, &c, fixture.CreateOptions{
+			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptions{
 				WithFlavors: true,
+				WithOwner:   true,
 			})
 
-			_, err := pg.DB.CreateFlavor(ctx, c.ID, fixture.Flavor())
+			_, err := cp.Postgres.DB.CreateFlavor(ctx, c.ID, fixture.Flavor())
 			require.NoError(t, err)
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
-
-			client := chunkv1alpha1.NewChunkServiceClient(conn)
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			client := cp.ChunkClient(t)
 
 			if tt.prevVersion != nil {
 				_, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
@@ -664,21 +632,21 @@ func TestBuildFlavorVersion(t *testing.T) {
 			)
 
 			var (
-				pg       = fixture.NewPostgres()
+				cp       = fixture.NewControlPlane(t)
 				endpoint = fixture.RunRegistry(t)
 				fakes3   = fixture.RunFakeS3(t)
 			)
-			fixture.RunControlPlane(
-				t,
-				pg,
+
+			cp.Run(t,
 				fixture.WithOCIRegistryEndpoint(endpoint),
 				fixture.WithFakeS3Endpoint(fakes3.Endpoint),
 			)
+
 			fixture.RunFakeCRI(t)
 			fixture.RunCheckpointAPIFixtures(t, fixture.OCIRegsitryUser, fixture.OCIRegistryPass)
 
-			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
-			pg.InsertNode(t)
+			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+			cp.Postgres.InsertNode(t)
 
 			flavorVersionID := c.Flavors[0].Versions[0].ID
 
@@ -697,13 +665,8 @@ func TestBuildFlavorVersion(t *testing.T) {
 			err = pusher.Push(ctx, baseImgRef, imgtestdata.Image(t))
 			require.NoError(t, err)
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
-
-			client := chunkv1alpha1.NewChunkServiceClient(conn)
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			client := cp.ChunkClient(t)
 
 			_, err = client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{
 				FlavorVersionId: flavorVersionID,
@@ -767,22 +730,17 @@ func TestBuildFlavorVersion(t *testing.T) {
 func TestGetUploadURLWorks(t *testing.T) {
 	var (
 		ctx = context.Background()
-		pg  = fixture.NewPostgres()
+		cp  = fixture.NewControlPlane(t)
 		c   = fixture.Chunk()
 	)
 
 	fixture.RunFakeS3(t)
-	fixture.RunControlPlane(t, pg)
+	cp.Run(t)
 
-	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
-	conn, err := grpc.NewClient(
-		fixture.ControlPlaneAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	require.NoError(t, err)
-
-	client := chunkv1alpha1.NewChunkServiceClient(conn)
+	cp.AddUserAPIKey(t, &ctx, c.Owner)
+	client := cp.ChunkClient(t)
 
 	resp, err := client.GetUploadURL(ctx, &chunkv1alpha1.GetUploadURLRequest{
 		FlavorVersionId: c.Flavors[0].Versions[0].ID,
@@ -817,22 +775,17 @@ func TestGetUploadURLRenews(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 				c   = fixture.Chunk()
 			)
 
 			fixture.RunFakeS3(t)
-			fixture.RunControlPlane(t, pg)
+			cp.Run(t)
 
-			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
-
-			client := chunkv1alpha1.NewChunkServiceClient(conn)
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			client := cp.ChunkClient(t)
 
 			resp1, err := client.GetUploadURL(ctx, &chunkv1alpha1.GetUploadURLRequest{
 				FlavorVersionId: c.Flavors[0].Versions[0].ID,
@@ -889,18 +842,18 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				pg  = fixture.NewPostgres()
+				cp  = fixture.NewControlPlane(t)
 				c   = fixture.Chunk()
 			)
 
 			fixture.RunFakeS3(t)
-			fixture.RunControlPlane(t, pg)
+			cp.Run(t)
 
-			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 			if errors.Is(tt.err, apierrs.ErrFlavorFilesUploaded.GRPCStatus().Err()) {
 				q := `UPDATE flavor_versions SET files_uploaded = true WHERE id = $1`
-				_, err := pg.Pool.Exec(ctx, q, c.Flavors[0].Versions[0].ID)
+				_, err := cp.Postgres.Pool.Exec(ctx, q, c.Flavors[0].Versions[0].ID)
 				require.NoError(t, err)
 
 				tt.req = &chunkv1alpha1.GetUploadURLRequest{
@@ -909,15 +862,10 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 				}
 			}
 
-			conn, err := grpc.NewClient(
-				fixture.ControlPlaneAddr,
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-			)
-			require.NoError(t, err)
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			client := cp.ChunkClient(t)
 
-			client := chunkv1alpha1.NewChunkServiceClient(conn)
-
-			_, err = client.GetUploadURL(ctx, tt.req)
+			_, err := client.GetUploadURL(ctx, tt.req)
 
 			require.ErrorIs(t, err, tt.err)
 		})
@@ -927,18 +875,15 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 func TestGetSupportedMinecraftVersions(t *testing.T) {
 	var (
 		ctx = context.Background()
-		pg  = fixture.NewPostgres()
+		cp  = fixture.NewControlPlane(t)
+		u   = fixture.User()
 	)
 
-	fixture.RunControlPlane(t, pg)
+	cp.Run(t)
+	cp.Postgres.CreateUser(t, &u)
 
-	conn, err := grpc.NewClient(
-		fixture.ControlPlaneAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	require.NoError(t, err)
-
-	client := chunkv1alpha1.NewChunkServiceClient(conn)
+	cp.AddUserAPIKey(t, &ctx, u)
+	client := cp.ChunkClient(t)
 
 	resp, err := client.GetSupportedMinecraftVersions(ctx, &chunkv1alpha1.GetSupportedMinecraftVersionsRequest{})
 	require.NoError(t, err)

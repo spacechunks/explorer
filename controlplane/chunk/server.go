@@ -23,8 +23,11 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	"github.com/spacechunks/explorer/controlplane/contextkeys"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/user"
 )
 
 type Server struct {
@@ -50,10 +53,20 @@ func (s *Server) CreateChunk(
 	// some things like bedwars for example do not
 	// need a description.
 
+	tok := ctx.Value(contextkeys.APIToken).(jwt.Token)
+	var userID string
+	if err := tok.Get("user_id", &userID); err != nil {
+		return nil, err
+	}
+
 	c := Chunk{
 		Name:        req.GetName(),
 		Description: req.GetDescription(),
 		Tags:        req.GetTags(),
+		Owner: user.User{
+			ID: userID,
+		},
+		Flavors: make([]Flavor, 0),
 	}
 
 	ret, err := s.service.CreateChunk(ctx, c)

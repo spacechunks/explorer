@@ -30,6 +30,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
+	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
@@ -58,6 +59,8 @@ func TestCreateInstance(t *testing.T) {
 	expected.FlavorVersion = c.Flavors[0].Versions[0]
 	expected.Port = nil                     // port will not be saved when creating
 	expected.FlavorVersion.FileHashes = nil // will not be returned atm
+	expected.Chunk.Owner = user.User{}      // will not be returned atm
+	expected.Owner = c.Owner
 
 	actual, err := pg.DB.CreateInstance(ctx, expected, fixture.Node().ID)
 	require.NoError(t, err)
@@ -97,6 +100,8 @@ func TestDBListInstances(t *testing.T) {
 			i.FlavorVersion = c.Flavors[0].Versions[0]
 			i.Port = nil                     // port will not be saved when creating
 			i.FlavorVersion.FileHashes = nil // will not be returned atm
+			i.Chunk.Owner = user.User{}      // will not be returned atm
+			i.Owner = c.Owner
 		}),
 		fixture.Instance(func(i *instance.Instance) {
 			i.ID = test.NewUUIDv7(t)
@@ -104,6 +109,8 @@ func TestDBListInstances(t *testing.T) {
 			i.FlavorVersion = c.Flavors[0].Versions[0]
 			i.Port = nil                     // port will not be saved when creating
 			i.FlavorVersion.FileHashes = nil // will not be returned atm
+			i.Chunk.Owner = user.User{}      // will not be returned atm
+			i.Owner = c.Owner
 		}),
 	}
 
@@ -157,6 +164,9 @@ func TestGetInstanceByID(t *testing.T) {
 			if tt.create {
 				pg.CreateChunk(t, &tt.expected.Chunk, fixture.CreateOptionsAll)
 
+				tt.expected.Owner = tt.expected.Chunk.Owner
+				tt.expected.Chunk.Owner = user.User{} // will not be returned atm
+
 				v := tt.expected.Chunk.Flavors[0].Versions[0]
 				v.FileHashes = nil // not returned atm
 
@@ -209,6 +219,8 @@ func TestGetInstancesByNodeID(t *testing.T) {
 		fixture.Chunk(func(c *chunk.Chunk) {
 			c.ID = "01953e54-8ac5-7c1a-b468-dffdc26d2087"
 			c.Name = "chunk1"
+			c.Owner.Nickname = "user1"
+			c.Owner.Email = "user1@example.com"
 			c.Flavors = []chunk.Flavor{
 				fixture.Flavor(func(f *chunk.Flavor) {
 					f.ID = test.NewUUIDv7(t)
@@ -219,6 +231,8 @@ func TestGetInstancesByNodeID(t *testing.T) {
 		fixture.Chunk(func(c *chunk.Chunk) {
 			c.ID = "01953e54-b686-764a-874f-dbc45b67152c"
 			c.Name = "chunk2"
+			c.Owner.Nickname = "user2"
+			c.Owner.Email = "user2@example.com"
 			c.Flavors = []chunk.Flavor{
 				fixture.Flavor(func(f *chunk.Flavor) {
 					f.ID = test.NewUUIDv7(t)
@@ -244,7 +258,10 @@ func TestGetInstancesByNodeID(t *testing.T) {
 			State:         instance.StatePending,
 			CreatedAt:     chunks[i].CreatedAt,
 			UpdatedAt:     chunks[i].UpdatedAt,
+			Owner:         chunks[i].Owner,
 		}
+
+		ins.Chunk.Owner = user.User{} // will not be returned atm
 
 		// see FIXME in GetInstancesByNodeID
 		ins.Chunk.Flavors = nil

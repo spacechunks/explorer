@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
@@ -55,6 +56,12 @@ var (
 		"id",
 	)
 
+	IgnoredProtoUserFields = protocmp.IgnoreFields(
+		&userv1alpha1.User{},
+		"created_at",
+		"updated_at",
+	)
+
 	IgnoredInstanceFields = []string{
 		// created dynamically
 		"ID",
@@ -77,6 +84,9 @@ var (
 		"Chunk.Flavors.Versions",
 		"ChunkFlavor.Versions",
 		"FlavorVersion.CreatedAt",
+		"Owner.ID",
+		"Owner.CreatedAt",
+		"Owner.UpdatedAt",
 	}
 
 	IgnoredChunkFields = []string{
@@ -88,6 +98,15 @@ var (
 		"Flavors.CreatedAt",
 		"Flavors.UpdatedAt",
 		"Flavors.Versions.CreatedAt",
+		"Owner.ID",
+		"Owner.CreatedAt",
+		"Owner.UpdatedAt",
+	}
+
+	IgnoredUserFields = []string{
+		"ID",
+		"CreatedAt",
+		"UpdatedAt",
 	}
 )
 

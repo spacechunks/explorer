@@ -16,41 +16,11 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package instance
+package user
 
-import (
-	"net/netip"
-	"time"
+import "context"
 
-	"github.com/spacechunks/explorer/controlplane/chunk"
-	"github.com/spacechunks/explorer/controlplane/user"
-)
-
-type Instance struct {
-	ID            string
-	Chunk         chunk.Chunk
-	FlavorVersion chunk.FlavorVersion
-	Address       netip.Addr
-	State         State
-	Port          *uint16
-	Owner         user.User
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+type Repository interface {
+	GetUserByEmail(ctx context.Context, id string) (User, error)
+	CreateUser(ctx context.Context, user User) (User, error)
 }
-
-type StatusReport struct {
-	InstanceID string
-	State      State
-	Port       uint16
-}
-
-type State string
-
-const (
-	StatePending   State = "PENDING"
-	StateCreating  State = "CREATING"
-	StateRunning   State = "RUNNING"
-	StateDeleting  State = "DELETING"
-	StateDeleted   State = "DELETED"
-	CreationFailed State = "CREATION_FAILED"
-)

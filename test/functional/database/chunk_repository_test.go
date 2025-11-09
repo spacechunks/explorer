@@ -48,7 +48,13 @@ func TestCreateChunk(t *testing.T) {
 
 	pg.Run(t, ctx)
 
-	expected := fixture.Chunk()
+	u := fixture.User()
+
+	pg.CreateUser(t, &u)
+
+	expected := fixture.Chunk(func(tmp *chunk.Chunk) {
+		tmp.Owner = u
+	})
 
 	c, err := pg.DB.CreateChunk(ctx, expected)
 	require.NoError(t, err)

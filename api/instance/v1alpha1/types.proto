@@ -24,7 +24,9 @@ package instance.v1alpha1;
 option go_package = "github.com/spacechunks/explorer/api/instance/v1alpha1";
 
 import "chunk/v1alpha1/types.proto";
+import "user/v1alpha1/types.proto";
 import "google/protobuf/timestamp.proto";
+
 
 enum InstanceState {
   PENDING = 0;
@@ -56,6 +58,8 @@ message Instance {
   uint32 port = 5;
 
   InstanceState state = 6;
+
+  user.v1alpha1.User owner = 7;
 }
 
 message InstanceStatusReport {

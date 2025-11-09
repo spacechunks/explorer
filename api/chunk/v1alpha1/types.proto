@@ -24,6 +24,7 @@ package chunk.v1alpha1;
 option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
 
 import "google/protobuf/timestamp.proto";
+import "user/v1alpha1/types.proto";
 
 enum BuildStatus {
   PENDING = 0;
@@ -55,10 +56,10 @@ message Chunk {
 
   repeated Flavor flavors = 5;
 
-  // User owner = 5;
+  user.v1alpha1.User owner = 6;
 
-  google.protobuf.Timestamp created_at = 6;
-  google.protobuf.Timestamp updated_at = 7;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
 }
 
 message Flavor {

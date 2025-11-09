@@ -61,9 +61,9 @@ const createChunk = `-- name: CreateChunk :exec
  */
 
 INSERT INTO chunks
-    (id, name, description, tags, created_at, updated_at)
+    (id, name, description, tags, owner, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6)
+    ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateChunkParams struct {
@@ -71,6 +71,7 @@ type CreateChunkParams struct {
 	Name        string
 	Description string
 	Tags        []string
+	Owner       *string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -81,6 +82,7 @@ func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) error 
 		arg.Name,
 		arg.Description,
 		arg.Tags,
+		arg.Owner,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -156,9 +158,9 @@ const createInstance = `-- name: CreateInstance :exec
  */
 
 INSERT INTO instances
-    (id, chunk_id, flavor_version_id, node_id, state, created_at, updated_at)
+    (id, chunk_id, flavor_version_id, node_id, state, owner, created_at, updated_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+    ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type CreateInstanceParams struct {
@@ -167,6 +169,7 @@ type CreateInstanceParams struct {
 	FlavorVersionID string
 	NodeID          string
 	State           InstanceState
+	Owner           *string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -178,6 +181,33 @@ func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) 
 		arg.FlavorVersionID,
 		arg.NodeID,
 		arg.State,
+		arg.Owner,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const createUser = `-- name: CreateUser :exec
+INSERT INTO users
+    (id, nickname, email, created_at, updated_at)
+VALUES
+    ($1, $2, $3, $4, $5)
+`
+
+type CreateUserParams struct {
+	ID        string
+	Nickname  string
+	Email     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
+	_, err := q.db.Exec(ctx, createUser,
+		arg.ID,
+		arg.Nickname,
+		arg.Email,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -325,10 +355,11 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 }
 
 const getChunkByID = `-- name: GetChunkByID :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at FROM chunks c
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
+    LEFT JOIN users u ON u.id = c.owner
 WHERE c.id = $1
 `
 
@@ -339,6 +370,7 @@ type GetChunkByIDRow struct {
 	Tags                   []string
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
+	Owner                  *string
 	ID_2                   *string
 	ChunkID                *string
 	Name_2                 pgtype.Text
@@ -360,6 +392,11 @@ type GetChunkByIDRow struct {
 	FileHash               pgtype.Text
 	FilePath               pgtype.Text
 	CreatedAt_4            pgtype.Timestamptz
+	ID_4                   *string
+	Nickname               pgtype.Text
+	Email                  pgtype.Text
+	CreatedAt_5            pgtype.Timestamptz
+	UpdatedAt_3            pgtype.Timestamptz
 }
 
 // TODO: read multiple
@@ -379,6 +416,7 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 			&i.Tags,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Owner,
 			&i.ID_2,
 			&i.ChunkID,
 			&i.Name_2,
@@ -400,6 +438,11 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 			&i.FileHash,
 			&i.FilePath,
 			&i.CreatedAt_4,
+			&i.ID_4,
+			&i.Nickname,
+			&i.Email,
+			&i.CreatedAt_5,
+			&i.UpdatedAt_3,
 		); err != nil {
 			return nil, err
 		}
@@ -412,11 +455,12 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 }
 
 const getInstance = `-- name: GetInstance :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
+    JOIN users u ON u.id = i.owner
 WHERE i.id = $1
 `
 
@@ -429,6 +473,7 @@ type GetInstanceRow struct {
 	State                  InstanceState
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
+	Owner                  *string
 	ID_2                   string
 	FlavorID               string
 	Hash                   string
@@ -447,6 +492,7 @@ type GetInstanceRow struct {
 	Tags                   []string
 	CreatedAt_3            time.Time
 	UpdatedAt_2            time.Time
+	Owner_2                *string
 	ID_4                   string
 	ChunkID_2              string
 	Name_2                 string
@@ -457,6 +503,11 @@ type GetInstanceRow struct {
 	Address                netip.Addr
 	CheckpointApiEndpoint  string
 	CreatedAt_5            time.Time
+	ID_6                   string
+	Nickname               string
+	Email                  string
+	CreatedAt_6            time.Time
+	UpdatedAt_4            time.Time
 }
 
 func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow, error) {
@@ -477,6 +528,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Owner,
 			&i.ID_2,
 			&i.FlavorID,
 			&i.Hash,
@@ -495,6 +547,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.Tags,
 			&i.CreatedAt_3,
 			&i.UpdatedAt_2,
+			&i.Owner_2,
 			&i.ID_4,
 			&i.ChunkID_2,
 			&i.Name_2,
@@ -505,6 +558,11 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.Address,
 			&i.CheckpointApiEndpoint,
 			&i.CreatedAt_5,
+			&i.ID_6,
+			&i.Nickname,
+			&i.Email,
+			&i.CreatedAt_6,
+			&i.UpdatedAt_4,
 		); err != nil {
 			return nil, err
 		}
@@ -517,10 +575,11 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 }
 
 const getInstancesByNodeID = `-- name: GetInstancesByNodeID :many
-SELECT i.id, chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
+SELECT i.id, chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
+    JOIN users u ON u.id = i.owner
 WHERE i.node_id = $1
 `
 
@@ -533,6 +592,7 @@ type GetInstancesByNodeIDRow struct {
 	State                  InstanceState
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
+	Owner                  *string
 	ID_2                   string
 	FlavorID               string
 	Hash                   string
@@ -551,11 +611,17 @@ type GetInstancesByNodeIDRow struct {
 	Tags                   []string
 	CreatedAt_3            time.Time
 	UpdatedAt_2            time.Time
+	Owner_2                *string
 	ID_4                   string
 	Name_2                 string
 	Address                netip.Addr
 	CheckpointApiEndpoint  string
 	CreatedAt_4            time.Time
+	ID_5                   string
+	Nickname               string
+	Email                  string
+	CreatedAt_5            time.Time
+	UpdatedAt_3            time.Time
 }
 
 func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]GetInstancesByNodeIDRow, error) {
@@ -576,6 +642,7 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Owner,
 			&i.ID_2,
 			&i.FlavorID,
 			&i.Hash,
@@ -594,11 +661,17 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 			&i.Tags,
 			&i.CreatedAt_3,
 			&i.UpdatedAt_2,
+			&i.Owner_2,
 			&i.ID_4,
 			&i.Name_2,
 			&i.Address,
 			&i.CheckpointApiEndpoint,
 			&i.CreatedAt_4,
+			&i.ID_5,
+			&i.Nickname,
+			&i.Email,
+			&i.CreatedAt_5,
+			&i.UpdatedAt_3,
 		); err != nil {
 			return nil, err
 		}
@@ -636,10 +709,11 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 }
 
 const listChunks = `-- name: ListChunks :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at FROM chunks c
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
+    LEFT JOIN users u ON u.id = c.owner
 `
 
 type ListChunksRow struct {
@@ -649,6 +723,7 @@ type ListChunksRow struct {
 	Tags                   []string
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
+	Owner                  *string
 	ID_2                   *string
 	ChunkID                *string
 	Name_2                 pgtype.Text
@@ -670,6 +745,11 @@ type ListChunksRow struct {
 	FileHash               pgtype.Text
 	FilePath               pgtype.Text
 	CreatedAt_4            pgtype.Timestamptz
+	ID_4                   *string
+	Nickname               pgtype.Text
+	Email                  pgtype.Text
+	CreatedAt_5            pgtype.Timestamptz
+	UpdatedAt_3            pgtype.Timestamptz
 }
 
 func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
@@ -688,6 +768,7 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 			&i.Tags,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Owner,
 			&i.ID_2,
 			&i.ChunkID,
 			&i.Name_2,
@@ -709,6 +790,11 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 			&i.FileHash,
 			&i.FilePath,
 			&i.CreatedAt_4,
+			&i.ID_4,
+			&i.Nickname,
+			&i.Email,
+			&i.CreatedAt_5,
+			&i.UpdatedAt_3,
 		); err != nil {
 			return nil, err
 		}
@@ -794,11 +880,12 @@ func (q *Queries) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]L
 }
 
 const listInstances = `-- name: ListInstances :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
+    JOIN users u ON u.id = i.owner
 `
 
 type ListInstancesRow struct {
@@ -810,6 +897,7 @@ type ListInstancesRow struct {
 	State                  InstanceState
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
+	Owner                  *string
 	ID_2                   string
 	FlavorID               string
 	Hash                   string
@@ -828,6 +916,7 @@ type ListInstancesRow struct {
 	Tags                   []string
 	CreatedAt_3            time.Time
 	UpdatedAt_2            time.Time
+	Owner_2                *string
 	ID_4                   string
 	ChunkID_2              string
 	Name_2                 string
@@ -838,6 +927,11 @@ type ListInstancesRow struct {
 	Address                netip.Addr
 	CheckpointApiEndpoint  string
 	CreatedAt_5            time.Time
+	ID_6                   string
+	Nickname               string
+	Email                  string
+	CreatedAt_6            time.Time
+	UpdatedAt_4            time.Time
 }
 
 func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error) {
@@ -858,6 +952,7 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Owner,
 			&i.ID_2,
 			&i.FlavorID,
 			&i.Hash,
@@ -876,6 +971,7 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 			&i.Tags,
 			&i.CreatedAt_3,
 			&i.UpdatedAt_2,
+			&i.Owner_2,
 			&i.ID_4,
 			&i.ChunkID_2,
 			&i.Name_2,
@@ -886,6 +982,11 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 			&i.Address,
 			&i.CheckpointApiEndpoint,
 			&i.CreatedAt_5,
+			&i.ID_6,
+			&i.Nickname,
+			&i.Email,
+			&i.CreatedAt_6,
+			&i.UpdatedAt_4,
 		); err != nil {
 			return nil, err
 		}
@@ -998,4 +1099,25 @@ type UpdateFlavorVersionPresignedURLDataParams struct {
 func (q *Queries) UpdateFlavorVersionPresignedURLData(ctx context.Context, arg UpdateFlavorVersionPresignedURLDataParams) error {
 	_, err := q.db.Exec(ctx, updateFlavorVersionPresignedURLData, arg.PresignedUrlExpiryDate, arg.PresignedUrl, arg.ID)
 	return err
+}
+
+const userByEmail = `-- name: UserByEmail :one
+/*
+ * USERS
+ */
+
+SELECT id, nickname, email, created_at, updated_at FROM users WHERE email = $1
+`
+
+func (q *Queries) UserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, userByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Nickname,
+		&i.Email,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

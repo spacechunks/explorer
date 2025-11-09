@@ -20,6 +20,7 @@ package chunk
 
 import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/internal/file"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -30,8 +31,14 @@ func ChunkToTransport(domain Chunk) *chunkv1alpha1.Chunk {
 		Name:        domain.Name,
 		Description: domain.Description,
 		Tags:        domain.Tags,
-		CreatedAt:   timestamppb.New(domain.CreatedAt),
-		UpdatedAt:   timestamppb.New(domain.UpdatedAt),
+		Owner: &userv1alpha1.User{
+			Id:        domain.Owner.ID,
+			Nickname:  domain.Owner.Nickname,
+			CreatedAt: timestamppb.New(domain.Owner.CreatedAt),
+			UpdatedAt: timestamppb.New(domain.Owner.UpdatedAt),
+		},
+		CreatedAt: timestamppb.New(domain.CreatedAt),
+		UpdatedAt: timestamppb.New(domain.UpdatedAt),
 	}
 
 	flavors := make([]*chunkv1alpha1.Flavor, 0, len(domain.Flavors))
