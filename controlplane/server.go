@@ -206,7 +206,7 @@ func (s *Server) Stop() {
 }
 
 func authInterceptor(logger *slog.Logger, signingKey *ecdsa.PrivateKey, issuer string) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		// we only need to check if it's the user server and login call.
 		// doing it like this, will not break anything if we change the
 		// version of the user api.
