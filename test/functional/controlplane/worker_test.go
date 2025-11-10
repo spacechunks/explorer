@@ -35,8 +35,8 @@ import (
 	ociv1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/spacechunks/explorer/controlplane/blob"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/job"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
 	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
@@ -55,7 +55,7 @@ var auth = remote.WithAuth(&image.Auth{
 func setup(
 	t *testing.T,
 	ctx context.Context,
-	c *chunk.Chunk,
+	c *resource.Chunk,
 	auth remote.Option,
 	changeSet []byte,
 ) (*fixture.Postgres, string, name.Reference) {
@@ -87,7 +87,7 @@ func TestImageWorkerCreatesImageWithNoMissingFiles(t *testing.T) {
 	var (
 		ctx        = context.Background()
 		fileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
-		c          = ptr.Pointer(fixture.Chunk(func(tmp *chunk.Chunk) {
+		c          = ptr.Pointer(fixture.Chunk(func(tmp *resource.Chunk) {
 			tmp.Flavors[0].Versions[0].FileHashes = fileHashes
 		}))
 	)
@@ -96,7 +96,7 @@ func TestImageWorkerCreatesImageWithNoMissingFiles(t *testing.T) {
 
 	flavorVersionID := c.Flavors[0].Versions[0].ID
 
-	err := pg.DB.InsertJob(ctx, flavorVersionID, string(chunk.BuildStatusBuildImage), job.CreateImage{
+	err := pg.DB.InsertJob(ctx, flavorVersionID, string(resource.BuildStatusBuildImage), job.CreateImage{
 		FlavorVersionID: flavorVersionID,
 		BaseImage:       baseImgRef.String(),
 		OCIRegistry:     endpoint,
@@ -110,7 +110,7 @@ func TestImageWorkerCreatesImageWithMissingFilesDownloadedFromBlobStore(t *testi
 	var (
 		ctx        = context.Background()
 		fileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
-		c          = ptr.Pointer(fixture.Chunk(func(tmp *chunk.Chunk) {
+		c          = ptr.Pointer(fixture.Chunk(func(tmp *resource.Chunk) {
 			f, err := os.Open("./testdata/testfile1.txt")
 			require.NoError(t, err)
 
@@ -155,7 +155,7 @@ func TestImageWorkerCreatesImageWithMissingFilesDownloadedFromBlobStore(t *testi
 	err = store.Put(ctx, blob.CASKeyPrefix, objs)
 	require.NoError(t, err)
 
-	err = pg.DB.InsertJob(ctx, flavorVersionID, string(chunk.BuildStatusBuildImage), job.CreateImage{
+	err = pg.DB.InsertJob(ctx, flavorVersionID, string(resource.BuildStatusBuildImage), job.CreateImage{
 		FlavorVersionID: flavorVersionID,
 		BaseImage:       baseImgRef.String(),
 		OCIRegistry:     endpoint,

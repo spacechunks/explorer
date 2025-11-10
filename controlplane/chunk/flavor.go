@@ -20,79 +20,52 @@ package chunk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/spacechunks/explorer/controlplane/blob"
+	"github.com/spacechunks/explorer/controlplane/contextkeys"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
 )
-
-/*
- * flavor types
- */
-
-type BuildStatus string
-
-const (
-	BuildStatusPending               BuildStatus = "PENDING"
-	BuildStatusBuildImage            BuildStatus = "IMAGE_BUILD"
-	BuildStatusBuildCheckpoint       BuildStatus = "CHECKPOINT_BUILD"
-	BuildStatusBuildImageFailed      BuildStatus = "IMAGE_BUILD_FAILED"
-	BuildStatusBuildCheckpointFailed BuildStatus = "CHECKPOINT_BUILD_FAILED"
-	BuildStatusCompleted             BuildStatus = "COMPLETED"
-)
-
-type Flavor struct {
-	ID        string
-	Name      string
-	Versions  []FlavorVersion
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-type FlavorVersionDiff struct {
-	Added   []file.Hash
-	Removed []file.Hash
-	Changed []file.Hash
-}
-
-type FlavorVersion struct {
-	ID                     string
-	Version                string
-	MinecraftVersion       string
-	Hash                   string
-	ChangeHash             string
-	FileHashes             []file.Hash
-	FilesUploaded          bool
-	BuildStatus            BuildStatus
-	CreatedAt              time.Time
-	PresignedURLExpiryDate *time.Time
-	PresignedURL           *string
-}
 
 /*
  * service functions
  */
 
-func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error) {
+func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor resource.Flavor) (resource.Flavor, error) {
+	c, err := s.repo.GetChunkByID(ctx, chunkID)
+	if err != nil {
+		return resource.Flavor{}, fmt.Errorf("get chunk: %w", err)
+	}
+
+	actorID, ok := ctx.Value(contextkeys.ActorID).(string)
+	if !ok {
+		return resource.Flavor{}, errors.New("actor_id not found in context")
+	}
+
+	if c.Owner.ID != actorID {
+		return resource.Flavor{}, apierrs.ErrPermissionDenied
+	}
+
 	exists, err := s.repo.FlavorNameExists(ctx, chunkID, flavor.Name)
 	if err != nil {
-		return Flavor{}, fmt.Errorf("flavor name exists: %w", err)
+		return resource.Flavor{}, fmt.Errorf("flavor name exists: %w", err)
 	}
 
 	if exists {
-		return Flavor{}, apierrs.ErrFlavorNameExists
+		return resource.Flavor{}, apierrs.ErrFlavorNameExists
 	}
 
 	ret, err := s.repo.CreateFlavor(ctx, chunkID, flavor)
 	if err != nil {
-		return Flavor{}, fmt.Errorf("create flavor: %w", err)
+		return resource.Flavor{}, fmt.Errorf("create flavor: %w", err)
 	}
 
 	return ret, nil
@@ -101,38 +74,40 @@ func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (
 func (s *svc) CreateFlavorVersion(
 	ctx context.Context,
 	flavorID string,
-	version FlavorVersion,
-) (FlavorVersion, FlavorVersionDiff, error) {
+	version resource.FlavorVersion,
+) (resource.FlavorVersion, resource.FlavorVersionDiff, error) {
+	// TODO: find owner of the flavor
+
 	exists, err := s.repo.FlavorVersionExists(ctx, flavorID, version.Version)
 	if err != nil {
-		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("flavor version exists: %w", err)
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("flavor version exists: %w", err)
 	}
 
 	if exists {
-		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrFlavorVersionExists
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrFlavorVersionExists
 	}
 
 	exists, err = s.repo.MinecraftVersionExists(ctx, version.MinecraftVersion)
 	if err != nil {
-		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("minecraft version exists: %w", err)
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("minecraft version exists: %w", err)
 	}
 
 	if !exists {
-		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrMinecraftVersionNotSupported
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrMinecraftVersionNotSupported
 	}
 
 	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
 	if err != nil {
-		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("latest flavor version file hashes: %w", err)
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("latest flavor version file hashes: %w", err)
 	}
 
 	newContentTree, err := file.HashTree(version.FileHashes)
 	if err != nil {
-		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("new content tree: %w", err)
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("new content tree: %w", err)
 	}
 
 	if file.HashTreeRootString(newContentTree) != version.Hash {
-		return FlavorVersion{}, FlavorVersionDiff{}, apierrs.ErrHashMismatch
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrHashMismatch
 	}
 
 	// TODO: clean all received paths using filepath.Clean to avoid
@@ -183,7 +158,7 @@ func (s *svc) CreateFlavorVersion(
 	}
 
 	var (
-		diff = FlavorVersionDiff{
+		diff = resource.FlavorVersionDiff{
 			Added:   added,
 			Removed: removed,
 			Changed: changed,
@@ -213,7 +188,7 @@ func (s *svc) CreateFlavorVersion(
 
 	changesTree, err := file.HashTree(changes)
 	if err != nil {
-		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("changes tree: %w", err)
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("changes tree: %w", err)
 	}
 
 	version.ChangeHash = file.HashTreeRootString(changesTree)
@@ -221,13 +196,15 @@ func (s *svc) CreateFlavorVersion(
 
 	created, err := s.repo.CreateFlavorVersion(ctx, flavorID, version, prevVersion.ID)
 	if err != nil {
-		return FlavorVersion{}, FlavorVersionDiff{}, fmt.Errorf("create flavor version: %w", err)
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("create flavor version: %w", err)
 	}
 
 	return created, diff, nil
 }
 
 func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
+	// TODO: find owner of the flavor version
+
 	version, err := s.repo.FlavorVersionByID(ctx, versionID)
 	if err != nil {
 		return fmt.Errorf("flavor version: %w", err)
@@ -251,14 +228,14 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 	// do not fail the request if there is already a job running,
 	// or it is already completed, because those states do not
 	// indicate that anything is wrong.
-	if version.BuildStatus == BuildStatusBuildCheckpoint ||
-		version.BuildStatus == BuildStatusBuildImage ||
-		version.BuildStatus == BuildStatusCompleted {
+	if version.BuildStatus == resource.BuildStatusBuildCheckpoint ||
+		version.BuildStatus == resource.BuildStatusBuildImage ||
+		version.BuildStatus == resource.BuildStatusCompleted {
 		return nil
 	}
 
-	if version.BuildStatus == BuildStatusBuildCheckpointFailed {
-		if err := s.jobClient.InsertJob(ctx, versionID, string(BuildStatusBuildCheckpoint), job.CreateCheckpoint{
+	if version.BuildStatus == resource.BuildStatusBuildCheckpointFailed {
+		if err := s.jobClient.InsertJob(ctx, versionID, string(resource.BuildStatusBuildCheckpoint), job.CreateCheckpoint{
 			FlavorVersionID: versionID,
 			BaseImageURL:    fmt.Sprintf("%s/%s:base", s.cfg.Registry, versionID),
 		}); err != nil {
@@ -267,7 +244,7 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 		return nil
 	}
 
-	if err := s.jobClient.InsertJob(ctx, versionID, string(BuildStatusBuildImage), job.CreateImage{
+	if err := s.jobClient.InsertJob(ctx, versionID, string(resource.BuildStatusBuildImage), job.CreateImage{
 		FlavorVersionID: versionID,
 		BaseImage:       s.cfg.BaseImage,
 		OCIRegistry:     s.cfg.Registry,

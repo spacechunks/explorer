@@ -28,9 +28,8 @@ import (
 	"time"
 
 	"github.com/cbergoon/merkletree"
-	"github.com/spacechunks/explorer/controlplane/chunk"
-	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/node"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/zeebo/xxh3"
@@ -41,20 +40,20 @@ const (
 	MinecraftVersion = "1.21.10"
 )
 
-func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
-	c := chunk.Chunk{
+func Chunk(mod ...func(c *resource.Chunk)) resource.Chunk {
+	c := resource.Chunk{
 		ID:          "019532bb-2bd3-73ea-afc2-99f368a3eb97",
 		Name:        "chunk-fixture",
 		Description: "some description bla bla",
 		Tags:        []string{"tag1", "tag2"},
-		Flavors: []chunk.Flavor{
+		Flavors: []resource.Flavor{
 			// the latest flavor has to be first
-			Flavor(func(f *chunk.Flavor) {
+			Flavor(func(f *resource.Flavor) {
 				f.ID = "01953e68-8313-76ba-8012-2f51abb7988a"
 				f.Name = "flavor2"
 				f.CreatedAt = time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC)
 			}),
-			Flavor(func(f *chunk.Flavor) {
+			Flavor(func(f *resource.Flavor) {
 				f.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
 				f.Name = "flavor1"
 				f.CreatedAt = time.Date(2024, 2, 23, 13, 12, 15, 0, time.UTC)
@@ -72,13 +71,13 @@ func Chunk(mod ...func(c *chunk.Chunk)) chunk.Chunk {
 	return c
 }
 
-func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
-	flavor := chunk.Flavor{
+func Flavor(mod ...func(f *resource.Flavor)) resource.Flavor {
+	flavor := resource.Flavor{
 		ID:   "019532bb-5582-7608-9a08-bb742a8174aa",
 		Name: "flavorABC",
-		Versions: []chunk.FlavorVersion{
+		Versions: []resource.FlavorVersion{
 			// the latest flavor has to be first
-			FlavorVersion(func(v *chunk.FlavorVersion) {
+			FlavorVersion(func(v *resource.FlavorVersion) {
 				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
@@ -88,7 +87,7 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 					},
 				}
 			}),
-			FlavorVersion(func(v *chunk.FlavorVersion) {
+			FlavorVersion(func(v *resource.FlavorVersion) {
 				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
 				v.Version = "v1"
 			}),
@@ -104,8 +103,8 @@ func Flavor(mod ...func(f *chunk.Flavor)) chunk.Flavor {
 	return flavor
 }
 
-func FlavorVersion(mod ...func(v *chunk.FlavorVersion)) chunk.FlavorVersion {
-	version := chunk.FlavorVersion{
+func FlavorVersion(mod ...func(v *resource.FlavorVersion)) resource.FlavorVersion {
+	version := resource.FlavorVersion{
 		Version:    "v1",
 		ChangeHash: "kkkkkkkkkkkkkkkk",
 		FileHashes: []file.Hash{
@@ -123,7 +122,7 @@ func FlavorVersion(mod ...func(v *chunk.FlavorVersion)) chunk.FlavorVersion {
 			},
 		},
 		MinecraftVersion: MinecraftVersion,
-		BuildStatus:      chunk.BuildStatusPending,
+		BuildStatus:      resource.BuildStatusPending,
 		FilesUploaded:    false,
 		CreatedAt:        time.Time{},
 	}
@@ -164,14 +163,14 @@ func FlavorVersion(mod ...func(v *chunk.FlavorVersion)) chunk.FlavorVersion {
 	return version
 }
 
-func Instance(mod ...func(i *instance.Instance)) instance.Instance {
+func Instance(mod ...func(i *resource.Instance)) resource.Instance {
 	c := Chunk()
-	ins := instance.Instance{
+	ins := resource.Instance{
 		ID:            "019533f6-a770-7903-8f99-88ae6b271663",
 		Chunk:         c,
 		FlavorVersion: c.Flavors[0].Versions[0],
 		Address:       netip.MustParseAddr("198.51.100.1"),
-		State:         instance.StatePending,
+		State:         resource.StatePending,
 		Port:          ptr.Pointer(uint16(1337)),
 		Owner:         c.Owner,
 		CreatedAt:     time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),

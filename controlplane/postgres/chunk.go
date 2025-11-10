@@ -29,17 +29,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
-	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
 )
 
-func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, error) {
+func (db *DB) CreateChunk(ctx context.Context, c resource.Chunk) (resource.Chunk, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
-		return chunk.Chunk{}, fmt.Errorf("generate id: %w", err)
+		return resource.Chunk{}, fmt.Errorf("generate id: %w", err)
 	}
 
 	params := query.CreateChunkParams{
@@ -52,7 +51,7 @@ func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 		UpdatedAt:   time.Now(),
 	}
 
-	var ret chunk.Chunk
+	var ret resource.Chunk
 	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.CreateChunk(ctx, params); err != nil {
 			return fmt.Errorf("create chunk: %w", err)
@@ -66,15 +65,15 @@ func (db *DB) CreateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 		ret = created
 		return nil
 	}); err != nil {
-		return chunk.Chunk{}, err
+		return resource.Chunk{}, err
 	}
 
 	return ret, nil
 }
 
-func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) {
+func (db *DB) GetChunkByID(ctx context.Context, id string) (resource.Chunk, error) {
 	// FIXME: allow fetching multiple chunks at once
-	var ret chunk.Chunk
+	var ret resource.Chunk
 	if err := db.do(ctx, func(q *query.Queries) error {
 		c, err := db.getChunkByID(ctx, q, id)
 		if err != nil {
@@ -83,13 +82,13 @@ func (db *DB) GetChunkByID(ctx context.Context, id string) (chunk.Chunk, error) 
 		ret = c
 		return nil
 	}); err != nil {
-		return chunk.Chunk{}, err
+		return resource.Chunk{}, err
 	}
 
 	return ret, nil
 }
 
-func (db *DB) UpdateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, error) {
+func (db *DB) UpdateChunk(ctx context.Context, c resource.Chunk) (resource.Chunk, error) {
 	params := query.UpdateChunkParams{
 		Name:        c.Name,
 		Description: c.Description,
@@ -97,7 +96,7 @@ func (db *DB) UpdateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 		ID:          c.ID,
 	}
 
-	var ret chunk.Chunk
+	var ret resource.Chunk
 	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.UpdateChunk(ctx, params); err != nil {
 			return fmt.Errorf("update chunk: %w", err)
@@ -111,7 +110,7 @@ func (db *DB) UpdateChunk(ctx context.Context, c chunk.Chunk) (chunk.Chunk, erro
 		ret = c
 		return nil
 	}); err != nil {
-		return chunk.Chunk{}, err
+		return resource.Chunk{}, err
 	}
 
 	return ret, nil
@@ -134,8 +133,8 @@ func (db *DB) ChunkExists(ctx context.Context, id string) (bool, error) {
 	return ret, nil
 }
 
-func (db *DB) ListChunks(ctx context.Context) ([]chunk.Chunk, error) {
-	var ret []chunk.Chunk
+func (db *DB) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
+	var ret []resource.Chunk
 	if err := db.do(ctx, func(q *query.Queries) error {
 		rows, err := q.ListChunks(ctx)
 		if err != nil {
@@ -238,14 +237,14 @@ func (db *DB) MinecraftVersionExists(ctx context.Context, version string) (bool,
 	return ret, nil
 }
 
-func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (chunk.Chunk, error) {
+func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (resource.Chunk, error) {
 	rows, err := q.GetChunkByID(ctx, id)
 	if err != nil {
-		return chunk.Chunk{}, err
+		return resource.Chunk{}, err
 	}
 
 	if len(rows) == 0 {
-		return chunk.Chunk{}, apierrs.ErrChunkNotFound
+		return resource.Chunk{}, apierrs.ErrChunkNotFound
 	}
 
 	relationRows := make([]chunkRelationsRow, 0, len(rows))
@@ -339,27 +338,27 @@ type chunkRelationsRow struct {
 	UserUpdatedAt time.Time
 }
 
-func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
+func collectChunks(rows []chunkRelationsRow) resource.Chunk {
 	// crazy shit code ahead, but really at this point
 	// i. couldn't. care. less. ill fix this later, for
 	// now it works.
 
 	var (
-		ret                chunk.Chunk
-		flavorMap          = make(map[string]chunk.Flavor)
-		versionMap         = make(map[string]chunk.FlavorVersion)
+		ret                resource.Chunk
+		flavorMap          = make(map[string]resource.Flavor)
+		versionMap         = make(map[string]resource.FlavorVersion)
 		fhMap              = make(map[string][]file.Hash)
 		versionToFlavorMap = make(map[string]string)
 
 		row = rows[0]
-		c   = chunk.Chunk{
+		c   = resource.Chunk{
 			ID:          row.ChunkID,
 			Name:        row.ChunkName,
 			Description: row.Description,
 			Tags:        row.Tags,
 			CreatedAt:   row.ChunkCreatedAt.UTC(),
 			UpdatedAt:   row.ChunkUpdatedAt.UTC(),
-			Owner: user.User{
+			Owner: resource.User{
 				ID:        row.UserID,
 				Nickname:  row.UserNickname,
 				Email:     row.UserEmail,
@@ -373,7 +372,7 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 		if r.FlavorID != nil {
 			_, ok := flavorMap[*r.FlavorID]
 			if !ok {
-				flavorMap[*r.FlavorID] = chunk.Flavor{
+				flavorMap[*r.FlavorID] = resource.Flavor{
 					ID:        *r.FlavorID,
 					Name:      r.FlavorName,
 					CreatedAt: r.FlavorCreatedAt,
@@ -386,12 +385,12 @@ func collectChunks(rows []chunkRelationsRow) chunk.Chunk {
 			_, ok := versionMap[*r.FlavorVersionID]
 			if !ok {
 				versionToFlavorMap[*r.FlavorVersionID] = *r.FlavorID
-				versionMap[*r.FlavorVersionID] = chunk.FlavorVersion{
+				versionMap[*r.FlavorVersionID] = resource.FlavorVersion{
 					ID:                     *r.FlavorVersionID,
 					Version:                r.Version,
 					MinecraftVersion:       r.MinecraftVersion,
 					Hash:                   r.Hash,
-					BuildStatus:            chunk.BuildStatus(r.BuildStatus),
+					BuildStatus:            resource.BuildStatus(r.BuildStatus),
 					ChangeHash:             r.ChangeHash,
 					FilesUploaded:          r.FilesUploaded,
 					CreatedAt:              r.FlavorVersionCreatedAt,

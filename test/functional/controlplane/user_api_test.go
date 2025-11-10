@@ -25,7 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
@@ -37,8 +37,8 @@ import (
 func TestRegisterUser(t *testing.T) {
 	tests := []struct {
 		name        string
-		createdUser *user.User
-		user        user.User
+		createdUser *resource.User
+		user        resource.User
 		err         error
 	}{
 		{
@@ -47,7 +47,7 @@ func TestRegisterUser(t *testing.T) {
 		},
 		{
 			name: "user with nickname already exists",
-			createdUser: ptr.Pointer(fixture.User(func(tmp *user.User) {
+			createdUser: ptr.Pointer(fixture.User(func(tmp *resource.User) {
 				tmp.Email = "different@email.com"
 			})),
 			user: fixture.User(),
@@ -55,7 +55,7 @@ func TestRegisterUser(t *testing.T) {
 		},
 		{
 			name: "user with email already exists",
-			createdUser: ptr.Pointer(fixture.User(func(tmp *user.User) {
+			createdUser: ptr.Pointer(fixture.User(func(tmp *resource.User) {
 				tmp.Nickname = "different-nickname"
 			})),
 			user: fixture.User(),
@@ -98,7 +98,7 @@ func TestRegisterUser(t *testing.T) {
 func TestLoginUser(t *testing.T) {
 	tests := []struct {
 		name       string
-		user       user.User
+		user       resource.User
 		createUser bool
 		err        error
 	}{

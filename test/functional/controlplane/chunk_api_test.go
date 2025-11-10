@@ -36,6 +36,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
 	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
@@ -50,39 +51,39 @@ import (
 func TestAPICreateChunk(t *testing.T) {
 	tests := []struct {
 		name     string
-		expected chunk.Chunk
+		expected resource.Chunk
 		err      error
 	}{
 		{
 			name: "works",
-			expected: fixture.Chunk(func(c *chunk.Chunk) {
+			expected: fixture.Chunk(func(c *resource.Chunk) {
 				c.Flavors = nil
 			}),
 		},
 		{
 			name: "name too long",
-			expected: fixture.Chunk(func(c *chunk.Chunk) {
-				c.Name = strings.Repeat("a", chunk.MaxChunkNameChars+1)
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Name = strings.Repeat("a", resource.MaxChunkNameChars+1)
 			}),
 			err: apierrs.ErrNameTooLong.GRPCStatus().Err(),
 		},
 		{
 			name: "description too long",
-			expected: fixture.Chunk(func(c *chunk.Chunk) {
-				c.Description = strings.Repeat("a", chunk.MaxChunkDescriptionChars+1)
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Description = strings.Repeat("a", resource.MaxChunkDescriptionChars+1)
 			}),
 			err: apierrs.ErrDescriptionTooLong.GRPCStatus().Err(),
 		},
 		{
 			name: "too many tags",
-			expected: fixture.Chunk(func(c *chunk.Chunk) {
-				c.Tags = slices.Repeat([]string{"a"}, chunk.MaxChunkTags+1)
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Tags = slices.Repeat([]string{"a"}, resource.MaxChunkTags+1)
 			}),
 			err: apierrs.ErrTooManyTags.GRPCStatus().Err(),
 		},
 		{
 			name: "invalid name",
-			expected: fixture.Chunk(func(c *chunk.Chunk) {
+			expected: fixture.Chunk(func(c *resource.Chunk) {
 				c.Name = ""
 			}),
 			err: apierrs.ErrInvalidName.GRPCStatus().Err(),
@@ -205,22 +206,22 @@ func TestListChunks(t *testing.T) {
 	cp.Run(t)
 	client := cp.ChunkClient(t)
 
-	chunks := []chunk.Chunk{
-		fixture.Chunk(func(c *chunk.Chunk) {
+	chunks := []resource.Chunk{
+		fixture.Chunk(func(c *resource.Chunk) {
 			c.ID = test.NewUUIDv7(t)
 			c.Owner = u
-			c.Flavors = []chunk.Flavor{
-				fixture.Flavor(func(f *chunk.Flavor) {
+			c.Flavors = []resource.Flavor{
+				fixture.Flavor(func(f *resource.Flavor) {
 					f.ID = test.NewUUIDv7(t)
 					f.Name = "ddddawq31423452"
 				}),
 			}
 		}),
-		fixture.Chunk(func(c *chunk.Chunk) {
+		fixture.Chunk(func(c *resource.Chunk) {
 			c.ID = test.NewUUIDv7(t)
 			c.Owner = u
-			c.Flavors = []chunk.Flavor{
-				fixture.Flavor(func(f *chunk.Flavor) {
+			c.Flavors = []resource.Flavor{
+				fixture.Flavor(func(f *resource.Flavor) {
 					f.ID = test.NewUUIDv7(t)
 					f.Name = "dawdawdawd"
 				}),
@@ -307,21 +308,21 @@ func TestUpdateChunk(t *testing.T) {
 		{
 			name: "name too long",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Name: strings.Repeat("a", chunk.MaxChunkNameChars+1),
+				Name: strings.Repeat("a", resource.MaxChunkNameChars+1),
 			},
 			err: apierrs.ErrNameTooLong.GRPCStatus().Err(),
 		},
 		{
 			name: "description too long",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Description: strings.Repeat("a", chunk.MaxChunkDescriptionChars+1),
+				Description: strings.Repeat("a", resource.MaxChunkDescriptionChars+1),
 			},
 			err: apierrs.ErrDescriptionTooLong.GRPCStatus().Err(),
 		},
 		{
 			name: "too many tags",
 			req: &chunkv1alpha1.UpdateChunkRequest{
-				Tags: slices.Repeat([]string{"a"}, chunk.MaxChunkTags+1),
+				Tags: slices.Repeat([]string{"a"}, resource.MaxChunkTags+1),
 			},
 			err: apierrs.ErrTooManyTags.GRPCStatus().Err(),
 		},
@@ -464,22 +465,22 @@ func TestCreateFlavorVersion(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		prevVersion *chunk.FlavorVersion
-		newVersion  chunk.FlavorVersion
-		diff        chunk.FlavorVersionDiff
+		prevVersion *resource.FlavorVersion
+		newVersion  resource.FlavorVersion
+		diff        resource.FlavorVersionDiff
 		err         error
 	}{
 		{
 			name:       "create initial version",
 			newVersion: fixture.FlavorVersion(),
-			diff: chunk.FlavorVersionDiff{
+			diff: resource.FlavorVersionDiff{
 				Added: fixture.FlavorVersion().FileHashes,
 			},
 		},
 		{
 			name:        "create second version with changed files",
 			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
-			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
 					// plugins/myplugin/config.json not present -> its removed
@@ -497,7 +498,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					},
 				}
 			}),
-			diff: chunk.FlavorVersionDiff{
+			diff: resource.FlavorVersionDiff{
 				Added: []file.Hash{
 					{
 						Path: "plugins/myplugin.jar",
@@ -527,7 +528,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		{
 			name:        "version hash mismatch",
 			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
-			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.Hash = "wrong-hash"
 			}),
@@ -536,7 +537,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		{
 			name:        "unsupported minecraft version",
 			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
-			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.MinecraftVersion = "abcdef"
 			}),
@@ -622,7 +623,7 @@ func TestBuildFlavorVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
-				c   = fixture.Chunk(func(tmp *chunk.Chunk) {
+				c   = fixture.Chunk(func(tmp *resource.Chunk) {
 					tmp.Flavors[0].Versions[0].FileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
 				})
 				auth = remote.WithAuth(&image.Auth{

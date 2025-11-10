@@ -38,7 +38,7 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane"
-	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -155,7 +155,7 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 
 // AddUserAPIKey generates a new signed api token for the given user id
 // and creates a grpc metadata pair that will be added to the passed context.
-func (c ControlPlane) AddUserAPIKey(t *testing.T, ctx *context.Context, u user.User) {
+func (c ControlPlane) AddUserAPIKey(t *testing.T, ctx *context.Context, u resource.User) {
 	apiKey, err := jwt.NewBuilder().
 		IssuedAt(time.Now()).
 		Issuer(APITokenIssuer).

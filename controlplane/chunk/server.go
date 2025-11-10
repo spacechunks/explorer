@@ -27,7 +27,7 @@ import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/contextkeys"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
 type Server struct {
@@ -59,14 +59,14 @@ func (s *Server) CreateChunk(
 		return nil, err
 	}
 
-	c := Chunk{
+	c := resource.Chunk{
 		Name:        req.GetName(),
 		Description: req.GetDescription(),
 		Tags:        req.GetTags(),
-		Owner: user.User{
+		Owner: resource.User{
 			ID: userID,
 		},
-		Flavors: make([]Flavor, 0),
+		Flavors: make([]resource.Flavor, 0),
 	}
 
 	ret, err := s.service.CreateChunk(ctx, c)
@@ -105,12 +105,17 @@ func (s *Server) UpdateChunk(
 		return nil, apierrs.ErrInvalidChunkID
 	}
 
-	c := Chunk{
+	c := resource.Chunk{
 		ID:          req.GetId(),
 		Name:        req.GetName(),
 		Description: req.GetDescription(),
 		Tags:        req.GetTags(),
 	}
+
+	//userID, err := userIDFromToken(ctx)
+	//if err != nil {
+	//	return nil, fmt.Errorf("user id from token: %w", err)
+	//}
 
 	ret, err := s.service.UpdateChunk(ctx, c)
 	if err != nil {
@@ -153,7 +158,7 @@ func (s *Server) CreateFlavor(
 		return nil, apierrs.ErrInvalidName
 	}
 
-	domain := Flavor{
+	domain := resource.Flavor{
 		Name: req.GetName(),
 	}
 
@@ -226,4 +231,13 @@ func (s *Server) GetSupportedMinecraftVersions(
 	return &chunkv1alpha1.GetSupportedMinecraftVersionsResponse{
 		Versions: versions,
 	}, nil
+}
+
+func userIDFromToken(ctx context.Context) (string, error) {
+	tok := ctx.Value(contextkeys.APIToken).(jwt.Token)
+	var userID string
+	if err := tok.Get("user_id", &userID); err != nil {
+		return "", err
+	}
+	return userID, nil
 }

@@ -28,6 +28,8 @@ import (
 )
 
 func (s *svc) GetUploadURL(ctx context.Context, flavorVersionID string, tarballHash string) (string, error) {
+	// TODO: find owner of the flavor version
+
 	// TODO: tarball size needs to be specified as well to prevent people from uploading too large files
 	//       if size > 1GB reject
 

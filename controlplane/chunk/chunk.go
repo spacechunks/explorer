@@ -20,59 +20,67 @@ package chunk
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"time"
 	"unicode/utf8"
 
+	"github.com/spacechunks/explorer/controlplane/authz"
+	"github.com/spacechunks/explorer/controlplane/contextkeys"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
-const (
-	MaxChunkTags             = 4
-	MaxChunkNameChars        = 50
-	MaxChunkDescriptionChars = 100
-)
-
-type Chunk struct {
-	ID          string
-	Name        string
-	Description string
-	Tags        []string
-	Flavors     []Flavor
-	Owner       user.User
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-}
-
-func (s *svc) CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error) {
+func (s *svc) CreateChunk(ctx context.Context, chunk resource.Chunk) (resource.Chunk, error) {
 	if err := validateChunkFields(chunk); err != nil {
-		return Chunk{}, err
+		return resource.Chunk{}, err
 	}
+
+	actorID, ok := ctx.Value(contextkeys.ActorID).(string)
+	if !ok {
+		return resource.Chunk{}, errors.New("actor_id not found in context")
+	}
+
+	if err := s.access.AccessAuthorized(
+		ctx,
+		authz.WithOwnershipRule(actorID, authz.ChunkResourceDef(chunk.ID)),
+	); err != nil {
+		return resource.Chunk{}, fmt.Errorf("access: %w", err)
+	}
+
+	chunk.Owner.ID = actorID
 
 	ret, err := s.repo.CreateChunk(ctx, chunk)
 	if err != nil {
-		return Chunk{}, err
+		return resource.Chunk{}, err
 	}
 	return ret, nil
 }
 
-func (s *svc) GetChunk(ctx context.Context, id string) (Chunk, error) {
+func (s *svc) GetChunk(ctx context.Context, id string) (resource.Chunk, error) {
 	c, err := s.repo.GetChunkByID(ctx, id)
 	if err != nil {
-		return Chunk{}, err
+		return resource.Chunk{}, err
 	}
 	return c, nil
 }
 
-func (s *svc) UpdateChunk(ctx context.Context, new Chunk) (Chunk, error) {
+func (s *svc) UpdateChunk(ctx context.Context, new resource.Chunk) (resource.Chunk, error) {
 	if err := validateChunkFields(new); err != nil {
-		return Chunk{}, err
+		return resource.Chunk{}, err
 	}
 
 	old, err := s.repo.GetChunkByID(ctx, new.ID)
 	if err != nil {
-		return Chunk{}, fmt.Errorf("get chunk: %w", err)
+		return resource.Chunk{}, fmt.Errorf("get chunk: %w", err)
+	}
+
+	actorID, ok := ctx.Value(contextkeys.ActorID).(string)
+	if !ok {
+		return resource.Chunk{}, errors.New("actor_id not found in context")
+	}
+
+	if old.Owner.ID != actorID {
+		return resource.Chunk{}, apierrs.ErrPermissionDenied
 	}
 
 	if new.Name != "" {
@@ -89,13 +97,13 @@ func (s *svc) UpdateChunk(ctx context.Context, new Chunk) (Chunk, error) {
 
 	ret, err := s.repo.UpdateChunk(ctx, old)
 	if err != nil {
-		return Chunk{}, fmt.Errorf("update chunk: %w", err)
+		return resource.Chunk{}, fmt.Errorf("update chunk: %w", err)
 	}
 
 	return ret, nil
 }
 
-func (s *svc) ListChunks(ctx context.Context) ([]Chunk, error) {
+func (s *svc) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
 	ret, err := s.repo.ListChunks(ctx)
 	if err != nil {
 		return nil, err
@@ -107,19 +115,19 @@ func (s *svc) GetSupportedMinecraftVersions(ctx context.Context) ([]string, erro
 	return s.repo.SupportedMinecraftVersions(ctx)
 }
 
-func validateChunkFields(chunk Chunk) error {
+func validateChunkFields(chunk resource.Chunk) error {
 	// FIXME:
 	//  - remove hardcoded limits for tags
 
-	if len(chunk.Tags) > MaxChunkTags {
+	if len(chunk.Tags) > resource.MaxChunkTags {
 		return apierrs.ErrTooManyTags
 	}
 
-	if utf8.RuneCountInString(chunk.Name) > MaxChunkNameChars {
+	if utf8.RuneCountInString(chunk.Name) > resource.MaxChunkNameChars {
 		return apierrs.ErrNameTooLong
 	}
 
-	if utf8.RuneCountInString(chunk.Description) > MaxChunkDescriptionChars {
+	if utf8.RuneCountInString(chunk.Description) > resource.MaxChunkDescriptionChars {
 		return apierrs.ErrDescriptionTooLong
 	}
 

@@ -29,15 +29,15 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/node"
-	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
 type Service interface {
-	GetInstance(ctx context.Context, id string) (Instance, error)
-	ListInstances(ctx context.Context) ([]Instance, error)
-	RunFlavorVersion(ctx context.Context, chunkID string, flavorVersionID string, ownerID string) (Instance, error)
-	DiscoverInstances(ctx context.Context, nodeID string) ([]Instance, error)
-	ReceiveInstanceStatusReports(ctx context.Context, reports []StatusReport) error
+	GetInstance(ctx context.Context, id string) (resource.Instance, error)
+	ListInstances(ctx context.Context) ([]resource.Instance, error)
+	RunFlavorVersion(ctx context.Context, chunkID string, flavorVersionID string, ownerID string) (resource.Instance, error)
+	DiscoverInstances(ctx context.Context, nodeID string) ([]resource.Instance, error)
+	ReceiveInstanceStatusReports(ctx context.Context, reports []resource.StatusReport) error
 }
 
 type svc struct {
@@ -56,15 +56,15 @@ func NewService(logger *slog.Logger, insRepo Repository, nodeRepo node.Repositor
 	}
 }
 
-func (s *svc) GetInstance(ctx context.Context, id string) (Instance, error) {
+func (s *svc) GetInstance(ctx context.Context, id string) (resource.Instance, error) {
 	ins, err := s.insRepo.GetInstanceByID(ctx, id)
 	if err != nil {
-		return Instance{}, err
+		return resource.Instance{}, err
 	}
 	return ins, nil
 }
 
-func (s *svc) ListInstances(ctx context.Context) ([]Instance, error) {
+func (s *svc) ListInstances(ctx context.Context) ([]resource.Instance, error) {
 	l, err := s.insRepo.ListInstances(ctx)
 	if err != nil {
 		return nil, err
@@ -77,19 +77,19 @@ func (s *svc) RunFlavorVersion(
 	chunkID string,
 	flavorVersionID string,
 	ownerID string,
-) (Instance, error) {
+) (resource.Instance, error) {
 	// TODO: at some point implement a more sophisticated node scheduling logic
 	n, err := s.nodeRepo.RandomNode(ctx)
 	if err != nil {
-		return Instance{}, fmt.Errorf("random node: %w", err)
+		return resource.Instance{}, fmt.Errorf("random node: %w", err)
 	}
 
 	c, err := s.chunkService.GetChunk(ctx, chunkID)
 	if err != nil {
-		return Instance{}, fmt.Errorf("chunk by id: %w", err)
+		return resource.Instance{}, fmt.Errorf("chunk by id: %w", err)
 	}
 
-	versions := make(map[string]chunk.FlavorVersion)
+	versions := make(map[string]resource.FlavorVersion)
 
 	for _, f := range c.Flavors {
 		for _, v := range f.Versions {
@@ -99,31 +99,31 @@ func (s *svc) RunFlavorVersion(
 
 	ver, ok := versions[flavorVersionID]
 	if !ok {
-		return Instance{}, apierrs.ErrFlavorVersionNotFound
+		return resource.Instance{}, apierrs.ErrFlavorVersionNotFound
 	}
 
 	instanceID, err := uuid.NewV7()
 	if err != nil {
-		return Instance{}, fmt.Errorf("instance id: %w", err)
+		return resource.Instance{}, fmt.Errorf("instance id: %w", err)
 	}
 
-	ins, err := s.insRepo.CreateInstance(ctx, Instance{
+	ins, err := s.insRepo.CreateInstance(ctx, resource.Instance{
 		ID:            instanceID.String(),
 		Chunk:         c,
 		FlavorVersion: ver,
-		State:         StatePending,
-		Owner: user.User{
+		State:         resource.StatePending,
+		Owner: resource.User{
 			ID: ownerID,
 		},
 	}, n.ID)
 	if err != nil {
-		return Instance{}, fmt.Errorf("create instance: %w", err)
+		return resource.Instance{}, fmt.Errorf("create instance: %w", err)
 	}
 
 	return ins, nil
 }
 
-func (s *svc) DiscoverInstances(ctx context.Context, nodeID string) ([]Instance, error) {
+func (s *svc) DiscoverInstances(ctx context.Context, nodeID string) ([]resource.Instance, error) {
 	instances, err := s.insRepo.GetInstancesByNodeID(ctx, nodeID)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func (s *svc) DiscoverInstances(ctx context.Context, nodeID string) ([]Instance,
 	return instances, nil
 }
 
-func (s *svc) ReceiveInstanceStatusReports(ctx context.Context, reports []StatusReport) error {
+func (s *svc) ReceiveInstanceStatusReports(ctx context.Context, reports []resource.StatusReport) error {
 	if err := s.insRepo.ApplyStatusReports(ctx, reports); err != nil {
 		return fmt.Errorf("apply status reports: %w", err)
 	}

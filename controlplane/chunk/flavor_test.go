@@ -24,6 +24,7 @@ import (
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/test/fixture"
@@ -35,8 +36,8 @@ func TestCreateFlavor(t *testing.T) {
 	chunkID := "somethingsomething"
 	tests := []struct {
 		name     string
-		flavor   chunk.Flavor
-		expected chunk.Flavor
+		flavor   resource.Flavor
+		expected resource.Flavor
 		err      error
 		prep     func(*mock.MockChunkRepository)
 	}{
@@ -90,16 +91,16 @@ func TestCreateFlavor(t *testing.T) {
 func TestCreateFlavorVersion(t *testing.T) {
 	tests := []struct {
 		name         string
-		prevVersion  chunk.FlavorVersion
-		newVersion   chunk.FlavorVersion
-		expectedDiff chunk.FlavorVersionDiff
-		prep         func(*mock.MockChunkRepository, chunk.FlavorVersion, chunk.FlavorVersion)
+		prevVersion  resource.FlavorVersion
+		newVersion   resource.FlavorVersion
+		expectedDiff resource.FlavorVersionDiff
+		prep         func(*mock.MockChunkRepository, resource.FlavorVersion, resource.FlavorVersion)
 		err          error
 	}{
 		{
 			name:        "works",
 			prevVersion: fixture.FlavorVersion(),
-			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
 					// plugins/myplugin/config.json not present -> its removed
@@ -118,7 +119,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 				}
 				v.ChangeHash = "68df46974f6dc5fe"
 			}),
-			expectedDiff: chunk.FlavorVersionDiff{
+			expectedDiff: resource.FlavorVersionDiff{
 				Added: []file.Hash{
 					{
 						Path: "plugins/myplugin.jar",
@@ -140,8 +141,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 			},
 			prep: func(
 				repo *mock.MockChunkRepository,
-				newVersion chunk.FlavorVersion,
-				prevVersion chunk.FlavorVersion,
+				newVersion resource.FlavorVersion,
+				prevVersion resource.FlavorVersion,
 			) {
 				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
@@ -163,7 +164,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		{
 			name:        "version hash mismatch",
 			prevVersion: fixture.FlavorVersion(),
-			newVersion: fixture.FlavorVersion(func(v *chunk.FlavorVersion) {
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Hash = "some-not-matching-hash"
 				v.FileHashes = []file.Hash{
 					// plugins/myplugin/config.json not present -> its removed
@@ -183,8 +184,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 			}),
 			prep: func(
 				repo *mock.MockChunkRepository,
-				newVersion chunk.FlavorVersion,
-				prevVersion chunk.FlavorVersion,
+				newVersion resource.FlavorVersion,
+				prevVersion resource.FlavorVersion,
 			) {
 				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
@@ -206,8 +207,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 			newVersion:  fixture.FlavorVersion(),
 			prep: func(
 				repo *mock.MockChunkRepository,
-				newVersion chunk.FlavorVersion,
-				prevVersion chunk.FlavorVersion,
+				newVersion resource.FlavorVersion,
+				prevVersion resource.FlavorVersion,
 			) {
 				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
@@ -221,8 +222,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 			newVersion:  fixture.FlavorVersion(),
 			prep: func(
 				repo *mock.MockChunkRepository,
-				newVersion chunk.FlavorVersion,
-				prevVersion chunk.FlavorVersion,
+				newVersion resource.FlavorVersion,
+				prevVersion resource.FlavorVersion,
 			) {
 				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).

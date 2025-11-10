@@ -18,9 +18,13 @@
 
 package user
 
-import "context"
+import (
+	"context"
+
+	"github.com/spacechunks/explorer/controlplane/resource"
+)
 
 type Repository interface {
-	GetUserByEmail(ctx context.Context, id string) (User, error)
-	CreateUser(ctx context.Context, user User) (User, error)
+	GetUserByEmail(ctx context.Context, id string) (resource.User, error)
+	CreateUser(ctx context.Context, user resource.User) (resource.User, error)
 }

@@ -28,9 +28,9 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	checkpointv1alpha1 "github.com/spacechunks/explorer/api/platformd/checkpoint/v1alpha1"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/node"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/test"
@@ -43,7 +43,7 @@ func TestCreateCheckpointWorker(t *testing.T) {
 		name        string
 		timeout     time.Duration
 		state       checkpointv1alpha1.CheckpointState
-		buildStatus chunk.BuildStatus
+		buildStatus resource.BuildStatus
 		err         error
 		attempt     int
 		maxAttempts int
@@ -52,13 +52,13 @@ func TestCreateCheckpointWorker(t *testing.T) {
 			name:        "works",
 			timeout:     10 * time.Second,
 			state:       checkpointv1alpha1.CheckpointState_COMPLETED,
-			buildStatus: chunk.BuildStatusCompleted,
+			buildStatus: resource.BuildStatusCompleted,
 		},
 		{
 			name:        "job timeout exceeded",
 			timeout:     30 * time.Millisecond,
 			state:       checkpointv1alpha1.CheckpointState_RUNNING,
-			buildStatus: chunk.BuildStatusBuildCheckpointFailed,
+			buildStatus: resource.BuildStatusBuildCheckpointFailed,
 			err:         context.DeadlineExceeded,
 			attempt:     1,
 			maxAttempts: 1,

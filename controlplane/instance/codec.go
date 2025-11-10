@@ -23,11 +23,12 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // ToTransport converts the domain object to a transport layer object
-func ToTransport(ins Instance) *instancev1alpha1.Instance {
+func ToTransport(ins resource.Instance) *instancev1alpha1.Instance {
 	var (
 		port  uint32 = 0
 		state        = instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(ins.State)])
@@ -68,15 +69,15 @@ func ToTransport(ins Instance) *instancev1alpha1.Instance {
 	}
 }
 
-func StatusReportToDomain(report *instancev1alpha1.InstanceStatusReport) StatusReport {
-	return StatusReport{
+func StatusReportToDomain(report *instancev1alpha1.InstanceStatusReport) resource.StatusReport {
+	return resource.StatusReport{
 		InstanceID: report.GetInstanceId(),
-		State:      State(report.GetState().String()), // TODO: state to domain function
+		State:      resource.State(report.GetState().String()), // TODO: state to domain function
 		Port:       uint16(report.GetPort()),
 	}
 }
 
-func StatusReportToTransport(report StatusReport) *instancev1alpha1.InstanceStatusReport {
+func StatusReportToTransport(report resource.StatusReport) *instancev1alpha1.InstanceStatusReport {
 	return &instancev1alpha1.InstanceStatusReport{
 		InstanceId: report.InstanceID,
 		Port:       uint32(report.Port),

@@ -29,11 +29,11 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
-	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
-func (db *DB) GetUserByEmail(ctx context.Context, email string) (user.User, error) {
-	var ret user.User
+func (db *DB) GetUserByEmail(ctx context.Context, email string) (resource.User, error) {
+	var ret resource.User
 	if err := db.do(ctx, func(q *query.Queries) error {
 		u, err := q.UserByEmail(ctx, email)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -44,7 +44,7 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string) (user.User, erro
 			return err
 		}
 
-		ret = user.User{
+		ret = resource.User{
 			ID:        u.ID,
 			Nickname:  u.Nickname,
 			Email:     u.Email,
@@ -54,15 +54,15 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string) (user.User, erro
 
 		return nil
 	}); err != nil {
-		return user.User{}, err
+		return resource.User{}, err
 	}
 
 	return ret, nil
 }
-func (db *DB) CreateUser(ctx context.Context, u user.User) (user.User, error) {
+func (db *DB) CreateUser(ctx context.Context, u resource.User) (resource.User, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
-		return user.User{}, fmt.Errorf("user id: %w", err)
+		return resource.User{}, fmt.Errorf("user id: %w", err)
 	}
 
 	now := time.Now()
@@ -81,12 +81,12 @@ func (db *DB) CreateUser(ctx context.Context, u user.User) (user.User, error) {
 	if errors.As(err, &pgErr) {
 		fmt.Println(err)
 		if pgErr.Code == "23505" {
-			return user.User{}, apierrs.ErrAlreadyExists
+			return resource.User{}, apierrs.ErrAlreadyExists
 		}
 	}
 
 	if err != nil {
-		return user.User{}, fmt.Errorf("create user: %w", err)
+		return resource.User{}, fmt.Errorf("create user: %w", err)
 	}
 
 	u.ID = id.String()

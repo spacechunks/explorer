@@ -26,6 +26,7 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/contextkeys"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
 type Server struct {
@@ -123,7 +124,7 @@ func (s *Server) ReceiveInstanceStatusReports(
 	ctx context.Context,
 	req *instancev1alpha1.ReceiveInstanceStatusReportsRequest,
 ) (*instancev1alpha1.ReceiveInstanceStatusReportsResponse, error) {
-	reports := make([]StatusReport, 0, len(req.GetReports()))
+	reports := make([]resource.StatusReport, 0, len(req.GetReports()))
 	for _, r := range req.GetReports() {
 		reports = append(reports, StatusReportToDomain(r))
 	}
