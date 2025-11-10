@@ -25,6 +25,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/spacechunks/explorer/controlplane/authz"
+	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
@@ -37,13 +38,6 @@ func (s *svc) CreateChunk(ctx context.Context, chunk resource.Chunk) (resource.C
 	actorID, ok := ctx.Value(contextkey.ActorID).(string)
 	if !ok {
 		return resource.Chunk{}, errors.New("actor_id not found in context")
-	}
-
-	if err := s.access.AccessAuthorized(
-		ctx,
-		authz.WithOwnershipRule(actorID, authz.ChunkResourceDef(chunk.ID)),
-	); err != nil {
-		return resource.Chunk{}, fmt.Errorf("access: %w", err)
 	}
 
 	chunk.Owner.ID = actorID
@@ -78,8 +72,11 @@ func (s *svc) UpdateChunk(ctx context.Context, new resource.Chunk) (resource.Chu
 		return resource.Chunk{}, errors.New("actor_id not found in context")
 	}
 
-	if old.Owner.ID != actorID {
-		return resource.Chunk{}, apierrs.ErrPermissionDenied
+	if err := s.access.AccessAuthorized(
+		ctx,
+		authz.WithOwnershipRule(actorID, authz.ChunkResourceDef(old.ID)),
+	); err != nil {
+		return resource.Chunk{}, fmt.Errorf("access: %w", err)
 	}
 
 	if new.Name != "" {

@@ -27,7 +27,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/spacechunks/explorer/controlplane/authz"
 	"github.com/spacechunks/explorer/controlplane/blob"
+	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/resource"
@@ -39,18 +41,16 @@ import (
  */
 
 func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor resource.Flavor) (resource.Flavor, error) {
-	c, err := s.repo.GetChunkByID(ctx, chunkID)
-	if err != nil {
-		return resource.Flavor{}, fmt.Errorf("get chunk: %w", err)
-	}
-
 	actorID, ok := ctx.Value(contextkey.ActorID).(string)
 	if !ok {
 		return resource.Flavor{}, errors.New("actor_id not found in context")
 	}
 
-	if c.Owner.ID != actorID {
-		return resource.Flavor{}, apierrs.ErrPermissionDenied
+	if err := s.access.AccessAuthorized(
+		ctx,
+		authz.WithOwnershipRule(actorID, authz.ChunkResourceDef(chunkID)),
+	); err != nil {
+		return resource.Flavor{}, fmt.Errorf("access: %w", err)
 	}
 
 	exists, err := s.repo.FlavorNameExists(ctx, chunkID, flavor.Name)
@@ -75,7 +75,17 @@ func (s *svc) CreateFlavorVersion(
 	flavorID string,
 	version resource.FlavorVersion,
 ) (resource.FlavorVersion, resource.FlavorVersionDiff, error) {
-	// TODO: find owner of the flavor
+	actorID, ok := ctx.Value(contextkey.ActorID).(string)
+	if !ok {
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, errors.New("actor_id not found in context")
+	}
+
+	if err := s.access.AccessAuthorized(
+		ctx,
+		authz.WithOwnershipRule(actorID, authz.FlavorResourceDef(flavorID)),
+	); err != nil {
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("access: %w", err)
+	}
 
 	exists, err := s.repo.FlavorVersionExists(ctx, flavorID, version.Version)
 	if err != nil {
@@ -202,7 +212,17 @@ func (s *svc) CreateFlavorVersion(
 }
 
 func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
-	// TODO: find owner of the flavor version
+	actorID, ok := ctx.Value(contextkey.ActorID).(string)
+	if !ok {
+		return errors.New("actor_id not found in context")
+	}
+
+	if err := s.access.AccessAuthorized(
+		ctx,
+		authz.WithOwnershipRule(actorID, authz.FlavorVersionResourceDef(versionID)),
+	); err != nil {
+		return fmt.Errorf("access: %w", err)
+	}
 
 	version, err := s.repo.FlavorVersionByID(ctx, versionID)
 	if err != nil {

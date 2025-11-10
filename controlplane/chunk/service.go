@@ -63,12 +63,14 @@ func NewService(
 	repo Repository,
 	jobClient job.Client,
 	s3Store blob.S3Store,
+	access authz.AccessEvaluator,
 	cfg Config,
 ) Service {
 	return &svc{
 		repo:      repo,
 		jobClient: jobClient,
 		s3Store:   s3Store,
+		access:    access,
 		cfg:       cfg,
 	}
 }
