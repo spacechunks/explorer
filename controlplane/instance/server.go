@@ -24,7 +24,6 @@ import (
 
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
-	"github.com/spacechunks/explorer/controlplane/contextkeys"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
@@ -80,7 +79,7 @@ func (s *Server) RunFlavorVersion(
 	ctx context.Context,
 	req *instancev1alpha1.RunFlavorVersionRequest,
 ) (*instancev1alpha1.RunFlavorVersionResponse, error) {
-	tok := ctx.Value(contextkeys.APIToken).(jwt.Token)
+	tok := ctx.Value(contextkey.APIToken).(jwt.Token)
 
 	var userID string
 	if err := tok.Get("user_id", &userID); err != nil {

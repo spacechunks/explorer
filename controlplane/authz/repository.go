@@ -16,10 +16,16 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package contextkeys
+package authz
 
-type Key string
+import (
+	"context"
 
-const (
-	APIToken Key = "api_token"
+	"github.com/spacechunks/explorer/controlplane/resource"
 )
+
+type Repository interface {
+	ChunkOwner(ctx context.Context, chunkID string) (resource.User, error)
+	FlavorOwner(ctx context.Context, flavorID string) (resource.User, error)
+	FlavorVersionOwner(ctx context.Context, flavorVersionID string) (resource.User, error)
+}

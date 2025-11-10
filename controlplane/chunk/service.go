@@ -56,7 +56,7 @@ type svc struct {
 	jobClient job.Client
 	s3Store   blob.S3Store
 	cfg       Config
-	access    authz.Access
+	access    authz.AccessEvaluator
 }
 
 func NewService(

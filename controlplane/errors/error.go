@@ -41,6 +41,7 @@ var (
 var (
 	ErrAuthHeaderMissing = New(codes.Unauthenticated, "authorization header is missing")
 	ErrInvalidToken      = New(codes.Unauthenticated, "invalid token")
+	ErrPermissionDenied  = New(codes.PermissionDenied, "permission denied")
 )
 
 /*

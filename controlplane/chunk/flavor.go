@@ -28,7 +28,6 @@ import (
 	"strings"
 
 	"github.com/spacechunks/explorer/controlplane/blob"
-	"github.com/spacechunks/explorer/controlplane/contextkeys"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/resource"
@@ -45,7 +44,7 @@ func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor resource.
 		return resource.Flavor{}, fmt.Errorf("get chunk: %w", err)
 	}
 
-	actorID, ok := ctx.Value(contextkeys.ActorID).(string)
+	actorID, ok := ctx.Value(contextkey.ActorID).(string)
 	if !ok {
 		return resource.Flavor{}, errors.New("actor_id not found in context")
 	}
