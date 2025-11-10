@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
@@ -39,13 +40,22 @@ func TestCreateFlavor(t *testing.T) {
 		flavor   resource.Flavor
 		expected resource.Flavor
 		err      error
-		prep     func(*mock.MockChunkRepository)
+		prep     func(*mock.MockChunkRepository, *mock.MockAuthzAccessEvaluator)
 	}{
 		{
 			name:     "works",
 			flavor:   fixture.Flavor(),
 			expected: fixture.Flavor(),
-			prep: func(repo *mock.MockChunkRepository) {
+			prep: func(repo *mock.MockChunkRepository, access *mock.MockAuthzAccessEvaluator) {
+				access.EXPECT().
+					AccessAuthorized(
+						mocky.Anything,
+						// mockery doesn't like it if we put in the real option:
+						// panic: cannot use Func in expectations. Use mock.AnythingOfType("authz.AccessRuleOption") [recovered, repanicked]
+						mocky.AnythingOfType("authz.AccessRuleOption"),
+					).
+					Return(nil)
+
 				repo.EXPECT().
 					FlavorNameExists(mocky.Anything, chunkID, fixture.Flavor().Name).
 					Return(false, nil)
@@ -58,7 +68,14 @@ func TestCreateFlavor(t *testing.T) {
 			name:   "flavor name already exists",
 			err:    apierrs.ErrFlavorNameExists,
 			flavor: fixture.Flavor(),
-			prep: func(repo *mock.MockChunkRepository) {
+			prep: func(repo *mock.MockChunkRepository, access *mock.MockAuthzAccessEvaluator) {
+				access.EXPECT().
+					AccessAuthorized(
+						mocky.Anything,
+						mocky.AnythingOfType("authz.AccessRuleOption"),
+					).
+					Return(nil)
+
 				repo.EXPECT().
 					FlavorNameExists(mocky.Anything, chunkID, fixture.Flavor().Name).
 					Return(true, nil)
@@ -68,12 +85,15 @@ func TestCreateFlavor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ctx      = context.Background()
-				mockRepo = mock.NewMockChunkRepository(t)
-				svc      = chunk.NewService(mockRepo, nil, nil, chunk.Config{})
+				ctx        = context.Background()
+				mockRepo   = mock.NewMockChunkRepository(t)
+				mockAccess = mock.NewMockAuthzAccessEvaluator(t)
+				svc        = chunk.NewService(mockRepo, nil, nil, mockAccess, chunk.Config{})
 			)
 
-			tt.prep(mockRepo)
+			ctx = context.WithValue(ctx, contextkey.ActorID, "blabla")
+
+			tt.prep(mockRepo, mockAccess)
 
 			actual, err := svc.CreateFlavor(ctx, chunkID, tt.flavor)
 
@@ -94,8 +114,13 @@ func TestCreateFlavorVersion(t *testing.T) {
 		prevVersion  resource.FlavorVersion
 		newVersion   resource.FlavorVersion
 		expectedDiff resource.FlavorVersionDiff
-		prep         func(*mock.MockChunkRepository, resource.FlavorVersion, resource.FlavorVersion)
-		err          error
+		prep         func(
+			*mock.MockChunkRepository,
+			resource.FlavorVersion,
+			resource.FlavorVersion,
+			*mock.MockAuthzAccessEvaluator,
+		)
+		err error
 	}{
 		{
 			name:        "works",
@@ -143,7 +168,15 @@ func TestCreateFlavorVersion(t *testing.T) {
 				repo *mock.MockChunkRepository,
 				newVersion resource.FlavorVersion,
 				prevVersion resource.FlavorVersion,
+				access *mock.MockAuthzAccessEvaluator,
 			) {
+				access.EXPECT().
+					AccessAuthorized(
+						mocky.Anything,
+						mocky.AnythingOfType("authz.AccessRuleOption"),
+					).
+					Return(nil)
+
 				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
 					Return(false, nil)
@@ -186,7 +219,15 @@ func TestCreateFlavorVersion(t *testing.T) {
 				repo *mock.MockChunkRepository,
 				newVersion resource.FlavorVersion,
 				prevVersion resource.FlavorVersion,
+				access *mock.MockAuthzAccessEvaluator,
 			) {
+				access.EXPECT().
+					AccessAuthorized(
+						mocky.Anything,
+						mocky.AnythingOfType("authz.AccessRuleOption"),
+					).
+					Return(nil)
+
 				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
 					Return(false, nil)
@@ -209,7 +250,15 @@ func TestCreateFlavorVersion(t *testing.T) {
 				repo *mock.MockChunkRepository,
 				newVersion resource.FlavorVersion,
 				prevVersion resource.FlavorVersion,
+				access *mock.MockAuthzAccessEvaluator,
 			) {
+				access.EXPECT().
+					AccessAuthorized(
+						mocky.Anything,
+						mocky.AnythingOfType("authz.AccessRuleOption"),
+					).
+					Return(nil)
+
 				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
 					Return(true, nil)
@@ -224,7 +273,15 @@ func TestCreateFlavorVersion(t *testing.T) {
 				repo *mock.MockChunkRepository,
 				newVersion resource.FlavorVersion,
 				prevVersion resource.FlavorVersion,
+				access *mock.MockAuthzAccessEvaluator,
 			) {
+				access.EXPECT().
+					AccessAuthorized(
+						mocky.Anything,
+						mocky.AnythingOfType("authz.AccessRuleOption"),
+					).
+					Return(nil)
+
 				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
 					Return(false, nil)
@@ -239,12 +296,15 @@ func TestCreateFlavorVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ctx      = context.Background()
-				mockRepo = mock.NewMockChunkRepository(t)
-				svc      = chunk.NewService(mockRepo, nil, nil, chunk.Config{})
+				ctx        = context.Background()
+				mockAccess = mock.NewMockAuthzAccessEvaluator(t)
+				mockRepo   = mock.NewMockChunkRepository(t)
+				svc        = chunk.NewService(mockRepo, nil, nil, mockAccess, chunk.Config{})
 			)
 
-			tt.prep(mockRepo, tt.newVersion, tt.prevVersion)
+			ctx = context.WithValue(ctx, contextkey.ActorID, "blabla")
+
+			tt.prep(mockRepo, tt.newVersion, tt.prevVersion, mockAccess)
 
 			actualNewVersion, actualDiff, err := svc.CreateFlavorVersion(ctx, fixture.FlavorID, tt.newVersion)
 
