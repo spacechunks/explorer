@@ -89,7 +89,9 @@ func (s *svc) CreateFlavorVersion(
 
 	exists, err := s.repo.FlavorVersionExists(ctx, flavorID, version.Version)
 	if err != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("flavor version exists: %w", err)
+		return resource.FlavorVersion{},
+			resource.FlavorVersionDiff{},
+			fmt.Errorf("flavor version exists: %w", err)
 	}
 
 	if exists {
@@ -98,16 +100,22 @@ func (s *svc) CreateFlavorVersion(
 
 	exists, err = s.repo.MinecraftVersionExists(ctx, version.MinecraftVersion)
 	if err != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("minecraft version exists: %w", err)
+		return resource.FlavorVersion{},
+			resource.FlavorVersionDiff{},
+			fmt.Errorf("minecraft version exists: %w", err)
 	}
 
 	if !exists {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrMinecraftVersionNotSupported
+		return resource.FlavorVersion{},
+			resource.FlavorVersionDiff{},
+			apierrs.ErrMinecraftVersionNotSupported
 	}
 
 	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
 	if err != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("latest flavor version file hashes: %w", err)
+		return resource.FlavorVersion{},
+			resource.FlavorVersionDiff{},
+			fmt.Errorf("latest flavor version file hashes: %w", err)
 	}
 
 	newContentTree, err := file.HashTree(version.FileHashes)

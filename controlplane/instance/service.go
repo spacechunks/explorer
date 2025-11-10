@@ -35,7 +35,12 @@ import (
 type Service interface {
 	GetInstance(ctx context.Context, id string) (resource.Instance, error)
 	ListInstances(ctx context.Context) ([]resource.Instance, error)
-	RunFlavorVersion(ctx context.Context, chunkID string, flavorVersionID string, ownerID string) (resource.Instance, error)
+	RunFlavorVersion(
+		ctx context.Context,
+		chunkID string,
+		flavorVersionID string,
+		ownerID string,
+	) (resource.Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]resource.Instance, error)
 	ReceiveInstanceStatusReports(ctx context.Context, reports []resource.InstanceStatusReport) error
 }

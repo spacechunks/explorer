@@ -51,7 +51,7 @@ func TestCreateFlavor(t *testing.T) {
 					AccessAuthorized(
 						mocky.Anything,
 						// mockery doesn't like it if we put in the real option:
-						// panic: cannot use Func in expectations. Use mock.AnythingOfType("authz.AccessRuleOption") [recovered, repanicked]
+						// panic: cannot use Func in expectations. Use mock.AnythingOfType("authz.AccessRuleOption")
 						mocky.AnythingOfType("authz.AccessRuleOption"),
 					).
 					Return(nil)
