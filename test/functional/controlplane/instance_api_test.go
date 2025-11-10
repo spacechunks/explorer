@@ -411,27 +411,27 @@ func TestDiscoverInstances(t *testing.T) {
 func TestReceiveInstanceStatusReports(t *testing.T) {
 	tests := []struct {
 		name     string
-		report   resource.StatusReport
+		report   resource.InstanceStatusReport
 		expected resource.Instance
 	}{
 		{
 			name: "updates port and state successfully",
-			report: resource.StatusReport{
+			report: resource.InstanceStatusReport{
 				InstanceID: fixture.Instance().ID,
-				State:      resource.CreationFailed,
+				State:      resource.InstanceCreationFailed,
 				Port:       420,
 			},
 			expected: fixture.Instance(func(i *resource.Instance) {
-				i.State = resource.CreationFailed
+				i.State = resource.InstanceCreationFailed
 				i.Port = ptr.Pointer(uint16(420))
 				i.FlavorVersion.FileHashes = nil // not returned atm
 			}),
 		},
 		{
 			name: "updates with state = DELETED removes instance",
-			report: resource.StatusReport{
+			report: resource.InstanceStatusReport{
 				InstanceID: fixture.Instance().ID,
-				State:      resource.StateDeleted,
+				State:      resource.InstanceStateDeleted,
 			},
 			expected: resource.Instance{},
 		},

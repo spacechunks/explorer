@@ -81,7 +81,7 @@ func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[j
 		if err := w.chunkRepo.UpdateFlavorVersionBuildStatus(
 			ctx,
 			riverJob.Args.FlavorVersionID,
-			resource.BuildStatusBuildCheckpointFailed,
+			resource.FlavorVersionBuildStatusBuildCheckpointFailed,
 		); err != nil {
 			w.logger.ErrorContext(ctx, "failed to update flavor version build status", "err", err)
 		}
@@ -143,7 +143,7 @@ func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[j
 				if err := w.chunkRepo.UpdateFlavorVersionBuildStatus(
 					ctx,
 					riverJob.Args.FlavorVersionID,
-					resource.BuildStatusCompleted,
+					resource.FlavorVersionBuildStatusCompleted,
 				); err != nil {
 					return fmt.Errorf("flavor version build status: %w", err)
 				}

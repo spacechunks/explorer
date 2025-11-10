@@ -43,7 +43,7 @@ func TestCreateCheckpointWorker(t *testing.T) {
 		name        string
 		timeout     time.Duration
 		state       checkpointv1alpha1.CheckpointState
-		buildStatus resource.BuildStatus
+		buildStatus resource.FlavorVersionBuildStatus
 		err         error
 		attempt     int
 		maxAttempts int
@@ -52,13 +52,13 @@ func TestCreateCheckpointWorker(t *testing.T) {
 			name:        "works",
 			timeout:     10 * time.Second,
 			state:       checkpointv1alpha1.CheckpointState_COMPLETED,
-			buildStatus: resource.BuildStatusCompleted,
+			buildStatus: resource.FlavorVersionBuildStatusCompleted,
 		},
 		{
 			name:        "job timeout exceeded",
 			timeout:     30 * time.Millisecond,
 			state:       checkpointv1alpha1.CheckpointState_RUNNING,
-			buildStatus: resource.BuildStatusBuildCheckpointFailed,
+			buildStatus: resource.FlavorVersionBuildStatusBuildCheckpointFailed,
 			err:         context.DeadlineExceeded,
 			attempt:     1,
 			maxAttempts: 1,

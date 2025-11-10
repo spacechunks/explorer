@@ -96,7 +96,7 @@ func TestImageWorkerCreatesImageWithNoMissingFiles(t *testing.T) {
 
 	flavorVersionID := c.Flavors[0].Versions[0].ID
 
-	err := pg.DB.InsertJob(ctx, flavorVersionID, string(resource.BuildStatusBuildImage), job.CreateImage{
+	err := pg.DB.InsertJob(ctx, flavorVersionID, string(resource.FlavorVersionBuildStatusBuildImage), job.CreateImage{
 		FlavorVersionID: flavorVersionID,
 		BaseImage:       baseImgRef.String(),
 		OCIRegistry:     endpoint,
@@ -155,7 +155,7 @@ func TestImageWorkerCreatesImageWithMissingFilesDownloadedFromBlobStore(t *testi
 	err = store.Put(ctx, blob.CASKeyPrefix, objs)
 	require.NoError(t, err)
 
-	err = pg.DB.InsertJob(ctx, flavorVersionID, string(resource.BuildStatusBuildImage), job.CreateImage{
+	err = pg.DB.InsertJob(ctx, flavorVersionID, string(resource.FlavorVersionBuildStatusBuildImage), job.CreateImage{
 		FlavorVersionID: flavorVersionID,
 		BaseImage:       baseImgRef.String(),
 		OCIRegistry:     endpoint,

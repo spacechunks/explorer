@@ -92,7 +92,7 @@ func (db *DB) ListInstances(ctx context.Context) ([]resource.Instance, error) {
 			i := resource.Instance{
 				ID:        row.ID,
 				Address:   row.Address,
-				State:     resource.State(row.State),
+				State:     resource.InstanceState(row.State),
 				CreatedAt: row.CreatedAt.UTC(),
 				UpdatedAt: row.UpdatedAt.UTC(),
 				Chunk: resource.Chunk{
@@ -114,7 +114,7 @@ func (db *DB) ListInstances(ctx context.Context) ([]resource.Instance, error) {
 					FileHashes: nil,
 
 					FilesUploaded: row.FilesUploaded,
-					BuildStatus:   resource.BuildStatus(row.BuildStatus),
+					BuildStatus:   resource.FlavorVersionBuildStatus(row.BuildStatus),
 					CreatedAt:     row.CreatedAt_2.UTC(),
 				},
 				Owner: resource.User{
@@ -206,7 +206,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 					ChangeHash:       row.ChangeHash,
 					FileHashes:       nil,
 					FilesUploaded:    row.FilesUploaded,
-					BuildStatus:      resource.BuildStatus(row.BuildStatus),
+					BuildStatus:      resource.FlavorVersionBuildStatus(row.BuildStatus),
 					CreatedAt:        row.CreatedAt_2.UTC(),
 				},
 				Owner: resource.User{
@@ -217,7 +217,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 					UpdatedAt: row.UpdatedAt_3,
 				},
 				Address:   row.Address,
-				State:     resource.State(row.State),
+				State:     resource.InstanceState(row.State),
 				Port:      port,
 				CreatedAt: row.CreatedAt.UTC(),
 				UpdatedAt: row.UpdatedAt.UTC(),
@@ -232,16 +232,16 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 	return ret, nil
 }
 
-// ApplyStatusReports updates instances rows that are not in [instance.StateDeleted] state.
+// ApplyStatusReports updates instances rows that are not in [instance.InstanceStateDeleted] state.
 // all other instances will be removed from the table.
-func (db *DB) ApplyStatusReports(ctx context.Context, reports []resource.StatusReport) error {
+func (db *DB) ApplyStatusReports(ctx context.Context, reports []resource.InstanceStatusReport) error {
 	var (
 		toUpdate = make([]query.BulkUpdateInstanceStateAndPortParams, 0, len(reports))
 		toRemove = make([]string, 0)
 	)
 
 	for _, report := range reports {
-		if report.State == resource.StateDeleted {
+		if report.State == resource.InstanceStateDeleted {
 			toRemove = append(toRemove, report.InstanceID)
 			continue
 		}
@@ -305,7 +305,7 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 	ret := resource.Instance{
 		ID:        row.ID,
 		Address:   row.Address,
-		State:     resource.State(row.State),
+		State:     resource.InstanceState(row.State),
 		CreatedAt: row.CreatedAt.UTC(),
 		UpdatedAt: row.UpdatedAt.UTC(),
 		Chunk: resource.Chunk{
@@ -324,7 +324,7 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 			ChangeHash:       row.ChangeHash,
 			FileHashes:       nil,
 			FilesUploaded:    row.FilesUploaded,
-			BuildStatus:      resource.BuildStatus(row.BuildStatus),
+			BuildStatus:      resource.FlavorVersionBuildStatus(row.BuildStatus),
 			CreatedAt:        row.CreatedAt_2.UTC(),
 		},
 		Owner: resource.User{

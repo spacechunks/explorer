@@ -69,15 +69,15 @@ func ToTransport(ins resource.Instance) *instancev1alpha1.Instance {
 	}
 }
 
-func StatusReportToDomain(report *instancev1alpha1.InstanceStatusReport) resource.StatusReport {
-	return resource.StatusReport{
+func StatusReportToDomain(report *instancev1alpha1.InstanceStatusReport) resource.InstanceStatusReport {
+	return resource.InstanceStatusReport{
 		InstanceID: report.GetInstanceId(),
-		State:      resource.State(report.GetState().String()), // TODO: state to domain function
+		State:      resource.InstanceState(report.GetState().String()), // TODO: state to domain function
 		Port:       uint16(report.GetPort()),
 	}
 }
 
-func StatusReportToTransport(report resource.StatusReport) *instancev1alpha1.InstanceStatusReport {
+func StatusReportToTransport(report resource.InstanceStatusReport) *instancev1alpha1.InstanceStatusReport {
 	return &instancev1alpha1.InstanceStatusReport{
 		InstanceId: report.InstanceID,
 		Port:       uint32(report.Port),

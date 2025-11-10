@@ -37,7 +37,7 @@ type Service interface {
 	ListInstances(ctx context.Context) ([]resource.Instance, error)
 	RunFlavorVersion(ctx context.Context, chunkID string, flavorVersionID string, ownerID string) (resource.Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]resource.Instance, error)
-	ReceiveInstanceStatusReports(ctx context.Context, reports []resource.StatusReport) error
+	ReceiveInstanceStatusReports(ctx context.Context, reports []resource.InstanceStatusReport) error
 }
 
 type svc struct {
@@ -111,7 +111,7 @@ func (s *svc) RunFlavorVersion(
 		ID:            instanceID.String(),
 		Chunk:         c,
 		FlavorVersion: ver,
-		State:         resource.StatePending,
+		State:         resource.InstanceStatePending,
 		Owner: resource.User{
 			ID: ownerID,
 		},
@@ -139,7 +139,7 @@ func (s *svc) DiscoverInstances(ctx context.Context, nodeID string) ([]resource.
 	return instances, nil
 }
 
-func (s *svc) ReceiveInstanceStatusReports(ctx context.Context, reports []resource.StatusReport) error {
+func (s *svc) ReceiveInstanceStatusReports(ctx context.Context, reports []resource.InstanceStatusReport) error {
 	if err := s.insRepo.ApplyStatusReports(ctx, reports); err != nil {
 		return fmt.Errorf("apply status reports: %w", err)
 	}

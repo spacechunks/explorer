@@ -122,7 +122,7 @@ func FlavorVersion(mod ...func(v *resource.FlavorVersion)) resource.FlavorVersio
 			},
 		},
 		MinecraftVersion: MinecraftVersion,
-		BuildStatus:      resource.BuildStatusPending,
+		BuildStatus:      resource.FlavorVersionBuildStatusPending,
 		FilesUploaded:    false,
 		CreatedAt:        time.Time{},
 	}
@@ -170,7 +170,7 @@ func Instance(mod ...func(i *resource.Instance)) resource.Instance {
 		Chunk:         c,
 		FlavorVersion: c.Flavors[0].Versions[0],
 		Address:       netip.MustParseAddr("198.51.100.1"),
-		State:         resource.StatePending,
+		State:         resource.InstanceStatePending,
 		Port:          ptr.Pointer(uint16(1337)),
 		Owner:         c.Owner,
 		CreatedAt:     time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),

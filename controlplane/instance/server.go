@@ -124,7 +124,7 @@ func (s *Server) ReceiveInstanceStatusReports(
 	ctx context.Context,
 	req *instancev1alpha1.ReceiveInstanceStatusReportsRequest,
 ) (*instancev1alpha1.ReceiveInstanceStatusReportsResponse, error) {
-	reports := make([]resource.StatusReport, 0, len(req.GetReports()))
+	reports := make([]resource.InstanceStatusReport, 0, len(req.GetReports()))
 	for _, r := range req.GetReports() {
 		reports = append(reports, StatusReportToDomain(r))
 	}

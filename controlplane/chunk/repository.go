@@ -44,7 +44,7 @@ type Repository interface {
 	FlavorVersionHashByID(ctx context.Context, id string) (string, error)
 	MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error
 	FlavorVersionByID(ctx context.Context, id string) (resource.FlavorVersion, error)
-	UpdateFlavorVersionBuildStatus(ctx context.Context, flavorVersionID string, status resource.BuildStatus) error
+	UpdateFlavorVersionBuildStatus(ctx context.Context, flavorVersionID string, status resource.FlavorVersionBuildStatus) error
 	UpdateFlavorVersionPresignedURLData(ctx context.Context, flavorVersionID string, date time.Time, url string) error
 	SupportedMinecraftVersions(ctx context.Context) ([]string, error)
 	MinecraftVersionExists(context.Context, string) (bool, error)

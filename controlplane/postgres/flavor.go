@@ -258,7 +258,7 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (resource.Flavor
 			MinecraftVersion: row.MinecraftVersion,
 			Hash:             row.Hash,
 			ChangeHash:       row.ChangeHash,
-			BuildStatus:      resource.BuildStatus(row.BuildStatus),
+			BuildStatus:      resource.FlavorVersionBuildStatus(row.BuildStatus),
 			FilesUploaded:    row.FilesUploaded,
 			CreatedAt:        row.CreatedAt,
 		}
@@ -296,7 +296,7 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (resource.Flavor
 func (db *DB) UpdateFlavorVersionBuildStatus(
 	ctx context.Context,
 	flavorVersionID string,
-	status resource.BuildStatus,
+	status resource.FlavorVersionBuildStatus,
 ) error {
 	return db.do(ctx, func(q *query.Queries) error {
 		return q.UpdateFlavorVersionBuildStatus(ctx, query.UpdateFlavorVersionBuildStatusParams{

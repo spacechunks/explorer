@@ -103,13 +103,13 @@ func TestInsertJob(t *testing.T) {
 		OCIRegistry:     "3333",
 	}
 
-	err := pg.DB.InsertJob(ctx, c.Flavors[0].Versions[0].ID, string(resource.BuildStatusBuildImage), riverJob)
+	err := pg.DB.InsertJob(ctx, c.Flavors[0].Versions[0].ID, string(resource.FlavorVersionBuildStatusBuildImage), riverJob)
 	require.NoError(t, err)
 
 	version, err := pg.DB.FlavorVersionByID(ctx, c.Flavors[0].Versions[0].ID)
 	require.NoError(t, err)
 
-	require.Equal(t, resource.BuildStatusBuildImage, version.BuildStatus)
+	require.Equal(t, resource.FlavorVersionBuildStatusBuildImage, version.BuildStatus)
 
 	rivertest.RequireInserted[*riverpgxv5.Driver, pgx.Tx, job.CreateImage](
 		ctx,

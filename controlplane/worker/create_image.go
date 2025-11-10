@@ -80,7 +80,7 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		if err := w.repo.UpdateFlavorVersionBuildStatus(
 			ctx,
 			riverJob.Args.FlavorVersionID,
-			resource.BuildStatusBuildImageFailed,
+			resource.FlavorVersionBuildStatusBuildImageFailed,
 		); err != nil {
 			w.logger.ErrorContext(ctx, "failed to update flavor version build status", "err", err)
 		}
@@ -169,7 +169,7 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 	if err := w.jobClient.InsertJob(
 		ctx,
 		riverJob.Args.FlavorVersionID,
-		string(resource.BuildStatusBuildCheckpoint),
+		string(resource.FlavorVersionBuildStatusBuildCheckpoint),
 		job.CreateCheckpoint{
 			FlavorVersionID: riverJob.Args.FlavorVersionID,
 			BaseImageURL:    ref,

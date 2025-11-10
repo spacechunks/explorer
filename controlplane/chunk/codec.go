@@ -85,7 +85,7 @@ func FlavorVersionToDomain(transport *chunkv1alpha1.FlavorVersion) resource.Flav
 		Version:          transport.GetVersion(),
 		MinecraftVersion: transport.MinecraftVersion,
 		Hash:             transport.GetHash(),
-		BuildStatus:      resource.BuildStatus(transport.BuildStatus),
+		BuildStatus:      resource.FlavorVersionBuildStatus(transport.BuildStatus),
 		FileHashes:       FileHashSliceToDomain(transport.FileHashes),
 		CreatedAt:        transport.GetCreatedAt().AsTime(),
 	}

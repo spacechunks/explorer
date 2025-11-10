@@ -228,14 +228,14 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 	// do not fail the request if there is already a job running,
 	// or it is already completed, because those states do not
 	// indicate that anything is wrong.
-	if version.BuildStatus == resource.BuildStatusBuildCheckpoint ||
-		version.BuildStatus == resource.BuildStatusBuildImage ||
-		version.BuildStatus == resource.BuildStatusCompleted {
+	if version.BuildStatus == resource.FlavorVersionBuildStatusBuildCheckpoint ||
+		version.BuildStatus == resource.FlavorVersionBuildStatusBuildImage ||
+		version.BuildStatus == resource.FlavorVersionBuildStatusCompleted {
 		return nil
 	}
 
-	if version.BuildStatus == resource.BuildStatusBuildCheckpointFailed {
-		if err := s.jobClient.InsertJob(ctx, versionID, string(resource.BuildStatusBuildCheckpoint), job.CreateCheckpoint{
+	if version.BuildStatus == resource.FlavorVersionBuildStatusBuildCheckpointFailed {
+		if err := s.jobClient.InsertJob(ctx, versionID, string(resource.FlavorVersionBuildStatusBuildCheckpoint), job.CreateCheckpoint{
 			FlavorVersionID: versionID,
 			BaseImageURL:    fmt.Sprintf("%s/%s:base", s.cfg.Registry, versionID),
 		}); err != nil {
@@ -244,7 +244,7 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 		return nil
 	}
 
-	if err := s.jobClient.InsertJob(ctx, versionID, string(resource.BuildStatusBuildImage), job.CreateImage{
+	if err := s.jobClient.InsertJob(ctx, versionID, string(resource.FlavorVersionBuildStatusBuildImage), job.CreateImage{
 		FlavorVersionID: versionID,
 		BaseImage:       s.cfg.BaseImage,
 		OCIRegistry:     s.cfg.Registry,

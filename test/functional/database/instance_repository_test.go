@@ -253,7 +253,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 			Chunk:         chunks[i],
 			FlavorVersion: v,
 			Address:       fixture.Node().Addr,
-			State:         resource.StatePending,
+			State:         resource.InstanceStatePending,
 			CreatedAt:     chunks[i].CreatedAt,
 			UpdatedAt:     chunks[i].UpdatedAt,
 			Owner:         chunks[i].Owner,

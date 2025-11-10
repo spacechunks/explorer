@@ -390,7 +390,7 @@ func collectChunks(rows []chunkRelationsRow) resource.Chunk {
 					Version:                r.Version,
 					MinecraftVersion:       r.MinecraftVersion,
 					Hash:                   r.Hash,
-					BuildStatus:            resource.BuildStatus(r.BuildStatus),
+					BuildStatus:            resource.FlavorVersionBuildStatus(r.BuildStatus),
 					ChangeHash:             r.ChangeHash,
 					FilesUploaded:          r.FilesUploaded,
 					CreatedAt:              r.FlavorVersionCreatedAt,

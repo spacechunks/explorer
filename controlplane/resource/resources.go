@@ -31,6 +31,10 @@ const (
 	MaxChunkDescriptionChars = 100
 )
 
+/*
+ * chunk-related types
+ */
+
 type Chunk struct {
 	ID          string
 	Name        string
@@ -42,15 +46,19 @@ type Chunk struct {
 	UpdatedAt   time.Time
 }
 
-type BuildStatus string
+/*
+ * flavor-related types
+ */
+
+type FlavorVersionBuildStatus string
 
 const (
-	BuildStatusPending               BuildStatus = "PENDING"
-	BuildStatusBuildImage            BuildStatus = "IMAGE_BUILD"
-	BuildStatusBuildCheckpoint       BuildStatus = "CHECKPOINT_BUILD"
-	BuildStatusBuildImageFailed      BuildStatus = "IMAGE_BUILD_FAILED"
-	BuildStatusBuildCheckpointFailed BuildStatus = "CHECKPOINT_BUILD_FAILED"
-	BuildStatusCompleted             BuildStatus = "COMPLETED"
+	FlavorVersionBuildStatusPending               FlavorVersionBuildStatus = "PENDING"
+	FlavorVersionBuildStatusBuildImage            FlavorVersionBuildStatus = "IMAGE_BUILD"
+	FlavorVersionBuildStatusBuildCheckpoint       FlavorVersionBuildStatus = "CHECKPOINT_BUILD"
+	FlavorVersionBuildStatusBuildImageFailed      FlavorVersionBuildStatus = "IMAGE_BUILD_FAILED"
+	FlavorVersionBuildStatusBuildCheckpointFailed FlavorVersionBuildStatus = "CHECKPOINT_BUILD_FAILED"
+	FlavorVersionBuildStatusCompleted             FlavorVersionBuildStatus = "COMPLETED"
 )
 
 type Flavor struct {
@@ -75,11 +83,15 @@ type FlavorVersion struct {
 	ChangeHash             string
 	FileHashes             []file.Hash
 	FilesUploaded          bool
-	BuildStatus            BuildStatus
+	BuildStatus            FlavorVersionBuildStatus
 	CreatedAt              time.Time
 	PresignedURLExpiryDate *time.Time
 	PresignedURL           *string
 }
+
+/*
+ * user-related types
+ */
 
 type User struct {
 	ID        string
@@ -89,31 +101,35 @@ type User struct {
 	UpdatedAt time.Time
 }
 
+/*
+ * instance-related types
+ */
+
 type Instance struct {
 	ID            string
 	Chunk         Chunk
 	FlavorVersion FlavorVersion
 	Address       netip.Addr
-	State         State
+	State         InstanceState
 	Port          *uint16
 	Owner         User
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
 
-type StatusReport struct {
+type InstanceStatusReport struct {
 	InstanceID string
-	State      State
+	State      InstanceState
 	Port       uint16
 }
 
-type State string
+type InstanceState string
 
 const (
-	StatePending   State = "PENDING"
-	StateCreating  State = "CREATING"
-	StateRunning   State = "RUNNING"
-	StateDeleting  State = "DELETING"
-	StateDeleted   State = "DELETED"
-	CreationFailed State = "CREATION_FAILED"
+	InstanceStatePending   InstanceState = "PENDING"
+	InstanceStateCreating  InstanceState = "CREATING"
+	InstanceStateRunning   InstanceState = "RUNNING"
+	InstanceStateDeleting  InstanceState = "DELETING"
+	InstanceStateDeleted   InstanceState = "DELETED"
+	InstanceCreationFailed InstanceState = "CREATION_FAILED"
 )
