@@ -46,6 +46,12 @@ SELECT * FROM chunks c
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner;
 
+
+-- name: ChunkOwnerByChunkID :one
+SELECT u.* FROM users u
+    LEFT JOIN chunks c ON c.owner = u.id
+WHERE c.id = $1;
+
 /*
  * FLAVORS
  */
@@ -113,6 +119,19 @@ UPDATE flavor_versions SET
     presigned_url_expiry_date = $1,
     presigned_url = $2
 WHERE id = $3;
+
+-- name: ChunkOwnerByFlavorID :one
+SELECT u.* FROM users u
+    LEFT JOIN flavors f ON f.id = $1
+    LEFT JOIN chunks c ON c.id = f.chunk_id
+    LEFT JOIN users ON u.id = c.owner;
+
+-- name: ChunkOwnerByFlavorVersionID :one
+SELECT u.* FROM users u
+    LEFT JOIN flavor_versions fv ON fv.id = $1
+    LEFT JOIN flavors f ON f.id = fv.flavor_id
+    LEFT JOIN chunks c ON c.id = f.chunk_id
+    LEFT JOIN users ON u.id = c.owner;
 
 /*
  * BLOB STORE
