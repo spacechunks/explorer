@@ -893,3 +893,134 @@ func TestGetSupportedMinecraftVersions(t *testing.T) {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
 }
+
+func TestUserCannotCreateFlavorVersionForFlavorHeIsNotOwnerOf(t *testing.T) {
+	var (
+		ctx       = context.Background()
+		cp        = fixture.NewControlPlane(t)
+		c         = fixture.Chunk()
+		otherUser = fixture.User(func(tmp *resource.User) {
+			tmp.Nickname = "other-nickname"
+			tmp.Email = "other-email@example.com"
+		})
+	)
+
+	cp.Run(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.Postgres.CreateUser(t, &otherUser)
+
+	client := cp.ChunkClient(t)
+	cp.AddUserAPIKey(t, &ctx, otherUser)
+
+	_, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
+		FlavorId: c.Flavors[0].ID,
+		Version:  &chunkv1alpha1.FlavorVersion{},
+	})
+
+	require.ErrorIs(t, err, apierrs.ErrPermissionDenied.GRPCStatus().Err())
+}
+
+func TestUserThatIsNotOwnerCannotUpdateChunk(t *testing.T) {
+	var (
+		ctx       = context.Background()
+		cp        = fixture.NewControlPlane(t)
+		c         = fixture.Chunk()
+		otherUser = fixture.User(func(tmp *resource.User) {
+			tmp.Nickname = "other-nickname"
+			tmp.Email = "other-email@example.com"
+		})
+	)
+
+	cp.Run(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.Postgres.CreateUser(t, &otherUser)
+
+	client := cp.ChunkClient(t)
+	cp.AddUserAPIKey(t, &ctx, otherUser)
+
+	_, err := client.UpdateChunk(ctx, &chunkv1alpha1.UpdateChunkRequest{
+		Id:          c.ID,
+		Name:        "new-name",
+		Description: "new-description",
+		Tags:        []string{"new-tags"},
+	})
+
+	require.ErrorIs(t, err, apierrs.ErrPermissionDenied.GRPCStatus().Err())
+}
+
+func TestUserCannotCreateFlavorInChunkWhereHeIsNotOwner(t *testing.T) {
+	var (
+		ctx       = context.Background()
+		cp        = fixture.NewControlPlane(t)
+		c         = fixture.Chunk()
+		otherUser = fixture.User(func(tmp *resource.User) {
+			tmp.Nickname = "other-nickname"
+			tmp.Email = "other-email@example.com"
+		})
+	)
+
+	cp.Run(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.Postgres.CreateUser(t, &otherUser)
+
+	client := cp.ChunkClient(t)
+	cp.AddUserAPIKey(t, &ctx, otherUser)
+
+	_, err := client.CreateFlavor(ctx, &chunkv1alpha1.CreateFlavorRequest{
+		ChunkId: c.ID,
+		Name:    "some-flavor-name",
+	})
+
+	require.ErrorIs(t, err, apierrs.ErrPermissionDenied.GRPCStatus().Err())
+}
+
+func TestUserCannotBuildFlavorVersionInFlavorHeIsNotOwnerOf(t *testing.T) {
+	var (
+		ctx       = context.Background()
+		cp        = fixture.NewControlPlane(t)
+		c         = fixture.Chunk()
+		otherUser = fixture.User(func(tmp *resource.User) {
+			tmp.Nickname = "other-nickname"
+			tmp.Email = "other-email@example.com"
+		})
+	)
+
+	cp.Run(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.Postgres.CreateUser(t, &otherUser)
+
+	client := cp.ChunkClient(t)
+	cp.AddUserAPIKey(t, &ctx, otherUser)
+
+	_, err := client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{
+		FlavorVersionId: c.Flavors[0].Versions[0].ID,
+	})
+
+	require.ErrorIs(t, err, apierrs.ErrPermissionDenied.GRPCStatus().Err())
+}
+
+func TestUserCannotGetUploadURLForFlavorVersionWhereHeIsNotOwnerOf(t *testing.T) {
+	var (
+		ctx       = context.Background()
+		cp        = fixture.NewControlPlane(t)
+		c         = fixture.Chunk()
+		otherUser = fixture.User(func(tmp *resource.User) {
+			tmp.Nickname = "other-nickname"
+			tmp.Email = "other-email@example.com"
+		})
+	)
+
+	cp.Run(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.Postgres.CreateUser(t, &otherUser)
+
+	client := cp.ChunkClient(t)
+	cp.AddUserAPIKey(t, &ctx, otherUser)
+
+	_, err := client.GetUploadURL(ctx, &chunkv1alpha1.GetUploadURLRequest{
+		FlavorVersionId: c.Flavors[0].Versions[0].ID,
+		TarballHash:     "blabla",
+	})
+
+	require.ErrorIs(t, err, apierrs.ErrPermissionDenied.GRPCStatus().Err())
+}
