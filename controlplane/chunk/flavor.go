@@ -262,10 +262,16 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 	}
 
 	if version.BuildStatus == resource.FlavorVersionBuildStatusBuildCheckpointFailed {
-		if err := s.jobClient.InsertJob(ctx, versionID, string(resource.FlavorVersionBuildStatusBuildCheckpoint), job.CreateCheckpoint{
+		createCheckpoint := job.CreateCheckpoint{
 			FlavorVersionID: versionID,
 			BaseImageURL:    fmt.Sprintf("%s/%s:base", s.cfg.Registry, versionID),
-		}); err != nil {
+		}
+		if err := s.jobClient.InsertJob(
+			ctx,
+			versionID,
+			string(resource.FlavorVersionBuildStatusBuildCheckpoint),
+			createCheckpoint,
+		); err != nil {
 			return fmt.Errorf("insert create image job: %w", err)
 		}
 		return nil
