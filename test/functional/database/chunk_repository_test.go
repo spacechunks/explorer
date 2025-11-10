@@ -26,8 +26,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertest"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/job"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func TestCreateChunk(t *testing.T) {
 
 	pg.CreateUser(t, &u)
 
-	expected := fixture.Chunk(func(tmp *chunk.Chunk) {
+	expected := fixture.Chunk(func(tmp *resource.Chunk) {
 		tmp.Owner = u
 	})
 
@@ -103,13 +103,13 @@ func TestInsertJob(t *testing.T) {
 		OCIRegistry:     "3333",
 	}
 
-	err := pg.DB.InsertJob(ctx, c.Flavors[0].Versions[0].ID, string(chunk.BuildStatusBuildImage), riverJob)
+	err := pg.DB.InsertJob(ctx, c.Flavors[0].Versions[0].ID, string(resource.FlavorVersionBuildStatusBuildImage), riverJob)
 	require.NoError(t, err)
 
 	version, err := pg.DB.FlavorVersionByID(ctx, c.Flavors[0].Versions[0].ID)
 	require.NoError(t, err)
 
-	require.Equal(t, chunk.BuildStatusBuildImage, version.BuildStatus)
+	require.Equal(t, resource.FlavorVersionBuildStatusBuildImage, version.BuildStatus)
 
 	rivertest.RequireInserted[*riverpgxv5.Driver, pgx.Tx, job.CreateImage](
 		ctx,

@@ -21,11 +21,11 @@ package fixture
 import (
 	"time"
 
-	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
-func User(mod ...func(c *user.User)) user.User {
-	u := user.User{
+func User(mod ...func(c *resource.User)) resource.User {
+	u := resource.User{
 		ID:        "019a5637-289e-74ad-b3fb-7534de25e0a9",
 		Nickname:  "test-user",
 		Email:     "test-user@example.com",

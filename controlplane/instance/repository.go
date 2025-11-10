@@ -18,15 +18,19 @@
 
 package instance
 
-import "context"
+import (
+	"context"
+
+	"github.com/spacechunks/explorer/controlplane/resource"
+)
 
 type Repository interface {
-	CreateInstance(ctx context.Context, instance Instance, nodeID string) (Instance, error)
-	ListInstances(ctx context.Context) ([]Instance, error)
-	GetInstanceByID(ctx context.Context, id string) (Instance, error)
-	GetInstancesByNodeID(ctx context.Context, id string) ([]Instance, error)
+	CreateInstance(ctx context.Context, instance resource.Instance, nodeID string) (resource.Instance, error)
+	ListInstances(ctx context.Context) ([]resource.Instance, error)
+	GetInstanceByID(ctx context.Context, id string) (resource.Instance, error)
+	GetInstancesByNodeID(ctx context.Context, id string) ([]resource.Instance, error)
 
-	// ApplyStatusReports updates instances rows that are not in [instance.StateDeleted] state.
+	// ApplyStatusReports updates instances rows that are not in [instance.InstanceStateDeleted] state.
 	// all other instances will be removed from the table.
-	ApplyStatusReports(ctx context.Context, reports []StatusReport) error
+	ApplyStatusReports(ctx context.Context, reports []resource.InstanceStatusReport) error
 }

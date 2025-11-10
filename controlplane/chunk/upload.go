@@ -20,18 +20,33 @@ package chunk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/spacechunks/explorer/controlplane/authz"
 	"github.com/spacechunks/explorer/controlplane/blob"
+	"github.com/spacechunks/explorer/controlplane/contextkey"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 )
 
-func (s *svc) GetUploadURL(ctx context.Context, flavorVersionID string, tarballHash string) (string, error) {
+func (s *svc) GetUploadURL(ctx context.Context, versionID string, tarballHash string) (string, error) {
+	actorID, ok := ctx.Value(contextkey.ActorID).(string)
+	if !ok {
+		return "", errors.New("actor_id not found in context")
+	}
+
+	if err := s.access.AccessAuthorized(
+		ctx,
+		authz.WithOwnershipRule(actorID, authz.FlavorVersionResourceDef(versionID)),
+	); err != nil {
+		return "", fmt.Errorf("access: %w", err)
+	}
+
 	// TODO: tarball size needs to be specified as well to prevent people from uploading too large files
 	//       if size > 1GB reject
 
-	ver, err := s.repo.FlavorVersionByID(ctx, flavorVersionID)
+	ver, err := s.repo.FlavorVersionByID(ctx, versionID)
 	if err != nil {
 		return "", fmt.Errorf("flavor version: %w", err)
 	}
@@ -46,7 +61,7 @@ func (s *svc) GetUploadURL(ctx context.Context, flavorVersionID string, tarballH
 
 	url, expiryDate, err := s.s3Store.PresignURL(
 		ctx,
-		blob.ChangeSetKey(flavorVersionID),
+		blob.ChangeSetKey(versionID),
 		tarballHash,
 		s.cfg.PresignedURLExpiry,
 	)
@@ -56,7 +71,7 @@ func (s *svc) GetUploadURL(ctx context.Context, flavorVersionID string, tarballH
 
 	if err := s.repo.UpdateFlavorVersionPresignedURLData(
 		ctx,
-		flavorVersionID,
+		versionID,
 		expiryDate,
 		url,
 	); err != nil {

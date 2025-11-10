@@ -21,28 +21,34 @@ package chunk
 import (
 	"context"
 	"time"
+
+	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
 type Repository interface {
-	CreateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
-	GetChunkByID(ctx context.Context, id string) (Chunk, error)
-	UpdateChunk(ctx context.Context, chunk Chunk) (Chunk, error)
-	ListChunks(ctx context.Context) ([]Chunk, error)
+	CreateChunk(ctx context.Context, chunk resource.Chunk) (resource.Chunk, error)
+	GetChunkByID(ctx context.Context, id string) (resource.Chunk, error)
+	UpdateChunk(ctx context.Context, chunk resource.Chunk) (resource.Chunk, error)
+	ListChunks(ctx context.Context) ([]resource.Chunk, error)
 	ChunkExists(ctx context.Context, id string) (bool, error)
-	CreateFlavor(ctx context.Context, chunkID string, flavor Flavor) (Flavor, error)
+	CreateFlavor(ctx context.Context, chunkID string, flavor resource.Flavor) (resource.Flavor, error)
 	FlavorNameExists(ctx context.Context, chunkID string, name string) (bool, error)
 	FlavorVersionExists(ctx context.Context, flavorID string, version string) (bool, error)
-	LatestFlavorVersion(ctx context.Context, flavorID string) (FlavorVersion, error)
+	LatestFlavorVersion(ctx context.Context, flavorID string) (resource.FlavorVersion, error)
 	CreateFlavorVersion(
 		ctx context.Context,
 		flavorID string,
-		version FlavorVersion,
+		version resource.FlavorVersion,
 		prevVersionID string,
-	) (FlavorVersion, error)
+	) (resource.FlavorVersion, error)
 	FlavorVersionHashByID(ctx context.Context, id string) (string, error)
 	MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error
-	FlavorVersionByID(ctx context.Context, id string) (FlavorVersion, error)
-	UpdateFlavorVersionBuildStatus(ctx context.Context, flavorVersionID string, status BuildStatus) error
+	FlavorVersionByID(ctx context.Context, id string) (resource.FlavorVersion, error)
+	UpdateFlavorVersionBuildStatus(
+		ctx context.Context,
+		flavorVersionID string,
+		status resource.FlavorVersionBuildStatus,
+	) error
 	UpdateFlavorVersionPresignedURLData(ctx context.Context, flavorVersionID string, date time.Time, url string) error
 	SupportedMinecraftVersions(ctx context.Context) ([]string, error)
 	MinecraftVersionExists(context.Context, string) (bool, error)

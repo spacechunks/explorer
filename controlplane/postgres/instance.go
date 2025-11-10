@@ -24,15 +24,13 @@ import (
 	"sort"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
-	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/ptr"
 )
 
-func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID string) (instance.Instance, error) {
+func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID string) (resource.Instance, error) {
 	params := query.CreateInstanceParams{
 		ID:              ins.ID,
 		ChunkID:         ins.Chunk.ID,
@@ -44,7 +42,7 @@ func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID 
 		UpdatedAt:       ins.UpdatedAt,
 	}
 
-	var ret instance.Instance
+	var ret resource.Instance
 	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.CreateInstance(ctx, params); err != nil {
 			return fmt.Errorf("create instance: %w", err)
@@ -58,14 +56,14 @@ func (db *DB) CreateInstance(ctx context.Context, ins instance.Instance, nodeID 
 		ret = ins
 		return nil
 	}); err != nil {
-		return instance.Instance{}, err
+		return resource.Instance{}, err
 	}
 
 	return ret, nil
 }
 
-func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
-	var ret []instance.Instance
+func (db *DB) ListInstances(ctx context.Context) ([]resource.Instance, error) {
+	var ret []resource.Instance
 	if err := db.do(ctx, func(q *query.Queries) error {
 		rows, err := q.ListInstances(ctx)
 		if err != nil {
@@ -77,7 +75,7 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 			m[r.ID] = append(m[r.ID], r)
 		}
 
-		ret = make([]instance.Instance, 0, len(m))
+		ret = make([]resource.Instance, 0, len(m))
 
 		for _, v := range m {
 			// we retrieve multiple rows when we call GetInstance
@@ -91,13 +89,13 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 
 			// instance port is intentionally left out, because it will not be
 			// known beforehand atm, thus it will always be nil when creating.
-			i := instance.Instance{
+			i := resource.Instance{
 				ID:        row.ID,
 				Address:   row.Address,
-				State:     instance.State(row.State),
+				State:     resource.InstanceState(row.State),
 				CreatedAt: row.CreatedAt.UTC(),
 				UpdatedAt: row.UpdatedAt.UTC(),
-				Chunk: chunk.Chunk{
+				Chunk: resource.Chunk{
 					ID:          row.ID_3,
 					Name:        row.Name,
 					Description: row.Description,
@@ -105,7 +103,7 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 					CreatedAt:   row.CreatedAt_3.UTC(),
 					UpdatedAt:   row.UpdatedAt_2.UTC(),
 				},
-				FlavorVersion: chunk.FlavorVersion{
+				FlavorVersion: resource.FlavorVersion{
 					ID:               row.ID_2,
 					Version:          row.Version,
 					MinecraftVersion: row.MinecraftVersion,
@@ -116,10 +114,10 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 					FileHashes: nil,
 
 					FilesUploaded: row.FilesUploaded,
-					BuildStatus:   chunk.BuildStatus(row.BuildStatus),
+					BuildStatus:   resource.FlavorVersionBuildStatus(row.BuildStatus),
 					CreatedAt:     row.CreatedAt_2.UTC(),
 				},
-				Owner: user.User{
+				Owner: resource.User{
 					ID:        row.ID_6,
 					Nickname:  row.Nickname,
 					Email:     row.Email,
@@ -128,9 +126,9 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 				},
 			}
 
-			flavors := make([]chunk.Flavor, 0, len(rows))
+			flavors := make([]resource.Flavor, 0, len(rows))
 			for _, instanceRow := range v {
-				f := chunk.Flavor{
+				f := resource.Flavor{
 					ID:        instanceRow.ID_4,
 					Name:      instanceRow.Name_2,
 					CreatedAt: instanceRow.CreatedAt_4.UTC(),
@@ -156,8 +154,8 @@ func (db *DB) ListInstances(ctx context.Context) ([]instance.Instance, error) {
 	return ret, nil
 }
 
-func (db *DB) GetInstanceByID(ctx context.Context, id string) (instance.Instance, error) {
-	var ret instance.Instance
+func (db *DB) GetInstanceByID(ctx context.Context, id string) (resource.Instance, error) {
+	var ret resource.Instance
 	if err := db.do(ctx, func(q *query.Queries) error {
 		ins, err := db.getInstanceByID(ctx, q, id)
 		if err != nil {
@@ -166,14 +164,14 @@ func (db *DB) GetInstanceByID(ctx context.Context, id string) (instance.Instance
 		ret = ins
 		return nil
 	}); err != nil {
-		return instance.Instance{}, err
+		return resource.Instance{}, err
 	}
 
 	return ret, nil
 }
 
-func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instance.Instance, error) {
-	ret := make([]instance.Instance, 0)
+func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resource.Instance, error) {
+	ret := make([]resource.Instance, 0)
 	if err := db.do(ctx, func(q *query.Queries) error {
 		rows, err := q.GetInstancesByNodeID(ctx, nodeID)
 		if err != nil {
@@ -190,9 +188,9 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 				port = ptr.Pointer(uint16(*row.Port))
 			}
 
-			ret = append(ret, instance.Instance{
+			ret = append(ret, resource.Instance{
 				ID: row.ID,
-				Chunk: chunk.Chunk{
+				Chunk: resource.Chunk{
 					ID:          row.ID_3,
 					Name:        row.Name,
 					Description: row.Description,
@@ -200,7 +198,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 					CreatedAt:   row.CreatedAt_3.UTC(),
 					UpdatedAt:   row.UpdatedAt_2.UTC(),
 				},
-				FlavorVersion: chunk.FlavorVersion{
+				FlavorVersion: resource.FlavorVersion{
 					ID:               row.ID_2,
 					Version:          row.Version,
 					MinecraftVersion: row.MinecraftVersion,
@@ -208,10 +206,10 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 					ChangeHash:       row.ChangeHash,
 					FileHashes:       nil,
 					FilesUploaded:    row.FilesUploaded,
-					BuildStatus:      chunk.BuildStatus(row.BuildStatus),
+					BuildStatus:      resource.FlavorVersionBuildStatus(row.BuildStatus),
 					CreatedAt:        row.CreatedAt_2.UTC(),
 				},
-				Owner: user.User{
+				Owner: resource.User{
 					ID:        row.ID_5,
 					Nickname:  row.Nickname,
 					Email:     row.Email,
@@ -219,7 +217,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 					UpdatedAt: row.UpdatedAt_3,
 				},
 				Address:   row.Address,
-				State:     instance.State(row.State),
+				State:     resource.InstanceState(row.State),
 				Port:      port,
 				CreatedAt: row.CreatedAt.UTC(),
 				UpdatedAt: row.UpdatedAt.UTC(),
@@ -234,16 +232,16 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]instan
 	return ret, nil
 }
 
-// ApplyStatusReports updates instances rows that are not in [instance.StateDeleted] state.
+// ApplyStatusReports updates instances rows that are not in [instance.InstanceStateDeleted] state.
 // all other instances will be removed from the table.
-func (db *DB) ApplyStatusReports(ctx context.Context, reports []instance.StatusReport) error {
+func (db *DB) ApplyStatusReports(ctx context.Context, reports []resource.InstanceStatusReport) error {
 	var (
 		toUpdate = make([]query.BulkUpdateInstanceStateAndPortParams, 0, len(reports))
 		toRemove = make([]string, 0)
 	)
 
 	for _, report := range reports {
-		if report.State == instance.StateDeleted {
+		if report.State == resource.InstanceStateDeleted {
 			toRemove = append(toRemove, report.InstanceID)
 			continue
 		}
@@ -283,14 +281,14 @@ func (db *DB) ApplyStatusReports(ctx context.Context, reports []instance.StatusR
 	return nil
 }
 
-func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) (instance.Instance, error) {
+func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) (resource.Instance, error) {
 	rows, err := q.GetInstance(ctx, id)
 	if err != nil {
-		return instance.Instance{}, err
+		return resource.Instance{}, err
 	}
 
 	if len(rows) == 0 {
-		return instance.Instance{}, apierrs.ErrInstanceNotFound
+		return resource.Instance{}, apierrs.ErrInstanceNotFound
 	}
 
 	// we retrieve multiple rows when we call GetInstance
@@ -304,13 +302,13 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 
 	// instance port is intentionally left out, because it will not be
 	// known beforehand atm, thus it will always be nil when creating.
-	ret := instance.Instance{
+	ret := resource.Instance{
 		ID:        row.ID,
 		Address:   row.Address,
-		State:     instance.State(row.State),
+		State:     resource.InstanceState(row.State),
 		CreatedAt: row.CreatedAt.UTC(),
 		UpdatedAt: row.UpdatedAt.UTC(),
-		Chunk: chunk.Chunk{
+		Chunk: resource.Chunk{
 			ID:          row.ID_3,
 			Name:        row.Name,
 			Description: row.Description,
@@ -318,7 +316,7 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 			CreatedAt:   row.CreatedAt_3.UTC(),
 			UpdatedAt:   row.UpdatedAt_2.UTC(),
 		},
-		FlavorVersion: chunk.FlavorVersion{
+		FlavorVersion: resource.FlavorVersion{
 			ID:               row.ID_2,
 			Version:          row.Version,
 			MinecraftVersion: row.MinecraftVersion,
@@ -326,10 +324,10 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 			ChangeHash:       row.ChangeHash,
 			FileHashes:       nil,
 			FilesUploaded:    row.FilesUploaded,
-			BuildStatus:      chunk.BuildStatus(row.BuildStatus),
+			BuildStatus:      resource.FlavorVersionBuildStatus(row.BuildStatus),
 			CreatedAt:        row.CreatedAt_2.UTC(),
 		},
-		Owner: user.User{
+		Owner: resource.User{
 			ID:        row.ID_6,
 			Nickname:  row.Nickname,
 			Email:     row.Email,
@@ -345,9 +343,9 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 
 	ret.Port = port
 
-	flavors := make([]chunk.Flavor, 0, len(rows))
+	flavors := make([]resource.Flavor, 0, len(rows))
 	for _, instanceRow := range rows {
-		f := chunk.Flavor{
+		f := resource.Flavor{
 			ID:        instanceRow.ID_2,
 			Name:      instanceRow.Name_2,
 			CreatedAt: instanceRow.CreatedAt_2.UTC(),

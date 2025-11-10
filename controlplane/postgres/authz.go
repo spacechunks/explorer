@@ -20,30 +20,40 @@ package postgres
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
-func (db *DB) GetUserByEmail(ctx context.Context, email string) (resource.User, error) {
+func (db *DB) ChunkOwner(ctx context.Context, chunkID string) (resource.User, error) {
+	return getOwner(ctx, db, func(ctx context.Context, q *query.Queries) (query.User, error) {
+		return q.ChunkOwnerByChunkID(ctx, chunkID)
+	})
+}
+
+func (db *DB) FlavorOwner(ctx context.Context, flavorID string) (resource.User, error) {
+	return getOwner(ctx, db, func(ctx context.Context, q *query.Queries) (query.User, error) {
+		return q.ChunkOwnerByFlavorID(ctx, flavorID)
+	})
+}
+
+func (db *DB) FlavorVersionOwner(ctx context.Context, flavorVersionID string) (resource.User, error) {
+	return getOwner(ctx, db, func(ctx context.Context, q *query.Queries) (query.User, error) {
+		return q.ChunkOwnerByFlavorVersionID(ctx, flavorVersionID)
+	})
+}
+
+func getOwner(
+	ctx context.Context,
+	db *DB,
+	fn func(ctx context.Context, q *query.Queries) (query.User, error),
+) (resource.User, error) {
 	var ret resource.User
 	if err := db.do(ctx, func(q *query.Queries) error {
-		u, err := q.UserByEmail(ctx, email)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return apierrs.ErrNotFound
-		}
-
+		u, err := fn(ctx, q)
 		if err != nil {
 			return err
 		}
-
 		ret = resource.User{
 			ID:        u.ID,
 			Nickname:  u.Nickname,
@@ -51,46 +61,9 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string) (resource.User, 
 			CreatedAt: u.CreatedAt,
 			UpdatedAt: u.UpdatedAt,
 		}
-
 		return nil
 	}); err != nil {
-		return resource.User{}, err
+		return resource.User{}, nil
 	}
-
 	return ret, nil
-}
-func (db *DB) CreateUser(ctx context.Context, u resource.User) (resource.User, error) {
-	id, err := uuid.NewV7()
-	if err != nil {
-		return resource.User{}, fmt.Errorf("user id: %w", err)
-	}
-
-	now := time.Now()
-
-	err = db.do(ctx, func(q *query.Queries) error {
-		return q.CreateUser(ctx, query.CreateUserParams{
-			ID:        id.String(),
-			Nickname:  u.Nickname,
-			Email:     u.Email,
-			CreatedAt: now,
-			UpdatedAt: now,
-		})
-	})
-
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		fmt.Println(err)
-		if pgErr.Code == "23505" {
-			return resource.User{}, apierrs.ErrAlreadyExists
-		}
-	}
-
-	if err != nil {
-		return resource.User{}, fmt.Errorf("create user: %w", err)
-	}
-
-	u.ID = id.String()
-	u.CreatedAt = now
-	u.UpdatedAt = now
-	return u, nil
 }

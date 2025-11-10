@@ -30,19 +30,19 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
 )
 
-func (db *DB) CreateFlavor(ctx context.Context, chunkID string, flavor chunk.Flavor) (chunk.Flavor, error) {
+func (db *DB) CreateFlavor(ctx context.Context, chunkID string, flavor resource.Flavor) (resource.Flavor, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
-		return chunk.Flavor{}, fmt.Errorf("create flavor id: %w", err)
+		return resource.Flavor{}, fmt.Errorf("create flavor id: %w", err)
 	}
 
-	var ret chunk.Flavor
+	var ret resource.Flavor
 	if err := db.do(ctx, func(q *query.Queries) error {
 		now := time.Now()
 
@@ -56,7 +56,7 @@ func (db *DB) CreateFlavor(ctx context.Context, chunkID string, flavor chunk.Fla
 			return fmt.Errorf("create flavor: %w", err)
 		}
 
-		ret = chunk.Flavor{
+		ret = resource.Flavor{
 			ID:        id.String(),
 			Name:      flavor.Name,
 			CreatedAt: now,
@@ -65,7 +65,7 @@ func (db *DB) CreateFlavor(ctx context.Context, chunkID string, flavor chunk.Fla
 
 		return nil
 	}); err != nil {
-		return chunk.Flavor{}, err
+		return resource.Flavor{}, err
 	}
 
 	return ret, nil
@@ -111,8 +111,8 @@ func (db *DB) FlavorVersionExists(ctx context.Context, flavorID string, version 
 	return ret, nil
 }
 
-func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.FlavorVersion, error) {
-	var ret chunk.FlavorVersion
+func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (resource.FlavorVersion, error) {
+	var ret resource.FlavorVersion
 	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		// FIXME: at some point join with flavors table to return the complete
 		// FlavorVersion object, right now there is no need so skip this
@@ -142,7 +142,7 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 			return strings.Compare(hashes[i].Path, hashes[j].Path) < 0
 		})
 
-		ret = chunk.FlavorVersion{
+		ret = resource.FlavorVersion{
 			ID:         latest.ID,
 			Version:    latest.Version,
 			Hash:       latest.Hash,
@@ -151,7 +151,7 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 
 		return nil
 	}); err != nil {
-		return chunk.FlavorVersion{}, err
+		return resource.FlavorVersion{}, err
 	}
 
 	return ret, nil
@@ -160,12 +160,12 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (chunk.F
 func (db *DB) CreateFlavorVersion(
 	ctx context.Context,
 	flavorID string,
-	version chunk.FlavorVersion,
+	version resource.FlavorVersion,
 	prevVersionID string,
-) (chunk.FlavorVersion, error) {
+) (resource.FlavorVersion, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
-		return chunk.FlavorVersion{}, fmt.Errorf("flavor version id: %w", err)
+		return resource.FlavorVersion{}, fmt.Errorf("flavor version id: %w", err)
 	}
 
 	now := time.Now()
@@ -204,7 +204,7 @@ func (db *DB) CreateFlavorVersion(
 
 		return nil
 	}); err != nil {
-		return chunk.FlavorVersion{}, err
+		return resource.FlavorVersion{}, err
 	}
 
 	ret := version
@@ -236,8 +236,8 @@ func (db *DB) MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionI
 	})
 }
 
-func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVersion, error) {
-	var ret chunk.FlavorVersion
+func (db *DB) FlavorVersionByID(ctx context.Context, id string) (resource.FlavorVersion, error) {
+	var ret resource.FlavorVersion
 
 	if err := db.do(ctx, func(q *query.Queries) error {
 		rows, err := q.FlavorVersionByID(ctx, id)
@@ -252,13 +252,13 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 		hashes := make([]file.Hash, 0, len(rows))
 
 		row := rows[0]
-		ret = chunk.FlavorVersion{
+		ret = resource.FlavorVersion{
 			ID:               row.ID,
 			Version:          row.Version,
 			MinecraftVersion: row.MinecraftVersion,
 			Hash:             row.Hash,
 			ChangeHash:       row.ChangeHash,
-			BuildStatus:      chunk.BuildStatus(row.BuildStatus),
+			BuildStatus:      resource.FlavorVersionBuildStatus(row.BuildStatus),
 			FilesUploaded:    row.FilesUploaded,
 			CreatedAt:        row.CreatedAt,
 		}
@@ -287,7 +287,7 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 
 		return nil
 	}); err != nil {
-		return chunk.FlavorVersion{}, err
+		return resource.FlavorVersion{}, err
 	}
 
 	return ret, nil
@@ -296,7 +296,7 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (chunk.FlavorVer
 func (db *DB) UpdateFlavorVersionBuildStatus(
 	ctx context.Context,
 	flavorVersionID string,
-	status chunk.BuildStatus,
+	status resource.FlavorVersionBuildStatus,
 ) error {
 	return db.do(ctx, func(q *query.Queries) error {
 		return q.UpdateFlavorVersionBuildStatus(ctx, query.UpdateFlavorVersionBuildStatusParams{

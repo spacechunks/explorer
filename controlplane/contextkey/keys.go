@@ -16,41 +16,11 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package instance
+package contextkey
 
-import (
-	"net/netip"
-	"time"
-
-	"github.com/spacechunks/explorer/controlplane/chunk"
-	"github.com/spacechunks/explorer/controlplane/user"
-)
-
-type Instance struct {
-	ID            string
-	Chunk         chunk.Chunk
-	FlavorVersion chunk.FlavorVersion
-	Address       netip.Addr
-	State         State
-	Port          *uint16
-	Owner         user.User
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-}
-
-type StatusReport struct {
-	InstanceID string
-	State      State
-	Port       uint16
-}
-
-type State string
+type Key string
 
 const (
-	StatePending   State = "PENDING"
-	StateCreating  State = "CREATING"
-	StateRunning   State = "RUNNING"
-	StateDeleting  State = "DELETING"
-	StateDeleted   State = "DELETED"
-	CreationFailed State = "CREATION_FAILED"
+	APIToken Key = "api_token"
+	ActorID  Key = "actor_id"
 )

@@ -31,6 +31,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/job"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/tarhelper"
@@ -79,7 +80,7 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		if err := w.repo.UpdateFlavorVersionBuildStatus(
 			ctx,
 			riverJob.Args.FlavorVersionID,
-			chunk.BuildStatusBuildImageFailed,
+			resource.FlavorVersionBuildStatusBuildImageFailed,
 		); err != nil {
 			w.logger.ErrorContext(ctx, "failed to update flavor version build status", "err", err)
 		}
@@ -168,7 +169,7 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 	if err := w.jobClient.InsertJob(
 		ctx,
 		riverJob.Args.FlavorVersionID,
-		string(chunk.BuildStatusBuildCheckpoint),
+		string(resource.FlavorVersionBuildStatusBuildCheckpoint),
 		job.CreateCheckpoint{
 			FlavorVersionID: riverJob.Args.FlavorVersionID,
 			BaseImageURL:    ref,

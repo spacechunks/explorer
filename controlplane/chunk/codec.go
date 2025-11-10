@@ -21,11 +21,12 @@ package chunk
 import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func ChunkToTransport(domain Chunk) *chunkv1alpha1.Chunk {
+func ChunkToTransport(domain resource.Chunk) *chunkv1alpha1.Chunk {
 	c := &chunkv1alpha1.Chunk{
 		Id:          domain.ID,
 		Name:        domain.Name,
@@ -60,7 +61,7 @@ func ChunkToTransport(domain Chunk) *chunkv1alpha1.Chunk {
 	return c
 }
 
-func FlavorToTransport(domain Flavor) *chunkv1alpha1.Flavor {
+func FlavorToTransport(domain resource.Flavor) *chunkv1alpha1.Flavor {
 	return &chunkv1alpha1.Flavor{
 		Id:        domain.ID,
 		Name:      domain.Name,
@@ -69,8 +70,8 @@ func FlavorToTransport(domain Flavor) *chunkv1alpha1.Flavor {
 	}
 }
 
-func FlavorToDomain(transport *chunkv1alpha1.Flavor) Flavor {
-	return Flavor{
+func FlavorToDomain(transport *chunkv1alpha1.Flavor) resource.Flavor {
+	return resource.Flavor{
 		ID:        transport.GetId(),
 		Name:      transport.GetName(),
 		CreatedAt: transport.GetCreatedAt().AsTime(),
@@ -78,19 +79,19 @@ func FlavorToDomain(transport *chunkv1alpha1.Flavor) Flavor {
 	}
 }
 
-func FlavorVersionToDomain(transport *chunkv1alpha1.FlavorVersion) FlavorVersion {
-	return FlavorVersion{
+func FlavorVersionToDomain(transport *chunkv1alpha1.FlavorVersion) resource.FlavorVersion {
+	return resource.FlavorVersion{
 		ID:               transport.GetId(),
 		Version:          transport.GetVersion(),
 		MinecraftVersion: transport.MinecraftVersion,
 		Hash:             transport.GetHash(),
-		BuildStatus:      BuildStatus(transport.BuildStatus),
+		BuildStatus:      resource.FlavorVersionBuildStatus(transport.BuildStatus),
 		FileHashes:       FileHashSliceToDomain(transport.FileHashes),
 		CreatedAt:        transport.GetCreatedAt().AsTime(),
 	}
 }
 
-func FlavorVersionToTransport(domain FlavorVersion) *chunkv1alpha1.FlavorVersion {
+func FlavorVersionToTransport(domain resource.FlavorVersion) *chunkv1alpha1.FlavorVersion {
 	return &chunkv1alpha1.FlavorVersion{
 		Id:               domain.ID,
 		Version:          domain.Version,

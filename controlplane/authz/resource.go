@@ -16,13 +16,38 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package worker
+package authz
 
-type ContextKey string
+type ResourceType uint
 
 const (
-	ContextKeyBlobStore       ContextKey = "explorer.chunks.cloud/blob-store"
-	ContextKeyImageService    ContextKey = "explorer.chunks.cloud/image-service"
-	ContextKeyChunkRepository ContextKey = "explorer.chunks.cloud/chunk-repository"
-	ContextKeyJobClient       ContextKey = "explorer.chunks.cloud/job-client"
+	ResourceTypeChunk ResourceType = iota
+	ResourceTypeFlavor
+	ResourceTypeFlavorVersion
 )
+
+type ResourceDef struct {
+	ID   string
+	Type ResourceType
+}
+
+func ChunkResourceDef(id string) ResourceDef {
+	return ResourceDef{
+		ID:   id,
+		Type: ResourceTypeChunk,
+	}
+}
+
+func FlavorResourceDef(id string) ResourceDef {
+	return ResourceDef{
+		ID:   id,
+		Type: ResourceTypeFlavor,
+	}
+}
+
+func FlavorVersionResourceDef(id string) ResourceDef {
+	return ResourceDef{
+		ID:   id,
+		Type: ResourceTypeFlavorVersion,
+	}
+}

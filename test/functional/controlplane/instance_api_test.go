@@ -30,10 +30,10 @@ import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
@@ -118,13 +118,13 @@ func TestAPIListInstances(t *testing.T) {
 
 	cp.Postgres.InsertNode(t)
 
-	ins := []instance.Instance{
-		fixture.Instance(func(i *instance.Instance) {
+	ins := []resource.Instance{
+		fixture.Instance(func(i *resource.Instance) {
 			i.ID = test.NewUUIDv7(t)
-			i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
+			i.Chunk = fixture.Chunk(func(c *resource.Chunk) {
 				c.ID = test.NewUUIDv7(t)
-				c.Flavors = []chunk.Flavor{
-					fixture.Flavor(func(f *chunk.Flavor) {
+				c.Flavors = []resource.Flavor{
+					fixture.Flavor(func(f *resource.Flavor) {
 						f.Name = "f1"
 					}),
 				}
@@ -133,12 +133,12 @@ func TestAPIListInstances(t *testing.T) {
 			i.Port = nil                     // port will not be saved when creating
 			i.FlavorVersion.FileHashes = nil // not returned atm
 		}),
-		fixture.Instance(func(i *instance.Instance) {
+		fixture.Instance(func(i *resource.Instance) {
 			i.ID = test.NewUUIDv7(t)
-			i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
+			i.Chunk = fixture.Chunk(func(c *resource.Chunk) {
 				c.ID = test.NewUUIDv7(t)
-				c.Flavors = []chunk.Flavor{
-					fixture.Flavor(func(f *chunk.Flavor) {
+				c.Flavors = []resource.Flavor{
+					fixture.Flavor(func(f *resource.Flavor) {
 						f.Name = "f2"
 					}),
 				}
@@ -292,32 +292,32 @@ func TestDiscoverInstances(t *testing.T) {
 	tests := []struct {
 		name        string
 		nodeID      string
-		input       []instance.Instance
-		getExpected func([]instance.Instance) []*instancev1alpha1.Instance
+		input       []resource.Instance
+		getExpected func([]resource.Instance) []*instancev1alpha1.Instance
 		err         error
 	}{
 		{
 			name:   "can discover instances",
 			nodeID: fixture.Node().ID,
-			input: []instance.Instance{
-				fixture.Instance(func(i *instance.Instance) {
+			input: []resource.Instance{
+				fixture.Instance(func(i *resource.Instance) {
 					i.ID = test.NewUUIDv7(t)
-					i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
+					i.Chunk = fixture.Chunk(func(c *resource.Chunk) {
 						c.ID = test.NewUUIDv7(t)
-						c.Flavors = []chunk.Flavor{
-							fixture.Flavor(func(f *chunk.Flavor) {
+						c.Flavors = []resource.Flavor{
+							fixture.Flavor(func(f *resource.Flavor) {
 								f.Name = "f1"
 							}),
 						}
 					})
 					i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
 				}),
-				fixture.Instance(func(i *instance.Instance) {
+				fixture.Instance(func(i *resource.Instance) {
 					i.ID = test.NewUUIDv7(t)
-					i.Chunk = fixture.Chunk(func(c *chunk.Chunk) {
+					i.Chunk = fixture.Chunk(func(c *resource.Chunk) {
 						c.ID = test.NewUUIDv7(t)
-						c.Flavors = []chunk.Flavor{
-							fixture.Flavor(func(f *chunk.Flavor) {
+						c.Flavors = []resource.Flavor{
+							fixture.Flavor(func(f *resource.Flavor) {
 								f.Name = "f2"
 							}),
 						}
@@ -325,7 +325,7 @@ func TestDiscoverInstances(t *testing.T) {
 					i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
 				}),
 			},
-			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
+			getExpected: func(instances []resource.Instance) []*instancev1alpha1.Instance {
 				ret := make([]*instancev1alpha1.Instance, 0, len(instances))
 				for _, ins := range instances {
 					ins.Port = nil                     // port will be nil at this point
@@ -338,20 +338,20 @@ func TestDiscoverInstances(t *testing.T) {
 		{
 			name:   "wrong node id returns no instances",
 			nodeID: "019556c6-ee21-7997-b97e-52e999e60a71",
-			input: []instance.Instance{
+			input: []resource.Instance{
 				fixture.Instance(),
 			},
-			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
+			getExpected: func(instances []resource.Instance) []*instancev1alpha1.Instance {
 				return nil
 			},
 		},
 		{
 			name:   "no node id returns error",
 			nodeID: "",
-			input: []instance.Instance{
+			input: []resource.Instance{
 				fixture.Instance(),
 			},
-			getExpected: func(instances []instance.Instance) []*instancev1alpha1.Instance {
+			getExpected: func(instances []resource.Instance) []*instancev1alpha1.Instance {
 				return nil
 			},
 			err: apierrs.ErrNodeKeyMissing.GRPCStatus().Err(),
@@ -411,29 +411,29 @@ func TestDiscoverInstances(t *testing.T) {
 func TestReceiveInstanceStatusReports(t *testing.T) {
 	tests := []struct {
 		name     string
-		report   instance.StatusReport
-		expected instance.Instance
+		report   resource.InstanceStatusReport
+		expected resource.Instance
 	}{
 		{
 			name: "updates port and state successfully",
-			report: instance.StatusReport{
+			report: resource.InstanceStatusReport{
 				InstanceID: fixture.Instance().ID,
-				State:      instance.CreationFailed,
+				State:      resource.InstanceCreationFailed,
 				Port:       420,
 			},
-			expected: fixture.Instance(func(i *instance.Instance) {
-				i.State = instance.CreationFailed
+			expected: fixture.Instance(func(i *resource.Instance) {
+				i.State = resource.InstanceCreationFailed
 				i.Port = ptr.Pointer(uint16(420))
 				i.FlavorVersion.FileHashes = nil // not returned atm
 			}),
 		},
 		{
 			name: "updates with state = DELETED removes instance",
-			report: instance.StatusReport{
+			report: resource.InstanceStatusReport{
 				InstanceID: fixture.Instance().ID,
-				State:      instance.StateDeleted,
+				State:      resource.InstanceStateDeleted,
 			},
-			expected: instance.Instance{},
+			expected: resource.Instance{},
 		},
 	}
 
@@ -468,7 +468,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			require.NoError(t, err)
 
 			var expected []*instancev1alpha1.Instance
-			if !reflect.DeepEqual(tt.expected, instance.Instance{}) {
+			if !reflect.DeepEqual(tt.expected, resource.Instance{}) {
 				tt.expected.Owner = ins.Owner
 				expected = []*instancev1alpha1.Instance{
 					instance.ToTransport(tt.expected),

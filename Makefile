@@ -77,7 +77,7 @@ dev:
 .PHONY: unittests
 unittests: $(TEST_IMG)
 	$(RUN) go test $$(go list ./... | grep -v github.com/spacechunks/explorer/test/e2e \
-                                    | grep -v github.com/spacechunks/explorer/test/functional)
+                                    | grep -v github.com/spacechunks/explorer/test/functional) $(ARGS)
 
 .PHONY: e2etests
 e2etests:

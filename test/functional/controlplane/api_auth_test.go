@@ -30,7 +30,7 @@ import (
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"
@@ -39,12 +39,12 @@ import (
 func TestToken(t *testing.T) {
 	tests := []struct {
 		name     string
-		metadata func(user.User, *ecdsa.PrivateKey) metadata.MD
+		metadata func(resource.User, *ecdsa.PrivateKey) metadata.MD
 		err      error
 	}{
 		{
 			name: "valid token",
-			metadata: func(u user.User, signingKey *ecdsa.PrivateKey) metadata.MD {
+			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
 				apiKey, err := jwt.NewBuilder().
 					IssuedAt(time.Now()).
 					Issuer(fixture.APITokenIssuer).
@@ -61,7 +61,7 @@ func TestToken(t *testing.T) {
 		},
 		{
 			name: "invalid token wrong issuer",
-			metadata: func(u user.User, signingKey *ecdsa.PrivateKey) metadata.MD {
+			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
 				apiKey, err := jwt.NewBuilder().
 					IssuedAt(time.Now()).
 					Issuer("WRONG ISSUER").
@@ -79,7 +79,7 @@ func TestToken(t *testing.T) {
 		},
 		{
 			name: "invalid token wrong audience",
-			metadata: func(u user.User, signingKey *ecdsa.PrivateKey) metadata.MD {
+			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
 				apiKey, err := jwt.NewBuilder().
 					IssuedAt(time.Now()).
 					Issuer(fixture.APITokenIssuer).
@@ -97,7 +97,7 @@ func TestToken(t *testing.T) {
 		},
 		{
 			name: "invalid token signed with wrong key",
-			metadata: func(u user.User, signingKey *ecdsa.PrivateKey) metadata.MD {
+			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
 				apiKey, err := jwt.NewBuilder().
 					IssuedAt(time.Now()).
 					Issuer(fixture.APITokenIssuer).
@@ -118,14 +118,14 @@ func TestToken(t *testing.T) {
 		},
 		{
 			name: "invalid token no jwt",
-			metadata: func(u user.User, signingKey *ecdsa.PrivateKey) metadata.MD {
+			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
 				return metadata.Pairs("authorization", "some-non-jwt-string")
 			},
 			err: cperrs.ErrInvalidToken.GRPCStatus().Err(),
 		},
 		{
 			name: "auth header missing",
-			metadata: func(u user.User, signingKey *ecdsa.PrivateKey) metadata.MD {
+			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
 				return metadata.Pairs("lole", "blabla")
 			},
 			err: cperrs.ErrAuthHeaderMissing.GRPCStatus().Err(),

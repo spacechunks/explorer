@@ -46,9 +46,10 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	checkpointv1alpha1 "github.com/spacechunks/explorer/api/platformd/checkpoint/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
+	"github.com/spacechunks/explorer/controlplane/authz"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
-	"github.com/spacechunks/explorer/controlplane/contextkeys"
+	"github.com/spacechunks/explorer/controlplane/contextkey"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/job"
@@ -155,6 +156,7 @@ func (s *Server) Run(ctx context.Context) error {
 			db,
 			db,
 			blobStore,
+			authz.NewRuleEvaluator(db),
 			chunk.Config{
 				Registry:           s.cfg.OCIRegistry,
 				BaseImage:          s.cfg.BaseImage,
@@ -236,7 +238,13 @@ func authInterceptor(logger *slog.Logger, signingKey *ecdsa.PrivateKey, issuer s
 			return nil, cperrs.ErrInvalidToken
 		}
 
-		ctx = context.WithValue(ctx, contextkeys.APIToken, tok)
+		var userID string
+		if err := tok.Get("user_id", &userID); err != nil {
+			logger.Error("failed to get user id", "err", err)
+			return nil, cperrs.ErrInvalidToken
+		}
+
+		ctx = context.WithValue(ctx, contextkey.ActorID, userID)
 
 		return handler(ctx, req)
 	}
