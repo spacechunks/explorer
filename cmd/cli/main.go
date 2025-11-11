@@ -26,17 +26,22 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
+	"github.com/spacechunks/explorer/cli/auth"
 	clicmd "github.com/spacechunks/explorer/cli/cmd"
+	"github.com/spacechunks/explorer/cli/fshelper"
+	"github.com/spacechunks/explorer/cli/state"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 func main() {
+	ctx := context.Background()
+
 	cfg, err := createOrReadConfig()
 	if err != nil {
 		log.Fatalf("Config error: %v", err)
@@ -49,16 +54,30 @@ func main() {
 		die("Failed to create gRPC client", err)
 	}
 
+	stateData, err := state.New()
+	if err != nil {
+		die("Failed to read state data", err)
+	}
+
+	userClient := userv1alpha1.NewUserServiceClient(conn)
+
+	oidcAuth, err := auth.NewOIDC(ctx, &stateData, cfg.IDPClientID, cfg.IDPIssuerEndpoint, userClient)
+	if err != nil {
+		die("Failed to create Microsoft auth service", err)
+	}
+
 	var (
-		ctx   = context.Background()
-		state = cli.State{
+		cliContext = cli.Context{
 			Config:         cfg,
 			Client:         chunkv1alpha1.NewChunkServiceClient(conn),
 			InstanceClient: instancev1alpha1.NewInstanceServiceClient(conn),
+			UserClient:     userClient,
+			Auth:           oidcAuth,
+			State:          stateData,
 		}
 	)
 
-	if err := clicmd.Root(ctx, state).Execute(); err != nil {
+	if err := clicmd.Root(ctx, cliContext).Execute(); err != nil {
 		os.Exit(1)
 	}
 }
@@ -68,56 +87,24 @@ func die(msg string, err error) {
 	os.Exit(1)
 }
 
-func createOrReadConfig() (cli.Config, error) {
-	cfgHome, err := configHome()
+func createOrReadConfig() (state.Config, error) {
+	cfgHome, err := fshelper.ConfigHome()
 	if err != nil {
-		return cli.Config{}, fmt.Errorf("determine home directory: %w", err)
+		return state.Config{}, fmt.Errorf("determine home directory: %w", err)
 	}
 
 	cfgPath := filepath.Join(cfgHome, "config.yaml")
 
-	cfg, err := cli.ReadYAMLFile[cli.Config](cfgPath)
+	cfg, err := cli.ReadYAMLFile[state.Config](cfgPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			if err := cli.WriteYAMLFile(cli.DefaultConfig, cfgPath); err != nil {
-				return cli.Config{}, fmt.Errorf("write default config: %w", err)
+			if err := cli.WriteYAMLFile(state.DefaultConfig, cfgPath); err != nil {
+				return state.Config{}, fmt.Errorf("write default config: %w", err)
 			}
-			cfg = cli.DefaultConfig
+			cfg = state.DefaultConfig
 		} else {
-			return cli.Config{}, fmt.Errorf("read config: %w", err)
+			return state.Config{}, fmt.Errorf("read config: %w", err)
 		}
 	}
 	return cfg, nil
-}
-
-func configHome() (string, error) {
-	cfgHome := os.Getenv("XDG_CONFIG_HOME")
-	if cfgHome != "" {
-		return cfgHome, nil
-	}
-
-	switch runtime.GOOS {
-	case "windows":
-		dir, err := os.UserConfigDir()
-		if err != nil {
-			return "", fmt.Errorf("failed to get config dir: %w", err)
-		}
-		cfgHome = filepath.Join(dir, "explorer")
-	case "linux", "darwin":
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("failed to get users home directory: %w", err)
-		}
-		cfgHome = filepath.Join(homeDir, ".config", "explorer")
-	}
-
-	if _, err := os.Stat(cfgHome); err == nil {
-		return cfgHome, nil
-	}
-
-	if err := os.MkdirAll(cfgHome, 0700); err != nil {
-		return "", fmt.Errorf("failed to create config home directory %s: %w", cfgHome, err)
-	}
-
-	return cfgHome, nil
 }

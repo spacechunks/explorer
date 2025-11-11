@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
+func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	run := func(cmd *cobra.Command, args []string) error {
 		if len(args) < 2 {
 			return errors.New("chunk id and flavor name required")
@@ -41,7 +41,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 			flavorVersionID = args[1]
 		)
 
-		c, err := state.Client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
+		c, err := cliCtx.Client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
 			Id: chunkID,
 		})
 		if err != nil {
@@ -50,7 +50,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 
 		// TODO: find flavor
 
-		resp, err := state.InstanceClient.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
+		resp, err := cliCtx.InstanceClient.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
 			ChunkId:         c.Chunk.Id,
 			FlavorVersionId: flavorVersionID,
 		})
@@ -60,7 +60,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 
 		t := time.NewTicker(1 * time.Second)
 		for range t.C {
-			resp, err := state.InstanceClient.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
+			resp, err := cliCtx.InstanceClient.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
 				Id: resp.Instance.Id,
 			})
 			if err != nil {

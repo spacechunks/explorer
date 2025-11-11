@@ -22,18 +22,22 @@ import (
 	"context"
 
 	"github.com/spacechunks/explorer/cli"
+	"github.com/spacechunks/explorer/cli/cmd/register"
 	"github.com/spf13/cobra"
 )
 
-func Root(ctx context.Context, state cli.State) *cobra.Command {
+func Root(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "explorer",
 		Short: "TBD",
 		Long:  "TBD",
 	}
 
-	chunkCmd := newChunkCommand(ctx, state)
-	root.AddCommand(chunkCmd)
+	chunkCmd := newChunkCommand(ctx, cliCtx)
+	root.AddCommand(
+		chunkCmd,
+		register.NewCommand(ctx, cliCtx),
+	)
 
 	return root
 }

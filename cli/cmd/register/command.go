@@ -16,23 +16,37 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package cli
+package register
 
 import (
-	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
-	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	"context"
+	"fmt"
+
+	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
+	"github.com/spacechunks/explorer/cli"
+	"github.com/spf13/cobra"
 )
 
-var DefaultConfig = Config{
-	ControlPlaneEndpoint: "localhost:9010",
-}
+func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
+	run := func(cmd *cobra.Command, args []string) error {
+		tok, err := cliCtx.Auth.IDToken(ctx)
+		if err != nil {
+			return fmt.Errorf("login failed: %w", err)
+		}
 
-type Config struct {
-	ControlPlaneEndpoint string `json:"controlPlaneEndpoint"`
-}
+		if _, err := cliCtx.UserClient.Register(ctx, &userv1alpha1.RegisterRequest{
+			Nickname: args[0],
+			IdToken:  tok,
+		}); err != nil {
+			return fmt.Errorf("register failed: %w", err)
+		}
 
-type State struct {
-	Config         Config
-	Client         chunkv1alpha1.ChunkServiceClient
-	InstanceClient instancev1alpha1.InstanceServiceClient
+		return nil
+	}
+
+	return &cobra.Command{
+		Use:   "register",
+		Short: "register a new account",
+		RunE:  run,
+	}
 }

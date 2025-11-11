@@ -16,38 +16,43 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package list
+package fshelper
 
 import (
-	"context"
 	"fmt"
-	"strings"
-
-	"github.com/rodaine/table"
-	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
-	"github.com/spacechunks/explorer/cli"
-	"github.com/spf13/cobra"
+	"os"
+	"path/filepath"
+	"runtime"
 )
 
-func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
-	run := func(cmd *cobra.Command, args []string) error {
-		resp, err := cliCtx.Client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{})
+func ConfigHome() (string, error) {
+	cfgHome := os.Getenv("XDG_CONFIG_HOME")
+	if cfgHome != "" {
+		return cfgHome, nil
+	}
+
+	switch runtime.GOOS {
+	case "windows":
+		dir, err := os.UserConfigDir()
 		if err != nil {
-			return fmt.Errorf("error while listing chunks: %w", err)
+			return "", fmt.Errorf("failed to get config dir: %w", err)
 		}
-
-		t := table.New("NAME", "DESCRIPTION", "TAGS", "ID")
-		for _, c := range resp.Chunks {
-			t.AddRow(c.Name, c.Description, strings.Join(c.Tags, ","), c.Id)
+		cfgHome = filepath.Join(dir, "explorer")
+	case "linux", "darwin":
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get users home directory: %w", err)
 		}
-		t.Print()
-
-		return nil
+		cfgHome = filepath.Join(homeDir, ".config", "explorer")
 	}
 
-	return &cobra.Command{
-		Use:   "list",
-		Short: "List all available chunks",
-		RunE:  run,
+	if _, err := os.Stat(cfgHome); err == nil {
+		return cfgHome, nil
 	}
+
+	if err := os.MkdirAll(cfgHome, 0700); err != nil {
+		return "", fmt.Errorf("failed to create config home directory %s: %w", cfgHome, err)
+	}
+
+	return cfgHome, nil
 }
