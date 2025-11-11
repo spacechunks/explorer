@@ -29,6 +29,7 @@ require (
 	github.com/johannesboyne/gofakes3 v0.0.0-20250825084532-6555d310c473
 	github.com/lestrrat-go/jwx/v3 v3.0.12
 	github.com/peterbourgon/ff/v3 v3.4.0
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
 	github.com/riverqueue/river v0.22.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.22.0
@@ -42,6 +43,7 @@ require (
 	github.com/vishvananda/netns v0.0.5
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/crypto v0.43.0
+	golang.org/x/oauth2 v0.28.0
 	golang.org/x/sys v0.37.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250219182151-9fdb1cabc7b2
 	google.golang.org/grpc v1.70.0
@@ -186,7 +188,6 @@ require (
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa // indirect
 	golang.org/x/mod v0.28.0 // indirect
 	golang.org/x/net v0.45.0 // indirect
-	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/term v0.36.0 // indirect
 	golang.org/x/text v0.30.0 // indirect
