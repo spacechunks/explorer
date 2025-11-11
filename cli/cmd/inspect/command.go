@@ -30,7 +30,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
+func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	run := func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
 			return fmt.Errorf("chunk id is missing")
@@ -38,7 +38,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 
 		// TODO: replace by GetChunkRequest with name filter
 
-		resp, err := state.Client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
+		resp, err := cliCtx.Client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
 			Id: args[0],
 		})
 		if err != nil {

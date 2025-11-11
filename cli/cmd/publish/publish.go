@@ -148,7 +148,7 @@ func (f localFlavor) fileDiff(apiHashes []*chunkv1alpha1.FileHashes) ([]file.Has
  *              /,_/      '`-'
  */
 
-func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
+func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	run := func(cmd *cobra.Command, args []string) error {
 		data, err := os.ReadFile(configName)
 		if err != nil {
@@ -161,7 +161,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 		}
 
 		// TODO: get chunk by name
-		chunk, err := findChunk(ctx, state.Client, cfg.Chunk.Name)
+		chunk, err := findChunk(ctx, cliCtx.Client, cfg.Chunk.Name)
 		if err != nil {
 			return fmt.Errorf("error while finding chunk: %w", err)
 		}
@@ -177,7 +177,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 			}
 		}
 
-		resp, err := state.Client.GetSupportedMinecraftVersions(
+		resp, err := cliCtx.Client.GetSupportedMinecraftVersions(
 			ctx,
 			&chunkv1alpha1.GetSupportedMinecraftVersionsRequest{},
 		)
@@ -199,7 +199,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 
 		if chunk.Id == "" {
 			fmt.Println("Chunk does not exist, creating new Chunk.")
-			resp, err := state.Client.CreateChunk(ctx, &chunkv1alpha1.CreateChunkRequest{
+			resp, err := cliCtx.Client.CreateChunk(ctx, &chunkv1alpha1.CreateChunkRequest{
 				Name:        cfg.Chunk.Name,
 				Description: cfg.Chunk.Description,
 				Tags:        cfg.Chunk.Tags,
@@ -212,7 +212,7 @@ func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
 		}
 
 		b := builder{
-			client:       state.Client,
+			client:       cliCtx.Client,
 			updates:      make(chan buildUpdate),
 			buildCounter: &atomic.Int32{},
 			changeSetDir: os.TempDir(),

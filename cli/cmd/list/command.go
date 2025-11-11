@@ -29,9 +29,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(ctx context.Context, state cli.State) *cobra.Command {
+func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	run := func(cmd *cobra.Command, args []string) error {
-		resp, err := state.Client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{})
+		resp, err := cliCtx.Client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{})
 		if err != nil {
 			return fmt.Errorf("error while listing chunks: %w", err)
 		}

@@ -20,6 +20,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spacechunks/explorer/cli"
 	"github.com/spacechunks/explorer/cli/cmd/inspect"
@@ -27,19 +28,36 @@ import (
 	"github.com/spacechunks/explorer/cli/cmd/publish"
 	"github.com/spacechunks/explorer/cli/cmd/run"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 )
 
-func newChunkCommand(ctx context.Context, state cli.State) *cobra.Command {
+func newChunkCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "chunk",
 		Short: "TBD",
 		Long:  "TBD",
 	}
-
-	c.AddCommand(publish.NewCommand(ctx, state))
-	c.AddCommand(run.NewCommand(ctx, state))
-	c.AddCommand(list.NewCommand(ctx, state))
-	c.AddCommand(inspect.NewCommand(ctx, state))
-
+	c.AddCommand(
+		requireAPIToken(ctx, cliCtx, publish.NewCommand),
+		requireAPIToken(ctx, cliCtx, run.NewCommand),
+		requireAPIToken(ctx, cliCtx, list.NewCommand),
+		requireAPIToken(ctx, cliCtx, inspect.NewCommand),
+	)
 	return c
+}
+
+func requireAPIToken(ctx context.Context, cliCtx cli.Context, fn func(context.Context, cli.Context) *cobra.Command) *cobra.Command {
+	cmd := fn(ctx, cliCtx)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		tok, err := cliCtx.Auth.APIToken(ctx)
+		if err != nil {
+			return fmt.Errorf("authentication failed: %w", err)
+		}
+
+		md := metadata.Pairs("authorization", tok)
+		ctx = metadata.NewOutgoingContext(ctx, md)
+
+		return fn(ctx, cliCtx).RunE(cmd, args)
+	}
+	return cmd
 }
