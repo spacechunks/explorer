@@ -208,9 +208,10 @@ func (b builder) handlePrerequisites(ctx context.Context, data *buildData) error
 	_, err = b.client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
 		FlavorId: remoteFlavor.Id,
 		Version: &chunkv1alpha1.FlavorVersion{
-			Version:    data.local.version,
-			Hash:       data.local.hash,
-			FileHashes: hashes,
+			Version:          data.local.version,
+			Hash:             data.local.hash,
+			FileHashes:       hashes,
+			MinecraftVersion: data.local.minecraftVersion,
 		},
 	})
 	if err != nil {

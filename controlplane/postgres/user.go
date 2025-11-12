@@ -59,6 +59,7 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string) (resource.User, 
 
 	return ret, nil
 }
+
 func (db *DB) CreateUser(ctx context.Context, u resource.User) (resource.User, error) {
 	id, err := uuid.NewV7()
 	if err != nil {

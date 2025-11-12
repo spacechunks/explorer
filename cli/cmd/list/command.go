@@ -36,9 +36,9 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 			return fmt.Errorf("error while listing chunks: %w", err)
 		}
 
-		t := table.New("NAME", "DESCRIPTION", "TAGS", "ID")
+		t := table.New("NAME", "OWNER", "DESCRIPTION", "TAGS", "ID")
 		for _, c := range resp.Chunks {
-			t.AddRow(c.Name, c.Description, strings.Join(c.Tags, ","), c.Id)
+			t.AddRow(c.Name, c.Owner.Nickname, c.Description, strings.Join(c.Tags, ","), c.Id)
 		}
 		t.Print()
 

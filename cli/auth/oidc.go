@@ -74,7 +74,6 @@ func (svc OIDC) APIToken(ctx context.Context) (string, error) {
 		// now first check if our id token is still valid.
 		var idTok string
 		if err := validateToken(svc.state.IDToken); err != nil {
-			fmt.Println("GET ID TOKEN")
 			idTok, err = svc.getIDToken(ctx)
 			if err != nil {
 				return "", fmt.Errorf("id token: %w", err)
@@ -125,7 +124,7 @@ func (c expireEarlier) Now() time.Time {
 func validateToken(token string) error {
 	tok, err := jwt.ParseString(token, jwt.WithVerify(false))
 	if err != nil {
-		fmt.Println(err)
+		//fmt.Println(err) > debug log
 		return fmt.Errorf("parse api token: %w", err)
 	}
 
@@ -137,7 +136,7 @@ func validateToken(token string) error {
 	}
 
 	if err := jwt.Validate(tok, jwt.WithClock(c)); err != nil {
-		fmt.Println(err)
+		//fmt.Println(err) > debug log
 		return fmt.Errorf("validate api token: %w", err)
 	}
 
@@ -211,6 +210,7 @@ func (svc OIDC) runHTTPCallbackServer(
 
 		defer func() {
 			time.AfterFunc(5*time.Second, func() {
+				close(recv)
 				s.Close()
 			})
 			if err == nil {
@@ -251,7 +251,6 @@ func (svc OIDC) runHTTPCallbackServer(
 		recv <- callback{
 			idToken: idToken,
 		}
-		close(recv)
 	})
 
 	s.Handler = mux
