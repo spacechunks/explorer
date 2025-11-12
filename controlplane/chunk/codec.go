@@ -50,9 +50,11 @@ func ChunkToTransport(domain resource.Chunk) *chunkv1alpha1.Chunk {
 		}
 
 		flavors = append(flavors, &chunkv1alpha1.Flavor{
-			Id:       f.ID,
-			Name:     f.Name,
-			Versions: versions,
+			Id:        f.ID,
+			Name:      f.Name,
+			Versions:  versions,
+			CreatedAt: timestamppb.New(f.CreatedAt),
+			UpdatedAt: timestamppb.New(f.UpdatedAt),
 		})
 	}
 
