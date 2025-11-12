@@ -263,8 +263,7 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 
 	return &cobra.Command{
 		Use:          "publish",
-		Short:        "TBD",
-		Long:         "TBD",
+		Short:        "Publishes all updates found in your Chunk.",
 		RunE:         run,
 		SilenceUsage: true,
 	}

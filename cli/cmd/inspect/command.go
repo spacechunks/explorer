@@ -88,9 +88,10 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	}
 
 	return &cobra.Command{
-		Use:   "inspect",
-		Short: "Shows detailed information about a single Chunk",
-		RunE:  run,
+		Use:          "inspect",
+		Short:        "Shows detailed information about a single Chunk.",
+		RunE:         run,
+		SilenceUsage: true,
 	}
 }
 

@@ -75,8 +75,9 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	}
 
 	return &cobra.Command{
-		Use:   "run",
-		Short: "Run a Chunk flavor",
-		RunE:  run,
+		Use:          "run",
+		Short:        "Run a Chunk flavor. (THIS IS A DEVELOPMENT COMMAND AND WILL PROBABLY REMOVED LATER)",
+		RunE:         run,
+		SilenceUsage: true,
 	}
 }
