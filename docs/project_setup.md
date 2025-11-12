@@ -26,7 +26,7 @@ chunk:
       # The version of your flavor (25-character limit)
       version: v1
       # The Minecraft version your Flavor runs on
-      minecraft_version: 1.21.8
+      minecraftVersion: 1.21.8
       # The path to the directory where your Minecraft server
       # configuration lives. Currently, only Paper is supported.
       path: ./my_chunk/flavor1
@@ -75,11 +75,11 @@ chunk:
   flavors:
     - name: 8x1
       version: v1
-      minecraft_version: 1.21.8
+      minecraftVersion: 1.21.8
       path: ./8x1
     - name: 8x4
       version: v1
-      minecraft_version: 1.21.8
+      minecraftVersion: 1.21.8
       path: ./8x4
 ```
 
