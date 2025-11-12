@@ -329,7 +329,9 @@ func localFileHashes(flavorPath string) (string, []file.Hash, error) {
 			filepath.Join("libraries", ".*"),
 			filepath.Join("logs", ".*"),
 			filepath.Join("plugins", ".paper-remapped", ".*"),
-			"paper.*.jar",
+			// matches paper jars in the format of paper-<mc-version>-<build>.jar
+			// or just plain paper.jar
+			"(?:^|[\\\\/])paper(?:-\\d+(?:\\.\\d+)*-\\d+)?\\.jar$",
 		}
 	)
 
