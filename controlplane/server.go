@@ -209,11 +209,13 @@ func (s *Server) Stop() {
 
 func authInterceptor(logger *slog.Logger, signingKey *ecdsa.PrivateKey, issuer string) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		// we only need to check if it's the user server and login call.
-		// doing it like this, will not break anything if we change the
-		// version of the user api.
+		// these endpoints do not need authn/authz (as of now)
 		if strings.HasSuffix(info.FullMethod, "UserService/Register") ||
-			strings.HasSuffix(info.FullMethod, "UserService/Login") {
+			strings.HasSuffix(info.FullMethod, "UserService/Login") ||
+			strings.HasSuffix(info.FullMethod, "InstanceService/GetInstance") ||
+			strings.HasSuffix(info.FullMethod, "InstanceService/ListInstances") ||
+			strings.HasSuffix(info.FullMethod, "InstanceService/DiscoverInstances") ||
+			strings.HasSuffix(info.FullMethod, "InstanceService/ReceiveInstanceStatusReports") {
 			return handler(ctx, req)
 		}
 
