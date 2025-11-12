@@ -28,9 +28,9 @@ import (
 
 func Root(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	root := &cobra.Command{
-		Use:   "explorer",
-		Short: "TBD",
-		Long:  "TBD",
+		Use: "explorer",
+		Long: `A library of creations, where everyone can share their projects with the world.
+A place of discovery and play. All within a single unified system.`,
 	}
 
 	chunkCmd := newChunkCommand(ctx, cliCtx)

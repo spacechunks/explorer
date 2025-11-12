@@ -34,8 +34,7 @@ import (
 func newChunkCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "chunk",
-		Short: "TBD",
-		Long:  "TBD",
+		Short: "Commands related to working with Chunks.",
 	}
 	c.AddCommand(
 		requireAPIToken(ctx, cliCtx, publish.NewCommand),

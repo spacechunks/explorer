@@ -46,8 +46,9 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	}
 
 	return &cobra.Command{
-		Use:   "list",
-		Short: "List all available chunks",
-		RunE:  run,
+		Use:          "list",
+		Short:        "Lists available Chunks and displays the most relevant information.",
+		RunE:         run,
+		SilenceUsage: true,
 	}
 }
