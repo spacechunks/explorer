@@ -166,7 +166,7 @@ type Chunk struct {
 	Tags        []string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	Owner       *string
+	OwnerID     string
 }
 
 type Flavor struct {
@@ -208,7 +208,7 @@ type Instance struct {
 	State           InstanceState
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
-	Owner           *string
+	OwnerID         string
 }
 
 type MinecraftVersion struct {

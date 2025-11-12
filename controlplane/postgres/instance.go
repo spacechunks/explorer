@@ -37,7 +37,7 @@ func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID 
 		FlavorVersionID: ins.FlavorVersion.ID,
 		NodeID:          nodeID,
 		State:           query.InstanceState(ins.State),
-		Owner:           &ins.Owner.ID,
+		OwnerID:         ins.Owner.ID,
 		CreatedAt:       ins.CreatedAt,
 		UpdatedAt:       ins.UpdatedAt,
 	}

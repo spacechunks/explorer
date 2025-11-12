@@ -46,7 +46,7 @@ func (db *DB) CreateChunk(ctx context.Context, c resource.Chunk) (resource.Chunk
 		Name:        c.Name,
 		Description: c.Description,
 		Tags:        c.Tags,
-		Owner:       &c.Owner.ID,
+		OwnerID:     c.Owner.ID,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
