@@ -122,16 +122,18 @@ WHERE id = $3;
 
 -- name: ChunkOwnerByFlavorID :one
 SELECT u.* FROM users u
-    LEFT JOIN flavors f ON f.id = $1
-    LEFT JOIN chunks c ON c.id = f.chunk_id
-    LEFT JOIN users ON u.id = c.owner_id;
+    JOIN flavors f ON f.id = $1
+    JOIN chunks c ON c.id = f.chunk_id
+    JOIN users ON u.id = c.owner
+LIMIT 1;
 
 -- name: ChunkOwnerByFlavorVersionID :one
 SELECT u.* FROM users u
-    LEFT JOIN flavor_versions fv ON fv.id = $1
-    LEFT JOIN flavors f ON f.id = fv.flavor_id
-    LEFT JOIN chunks c ON c.id = f.chunk_id
-    LEFT JOIN users ON u.id = c.owner_id;
+    JOIN flavor_versions fv ON fv.id = $1
+    JOIN flavors f ON f.id = fv.flavor_id
+    JOIN chunks c ON c.id = f.chunk_id
+    JOIN users ON u.id = c.owner
+LIMIT 1;
 
 /*
  * BLOB STORE
