@@ -257,6 +257,7 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 
 		// have to re-draw again, because we clear the line in Wait
 		display(updates)
+		fmt.Println()
 
 		return nil
 	}

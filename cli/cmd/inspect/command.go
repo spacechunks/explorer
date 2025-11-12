@@ -57,6 +57,7 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 		chunkData := cli.Section()
 		chunkData.AddRow("ID: ", found.Id)
 		chunkData.AddRow("Name: ", found.Name)
+		chunkData.AddRow("Owner: ", found.Owner.Nickname)
 		chunkData.AddRow("Description: ", found.Description)
 		chunkData.AddRow("Tags: ", strings.Join(found.Tags, ","))
 		chunkData.AddRow("Created at: ", fmtTime(found.CreatedAt))

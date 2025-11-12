@@ -211,6 +211,7 @@ func (svc OIDC) runHTTPCallbackServer(
 
 		defer func() {
 			time.AfterFunc(5*time.Second, func() {
+				close(recv)
 				s.Close()
 			})
 			if err == nil {
@@ -251,7 +252,6 @@ func (svc OIDC) runHTTPCallbackServer(
 		recv <- callback{
 			idToken: idToken,
 		}
-		close(recv)
 	})
 
 	s.Handler = mux
