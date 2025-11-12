@@ -46,7 +46,11 @@ func newChunkCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	return c
 }
 
-func requireAPIToken(ctx context.Context, cliCtx cli.Context, fn func(context.Context, cli.Context) *cobra.Command) *cobra.Command {
+func requireAPIToken(
+	ctx context.Context,
+	cliCtx cli.Context,
+	fn func(context.Context, cli.Context) *cobra.Command,
+) *cobra.Command {
 	cmd := fn(ctx, cliCtx)
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		tok, err := cliCtx.Auth.APIToken(ctx)

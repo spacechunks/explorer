@@ -114,11 +114,13 @@ func (svc OIDC) IDToken(ctx context.Context) (string, error) {
 	return tok, nil
 }
 
-//type clock struct{}
-//
-//func (c clock) Now() time.Time {
-//	return time.Now().Add(5 * time.Minute)
-//}
+type expireEarlier struct {
+	dur time.Duration
+}
+
+func (c expireEarlier) Now() time.Time {
+	return time.Now().Add(c.dur)
+}
 
 func validateToken(token string) error {
 	tok, err := jwt.ParseString(token, jwt.WithVerify(false))
@@ -127,7 +129,14 @@ func validateToken(token string) error {
 		return fmt.Errorf("parse api token: %w", err)
 	}
 
-	if err := jwt.Validate(tok); err != nil {
+	// we want to expire the token a bit earlier to avoid the edge
+	// case where the token is still valid on the users machine, but
+	// while sending it to the control plane it expires.
+	c := &expireEarlier{
+		dur: 5 * time.Minute,
+	}
+
+	if err := jwt.Validate(tok, jwt.WithClock(c)); err != nil {
 		fmt.Println(err)
 		return fmt.Errorf("validate api token: %w", err)
 	}
