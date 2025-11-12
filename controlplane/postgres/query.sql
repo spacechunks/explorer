@@ -11,7 +11,7 @@ SELECT * FROM nodes ORDER BY random() LIMIT 1;
 
 -- name: CreateChunk :exec
 INSERT INTO chunks
-    (id, name, description, tags, owner, created_at, updated_at)
+    (id, name, description, tags, owner_id, created_at, updated_at)
 VALUES
     ($1, $2, $3, $4, $5, $6, $7);
 
@@ -21,7 +21,7 @@ SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-    LEFT JOIN users u ON u.id = c.owner
+    LEFT JOIN users u ON u.id = c.owner_id
 WHERE c.id = $1;
 
 -- name: UpdateChunk :exec
@@ -44,12 +44,12 @@ SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-    LEFT JOIN users u ON u.id = c.owner;
+    LEFT JOIN users u ON u.id = c.owner_id;
 
 
 -- name: ChunkOwnerByChunkID :one
 SELECT u.* FROM users u
-    LEFT JOIN chunks c ON c.owner = u.id
+    LEFT JOIN chunks c ON c.owner_id = u.id
 WHERE c.id = $1;
 
 /*
@@ -154,7 +154,7 @@ SELECT * FROM blobs WHERE hash = $1;
 
 -- name: CreateInstance :exec
 INSERT INTO instances
-    (id, chunk_id, flavor_version_id, node_id, state, owner, created_at, updated_at)
+    (id, chunk_id, flavor_version_id, node_id, state, owner_id, created_at, updated_at)
 VALUES
     ($1, $2, $3, $4, $5, $6, $7, $8);
 
@@ -164,7 +164,7 @@ SELECT * FROM instances i
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
-    JOIN users u ON u.id = i.owner;
+    JOIN users u ON u.id = i.owner_id;
 
 -- name: GetInstance :many
 SELECT * FROM instances i
@@ -172,7 +172,7 @@ SELECT * FROM instances i
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
-    JOIN users u ON u.id = i.owner
+    JOIN users u ON u.id = i.owner_id
 WHERE i.id = $1;
 
 -- name: GetInstancesByNodeID :many
@@ -180,7 +180,7 @@ SELECT * FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
-    JOIN users u ON u.id = i.owner
+    JOIN users u ON u.id = i.owner_id
 WHERE i.node_id = $1;
 
 -- name: BulkUpdateInstanceStateAndPort :batchexec

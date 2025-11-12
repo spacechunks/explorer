@@ -104,7 +104,7 @@ CREATE TABLE public.chunks (
     tags character varying(25)[] NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    owner uuid
+    owner_id uuid NOT NULL
 );
 
 
@@ -166,7 +166,7 @@ CREATE TABLE public.instances (
     state public.instance_state DEFAULT 'PENDING'::public.instance_state NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    owner uuid
+    owner_id uuid NOT NULL
 );
 
 
@@ -461,6 +461,14 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: users users_nickname_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_nickname_key UNIQUE (nickname);
+
+
+--
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -522,7 +530,7 @@ CREATE UNIQUE INDEX river_job_unique_idx ON public.river_job USING btree (unique
 --
 
 ALTER TABLE ONLY public.chunks
-    ADD CONSTRAINT chunks_owner_fkey FOREIGN KEY (owner) REFERENCES public.users(id);
+    ADD CONSTRAINT chunks_owner_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id);
 
 
 --
@@ -586,7 +594,7 @@ ALTER TABLE ONLY public.instances
 --
 
 ALTER TABLE ONLY public.instances
-    ADD CONSTRAINT instances_owner_fkey FOREIGN KEY (owner) REFERENCES public.users(id);
+    ADD CONSTRAINT instances_owner_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id);
 
 
 --
@@ -615,4 +623,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20251101155256'),
     ('20251101180433'),
     ('20251101204811'),
-    ('20251105222512');
+    ('20251105222512'),
+    ('20251112170710'),
+    ('20251112171323');

@@ -57,7 +57,7 @@ func (q *Queries) ChunkExists(ctx context.Context, id string) (bool, error) {
 
 const chunkOwnerByChunkID = `-- name: ChunkOwnerByChunkID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
-    LEFT JOIN chunks c ON c.owner = u.id
+    LEFT JOIN chunks c ON c.owner_id = u.id
 WHERE c.id = $1
 `
 
@@ -76,10 +76,9 @@ func (q *Queries) ChunkOwnerByChunkID(ctx context.Context, id string) (User, err
 
 const chunkOwnerByFlavorID = `-- name: ChunkOwnerByFlavorID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
-    JOIN flavors f ON f.id = $1
-    JOIN chunks c ON c.id = f.chunk_id
-    JOIN users ON u.id = c.owner
-LIMIT 1
+    LEFT JOIN flavors f ON f.id = $1
+    LEFT JOIN chunks c ON c.id = f.chunk_id
+    LEFT JOIN users ON u.id = c.owner_id
 `
 
 func (q *Queries) ChunkOwnerByFlavorID(ctx context.Context, id string) (User, error) {
@@ -97,11 +96,10 @@ func (q *Queries) ChunkOwnerByFlavorID(ctx context.Context, id string) (User, er
 
 const chunkOwnerByFlavorVersionID = `-- name: ChunkOwnerByFlavorVersionID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
-    JOIN flavor_versions fv ON fv.id = $1
-    JOIN flavors f ON f.id = fv.flavor_id
-    JOIN chunks c ON c.id = f.chunk_id
-    JOIN users ON u.id = c.owner
-LIMIT 1
+    LEFT JOIN flavor_versions fv ON fv.id = $1
+    LEFT JOIN flavors f ON f.id = fv.flavor_id
+    LEFT JOIN chunks c ON c.id = f.chunk_id
+    LEFT JOIN users ON u.id = c.owner_id
 `
 
 func (q *Queries) ChunkOwnerByFlavorVersionID(ctx context.Context, id string) (User, error) {
@@ -123,7 +121,7 @@ const createChunk = `-- name: CreateChunk :exec
  */
 
 INSERT INTO chunks
-    (id, name, description, tags, owner, created_at, updated_at)
+    (id, name, description, tags, owner_id, created_at, updated_at)
 VALUES
     ($1, $2, $3, $4, $5, $6, $7)
 `
@@ -133,7 +131,7 @@ type CreateChunkParams struct {
 	Name        string
 	Description string
 	Tags        []string
-	Owner       *string
+	OwnerID     string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -144,7 +142,7 @@ func (q *Queries) CreateChunk(ctx context.Context, arg CreateChunkParams) error 
 		arg.Name,
 		arg.Description,
 		arg.Tags,
-		arg.Owner,
+		arg.OwnerID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -220,7 +218,7 @@ const createInstance = `-- name: CreateInstance :exec
  */
 
 INSERT INTO instances
-    (id, chunk_id, flavor_version_id, node_id, state, owner, created_at, updated_at)
+    (id, chunk_id, flavor_version_id, node_id, state, owner_id, created_at, updated_at)
 VALUES
     ($1, $2, $3, $4, $5, $6, $7, $8)
 `
@@ -231,7 +229,7 @@ type CreateInstanceParams struct {
 	FlavorVersionID string
 	NodeID          string
 	State           InstanceState
-	Owner           *string
+	OwnerID         string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -243,7 +241,7 @@ func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) 
 		arg.FlavorVersionID,
 		arg.NodeID,
 		arg.State,
-		arg.Owner,
+		arg.OwnerID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -417,11 +415,11 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 }
 
 const getChunkByID = `-- name: GetChunkByID :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-    LEFT JOIN users u ON u.id = c.owner
+    LEFT JOIN users u ON u.id = c.owner_id
 WHERE c.id = $1
 `
 
@@ -432,7 +430,7 @@ type GetChunkByIDRow struct {
 	Tags                   []string
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
-	Owner                  *string
+	OwnerID                string
 	ID_2                   *string
 	ChunkID                *string
 	Name_2                 pgtype.Text
@@ -478,7 +476,7 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 			&i.Tags,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Owner,
+			&i.OwnerID,
 			&i.ID_2,
 			&i.ChunkID,
 			&i.Name_2,
@@ -517,12 +515,12 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 }
 
 const getInstance = `-- name: GetInstance :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
-    JOIN users u ON u.id = i.owner
+    JOIN users u ON u.id = i.owner_id
 WHERE i.id = $1
 `
 
@@ -535,7 +533,7 @@ type GetInstanceRow struct {
 	State                  InstanceState
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
-	Owner                  *string
+	OwnerID                string
 	ID_2                   string
 	FlavorID               string
 	Hash                   string
@@ -554,7 +552,7 @@ type GetInstanceRow struct {
 	Tags                   []string
 	CreatedAt_3            time.Time
 	UpdatedAt_2            time.Time
-	Owner_2                *string
+	OwnerID_2              string
 	ID_4                   string
 	ChunkID_2              string
 	Name_2                 string
@@ -590,7 +588,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Owner,
+			&i.OwnerID,
 			&i.ID_2,
 			&i.FlavorID,
 			&i.Hash,
@@ -609,7 +607,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.Tags,
 			&i.CreatedAt_3,
 			&i.UpdatedAt_2,
-			&i.Owner_2,
+			&i.OwnerID_2,
 			&i.ID_4,
 			&i.ChunkID_2,
 			&i.Name_2,
@@ -637,11 +635,11 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 }
 
 const getInstancesByNodeID = `-- name: GetInstancesByNodeID :many
-SELECT i.id, chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
+SELECT i.id, chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
-    JOIN users u ON u.id = i.owner
+    JOIN users u ON u.id = i.owner_id
 WHERE i.node_id = $1
 `
 
@@ -654,7 +652,7 @@ type GetInstancesByNodeIDRow struct {
 	State                  InstanceState
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
-	Owner                  *string
+	OwnerID                string
 	ID_2                   string
 	FlavorID               string
 	Hash                   string
@@ -673,7 +671,7 @@ type GetInstancesByNodeIDRow struct {
 	Tags                   []string
 	CreatedAt_3            time.Time
 	UpdatedAt_2            time.Time
-	Owner_2                *string
+	OwnerID_2              string
 	ID_4                   string
 	Name_2                 string
 	Address                netip.Addr
@@ -704,7 +702,7 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Owner,
+			&i.OwnerID,
 			&i.ID_2,
 			&i.FlavorID,
 			&i.Hash,
@@ -723,7 +721,7 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 			&i.Tags,
 			&i.CreatedAt_3,
 			&i.UpdatedAt_2,
-			&i.Owner_2,
+			&i.OwnerID_2,
 			&i.ID_4,
 			&i.Name_2,
 			&i.Address,
@@ -771,11 +769,11 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 }
 
 const listChunks = `-- name: ListChunks :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, f.id, chunk_id, f.name, f.created_at, f.updated_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-    LEFT JOIN users u ON u.id = c.owner
+    LEFT JOIN users u ON u.id = c.owner_id
 `
 
 type ListChunksRow struct {
@@ -785,7 +783,7 @@ type ListChunksRow struct {
 	Tags                   []string
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
-	Owner                  *string
+	OwnerID                string
 	ID_2                   *string
 	ChunkID                *string
 	Name_2                 pgtype.Text
@@ -830,7 +828,7 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 			&i.Tags,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Owner,
+			&i.OwnerID,
 			&i.ID_2,
 			&i.ChunkID,
 			&i.Name_2,
@@ -942,12 +940,12 @@ func (q *Queries) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]L
 }
 
 const listInstances = `-- name: ListInstances :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
-    JOIN users u ON u.id = i.owner
+    JOIN users u ON u.id = i.owner_id
 `
 
 type ListInstancesRow struct {
@@ -959,7 +957,7 @@ type ListInstancesRow struct {
 	State                  InstanceState
 	CreatedAt              time.Time
 	UpdatedAt              time.Time
-	Owner                  *string
+	OwnerID                string
 	ID_2                   string
 	FlavorID               string
 	Hash                   string
@@ -978,7 +976,7 @@ type ListInstancesRow struct {
 	Tags                   []string
 	CreatedAt_3            time.Time
 	UpdatedAt_2            time.Time
-	Owner_2                *string
+	OwnerID_2              string
 	ID_4                   string
 	ChunkID_2              string
 	Name_2                 string
@@ -1014,7 +1012,7 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 			&i.State,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Owner,
+			&i.OwnerID,
 			&i.ID_2,
 			&i.FlavorID,
 			&i.Hash,
@@ -1033,7 +1031,7 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 			&i.Tags,
 			&i.CreatedAt_3,
 			&i.UpdatedAt_2,
-			&i.Owner_2,
+			&i.OwnerID_2,
 			&i.ID_4,
 			&i.ChunkID_2,
 			&i.Name_2,
