@@ -76,9 +76,10 @@ func (q *Queries) ChunkOwnerByChunkID(ctx context.Context, id string) (User, err
 
 const chunkOwnerByFlavorID = `-- name: ChunkOwnerByFlavorID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
-    LEFT JOIN flavors f ON f.id = $1
-    LEFT JOIN chunks c ON c.id = f.chunk_id
-    LEFT JOIN users ON u.id = c.owner
+    JOIN flavors f ON f.id = $1
+    JOIN chunks c ON c.id = f.chunk_id
+    JOIN users ON u.id = c.owner
+LIMIT 1
 `
 
 func (q *Queries) ChunkOwnerByFlavorID(ctx context.Context, id string) (User, error) {
@@ -96,10 +97,11 @@ func (q *Queries) ChunkOwnerByFlavorID(ctx context.Context, id string) (User, er
 
 const chunkOwnerByFlavorVersionID = `-- name: ChunkOwnerByFlavorVersionID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
-    LEFT JOIN flavor_versions fv ON fv.id = $1
-    LEFT JOIN flavors f ON f.id = fv.flavor_id
-    LEFT JOIN chunks c ON c.id = f.chunk_id
-    LEFT JOIN users ON u.id = c.owner
+    JOIN flavor_versions fv ON fv.id = $1
+    JOIN flavors f ON f.id = fv.flavor_id
+    JOIN chunks c ON c.id = f.chunk_id
+    JOIN users ON u.id = c.owner
+LIMIT 1
 `
 
 func (q *Queries) ChunkOwnerByFlavorVersionID(ctx context.Context, id string) (User, error) {
