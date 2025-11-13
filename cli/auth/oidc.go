@@ -80,6 +80,10 @@ func (svc OIDC) APIToken(ctx context.Context) (string, error) {
 			}
 		}
 
+		svc.state.Update(state.Data{
+			IDToken: idTok,
+		})
+
 		// get our api token with the still valid or recently renewed id token
 		apiTok, err := svc.getAPIToken(ctx, svc.state.IDToken)
 		if err != nil {
@@ -88,7 +92,6 @@ func (svc OIDC) APIToken(ctx context.Context) (string, error) {
 
 		svc.state.Update(state.Data{
 			ControlPlaneAPIToken: apiTok,
-			IDToken:              idTok,
 		})
 	}
 

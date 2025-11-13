@@ -150,14 +150,18 @@ func (f localFlavor) fileDiff(apiHashes []*chunkv1alpha1.FileHashes) ([]file.Has
 
 func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	run := func(cmd *cobra.Command, args []string) error {
-		data, err := os.ReadFile(configName)
+		path, err := cmd.Flags().GetString("file")
 		if err != nil {
-			return fmt.Errorf("couldn't read config file: %w", err)
+			return fmt.Errorf("file flag: %w", err)
 		}
 
-		var cfg publishConfig
-		if err := yaml.Unmarshal(data, &cfg); err != nil {
-			return fmt.Errorf("couldn't parse config file: %w", err)
+		if path == "" {
+			path = ".chunk.yaml"
+		}
+
+		cfg, err := readConfigWithResolvedPaths(path)
+		if err != nil {
+			return fmt.Errorf("read config: %w", err)
 		}
 
 		// TODO: get chunk by name
@@ -418,4 +422,34 @@ func prompt(label string) bool {
 			return false
 		}
 	}
+}
+
+func readConfigWithResolvedPaths(path string) (publishConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return publishConfig{}, fmt.Errorf("couldn't read config file: %w", err)
+	}
+
+	var cfg publishConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return publishConfig{}, fmt.Errorf("couldn't parse config file: %w", err)
+	}
+
+	// resolve to absolute paths, because publish could be called from
+	// anywhere in the filesystem and flavor paths _could_ be relative
+	// to the directory where the .chunk.yaml lives.
+	for idx, f := range cfg.Chunk.Flavors {
+		if filepath.IsAbs(f.Path) {
+			continue
+		}
+
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return publishConfig{}, fmt.Errorf("abs: %w", err)
+		}
+
+		cfg.Chunk.Flavors[idx].Path = filepath.Join(filepath.Dir(abs), f.Path)
+	}
+
+	return cfg, nil
 }

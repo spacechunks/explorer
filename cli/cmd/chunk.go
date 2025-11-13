@@ -36,8 +36,12 @@ func newChunkCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 		Use:   "chunk",
 		Short: "Commands related to working with Chunks.",
 	}
+
+	publishCmd := requireAPIToken(ctx, cliCtx, publish.NewCommand)
+	publishCmd.Flags().StringP("file", "f", "", "Path to the chunk config file")
+
 	c.AddCommand(
-		requireAPIToken(ctx, cliCtx, publish.NewCommand),
+		publishCmd,
 		requireAPIToken(ctx, cliCtx, run.NewCommand),
 		requireAPIToken(ctx, cliCtx, list.NewCommand),
 		requireAPIToken(ctx, cliCtx, inspect.NewCommand),
