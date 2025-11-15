@@ -44,15 +44,14 @@ func NewOIDC(
 	clientID string,
 	issuerEndpoint string,
 	client userv1alpha1.UserServiceClient,
-) (*OIDC, error) {
-
+) *OIDC {
 	return &OIDC{
 		logger:         logger,
 		issuerEndpoint: issuerEndpoint,
 		clientID:       clientID,
 		state:          state,
 		userClient:     client,
-	}, nil
+	}
 }
 
 type OIDC struct {
