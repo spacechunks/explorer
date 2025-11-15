@@ -127,14 +127,17 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 func (s *svc) RemoveWorkload(ctx context.Context, id string) error {
 	s.logger.InfoContext(ctx, "removing workload", "workload_id", id)
 	// FIXME: stop container of pod first then call stop sandbox.
-	//        calling stop sandbox should also remove the stopped
-	//        container.
 	if _, err := s.criService.StopPodSandbox(ctx, &runtimev1.StopPodSandboxRequest{
 		PodSandboxId: id,
 	}); err != nil {
 		return fmt.Errorf("stop pod sandbox: %w", err)
 	}
 
+	if _, err := s.criService.RemovePodSandbox(ctx, &runtimev1.RemovePodSandboxRequest{
+		PodSandboxId: id,
+	}); err != nil {
+		return fmt.Errorf("remove pod sandbox: %w", err)
+	}
 	return nil
 }
 

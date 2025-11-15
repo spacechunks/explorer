@@ -161,6 +161,12 @@ func TestRemoveWorkload(t *testing.T) {
 		}).
 		Return(&runtimev1.StopPodSandboxResponse{}, nil)
 
+	mockCRIService.EXPECT().
+		RemovePodSandbox(ctx, &runtimev1.StopPodSandboxRequest{
+			PodSandboxId: wlID,
+		}).
+		Return(&runtimev1.RemovePodSandboxResponse{}, nil)
+
 	require.NoError(t, svc.RemoveWorkload(ctx, wlID))
 }
 
