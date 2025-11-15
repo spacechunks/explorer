@@ -66,6 +66,7 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 		db   = os.Getenv("FUNCTESTS_POSTGRES_DB")
 	)
 
+	testcontainers.ReadConfig()
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
 			Name:         "functests-db-" + test.RandHexStr(t),
@@ -79,7 +80,9 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 			HostConfigModifier: func(cfg *container.HostConfig) {
 				cfg.AutoRemove = true
 			},
-			WaitingFor: wait.ForExposedPort(),
+			WaitingFor: wait.ForLog(".*database system is ready to accept connections.*").
+				AsRegexp().
+				WithPollInterval(1 * time.Second),
 		},
 		Started: true,
 	})
