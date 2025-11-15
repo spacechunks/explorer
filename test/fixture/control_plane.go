@@ -39,7 +39,6 @@ import (
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane"
 	"github.com/spacechunks/explorer/controlplane/resource"
-	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -95,16 +94,6 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 
 	c.Postgres.Run(t, ctx)
 	c.IDP.Run(t)
-
-	// the default users main purpose at the moment is, multiple users
-	// being in the database when testing (the default user + user created
-	// by the test itself). we need this, because there was a bug where a
-	// query returned the wrong result when multiple users were present. this
-	// bug went undiscovered until later manual testing.
-	c.Postgres.CreateUser(t, ptr.Pointer(User(func(tmp *resource.User) {
-		tmp.Nickname = "defaul-user"
-		tmp.Email = "default-user@example.com"
-	})))
 
 	defaultOpts := ControlPlaneRunOptions{
 		OCIRegistryEndpoint: "http://localhost:5000",

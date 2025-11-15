@@ -40,6 +40,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/image"
+	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -110,6 +111,16 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	// seed data that is globally needed
 	_, err = pool.Exec(ctx, `INSERT INTO minecraft_versions (version) VALUES ($1)`, MinecraftVersion)
 	require.NoError(t, err)
+
+	// the default users main purpose at the moment is, multiple users
+	// being in the database when testing (the default user + user created
+	// by the test itself). we need this, because there was a bug where a
+	// query returned the wrong result when multiple users were present. this
+	// bug went undiscovered until later manual testing.
+	p.CreateUser(t, ptr.Pointer(User(func(tmp *resource.User) {
+		tmp.Nickname = "defaul-user"
+		tmp.Email = "default-user@example.com"
+	})))
 
 	p.Pool = pool
 	p.DB = postgres.NewDB(p.logger, pool)
