@@ -65,19 +65,20 @@ func main() {
 
 	userClient := userv1alpha1.NewUserServiceClient(conn)
 
-	oidcAuth, err := auth.NewOIDC(logger, &stateData, cfg.IDPClientID, cfg.IDPIssuerEndpoint, userClient)
-	if err != nil {
-		die("Failed to create Microsoft auth service", err)
-	}
-
 	var (
 		cliCtx = cli.Context{
 			Config:         cfg,
 			Client:         chunkv1alpha1.NewChunkServiceClient(conn),
 			InstanceClient: instancev1alpha1.NewInstanceServiceClient(conn),
 			UserClient:     userClient,
-			Auth:           oidcAuth,
-			State:          stateData,
+			Auth: auth.NewOIDC(
+				logger,
+				&stateData,
+				cfg.IDPClientID,
+				cfg.IDPIssuerEndpoint,
+				userv1alpha1.NewUserServiceClient(conn),
+			),
+			State: stateData,
 		}
 	)
 
