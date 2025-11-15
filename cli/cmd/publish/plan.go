@@ -21,6 +21,7 @@ package publish
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"slices"
 	"strings"
@@ -127,7 +128,7 @@ type plan struct {
 	conflicts      []conflict
 }
 
-func newPlan(cfg publishConfig, supportedVersions []string, chunk *chunkv1alpha1.Chunk) plan {
+func newPlan(logger *slog.Logger, cfg publishConfig, supportedVersions []string, chunk *chunkv1alpha1.Chunk) plan {
 	p := plan{}
 
 	for _, f := range cfg.Chunk.Flavors {
@@ -154,7 +155,7 @@ func newPlan(cfg publishConfig, supportedVersions []string, chunk *chunkv1alpha1
 			continue
 		}
 
-		hash, fileHashes, err := localFileHashes(f.Path)
+		hash, fileHashes, err := localFileHashes(logger, f.Path)
 		if err != nil {
 			p.conflicts = append(p.conflicts, errorConflict{
 				flavor: local,

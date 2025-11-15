@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -37,8 +38,6 @@ import (
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spf13/cobra"
 )
-
-const configName = ".chunk.yaml"
 
 type publishConfig struct {
 	Version string      `json:"version"`
@@ -189,7 +188,7 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 			return fmt.Errorf("get minecraft versions: %w", err)
 		}
 
-		plan := newPlan(cfg, resp.Versions, chunk)
+		plan := newPlan(cliCtx.Logger, cfg, resp.Versions, chunk)
 		plan.print()
 
 		if len(plan.addedFlavors)+len(plan.changedFlavors)+len(plan.actionables) == 0 {
@@ -324,7 +323,7 @@ func findChunk(ctx context.Context, c chunkv1alpha1.ChunkServiceClient, name str
 	return nil, nil
 }
 
-func localFileHashes(flavorPath string) (string, []file.Hash, error) {
+func localFileHashes(logger *slog.Logger, flavorPath string) (string, []file.Hash, error) {
 	var (
 		fileHashes = make([]file.Hash, 0)
 		excluded   = []string{
@@ -354,8 +353,8 @@ func localFileHashes(flavorPath string) (string, []file.Hash, error) {
 			if err != nil {
 				return fmt.Errorf("error while matching pattern %s: %w", p, err)
 			}
-			// TODO: debug log excluded files
 			if matched {
+				logger.Debug("skipping excluded file", "path", path, "regex", p)
 				return nil
 			}
 		}
@@ -383,6 +382,8 @@ func localFileHashes(flavorPath string) (string, []file.Hash, error) {
 		if err != nil {
 			return fmt.Errorf("error while computing hash: %w", err)
 		}
+
+		logger.Debug("using file", "path", path, "rel", rel, "hash", hash)
 
 		// use file hashes here, so we don't have to keep the whole files content in ram.
 		// we'll read the content later again, when uploading the files to the server.
@@ -427,12 +428,12 @@ func prompt(label string) bool {
 func readConfigWithResolvedPaths(path string) (publishConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return publishConfig{}, fmt.Errorf("couldn't read config file: %w", err)
+		return publishConfig{}, fmt.Errorf("read config file: %w", err)
 	}
 
 	var cfg publishConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return publishConfig{}, fmt.Errorf("couldn't parse config file: %w", err)
+		return publishConfig{}, fmt.Errorf("parse config file: %w", err)
 	}
 
 	// resolve to absolute paths, because publish could be called from
