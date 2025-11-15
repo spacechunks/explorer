@@ -21,6 +21,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -38,42 +39,36 @@ type Service interface {
 }
 
 func NewOIDC(
-	ctx context.Context,
+	logger *slog.Logger,
 	state *state.Data,
 	clientID string,
 	issuerEndpoint string,
 	client userv1alpha1.UserServiceClient,
 ) (*OIDC, error) {
-	provider, err := oidc.NewProvider(ctx, issuerEndpoint)
-	if err != nil {
-		return nil, err
-	}
 
 	return &OIDC{
-		provider: provider,
-		tokenVerifier: provider.Verifier(&oidc.Config{
-			ClientID: clientID,
-		}),
-		clientID:   clientID,
-		state:      state,
-		userClient: client,
+		logger:         logger,
+		issuerEndpoint: issuerEndpoint,
+		clientID:       clientID,
+		state:          state,
+		userClient:     client,
 	}, nil
 }
 
 type OIDC struct {
-	provider      *oidc.Provider
-	tokenVerifier *oidc.IDTokenVerifier
-	userClient    userv1alpha1.UserServiceClient
-	clientID      string
-	state         *state.Data
+	logger         *slog.Logger
+	issuerEndpoint string
+	userClient     userv1alpha1.UserServiceClient
+	clientID       string
+	state          *state.Data
 }
 
 func (svc OIDC) APIToken(ctx context.Context) (string, error) {
-	if err := validateToken(svc.state.ControlPlaneAPIToken); err != nil {
+	if err := svc.validateToken(svc.state.ControlPlaneAPIToken); err != nil {
 		// the api token is not valid, so we need a new one.
 		// now first check if our id token is still valid.
 		var idTok string
-		if err := validateToken(svc.state.IDToken); err != nil {
+		if err := svc.validateToken(svc.state.IDToken); err != nil {
 			idTok, err = svc.getIDToken(ctx)
 			if err != nil {
 				return "", fmt.Errorf("id token: %w", err)
@@ -124,11 +119,17 @@ func (c expireEarlier) Now() time.Time {
 	return time.Now().Add(c.dur)
 }
 
-func validateToken(token string) error {
+func (svc OIDC) validateToken(token string) error {
+	// we don't only need to return the errors, in order to know
+	// that parsing or validation went wrong. we are not really
+	// interested in propagating the error up, so we just return
+	// err without giving extra context using fmt.Errorf like how
+	// it's usually done in this codebase.
+
 	tok, err := jwt.ParseString(token, jwt.WithVerify(false))
 	if err != nil {
-		//fmt.Println(err) > debug log
-		return fmt.Errorf("parse api token: %w", err)
+		svc.logger.Debug("error parsing jwt", "err", err)
+		return err
 	}
 
 	// we want to expire the token a bit earlier to avoid the edge
@@ -139,8 +140,8 @@ func validateToken(token string) error {
 	}
 
 	if err := jwt.Validate(tok, jwt.WithClock(c)); err != nil {
-		//fmt.Println(err) > debug log
-		return fmt.Errorf("validate api token: %w", err)
+		svc.logger.Debug("error validating jwt", "err", err)
+		return err
 	}
 
 	return nil
@@ -157,21 +158,29 @@ func (svc OIDC) getAPIToken(ctx context.Context, idToken string) (string, error)
 }
 
 func (svc OIDC) getIDToken(ctx context.Context) (string, error) {
+	provider, err := oidc.NewProvider(ctx, svc.issuerEndpoint)
+	if err != nil {
+		return "", fmt.Errorf("provider: %w", err)
+	}
+
 	var (
 		cfg = oauth2.Config{
 			ClientID:    svc.clientID,
 			RedirectURL: "http://localhost:8556",
-			Endpoint:    svc.provider.Endpoint(),
+			Endpoint:    provider.Endpoint(),
 			Scopes:      []string{oidc.ScopeOpenID, "profile", "email", "offline_access"},
 		}
-		verifier   = oauth2.GenerateVerifier()
-		stateParam = oauth2.GenerateVerifier()
+		verifier      = oauth2.GenerateVerifier()
+		stateParam    = oauth2.GenerateVerifier()
+		tokenVerifier = provider.Verifier(&oidc.Config{
+			ClientID: svc.clientID,
+		})
 	)
 
 	recv := make(chan callback)
 
 	go func() {
-		if err := svc.runHTTPCallbackServer(ctx, cfg, stateParam, verifier, recv); err != nil {
+		if err := svc.runHTTPCallbackServer(ctx, cfg, stateParam, verifier, tokenVerifier, recv); err != nil {
 			fmt.Println("Error running http callback server:", err)
 		}
 	}()
@@ -199,6 +208,7 @@ func (svc OIDC) runHTTPCallbackServer(
 	cfg oauth2.Config,
 	state string,
 	verifier string,
+	tokenVerifier *oidc.IDTokenVerifier,
 	recv chan callback,
 ) error {
 	var (
@@ -213,8 +223,8 @@ func (svc OIDC) runHTTPCallbackServer(
 
 		defer func() {
 			time.AfterFunc(5*time.Second, func() {
-				close(recv)
 				s.Close()
+				close(recv)
 			})
 			if err == nil {
 				return
@@ -244,7 +254,7 @@ func (svc OIDC) runHTTPCallbackServer(
 			return
 		}
 
-		_, err = svc.tokenVerifier.Verify(ctx, idToken)
+		_, err = tokenVerifier.Verify(ctx, idToken)
 		if err != nil {
 			err = fmt.Errorf("failed to verify id token: %v", err)
 			return

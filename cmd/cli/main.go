@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -40,7 +41,10 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	var (
+		ctx    = context.Background()
+		logger = newLogger()
+	)
 
 	cfg, err := createOrReadConfig()
 	if err != nil {
@@ -61,13 +65,13 @@ func main() {
 
 	userClient := userv1alpha1.NewUserServiceClient(conn)
 
-	oidcAuth, err := auth.NewOIDC(ctx, &stateData, cfg.IDPClientID, cfg.IDPIssuerEndpoint, userClient)
+	oidcAuth, err := auth.NewOIDC(ctx, logger, &stateData, cfg.IDPClientID, cfg.IDPIssuerEndpoint, userClient)
 	if err != nil {
 		die("Failed to create Microsoft auth service", err)
 	}
 
 	var (
-		cliContext = cli.Context{
+		cliCtx = cli.Context{
 			Config:         cfg,
 			Client:         chunkv1alpha1.NewChunkServiceClient(conn),
 			InstanceClient: instancev1alpha1.NewInstanceServiceClient(conn),
@@ -77,7 +81,7 @@ func main() {
 		}
 	)
 
-	if err := clicmd.Root(ctx, cliContext).Execute(); err != nil {
+	if err := clicmd.Root(ctx, cliCtx).Execute(); err != nil {
 		os.Exit(1)
 	}
 }
@@ -107,4 +111,14 @@ func createOrReadConfig() (state.Config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+func newLogger() *slog.Logger {
+	level := slog.LevelInfo
+	if os.Getenv("EXPLORER_DEBUG") == "true" {
+		level = slog.LevelDebug
+	}
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	}))
 }

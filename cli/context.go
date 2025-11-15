@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"log/slog"
+
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
@@ -9,6 +11,7 @@ import (
 )
 
 type Context struct {
+	Logger         *slog.Logger
 	Config         state.Config
 	State          state.Data
 	Client         chunkv1alpha1.ChunkServiceClient
