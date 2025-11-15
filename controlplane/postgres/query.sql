@@ -124,7 +124,7 @@ WHERE id = $3;
 SELECT u.* FROM users u
     JOIN flavors f ON f.id = $1
     JOIN chunks c ON c.id = f.chunk_id
-    JOIN users ON u.id = c.owner
+    JOIN users ON u.id = c.owner_id
 LIMIT 1;
 
 -- name: ChunkOwnerByFlavorVersionID :one
@@ -132,7 +132,7 @@ SELECT u.* FROM users u
     JOIN flavor_versions fv ON fv.id = $1
     JOIN flavors f ON f.id = fv.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
-    JOIN users ON u.id = c.owner
+    JOIN users ON u.id = c.owner_id
 LIMIT 1;
 
 /*
