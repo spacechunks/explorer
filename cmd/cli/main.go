@@ -65,7 +65,7 @@ func main() {
 
 	userClient := userv1alpha1.NewUserServiceClient(conn)
 
-	oidcAuth, err := auth.NewOIDC(ctx, logger, &stateData, cfg.IDPClientID, cfg.IDPIssuerEndpoint, userClient)
+	oidcAuth, err := auth.NewOIDC(logger, &stateData, cfg.IDPClientID, cfg.IDPIssuerEndpoint, userClient)
 	if err != nil {
 		die("Failed to create Microsoft auth service", err)
 	}
