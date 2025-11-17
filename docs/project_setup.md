@@ -16,7 +16,7 @@ chunk:
   name: MyChunk
   # Describe your chunks in a few words (100-character limit)
   description: this is a description
-  # You can have up to 5 tags categorizing your Chunk (25-character limit)
+  # You can have up to 4 tags categorizing your Chunk (25-character limit)
   tags:
     - tag1
     - tag2
