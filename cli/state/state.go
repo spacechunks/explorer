@@ -28,7 +28,7 @@ import (
 )
 
 var DefaultConfig = Config{
-	ControlPlaneEndpoint: "localhost:9010",
+	ControlPlaneEndpoint: "api.explorer.stag.chunks.cloud:443",
 	IDPIssuerEndpoint:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
 	IDPClientID:          "c740e883-16dd-4c0c-a50b-b19de508b70a",
 }
