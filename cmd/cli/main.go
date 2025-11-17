@@ -67,6 +67,7 @@ func main() {
 
 	var (
 		cliCtx = cli.Context{
+			Logger:         logger,
 			Config:         cfg,
 			Client:         chunkv1alpha1.NewChunkServiceClient(conn),
 			InstanceClient: instancev1alpha1.NewInstanceServiceClient(conn),
