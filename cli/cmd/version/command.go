@@ -16,30 +16,48 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package cmd
+package version
 
 import (
-	"context"
+	"fmt"
+	"runtime/debug"
 
-	"github.com/spacechunks/explorer/cli"
-	"github.com/spacechunks/explorer/cli/cmd/register"
-	"github.com/spacechunks/explorer/cli/cmd/version"
 	"github.com/spf13/cobra"
 )
 
-func Root(ctx context.Context, cliCtx cli.Context) *cobra.Command {
-	root := &cobra.Command{
-		Use: "explorer",
-		Long: `A library of creations, where everyone can share their projects with the world.
-A place of discovery and play. All within a single unified system.`,
+func NewCommand() *cobra.Command {
+	run := func(cmd *cobra.Command, args []string) {
+		info, ok := debug.ReadBuildInfo()
+		if !ok {
+			return
+		}
+
+		var (
+			str    = ""
+			dirty  = false
+			commit = ""
+		)
+
+		for _, setting := range info.Settings {
+			switch setting.Key {
+			case "vcs.revision":
+				commit = setting.Value
+			case "vcs.modified":
+				dirty = true
+			}
+		}
+
+		str += "Commit: " + commit
+		if dirty {
+			str += "+dirty"
+		}
+		fmt.Println(str)
 	}
 
-	chunkCmd := newChunkCommand(ctx, cliCtx)
-	root.AddCommand(
-		chunkCmd,
-		register.NewCommand(ctx, cliCtx),
-		version.NewCommand(),
-	)
-
-	return root
+	return &cobra.Command{
+		Use:          "version",
+		Short:        "Displays version information",
+		Run:          run,
+		SilenceUsage: true,
+	}
 }
