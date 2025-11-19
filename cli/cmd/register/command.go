@@ -45,7 +45,8 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	}
 
 	return &cobra.Command{
-		Use:          "register",
+		Use:          "register NICKNAME",
+		Args:         cobra.ExactArgs(1),
 		Short:        "Register a new account with the Chunk Explorer.",
 		RunE:         run,
 		SilenceUsage: true,
