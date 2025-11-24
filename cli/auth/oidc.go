@@ -20,6 +20,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -212,7 +213,7 @@ func (svc OIDC) runHTTPCallbackServer(
 ) error {
 	var (
 		s = http.Server{
-			Addr: "localhost:8556",
+			Addr: "localhost:64035",
 		}
 		mux = http.NewServeMux()
 	)
@@ -221,21 +222,15 @@ func (svc OIDC) runHTTPCallbackServer(
 		var err error
 
 		defer func() {
-			time.AfterFunc(5*time.Second, func() {
+			time.AfterFunc(1*time.Second, func() {
 				s.Close()
-				close(recv)
 			})
-			if err == nil {
-				return
-			}
-			recv <- callback{
-				err: err,
-			}
-			http.Error(w, "An error occured: "+err.Error(), http.StatusInternalServerError)
 		}()
 
 		if r.URL.Query().Get("state") != state {
-			err = fmt.Errorf("state did not match")
+			recv <- callback{
+				err: fmt.Errorf("state mismatch"),
+			}
 			return
 		}
 
@@ -243,19 +238,25 @@ func (svc OIDC) runHTTPCallbackServer(
 
 		oauth2Token, err := cfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 		if err != nil {
-			err = fmt.Errorf("failed to exchange code for token: %v", err)
+			recv <- callback{
+				err: fmt.Errorf("failed to exchange code for token: %v", err),
+			}
 			return
 		}
 
 		idToken, ok := oauth2Token.Extra("id_token").(string)
 		if !ok {
-			err = fmt.Errorf("no id_token field in oauth2 token")
+			recv <- callback{
+				err: fmt.Errorf("no id_token field in oauth2 token"),
+			}
 			return
 		}
 
 		_, err = tokenVerifier.Verify(ctx, idToken)
 		if err != nil {
-			err = fmt.Errorf("failed to verify id token: %v", err)
+			recv <- callback{
+				err: fmt.Errorf("failed to verify id token: %v", err),
+			}
 			return
 		}
 
@@ -266,5 +267,13 @@ func (svc OIDC) runHTTPCallbackServer(
 	})
 
 	s.Handler = mux
-	return s.ListenAndServe()
+
+	if err := s.ListenAndServe(); err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	}
+
+	return nil
 }

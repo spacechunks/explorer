@@ -46,17 +46,17 @@ func TarFiles(rootDir string, files []*os.File, dest string) error {
 			return fmt.Errorf("stat %s: %w", f.Name(), err)
 		}
 
-		// this function will also be called in windows, so we need to adjust the paths
 		name := strings.ReplaceAll(
-			filepath.ToSlash(f.Name()),
-			filepath.Clean(filepath.ToSlash(rootDir))+"/",
+			f.Name(),
+			filepath.Clean(rootDir)+string(os.PathSeparator),
 			"",
 		)
 
 		if err := tw.WriteHeader(&tar.Header{
 			Typeflag: tar.TypeReg,
-			Name:     name,
-			Size:     info.Size(),
+			// TarFiles will also be called in windows, so we need to adjust the paths
+			Name: filepath.ToSlash(name),
+			Size: info.Size(),
 		}); err != nil {
 			return fmt.Errorf("tar header: %w", err)
 		}

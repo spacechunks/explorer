@@ -286,10 +286,9 @@ func (b builder) handleUpload(ctx context.Context, data *buildData) error {
 			continue
 		}
 
-		localPath := filepath.Join(data.local.path, localFile.Path)
-		f, err := os.Open(localPath)
+		f, err := os.Open(localFile.Path)
 		if err != nil {
-			return fmt.Errorf("error while opening file %s: %w", localPath, err)
+			return fmt.Errorf("error while opening file %s: %w", localFile.Path, err)
 		}
 
 		files = append(files, f)

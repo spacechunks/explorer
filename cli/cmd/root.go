@@ -23,6 +23,7 @@ import (
 
 	"github.com/spacechunks/explorer/cli"
 	"github.com/spacechunks/explorer/cli/cmd/register"
+	"github.com/spacechunks/explorer/cli/cmd/version"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +38,7 @@ A place of discovery and play. All within a single unified system.`,
 	root.AddCommand(
 		chunkCmd,
 		register.NewCommand(ctx, cliCtx),
+		version.NewCommand(),
 	)
 
 	return root

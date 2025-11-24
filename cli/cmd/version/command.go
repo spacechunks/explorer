@@ -16,39 +16,48 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package register
+package version
 
 import (
-	"context"
 	"fmt"
+	"runtime/debug"
 
-	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
-	"github.com/spacechunks/explorer/cli"
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
-	run := func(cmd *cobra.Command, args []string) error {
-		tok, err := cliCtx.Auth.IDToken(ctx)
-		if err != nil {
-			return fmt.Errorf("login failed: %w", err)
+func NewCommand() *cobra.Command {
+	run := func(cmd *cobra.Command, args []string) {
+		info, ok := debug.ReadBuildInfo()
+		if !ok {
+			return
 		}
 
-		if _, err := cliCtx.UserClient.Register(ctx, &userv1alpha1.RegisterRequest{
-			Nickname: args[0],
-			IdToken:  tok,
-		}); err != nil {
-			return fmt.Errorf("register failed: %w", err)
+		var (
+			str    = ""
+			dirty  = false
+			commit = ""
+		)
+
+		for _, setting := range info.Settings {
+			switch setting.Key {
+			case "vcs.revision":
+				commit = setting.Value
+			case "vcs.modified":
+				dirty = true
+			}
 		}
 
-		return nil
+		str += "Commit: " + commit
+		if dirty {
+			str += "+dirty"
+		}
+		fmt.Println(str)
 	}
 
 	return &cobra.Command{
-		Use:          "register NICKNAME",
-		Args:         cobra.ExactArgs(1),
-		Short:        "Register a new account with the Chunk Explorer.",
-		RunE:         run,
+		Use:          "version",
+		Short:        "Displays version information",
+		Run:          run,
 		SilenceUsage: true,
 	}
 }
