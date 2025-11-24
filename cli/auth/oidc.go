@@ -213,7 +213,7 @@ func (svc OIDC) runHTTPCallbackServer(
 ) error {
 	var (
 		s = http.Server{
-			Addr: "localhost:8556",
+			Addr: "localhost:64035",
 		}
 		mux = http.NewServeMux()
 	)
