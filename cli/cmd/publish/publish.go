@@ -76,7 +76,9 @@ type localFlavor struct {
 }
 
 func (f localFlavor) serverRelPath(path string) string {
-	return strings.ReplaceAll(path, filepath.Clean(f.path)+"/", "")
+	slashFile := filepath.ToSlash(path)
+	dir := filepath.ToSlash(filepath.Clean(f.path))
+	return strings.ReplaceAll(slashFile, dir+"/", "")
 }
 
 func (f localFlavor) fileDiff(apiHashes []*chunkv1alpha1.FileHashes) ([]file.Hash, []file.Hash, []file.Hash) {
@@ -363,13 +365,13 @@ func localFileHashes(logger *slog.Logger, flavorPath string) (string, []file.Has
 		// are linux only, so use the linux path separator, if we are
 		// using the cli on windows or any other platform that does not
 		// use "/".
-		tmp := strings.ReplaceAll(path, string(os.PathSeparator), "/")
+		//tmp := strings.ReplaceAll(path, string(os.PathSeparator), "/")
 
 		// exclude the user specific portion of the path so we are left with
 		// the path relative to the server root. for example if a plugin in the
 		// flavor is located at /home/some_user/my_chunk/flavor1/plugins/myplugin.jar
 		// we remove everything so we are left with only plugins/myplugin.jar
-		rel := strings.ReplaceAll(tmp, filepath.Clean(flavorPath)+"/", "")
+		rel := strings.ReplaceAll(filepath.ToSlash(path), filepath.ToSlash(filepath.Clean(flavorPath))+"/", "")
 
 		f, err := os.Open(path)
 		if err != nil {
@@ -390,7 +392,7 @@ func localFileHashes(logger *slog.Logger, flavorPath string) (string, []file.Has
 		// drawback here is that if files change in between, the server will reject the
 		// uploaded files, but the chances of this happening should be quite small.
 		fileHashes = append(fileHashes, file.Hash{
-			Path: rel,
+			Path: path,
 			Hash: hash,
 		})
 
