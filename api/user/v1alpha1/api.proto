@@ -22,6 +22,7 @@ syntax = "proto3";
 package user.v1alpha1;
 
 option go_package = "github.com/spacechunks/explorer/api/user/v1alpha1";
+option java_package = "chunks.space.api.explorer.user.v1alpha1";
 
 import "user/v1alpha1/types.proto";
 import "google/protobuf/timestamp.proto";
