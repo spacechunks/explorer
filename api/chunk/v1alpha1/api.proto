@@ -22,6 +22,7 @@ syntax = "proto3";
 package chunk.v1alpha1;
 
 option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
+option java_package = "chunks.space.api.explorer.chunk.v1alpha1";
 
 import "chunk/v1alpha1/types.proto";
 
