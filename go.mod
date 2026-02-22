@@ -1,6 +1,6 @@
 module github.com/spacechunks/explorer
 
-go 1.25
+go 1.26
 
 require (
 	github.com/amacneil/dbmate/v2 v2.26.0
