@@ -119,3 +119,31 @@ func TestInsertJob(t *testing.T) {
 		nil,
 	)
 }
+
+func TestUpdateThumbnail(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+	pg.Run(t, ctx)
+
+	var (
+		expectedHash = "some-hash"
+		c            = fixture.Chunk()
+	)
+
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	err := pg.DB.UpdateThumbnail(ctx, c.ID, expectedHash)
+	require.NoError(t, err)
+
+	var (
+		actualHash = ""
+		q          = `SELECT thumbnail_hash from chunks where id = $1`
+	)
+
+	err = pg.Pool.QueryRow(ctx, q, c.ID).Scan(&actualHash)
+	require.NoError(t, err)
+
+	cmp.Diff(actualHash, expectedHash)
+}

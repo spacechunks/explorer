@@ -139,6 +139,7 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 				APITokenIssuer:     APITokenIssuer,
 				APITokenExpiry:     5 * time.Second,
 				APITokenSigningKey: keyPem.String(),
+				ThumbnailMaxSizeKB: 100,
 			})
 	)
 
