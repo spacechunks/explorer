@@ -19,15 +19,21 @@
 package chunk
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"image"
+	"io"
 	"unicode/utf8"
 
 	"github.com/spacechunks/explorer/controlplane/authz"
+	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/resource"
+
+	_ "image/png"
 )
 
 func (s *svc) CreateChunk(ctx context.Context, chunk resource.Chunk) (resource.Chunk, error) {
@@ -67,16 +73,8 @@ func (s *svc) UpdateChunk(ctx context.Context, new resource.Chunk) (resource.Chu
 		return resource.Chunk{}, fmt.Errorf("get chunk: %w", err)
 	}
 
-	actorID, ok := ctx.Value(contextkey.ActorID).(string)
-	if !ok {
-		return resource.Chunk{}, errors.New("actor_id not found in context")
-	}
-
-	if err := s.access.AccessAuthorized(
-		ctx,
-		authz.WithOwnershipRule(actorID, authz.ChunkResourceDef(old.ID)),
-	); err != nil {
-		return resource.Chunk{}, fmt.Errorf("access: %w", err)
+	if err := s.authorized(ctx, old.ID); err != nil {
+		return resource.Chunk{}, fmt.Errorf("authorize: %w", err)
 	}
 
 	if new.Name != "" {
@@ -111,6 +109,47 @@ func (s *svc) GetSupportedMinecraftVersions(ctx context.Context) ([]string, erro
 	return s.repo.SupportedMinecraftVersions(ctx)
 }
 
+func (s *svc) UpdateThumbnail(ctx context.Context, chunkID string, imgData []byte) error {
+	if err := s.authorized(ctx, chunkID); err != nil {
+		return fmt.Errorf("authorize: %w", err)
+	}
+
+	cfg, _, err := image.DecodeConfig(bytes.NewBuffer(imgData))
+	if err != nil {
+		if errors.Is(err, image.ErrFormat) {
+			return apierrs.ErrInvalidThumbnailFormat
+		}
+		return fmt.Errorf("decode config: %w", err)
+	}
+
+	if cfg.Width != 512 && cfg.Height != 512 {
+		return apierrs.ErrInvalidThumbnailDimensions
+	}
+
+	if len(imgData)/1000 > s.cfg.ThumbnailMaxSizeKB {
+		return apierrs.ErrInvalidThumbnailSize
+	}
+
+	obj := blob.Object{
+		Data: nopReadSeekCloser{bytes.NewReader(imgData)},
+	}
+
+	h, err := obj.Hash()
+	if err != nil {
+		return fmt.Errorf("hash: %w", err)
+	}
+
+	if err := s.repo.UpdateThumbnail(ctx, chunkID, h); err != nil {
+		return fmt.Errorf("db: %w", err)
+	}
+
+	if err := s.s3Store.Put(ctx, blob.CASKeyPrefix, []blob.Object{obj}); err != nil {
+		return fmt.Errorf("put image: %w", err)
+	}
+
+	return nil
+}
+
 func validateChunkFields(chunk resource.Chunk) error {
 	// FIXME:
 	//  - remove hardcoded limits for tags
@@ -129,3 +168,25 @@ func validateChunkFields(chunk resource.Chunk) error {
 
 	return nil
 }
+
+func (s *svc) authorized(ctx context.Context, chunkID string) error {
+	actorID, ok := ctx.Value(contextkey.ActorID).(string)
+	if !ok {
+		return errors.New("actor_id not found in context")
+	}
+
+	if err := s.access.AccessAuthorized(
+		ctx,
+		authz.WithOwnershipRule(actorID, authz.ChunkResourceDef(chunkID)),
+	); err != nil {
+		return fmt.Errorf("access: %w", err)
+	}
+
+	return nil
+}
+
+type nopReadSeekCloser struct {
+	io.ReadSeeker
+}
+
+func (nopReadSeekCloser) Close() error { return nil }

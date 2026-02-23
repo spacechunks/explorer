@@ -220,3 +220,17 @@ func (s *Server) GetSupportedMinecraftVersions(
 		Versions: versions,
 	}, nil
 }
+
+func (s *Server) UploadThumbnail(
+	ctx context.Context,
+	req *chunkv1alpha1.UploadThumbnailRequest,
+) (*chunkv1alpha1.UploadThumbnailResponse, error) {
+	if _, err := uuid.Parse(req.ChunkId); err != nil {
+		return nil, apierrs.ErrInvalidChunkID
+	}
+
+	if err := s.service.UpdateThumbnail(ctx, req.ChunkId, req.Image); err != nil {
+		return nil, err
+	}
+	return &chunkv1alpha1.UploadThumbnailResponse{}, nil
+}

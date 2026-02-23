@@ -49,12 +49,15 @@ var (
  */
 
 var (
-	ErrChunkNotFound      = New(codes.NotFound, "chunk does not exist")
-	ErrTooManyTags        = New(codes.InvalidArgument, "too many tags")
-	ErrNameTooLong        = New(codes.InvalidArgument, "name is too long")
-	ErrDescriptionTooLong = New(codes.InvalidArgument, "description is too long")
-	ErrInvalidChunkID     = New(codes.InvalidArgument, "chunk id is invalid")
-	ErrInvalidName        = New(codes.InvalidArgument, "name is invalid")
+	ErrChunkNotFound              = New(codes.NotFound, "chunk does not exist")
+	ErrTooManyTags                = New(codes.InvalidArgument, "too many tags")
+	ErrNameTooLong                = New(codes.InvalidArgument, "name is too long")
+	ErrDescriptionTooLong         = New(codes.InvalidArgument, "description is too long")
+	ErrInvalidChunkID             = New(codes.InvalidArgument, "chunk id is invalid")
+	ErrInvalidName                = New(codes.InvalidArgument, "name is invalid")
+	ErrInvalidThumbnailFormat     = New(codes.InvalidArgument, "thumbnail image must be png")
+	ErrInvalidThumbnailDimensions = New(codes.InvalidArgument, "thumbnail must be 512x512 pixels")
+	ErrInvalidThumbnailSize       = New(codes.InvalidArgument, "thumbnail size too big")
 )
 
 /*

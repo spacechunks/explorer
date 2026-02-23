@@ -20,6 +20,7 @@ package chunk
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/spacechunks/explorer/controlplane/authz"
@@ -42,6 +43,7 @@ type Service interface {
 	BuildFlavorVersion(ctx context.Context, versionID string) error
 	GetUploadURL(ctx context.Context, flavorVersionID string, tarballHash string) (string, error)
 	GetSupportedMinecraftVersions(ctx context.Context) ([]string, error)
+	UpdateThumbnail(ctx context.Context, chunkID string, imageData []byte) error
 }
 
 type Config struct {
@@ -49,9 +51,11 @@ type Config struct {
 	BaseImage          string
 	Bucket             string
 	PresignedURLExpiry time.Duration
+	ThumbnailMaxSizeKB int
 }
 
 type svc struct {
+	logger    *slog.Logger
 	repo      Repository
 	jobClient job.Client
 	s3Store   blob.S3Store
@@ -60,6 +64,7 @@ type svc struct {
 }
 
 func NewService(
+	logger *slog.Logger,
 	repo Repository,
 	jobClient job.Client,
 	s3Store blob.S3Store,
@@ -67,6 +72,7 @@ func NewService(
 	cfg Config,
 ) Service {
 	return &svc{
+		logger:    logger,
 		repo:      repo,
 		jobClient: jobClient,
 		s3Store:   s3Store,
