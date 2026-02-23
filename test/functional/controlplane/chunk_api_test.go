@@ -45,6 +45,7 @@ import (
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/spacechunks/explorer/test/functional/controlplane/testdata"
 	"github.com/stretchr/testify/require"
+	"github.com/zeebo/xxh3"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
@@ -1025,16 +1026,12 @@ func TestUserCannotGetUploadURLForFlavorVersionWhereHeIsNotOwnerOf(t *testing.T)
 	require.ErrorIs(t, err, apierrs.ErrPermissionDenied.GRPCStatus().Err())
 }
 
-func TestUploadChunkThumbnail(t *testing.T) {
+func TestUploadChunkThumbnailSanityChecks(t *testing.T) {
 	tests := []struct {
 		name  string
 		image []byte
 		err   error
 	}{
-		{
-			name:  "can upload thumbnail",
-			image: testdata.ValidThumbnail,
-		},
 		{
 			name:  "invalid thumbnail dimensions too big",
 			image: testdata.InvalidThumbnailDimensionsTooBig,
@@ -1050,11 +1047,11 @@ func TestUploadChunkThumbnail(t *testing.T) {
 			image: testdata.InvalidThumbnailWrongFormat,
 			err:   apierrs.ErrInvalidThumbnailFormat.GRPCStatus().Err(),
 		},
-		//{
-		//	name:  "invalid thumbnail size too big",
-		//	image: testdata.InvalidThumbnailSizeTooBig,
-		//	err:   apierrs.ErrInvalidThumbnailSize.GRPCStatus().Err(),
-		//},
+		{
+			name:  "invalid thumbnail size too big",
+			image: testdata.InvalidThumbnailSizeTooBig,
+			err:   apierrs.ErrInvalidThumbnailSize.GRPCStatus().Err(),
+		},
 	}
 
 	for _, tt := range tests {
@@ -1087,4 +1084,31 @@ func TestUploadChunkThumbnail(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestThumbnailActuallyUploadedToS3(t *testing.T) {
+	var (
+		ctx = context.Background()
+		cp  = fixture.NewControlPlane(t)
+		c   = fixture.Chunk()
+		u   = fixture.User()
+	)
+
+	fakes3 := fixture.RunFakeS3(t)
+	cp.Run(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.Postgres.CreateUser(t, &u)
+	cp.AddUserAPIKey(t, &ctx, u)
+
+	client := cp.ChunkClient(t)
+
+	_, err := client.UploadThumbnail(ctx, &chunkv1alpha1.UploadThumbnailRequest{
+		ChunkId: c.ID,
+		Image:   testdata.ValidThumbnail,
+	})
+
+	h := fmt.Sprintf("%x", xxh3.Hash(testdata.ValidThumbnail))
+	require.NoError(t, err)
+
+	fakes3.RequireObjectExists(t, blob.CASKeyPrefix+"/"+h)
 }
