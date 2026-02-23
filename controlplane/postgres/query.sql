@@ -52,6 +52,12 @@ SELECT u.* FROM users u
     LEFT JOIN chunks c ON c.owner_id = u.id
 WHERE c.id = $1;
 
+-- name: UpdateChunkThumbnail :exec
+UPDATE chunks SET
+    thumbnail_hash = $1,
+    thumbnail_updated_at = now()
+WHERE id = $2;
+
 /*
  * FLAVORS
  */

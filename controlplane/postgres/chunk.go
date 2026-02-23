@@ -29,6 +29,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 	"github.com/spacechunks/explorer/controlplane/resource"
@@ -235,6 +236,22 @@ func (db *DB) MinecraftVersionExists(ctx context.Context, version string) (bool,
 		return false, err
 	}
 	return ret, nil
+}
+
+func (db *DB) UpdateThumbnail(ctx context.Context, chunkID string, imgHash string) error {
+	if err := db.do(ctx, func(q *query.Queries) error {
+		return q.UpdateChunkThumbnail(ctx, query.UpdateChunkThumbnailParams{
+			ID: chunkID,
+			ThumbnailHash: pgtype.Text{
+				String: imgHash,
+				Valid:  true,
+			},
+		})
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (resource.Chunk, error) {

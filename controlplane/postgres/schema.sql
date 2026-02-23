@@ -1,5 +1,5 @@
 -- Dumped from database version 17.2 (Debian 17.2-1.pgdg120+1)
--- Dumped by pg_dump version 17.6
+-- Dumped by pg_dump version 17.8
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -104,7 +104,9 @@ CREATE TABLE public.chunks (
     tags character varying(25)[] NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    owner_id uuid NOT NULL
+    owner_id uuid NOT NULL,
+    thumbnail_hash character varying(16),
+    thumbnail_updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -625,4 +627,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20251101204811'),
     ('20251105222512'),
     ('20251112170710'),
-    ('20251112171323');
+    ('20251112171323'),
+    ('20260223165838');
