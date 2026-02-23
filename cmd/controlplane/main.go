@@ -59,7 +59,7 @@ func main() {
 		apiTokenIssuer           = fs.String("api-token-issuer", "", "issuer to use for api tokens issued by the control plane. this value will also be set as the tokens audience.") //nolint:lll
 		apiTokenExpiry           = fs.Duration("api-token-expiry", 10*time.Minute, "expiry of api tokens issued by the control plane")                                                //nolint:lll
 		apiTokenSigningKey       = fs.String("api-token-signing-key", "", "key used to sign api tokens issued by the control plane")                                                  //nolint:lll
-		thumbnailMaxSizeKB          = fs.Int("thumbnail-max-size-kb", 1000, "max size a thumbnail can be in kilobytes")                                                                      //nolint:lll
+		thumbnailMaxSizeKB       = fs.Int("thumbnail-max-size-kb", 1000, "max size a thumbnail can be in kilobytes")                                                                  //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
