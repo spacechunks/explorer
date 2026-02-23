@@ -46,6 +46,7 @@ const (
 	ChunkService_BuildFlavorVersion_FullMethodName            = "/chunk.v1alpha1.ChunkService/BuildFlavorVersion"
 	ChunkService_GetUploadURL_FullMethodName                  = "/chunk.v1alpha1.ChunkService/GetUploadURL"
 	ChunkService_GetSupportedMinecraftVersions_FullMethodName = "/chunk.v1alpha1.ChunkService/GetSupportedMinecraftVersions"
+	ChunkService_UploadThumbnail_FullMethodName               = "/chunk.v1alpha1.ChunkService/UploadThumbnail"
 )
 
 // ChunkServiceClient is the client API for ChunkService service.
@@ -144,6 +145,7 @@ type ChunkServiceClient interface {
 	//     documentation of GetUploadURLRequest
 	GetUploadURL(ctx context.Context, in *GetUploadURLRequest, opts ...grpc.CallOption) (*GetUploadURLResponse, error)
 	GetSupportedMinecraftVersions(ctx context.Context, in *GetSupportedMinecraftVersionsRequest, opts ...grpc.CallOption) (*GetSupportedMinecraftVersionsResponse, error)
+	UploadThumbnail(ctx context.Context, in *UploadThumbnailRequest, opts ...grpc.CallOption) (*UploadThumbnailResponse, error)
 }
 
 type chunkServiceClient struct {
@@ -238,6 +240,16 @@ func (c *chunkServiceClient) GetSupportedMinecraftVersions(ctx context.Context, 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetSupportedMinecraftVersionsResponse)
 	err := c.cc.Invoke(ctx, ChunkService_GetSupportedMinecraftVersions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chunkServiceClient) UploadThumbnail(ctx context.Context, in *UploadThumbnailRequest, opts ...grpc.CallOption) (*UploadThumbnailResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadThumbnailResponse)
+	err := c.cc.Invoke(ctx, ChunkService_UploadThumbnail_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -340,6 +352,7 @@ type ChunkServiceServer interface {
 	//     documentation of GetUploadURLRequest
 	GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error)
 	GetSupportedMinecraftVersions(context.Context, *GetSupportedMinecraftVersionsRequest) (*GetSupportedMinecraftVersionsResponse, error)
+	UploadThumbnail(context.Context, *UploadThumbnailRequest) (*UploadThumbnailResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
 
@@ -376,6 +389,9 @@ func (UnimplementedChunkServiceServer) GetUploadURL(context.Context, *GetUploadU
 }
 func (UnimplementedChunkServiceServer) GetSupportedMinecraftVersions(context.Context, *GetSupportedMinecraftVersionsRequest) (*GetSupportedMinecraftVersionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSupportedMinecraftVersions not implemented")
+}
+func (UnimplementedChunkServiceServer) UploadThumbnail(context.Context, *UploadThumbnailRequest) (*UploadThumbnailResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadThumbnail not implemented")
 }
 func (UnimplementedChunkServiceServer) mustEmbedUnimplementedChunkServiceServer() {}
 func (UnimplementedChunkServiceServer) testEmbeddedByValue()                      {}
@@ -560,6 +576,24 @@ func _ChunkService_GetSupportedMinecraftVersions_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChunkService_UploadThumbnail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadThumbnailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).UploadThumbnail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_UploadThumbnail_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).UploadThumbnail(ctx, req.(*UploadThumbnailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChunkService_ServiceDesc is the grpc.ServiceDesc for ChunkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -602,6 +636,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSupportedMinecraftVersions",
 			Handler:    _ChunkService_GetSupportedMinecraftVersions_Handler,
+		},
+		{
+			MethodName: "UploadThumbnail",
+			Handler:    _ChunkService_UploadThumbnail_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
