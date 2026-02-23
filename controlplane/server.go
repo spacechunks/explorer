@@ -153,6 +153,7 @@ func (s *Server) Run(ctx context.Context) error {
 		)
 		userServer   = user.NewServer(userService)
 		chunkService = chunk.NewService(
+			s.logger.With("component", "chunk-service"),
 			db,
 			db,
 			blobStore,
@@ -162,6 +163,7 @@ func (s *Server) Run(ctx context.Context) error {
 				BaseImage:          s.cfg.BaseImage,
 				Bucket:             s.cfg.Bucket,
 				PresignedURLExpiry: s.cfg.PresignedURLExpiry,
+				ThumbnailMaxSizeKB: s.cfg.ThumbnailMaxSizeKB,
 			})
 		chunkServer = chunk.NewServer(chunkService)
 		insService  = instance.NewService(s.logger, db, db, chunkService)

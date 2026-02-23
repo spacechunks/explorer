@@ -20,6 +20,8 @@ package chunk_test
 
 import (
 	"context"
+	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/spacechunks/explorer/controlplane/chunk"
@@ -88,7 +90,14 @@ func TestCreateFlavor(t *testing.T) {
 				ctx        = context.Background()
 				mockRepo   = mock.NewMockChunkRepository(t)
 				mockAccess = mock.NewMockAuthzAccessEvaluator(t)
-				svc        = chunk.NewService(mockRepo, nil, nil, mockAccess, chunk.Config{})
+				svc        = chunk.NewService(
+					slog.New(slog.NewTextHandler(os.Stdout, nil)),
+					mockRepo,
+					nil,
+					nil,
+					mockAccess,
+					chunk.Config{},
+				)
 			)
 
 			ctx = context.WithValue(ctx, contextkey.ActorID, "blabla")
@@ -299,7 +308,14 @@ func TestCreateFlavorVersion(t *testing.T) {
 				ctx        = context.Background()
 				mockAccess = mock.NewMockAuthzAccessEvaluator(t)
 				mockRepo   = mock.NewMockChunkRepository(t)
-				svc        = chunk.NewService(mockRepo, nil, nil, mockAccess, chunk.Config{})
+				svc        = chunk.NewService(
+					slog.New(slog.NewTextHandler(os.Stdout, nil)),
+					mockRepo,
+					nil,
+					nil,
+					mockAccess,
+					chunk.Config{},
+				)
 			)
 
 			ctx = context.WithValue(ctx, contextkey.ActorID, "blabla")

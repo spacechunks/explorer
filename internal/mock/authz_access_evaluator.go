@@ -6,7 +6,6 @@ import (
 	context "context"
 
 	authz "github.com/spacechunks/explorer/controlplane/authz"
-
 	mock "github.com/stretchr/testify/mock"
 )
 

@@ -21,6 +21,7 @@ package fixture
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"testing"
@@ -29,6 +30,7 @@ import (
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 	"github.com/johannesboyne/gofakes3"
 	"github.com/johannesboyne/gofakes3/backend/s3mem"
 	"github.com/stretchr/testify/require"
@@ -80,8 +82,10 @@ func NewS3Client(t *testing.T, ctx context.Context) *s3.Client {
 }
 
 func (f FakeS3) UploadObject(t *testing.T, key string, data []byte) {
-	ctx := context.Background()
-	c := NewS3Client(t, ctx)
+	var (
+		ctx = context.Background()
+		c   = NewS3Client(t, ctx)
+	)
 
 	_, err := c.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(Bucket),
@@ -89,4 +93,24 @@ func (f FakeS3) UploadObject(t *testing.T, key string, data []byte) {
 		Body:   bytes.NewReader(data),
 	})
 	require.NoError(t, err)
+}
+
+func (f FakeS3) RequireObjectExists(t *testing.T, key string) {
+	var (
+		ctx = context.Background()
+		c   = NewS3Client(t, ctx)
+	)
+
+	_, err := c.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		var s3err smithy.APIError
+		if errors.As(err, &s3err) && s3err.ErrorCode() == "NotFound" {
+			t.Fatalf("object %s does not exist", key)
+			return
+		}
+		t.Fatalf("head object failed: %v", err)
+	}
 }

@@ -160,13 +160,15 @@ type Blob struct {
 }
 
 type Chunk struct {
-	ID          string
-	Name        string
-	Description string
-	Tags        []string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	OwnerID     string
+	ID                 string
+	Name               string
+	Description        string
+	Tags               []string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	OwnerID            string
+	ThumbnailHash      pgtype.Text
+	ThumbnailUpdatedAt time.Time
 }
 
 type Flavor struct {

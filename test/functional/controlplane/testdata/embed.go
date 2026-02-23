@@ -51,6 +51,21 @@ var FullChangeSetFile []byte
 //go:embed add_testfile_changeset.tar.gz
 var AddTestFileChangeSet []byte
 
+//go:embed valid_thumbnail.png
+var ValidThumbnail []byte
+
+//go:embed invalid_thumbnail_dimensions_too_big.png
+var InvalidThumbnailDimensionsTooBig []byte
+
+//go:embed invalid_thumbnail_dimensions_too_small.png
+var InvalidThumbnailDimensionsTooSmall []byte
+
+//go:embed invalid_thumbnail_wrong_format.jpg
+var InvalidThumbnailWrongFormat []byte
+
+//go:embed invalid_thumbnail_size_too_big.png
+var InvalidThumbnailSizeTooBig []byte
+
 func ComputeFileHashes(t *testing.T, dir string) []file.Hash {
 	hashes := make([]file.Hash, 0)
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {

@@ -120,6 +120,16 @@ service ChunkService {
   rpc GetUploadURL(GetUploadURLRequest) returns (GetUploadURLResponse);
 
   rpc GetSupportedMinecraftVersions(GetSupportedMinecraftVersionsRequest) returns (GetSupportedMinecraftVersionsResponse);
+
+  // UploadThumbnail uploads the given PNG image. Formats other than PNG are not supported.
+  //
+  // Defined error codes:
+  // - INVALID_ARGUMENT:
+  //   - chunk id is invalid
+  //   - thumbnail image must be PNG
+  //   - thumbnail size must be 512x512 pixels
+  //   - thumbnail size too big
+  rpc UploadThumbnail(UploadThumbnailRequest) returns (UploadThumbnailResponse);
 }
 
 message CreateChunkRequest {
@@ -211,4 +221,14 @@ message GetSupportedMinecraftVersionsRequest {
 
 message GetSupportedMinecraftVersionsResponse {
   repeated string versions = 1;
+}
+
+message UploadThumbnailRequest {
+  string chunk_id = 1;
+
+  // image is the raw image bytes
+  bytes image = 2;
+}
+
+message UploadThumbnailResponse {
 }

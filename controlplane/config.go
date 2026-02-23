@@ -41,4 +41,5 @@ type Config struct {
 	APITokenIssuer                string
 	APITokenExpiry                time.Duration
 	APITokenSigningKey            string
+	ThumbnailMaxSizeKB            int
 }
