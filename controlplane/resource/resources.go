@@ -26,9 +26,10 @@ import (
 )
 
 const (
-	MaxChunkTags             = 4
-	MaxChunkNameChars        = 50
-	MaxChunkDescriptionChars = 100
+	MaxChunkTags                = 4
+	MaxChunkNameChars           = 50
+	MaxChunkDescriptionChars    = 100
+	MaxChunkThumbnailDimensions = 512
 )
 
 /*
@@ -44,6 +45,11 @@ type Chunk struct {
 	Owner       User
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	Thumbnail   Thumbnail
+}
+
+type Thumbnail struct {
+	Hash string
 }
 
 /*

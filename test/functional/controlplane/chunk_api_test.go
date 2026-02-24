@@ -59,6 +59,7 @@ func TestAPICreateChunk(t *testing.T) {
 			name: "works",
 			expected: fixture.Chunk(func(c *resource.Chunk) {
 				c.Flavors = nil
+				c.Thumbnail = resource.Thumbnail{}
 			}),
 		},
 		{

@@ -40,6 +40,9 @@ func ChunkToTransport(domain resource.Chunk) *chunkv1alpha1.Chunk {
 		},
 		CreatedAt: timestamppb.New(domain.CreatedAt),
 		UpdatedAt: timestamppb.New(domain.UpdatedAt),
+		Thumbnail: &chunkv1alpha1.Thumbnail{
+			Hash: domain.Thumbnail.Hash,
+		},
 	}
 
 	flavors := make([]*chunkv1alpha1.Flavor, 0, len(domain.Flavors))

@@ -102,6 +102,11 @@ func (db *DB) ListInstances(ctx context.Context) ([]resource.Instance, error) {
 					Tags:        row.Tags,
 					CreatedAt:   row.CreatedAt_3.UTC(),
 					UpdatedAt:   row.UpdatedAt_2.UTC(),
+
+					// FIXME: for now this is not needed anywhere, so it is not included in the query
+					Thumbnail: resource.Thumbnail{
+						Hash: "",
+					},
 				},
 				FlavorVersion: resource.FlavorVersion{
 					ID:               row.ID_2,

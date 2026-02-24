@@ -188,8 +188,14 @@ func (db *DB) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
 				presignedURL = &r.PresignedUrl.String
 			}
 
+			var thumbnailHash *string
+			if r.ThumbnailHash.Valid {
+				thumbnailHash = &r.ThumbnailHash.String
+			}
+
 			rel.PresingedURLExpiryDate = expiryDate
 			rel.PresignedURL = presignedURL
+			rel.ThumbnailHash = thumbnailHash
 
 			m[r.ID] = append(m[r.ID], rel)
 		}
@@ -311,8 +317,14 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (re
 			presignedURL = &r.PresignedUrl.String
 		}
 
+		var thumbnailHash *string
+		if r.ThumbnailHash.Valid {
+			thumbnailHash = &r.ThumbnailHash.String
+		}
+
 		rel.PresingedURLExpiryDate = expiryDate
 		rel.PresignedURL = presignedURL
+		rel.ThumbnailHash = thumbnailHash
 
 		relationRows = append(relationRows, rel)
 	}
@@ -327,6 +339,7 @@ type chunkRelationsRow struct {
 	Tags           []string
 	ChunkCreatedAt time.Time
 	ChunkUpdatedAt time.Time
+	ThumbnailHash  *string
 
 	FlavorID        *string
 	FlavorName      string
@@ -384,6 +397,12 @@ func collectChunks(rows []chunkRelationsRow) resource.Chunk {
 			},
 		}
 	)
+
+	if row.ThumbnailHash != nil {
+		c.Thumbnail = resource.Thumbnail{
+			Hash: *row.ThumbnailHash,
+		}
+	}
 
 	for _, r := range rows {
 		if r.FlavorID != nil {
