@@ -194,6 +194,11 @@ func (p *Postgres) CreateChunk(t *testing.T, c *resource.Chunk, opts CreateOptio
 	createdChunk, err := p.DB.CreateChunk(ctx, *c)
 	require.NoError(t, err)
 
+	err = p.DB.UpdateThumbnail(ctx, createdChunk.ID, c.Thumbnail.Hash)
+	require.NoError(t, err)
+
+	createdChunk.Thumbnail.Hash = c.Thumbnail.Hash
+
 	if opts.WithFlavors {
 		flavors := make([]resource.Flavor, 0, len(c.Flavors))
 		for i := range c.Flavors {

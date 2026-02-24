@@ -65,6 +65,7 @@ func TestCreateChunk(t *testing.T) {
 	assert.Equal(t, expected.Tags, c.Tags)
 	assert.NotEmpty(t, c.CreatedAt)
 	assert.NotEmpty(t, c.UpdatedAt)
+	assert.Equal(t, "", c.Thumbnail.Hash)
 }
 
 func TestGetChunkByID(t *testing.T) {

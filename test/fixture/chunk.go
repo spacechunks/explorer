@@ -62,6 +62,9 @@ func Chunk(mod ...func(c *resource.Chunk)) resource.Chunk {
 		Owner:     User(),
 		CreatedAt: time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
 		UpdatedAt: time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
+		Thumbnail: resource.Thumbnail{
+			Hash: "cooooooooooooooo",
+		},
 	}
 
 	for _, fn := range mod {
