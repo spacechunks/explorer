@@ -61,6 +61,8 @@ message Chunk {
 
   google.protobuf.Timestamp created_at = 7;
   google.protobuf.Timestamp updated_at = 8;
+
+  Thumbnail thumbnail = 9;
 }
 
 message Flavor {
@@ -90,4 +92,9 @@ message FileHashes {
 message File {
   string path = 1;
   bytes data = 2;
+}
+
+message Thumbnail {
+  // hash is the xxh3 hash of the image
+  string hash = 1;
 }

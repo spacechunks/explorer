@@ -923,7 +923,8 @@ type UploadThumbnailRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	ChunkId string `protobuf:"bytes,1,opt,name=chunk_id,json=chunkId,proto3" json:"chunk_id,omitempty"`
-	Image   []byte `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
+	// image is the raw image bytes
+	Image []byte `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
 }
 
 func (x *UploadThumbnailRequest) Reset() {

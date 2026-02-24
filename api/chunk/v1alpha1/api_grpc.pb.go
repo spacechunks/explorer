@@ -145,6 +145,14 @@ type ChunkServiceClient interface {
 	//     documentation of GetUploadURLRequest
 	GetUploadURL(ctx context.Context, in *GetUploadURLRequest, opts ...grpc.CallOption) (*GetUploadURLResponse, error)
 	GetSupportedMinecraftVersions(ctx context.Context, in *GetSupportedMinecraftVersionsRequest, opts ...grpc.CallOption) (*GetSupportedMinecraftVersionsResponse, error)
+	// UploadThumbnail uploads the given PNG image. Formats other than PNG are not supported.
+	//
+	// Defined error codes:
+	// - INVALID_ARGUMENT:
+	//   - chunk id is invalid
+	//   - thumbnail image must be PNG
+	//   - thumbnail size must be 512x512 pixels
+	//   - thumbnail size too big
 	UploadThumbnail(ctx context.Context, in *UploadThumbnailRequest, opts ...grpc.CallOption) (*UploadThumbnailResponse, error)
 }
 
@@ -352,6 +360,14 @@ type ChunkServiceServer interface {
 	//     documentation of GetUploadURLRequest
 	GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error)
 	GetSupportedMinecraftVersions(context.Context, *GetSupportedMinecraftVersionsRequest) (*GetSupportedMinecraftVersionsResponse, error)
+	// UploadThumbnail uploads the given PNG image. Formats other than PNG are not supported.
+	//
+	// Defined error codes:
+	// - INVALID_ARGUMENT:
+	//   - chunk id is invalid
+	//   - thumbnail image must be PNG
+	//   - thumbnail size must be 512x512 pixels
+	//   - thumbnail size too big
 	UploadThumbnail(context.Context, *UploadThumbnailRequest) (*UploadThumbnailResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
