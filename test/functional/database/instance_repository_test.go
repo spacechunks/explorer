@@ -58,6 +58,7 @@ func TestCreateInstance(t *testing.T) {
 	expected.Port = nil                     // port will not be saved when creating
 	expected.FlavorVersion.FileHashes = nil // will not be returned atm
 	expected.Chunk.Owner = resource.User{}  // will not be returned atm
+	expected.Chunk.Thumbnail.Hash = ""      // will not be returned atm
 	expected.Owner = c.Owner
 
 	actual, err := pg.DB.CreateInstance(ctx, expected, fixture.Node().ID)
