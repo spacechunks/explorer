@@ -10,17 +10,16 @@ on limited hardware like small cloud VMs.
 ## What is the current state of the project?
 
 We are approaching an early alpha phase with big steps! This is what is still missing for a working alpha:
-* Implementing a basic control plane
-* Platformd discovering instances that it should run
-* Basic implementation of CRUD endpoints for Chunks and Flavors
+* Working Minecraft UI implementation
+* Resource pack updates when Chunk thumbnail changes
 
 What's missing for a working beta:
-* Fully working CRUD gRPC endpoints for creaing Chunks and Flavors
-* Providing a CLI and Chunk config file spec
-* Backend implementation for creating checkpoints out of a Chunk config
+* Configurable user limits
+* Feature flags
 * Improvements on the platformd side (component responsible for actually running the containers)
   * Image GC
-  * TBD ;)
+  * TBD
+* TBD
 
 **Requirements**
 * Linux kernel >= 6.6, tcx not supported (caused by `link.AttachTCX`)
