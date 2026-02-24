@@ -44,6 +44,11 @@ type Chunk struct {
 	Owner       User
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	Thumbnail   Thumbnail
+}
+
+type Thumbnail struct {
+	Hash string
 }
 
 /*
