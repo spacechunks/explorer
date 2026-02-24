@@ -47,6 +47,7 @@ type publishConfig struct {
 type chunkConfig struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
+	Thumbnail   string         `json:"thumbnail"`
 	Tags        []string       `json:"tags"`
 	Flavors     []flavorConfig `json:"flavors"`
 }
@@ -193,7 +194,7 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 		plan := newPlan(cliCtx.Logger, cfg, resp.Versions, chunk)
 		plan.print()
 
-		if len(plan.addedFlavors)+len(plan.changedFlavors)+len(plan.actionables) == 0 {
+		if len(plan.addedFlavors)+len(plan.changedFlavors)+len(plan.actionables) == 0 && !plan.updateThumbnail {
 			fmt.Println("Nothing to publish.")
 			return nil
 		}
@@ -214,6 +215,20 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 			}
 
 			chunk = resp.Chunk
+		}
+
+		if plan.updateThumbnail {
+			data, err := os.ReadFile(cfg.Chunk.Thumbnail)
+			if err != nil {
+				fmt.Printf("Thumbnail: Error reading thumbnail: %v\n", err)
+			} else {
+				if _, err := cliCtx.Client.UploadThumbnail(ctx, &chunkv1alpha1.UploadThumbnailRequest{
+					ChunkId: chunk.Id,
+					Image:   data,
+				}); err != nil {
+					fmt.Printf("Thumbnail: Error uploading thumbnail: %v\n", err)
+				}
+			}
 		}
 
 		b := builder{
@@ -427,8 +442,8 @@ func prompt(label string) bool {
 	}
 }
 
-func readConfigWithResolvedPaths(path string) (publishConfig, error) {
-	data, err := os.ReadFile(path)
+func readConfigWithResolvedPaths(configPath string) (publishConfig, error) {
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return publishConfig{}, fmt.Errorf("read config file: %w", err)
 	}
@@ -438,21 +453,38 @@ func readConfigWithResolvedPaths(path string) (publishConfig, error) {
 		return publishConfig{}, fmt.Errorf("parse config file: %w", err)
 	}
 
+	if cfg.Chunk.Thumbnail != "" {
+		resolvedThmb, err := resolvePath(configPath, cfg.Chunk.Thumbnail)
+		if err != nil {
+			return publishConfig{}, fmt.Errorf("resolve thumbnail configPath: %w", err)
+		}
+		cfg.Chunk.Thumbnail = resolvedThmb
+	}
+
 	// resolve to absolute paths, because publish could be called from
 	// anywhere in the filesystem and flavor paths _could_ be relative
 	// to the directory where the .chunk.yaml lives.
 	for idx, f := range cfg.Chunk.Flavors {
-		if filepath.IsAbs(f.Path) {
-			continue
-		}
-
-		abs, err := filepath.Abs(path)
+		resolved, err := resolvePath(configPath, f.Path)
 		if err != nil {
-			return publishConfig{}, fmt.Errorf("abs: %w", err)
+			return publishConfig{}, fmt.Errorf("resolve configPath: %w", err)
 		}
 
-		cfg.Chunk.Flavors[idx].Path = filepath.Join(filepath.Dir(abs), f.Path)
+		cfg.Chunk.Flavors[idx].Path = resolved
 	}
 
 	return cfg, nil
+}
+
+func resolvePath(configPath string, elemPath string) (string, error) {
+	if filepath.IsAbs(elemPath) {
+		return elemPath, nil
+	}
+
+	abs, err := filepath.Abs(configPath)
+	if err != nil {
+		return "", fmt.Errorf("abs: %w", err)
+	}
+
+	return filepath.Join(filepath.Dir(abs), elemPath), nil
 }
