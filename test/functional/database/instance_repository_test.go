@@ -55,10 +55,10 @@ func TestCreateInstance(t *testing.T) {
 	expected := fixture.Instance()
 	expected.Chunk = c
 	expected.FlavorVersion = c.Flavors[0].Versions[0]
-	expected.Port = nil                     // port will not be saved when creating
-	expected.FlavorVersion.FileHashes = nil // will not be returned atm
-	expected.Chunk.Owner = resource.User{}  // will not be returned atm
-	expected.Chunk.Thumbnail.Hash = ""      // will not be returned atm
+	expected.Port = nil                             // port will not be saved when creating
+	expected.FlavorVersion.FileHashes = nil         // will not be returned atm
+	expected.Chunk.Owner = resource.User{}          // will not be returned atm
+	expected.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 	expected.Owner = c.Owner
 
 	actual, err := pg.DB.CreateInstance(ctx, expected, fixture.Node().ID)
@@ -97,18 +97,20 @@ func TestDBListInstances(t *testing.T) {
 			i.ID = test.NewUUIDv7(t)
 			i.Chunk = c
 			i.FlavorVersion = c.Flavors[0].Versions[0]
-			i.Port = nil                     // port will not be saved when creating
-			i.FlavorVersion.FileHashes = nil // will not be returned atm
-			i.Chunk.Owner = resource.User{}  // will not be returned atm
+			i.Port = nil                             // port will not be saved when creating
+			i.FlavorVersion.FileHashes = nil         // will not be returned atm
+			i.Chunk.Owner = resource.User{}          // will not be returned atm
+			i.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 			i.Owner = c.Owner
 		}),
 		fixture.Instance(func(i *resource.Instance) {
 			i.ID = test.NewUUIDv7(t)
 			i.Chunk = c
 			i.FlavorVersion = c.Flavors[0].Versions[0]
-			i.Port = nil                     // port will not be saved when creating
-			i.FlavorVersion.FileHashes = nil // will not be returned atm
-			i.Chunk.Owner = resource.User{}  // will not be returned atm
+			i.Port = nil                             // port will not be saved when creating
+			i.FlavorVersion.FileHashes = nil         // will not be returned atm
+			i.Chunk.Owner = resource.User{}          // will not be returned atm
+			i.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 			i.Owner = c.Owner
 		}),
 	}
@@ -164,7 +166,8 @@ func TestGetInstanceByID(t *testing.T) {
 				pg.CreateChunk(t, &tt.expected.Chunk, fixture.CreateOptionsAll)
 
 				tt.expected.Owner = tt.expected.Chunk.Owner
-				tt.expected.Chunk.Owner = resource.User{} // will not be returned atm
+				tt.expected.Chunk.Owner = resource.User{}          // will not be returned atm
+				tt.expected.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 
 				v := tt.expected.Chunk.Flavors[0].Versions[0]
 				v.FileHashes = nil // not returned atm
@@ -260,7 +263,8 @@ func TestGetInstancesByNodeID(t *testing.T) {
 			Owner:         chunks[i].Owner,
 		}
 
-		ins.Chunk.Owner = resource.User{} // will not be returned atm
+		ins.Chunk.Owner = resource.User{}          // will not be returned atm
+		ins.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 
 		// see FIXME in GetInstancesByNodeID
 		ins.Chunk.Flavors = nil
