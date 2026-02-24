@@ -28,6 +28,7 @@ import (
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
+	"github.com/spacechunks/explorer/internal/file"
 )
 
 var (
@@ -122,10 +123,11 @@ type actionable struct {
 }
 
 type plan struct {
-	addedFlavors   []localFlavor
-	changedFlavors []changedFlavor
-	actionables    []actionable
-	conflicts      []conflict
+	addedFlavors    []localFlavor
+	changedFlavors  []changedFlavor
+	actionables     []actionable
+	conflicts       []conflict
+	updateThumbnail bool
 }
 
 func newPlan(logger *slog.Logger, cfg publishConfig, supportedVersions []string, chunk *chunkv1alpha1.Chunk) plan {
@@ -272,6 +274,35 @@ func newPlan(logger *slog.Logger, cfg publishConfig, supportedVersions []string,
 		})
 	}
 
+	// don't upload if it's not specified
+	if cfg.Chunk.Thumbnail != "" {
+		thbFile, err := os.Open(cfg.Chunk.Thumbnail)
+		if err != nil {
+			p.conflicts = append(p.conflicts, errorConflict{
+				flavor: localFlavor{
+					name: "Thumbnail", // nasty, but works
+				},
+				err: fmt.Errorf("open thumbnail file: %w", err),
+			})
+			return p
+		}
+
+		h, err := file.ComputeHashStr(thbFile)
+		if err != nil {
+			p.conflicts = append(p.conflicts, errorConflict{
+				flavor: localFlavor{
+					name: "Thumbnail",
+				},
+				err: fmt.Errorf("compute thumbnail hash: %w", err),
+			})
+			return p
+		}
+
+		if h != chunk.Thumbnail.Hash {
+			p.updateThumbnail = true
+		}
+	}
+
 	return p
 }
 
@@ -339,10 +370,10 @@ func (p plan) print() {
 		for _, a := range p.actionables {
 			sec := cli.Section()
 			if a.phase == buildPhaseUpload {
-				sec.AddRow(Cyan+indent1+a.flavor.name+" => ", "Retry uploading files")
+				sec.AddRow(Cyan+indent1+a.flavor.name+" ", "=> Retry uploading files")
 			}
 			if a.phase == buildPhaseTriggerBuild {
-				sec.AddRow(Cyan+indent1+a.flavor.name+" => ", "Retry triggering build")
+				sec.AddRow(Cyan+indent1+a.flavor.name+" ", "=> Retry triggering build")
 			}
 			sec.Print()
 		}
@@ -359,9 +390,13 @@ func (p plan) print() {
 			versions = append(versions, c.Flavor().name)
 		}
 		fmt.Printf(
-			"\nWARNING: Flavors %s contain conflicts and will NOT be published when proceeding.\n",
+			"\nWARNING: %s contain conflicts and will NOT be published when proceeding.\n",
 			strings.Join(versions, ", "),
 		)
+	}
+
+	if p.updateThumbnail {
+		fmt.Printf("%s%sThumbnail => Will be updated\n", indent1, Yellow)
 	}
 
 	fmt.Println(Reset)
