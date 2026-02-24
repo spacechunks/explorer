@@ -26,9 +26,10 @@ import (
 )
 
 const (
-	MaxChunkTags             = 4
-	MaxChunkNameChars        = 50
-	MaxChunkDescriptionChars = 100
+	MaxChunkTags                = 4
+	MaxChunkNameChars           = 50
+	MaxChunkDescriptionChars    = 100
+	MaxChunkThumbnailDimensions = 512
 )
 
 /*

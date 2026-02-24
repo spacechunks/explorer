@@ -122,7 +122,7 @@ func (s *svc) UpdateThumbnail(ctx context.Context, chunkID string, imgData []byt
 		return fmt.Errorf("decode config: %w", err)
 	}
 
-	if cfg.Width != 512 && cfg.Height != 512 {
+	if cfg.Width != resource.MaxChunkThumbnailDimensions && cfg.Height != resource.MaxChunkThumbnailDimensions {
 		return apierrs.ErrInvalidThumbnailDimensions
 	}
 
