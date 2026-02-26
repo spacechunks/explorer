@@ -148,3 +148,32 @@ func TestUpdateThumbnail(t *testing.T) {
 
 	cmp.Diff(actualHash, expectedHash)
 }
+
+func TestGetAllThumbnailHashes(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c1  = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Thumbnail.Hash = "h1"
+		})
+		c2 = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Thumbnail.Hash = "h2"
+		})
+	)
+	pg.Run(t, ctx)
+
+	pg.CreateChunk(t, &c1, fixture.CreateOptionsAll)
+	pg.CreateChunk(t, &c2, fixture.CreateOptionsAll)
+
+	expected := map[string]string{
+		c1.ID: "h1",
+		c2.ID: "h2",
+	}
+
+	actual, err := pg.DB.AllChunkThumbnailHashes(ctx)
+	require.NoError(t, err)
+
+	if d := cmp.Diff(expected, actual); d != "" {
+		t.Errorf("mismatch (-want +got):\n%s", d)
+	}
+}

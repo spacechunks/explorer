@@ -55,11 +55,20 @@ func main() {
 		presignedURLExpiry       = fs.Duration("presigned-url-expiry", 5*time.Minute, "when to expire the presigned URL")                                                                                         //nolint:lll
 		usePathStyle             = fs.Bool("use-path-style", true, "whether to use path style to access the bucket")                                                                                              //nolint:lll
 		idpOAuthClientID         = fs.String("idp-oauth-client-id", "", "oauth client ID to use for authentication")
-		idpOAuthIssuerEndpoint   = fs.String("idp-oauth-issuer-endpoint", "", "issuer endpoint to use for authentication")                                                            //nolint:lll
-		apiTokenIssuer           = fs.String("api-token-issuer", "", "issuer to use for api tokens issued by the control plane. this value will also be set as the tokens audience.") //nolint:lll
-		apiTokenExpiry           = fs.Duration("api-token-expiry", 10*time.Minute, "expiry of api tokens issued by the control plane")                                                //nolint:lll
-		apiTokenSigningKey       = fs.String("api-token-signing-key", "", "key used to sign api tokens issued by the control plane")                                                  //nolint:lll
-		thumbnailMaxSizeKB       = fs.Int("thumbnail-max-size-kb", 1000, "max size a thumbnail can be in kilobytes")                                                                  //nolint:lll
+		idpOAuthIssuerEndpoint   = fs.String("idp-oauth-issuer-endpoint", "", "issuer endpoint to use for authentication")                                                                          //nolint:lll
+		apiTokenIssuer           = fs.String("api-token-issuer", "", "issuer to use for api tokens issued by the control plane. this value will also be set as the tokens audience.")               //nolint:lll
+		apiTokenExpiry           = fs.Duration("api-token-expiry", 10*time.Minute, "expiry of api tokens issued by the control plane")                                                              //nolint:lll
+		apiTokenSigningKey       = fs.String("api-token-signing-key", "", "key used to sign api tokens issued by the control plane")                                                                //nolint:lll
+		thumbnailMaxSizeKB       = fs.Int("thumbnail-max-size-kb", 1000, "max size a thumbnail can be in kilobytes")                                                                                //nolint:lll
+		packCreateInterval       = fs.Duration("resourc-epack-create-interval", 5*time.Minute, "in what interval the resource pack will be built and published")                                    //nolint:lll
+		packWorkingDir           = fs.String("resource-pack-working-dir", "", "the directory where temporary files will be placed when creating the resource pack")                                 //nolint:lll
+		packTemplateKey          = fs.String("resource-pack-template-key", "", "key to the s3 object that is being used as a resource pack basis")                                                  //nolint:lll
+		packItemTemplatePath     = fs.String("resource-pack-item-template-path", "", "path inside the resource pack to an item template. e.g. assets/mynamespace/items/_template.json")             //nolint:lll
+		packModelTemplatePath    = fs.String("resource-pack-model-template-path", "", "path inside the resource pack to a model tempalte. e.g. assets/mynamespace/models/item/_template.json")      //nolint:lll
+		packModelDir             = fs.String("resource-pack-model-dir", "", "path inside the resource pack to the directory where the models will live. e.g. assets/mynamespace/models/item")       //nolint:lll
+		packItemDir              = fs.String("resource-pack-item-dir", "", "path inside the resource pack to the directory where the items will live. e.g. assets/mynamespace/items")               //nolint:lll
+		packTextureDir           = fs.String("resource-pack-texture-dir", "", "path inside the resource pack to the directory where the textures will live. e.g. assets/mynamespace/textures/item") //nolint:lll
+
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
@@ -90,6 +99,14 @@ func main() {
 			APITokenExpiry:                *apiTokenExpiry,
 			APITokenSigningKey:            *apiTokenSigningKey,
 			ThumbnailMaxSizeKB:            *thumbnailMaxSizeKB,
+			ResourcePackBuildInterval:     *packCreateInterval,
+			ResourcePackWorkingDir:        *packWorkingDir,
+			ResourcePackTemplateKey:       *packTemplateKey,
+			ResourcePackItemTemplatePath:  *packItemTemplatePath,
+			ResourcePackModelTemplatePath: *packModelTemplatePath,
+			ResourcePackModelDir:          *packModelDir,
+			ResourcePackItemDir:           *packItemDir,
+			ResourcePackTextureDir:        *packTextureDir,
 		}
 		ctx    = context.Background()
 		server = controlplane.NewServer(logger, cfg)

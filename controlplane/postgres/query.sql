@@ -58,6 +58,10 @@ UPDATE chunks SET
     thumbnail_updated_at = now()
 WHERE id = $2;
 
+-- name: AllChunkThumbnailHashes :many
+SELECT id, thumbnail_hash FROM chunks
+WHERE thumbnail_hash IS NOT NULL;
+
 /*
  * FLAVORS
  */

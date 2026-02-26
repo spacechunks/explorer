@@ -115,11 +115,25 @@ func (s *Server) Run(ctx context.Context) error {
 		imgService,
 		blobStore,
 		pool,
-		s.cfg.CheckpointJobTimeout,
-		s.cfg.CheckpointStatusCheckInterval,
 		db,
 		db,
-		s.cfg.ImagePlatform,
+		s.cfg.ResourcePackBuildInterval,
+		worker.CreateImageWorkerConfig{
+			ImagePlatform: s.cfg.ImagePlatform,
+		},
+		worker.CreateCheckpointWorkerConfig{
+			Timeout:             s.cfg.CheckpointJobTimeout,
+			StatusCheckInterval: s.cfg.CheckpointStatusCheckInterval,
+		},
+		worker.CreateResourcePackWorkerConfig{
+			WorkingDir:        s.cfg.ResourcePackWorkingDir,
+			PackTemplateKey:   s.cfg.ResourcePackTemplateKey,
+			ItemTemplatePath:  s.cfg.ResourcePackItemTemplatePath,
+			ModelTemplatePath: s.cfg.ResourcePackModelTemplatePath,
+			ModelDir:          s.cfg.ResourcePackModelDir,
+			ItemDir:           s.cfg.ResourcePackItemDir,
+			TextureDir:        s.cfg.ResourcePackTextureDir,
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("create river client: %w", err)
@@ -290,11 +304,12 @@ func CreateRiverClient(
 	imgService image.Service,
 	blobStore blob.S3Store,
 	pool *pgxpool.Pool,
-	checkpointTimeout time.Duration,
-	statusCheckInterval time.Duration,
 	nodeRepo node.Repository,
 	jobClient job.Client,
-	imagePlatform string,
+	packBuildInterval time.Duration,
+	imgWorkerCfg worker.CreateImageWorkerConfig,
+	checkWorkerCfg worker.CreateCheckpointWorkerConfig,
+	packWorkerCfg worker.CreateResourcePackWorkerConfig,
 ) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 
@@ -304,8 +319,9 @@ func CreateRiverClient(
 		imgService,
 		jobClient,
 		blobStore,
-		imagePlatform,
+		imgWorkerCfg,
 	)
+
 	if err := river.AddWorkerSafely[job.CreateImage](workers, imgWorker); err != nil {
 		return nil, fmt.Errorf("add create image worker: %w", err)
 	}
@@ -313,12 +329,23 @@ func CreateRiverClient(
 	checkWorker := worker.NewCheckpointWorker(
 		logger.With("component", "checkpoint-worker"),
 		createCheckpointClient,
-		checkpointTimeout,
-		statusCheckInterval,
 		nodeRepo,
 		chunkRepo,
+		checkWorkerCfg,
 	)
+
 	if err := river.AddWorkerSafely[job.CreateCheckpoint](workers, checkWorker); err != nil {
+		return nil, fmt.Errorf("add create checkpoint worker: %w", err)
+	}
+
+	packWorker := worker.NewCreateResourcePackWorker(
+		logger.With("component", "resource-pack-worker"),
+		blobStore,
+		chunkRepo,
+		packWorkerCfg,
+	)
+
+	if err := river.AddWorkerSafely[job.CreateResourcePack](workers, packWorker); err != nil {
 		return nil, fmt.Errorf("add create checkpoint worker: %w", err)
 	}
 
@@ -327,6 +354,11 @@ func CreateRiverClient(
 			river.QueueDefault: {
 				MaxWorkers: 10,
 			},
+		},
+		PeriodicJobs: []*river.PeriodicJob{
+			river.NewPeriodicJob(river.PeriodicInterval(packBuildInterval), func() (river.JobArgs, *river.InsertOpts) {
+				return job.CreateResourcePack{}, nil
+			}, nil),
 		},
 		Workers:     workers,
 		Logger:      logger.With("component", "river"),

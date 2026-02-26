@@ -111,10 +111,12 @@ func TestCreateCheckpointWorker(t *testing.T) {
 			w := worker.NewCheckpointWorker(
 				logger,
 				newClient,
-				tt.timeout,
-				5*time.Millisecond,
 				mockNodeRepo,
 				mockChunkRepo,
+				worker.CreateCheckpointWorkerConfig{
+					Timeout:             tt.timeout,
+					StatusCheckInterval: 5 * time.Millisecond,
+				},
 			)
 
 			riverJob := &river.Job[job.CreateCheckpoint]{

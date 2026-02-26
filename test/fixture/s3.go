@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -113,4 +114,42 @@ func (f FakeS3) RequireObjectExists(t *testing.T, key string) {
 		}
 		t.Fatalf("head object failed: %v", err)
 	}
+}
+
+func (f FakeS3) ObjectExists(t *testing.T, key string) bool {
+	var (
+		ctx = context.Background()
+		c   = NewS3Client(t, ctx)
+	)
+
+	_, err := c.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		var s3err smithy.APIError
+		if errors.As(err, &s3err) && s3err.ErrorCode() == "NotFound" {
+			return false
+		}
+		t.Fatalf("head object failed: %v", err)
+	}
+	return true
+}
+
+func (f FakeS3) GetObject(t *testing.T, key string) ([]byte, map[string]string) {
+	var (
+		ctx = context.Background()
+		c   = NewS3Client(t, ctx)
+	)
+
+	resp, err := c.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(Bucket),
+		Key:    aws.String(key),
+	})
+	require.NoError(t, err)
+
+	data, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	return data, resp.Metadata
 }

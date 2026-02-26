@@ -13,6 +13,36 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const allChunkThumbnailHashes = `-- name: AllChunkThumbnailHashes :many
+SELECT id, thumbnail_hash FROM chunks
+WHERE thumbnail_hash IS NOT NULL
+`
+
+type AllChunkThumbnailHashesRow struct {
+	ID            string
+	ThumbnailHash pgtype.Text
+}
+
+func (q *Queries) AllChunkThumbnailHashes(ctx context.Context) ([]AllChunkThumbnailHashesRow, error) {
+	rows, err := q.db.Query(ctx, allChunkThumbnailHashes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AllChunkThumbnailHashesRow
+	for rows.Next() {
+		var i AllChunkThumbnailHashesRow
+		if err := rows.Scan(&i.ID, &i.ThumbnailHash); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const allMinecraftVersions = `-- name: AllMinecraftVersions :many
 /*
  * MINECRAFT VERSIONS

@@ -23,6 +23,64 @@ func (_m *MockChunkRepository) EXPECT() *MockChunkRepository_Expecter {
 	return &MockChunkRepository_Expecter{mock: &_m.Mock}
 }
 
+// AllChunkThumbnailHashes provides a mock function with given fields: ctx
+func (_m *MockChunkRepository) AllChunkThumbnailHashes(ctx context.Context) (map[string]string, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AllChunkThumbnailHashes")
+	}
+
+	var r0 map[string]string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (map[string]string, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) map[string]string); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockChunkRepository_AllChunkThumbnailHashes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AllChunkThumbnailHashes'
+type MockChunkRepository_AllChunkThumbnailHashes_Call struct {
+	*mock.Call
+}
+
+// AllChunkThumbnailHashes is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockChunkRepository_Expecter) AllChunkThumbnailHashes(ctx interface{}) *MockChunkRepository_AllChunkThumbnailHashes_Call {
+	return &MockChunkRepository_AllChunkThumbnailHashes_Call{Call: _e.mock.On("AllChunkThumbnailHashes", ctx)}
+}
+
+func (_c *MockChunkRepository_AllChunkThumbnailHashes_Call) Run(run func(ctx context.Context)) *MockChunkRepository_AllChunkThumbnailHashes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_AllChunkThumbnailHashes_Call) Return(_a0 map[string]string, _a1 error) *MockChunkRepository_AllChunkThumbnailHashes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockChunkRepository_AllChunkThumbnailHashes_Call) RunAndReturn(run func(context.Context) (map[string]string, error)) *MockChunkRepository_AllChunkThumbnailHashes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ChunkExists provides a mock function with given fields: ctx, id
 func (_m *MockChunkRepository) ChunkExists(ctx context.Context, id string) (bool, error) {
 	ret := _m.Called(ctx, id)

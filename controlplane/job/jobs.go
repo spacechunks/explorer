@@ -75,3 +75,10 @@ func (c CreateCheckpoint) Validate() error {
 func (CreateCheckpoint) Kind() string {
 	return "create_checkpoint"
 }
+
+type CreateResourcePack struct {
+}
+
+func (CreateResourcePack) Kind() string {
+	return "build_resource_pack"
+}

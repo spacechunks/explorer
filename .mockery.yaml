@@ -22,8 +22,7 @@ packages:
       Service:
   github.com/spacechunks/explorer/controlplane/blob:
     interfaces:
-      Store:
-      Repository:
+      S3Store:
   github.com/spacechunks/explorer/platformd/proxy/xds:
     interfaces:
       Map:

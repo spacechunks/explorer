@@ -42,4 +42,12 @@ type Config struct {
 	APITokenExpiry                time.Duration
 	APITokenSigningKey            string
 	ThumbnailMaxSizeKB            int
+	ResourcePackBuildInterval     time.Duration
+	ResourcePackWorkingDir        string
+	ResourcePackTemplateKey       string
+	ResourcePackItemTemplatePath  string
+	ResourcePackModelTemplatePath string
+	ResourcePackModelDir          string
+	ResourcePackItemDir           string
+	ResourcePackTextureDir        string
 }
