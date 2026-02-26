@@ -171,7 +171,7 @@ func TestResourcePackWorkerRunsSuccessfully(t *testing.T) {
 	var (
 		ctx             = context.Background()
 		itemTemplate    = `{"model":{"type":"minecraft:model","model":"spacechunks:item/spc/test/{chunk_id}"}}`
-		modelTemplate   = `{"parent":"spacechunks:item/explorer/chunk_viewer/flat_ui_element","textures":{"layer0":"spacechunks:item/spc/test/{chunk_id}"}}`
+		modelTemplate   = `{"parent":"spacechunks:item/explorer/chunk_viewer/flat_ui_element","textures":{"layer0":"spacechunks:item/spc/test/{chunk_id}"}}` //nolint:lll
 		templatePack, _ = test.CreateResourcePackZip(t, map[string]string{
 			"assets/spc/items/test/_template.json":       itemTemplate,
 			"assets/spc/models/item/test/_template.json": modelTemplate,
