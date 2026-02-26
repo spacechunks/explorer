@@ -32,34 +32,37 @@ import (
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
+type CreateCheckpointWorkerConfig struct {
+	Timeout             time.Duration
+	StatusCheckInterval time.Duration
+}
+
 type CreateCheckpointClient func(host string) (checkpointv1alpha1.CheckpointServiceClient, error)
 
 type CreateCheckpointWorker struct {
 	river.WorkerDefaults[job.CreateCheckpoint]
 
-	logger              *slog.Logger
-	timeout             time.Duration
-	statusCheckInterval time.Duration
-	nodeRepo            node.Repository
-	chunkRepo           chunk.Repository
+	logger    *slog.Logger
+	nodeRepo  node.Repository
+	chunkRepo chunk.Repository
 
 	// this factory function allows us to inject a mock client for testing.
 	createCheckpointClient CreateCheckpointClient
+
+	cfg CreateCheckpointWorkerConfig
 }
 
 func NewCheckpointWorker(
 	logger *slog.Logger,
 	createCheckpointClient CreateCheckpointClient,
-	timeout time.Duration,
-	statusCheckInterval time.Duration,
 	nodeRepo node.Repository,
 	chunkRepo chunk.Repository,
+	cfg CreateCheckpointWorkerConfig,
 ) *CreateCheckpointWorker {
 	return &CreateCheckpointWorker{
 		logger:                 logger,
 		createCheckpointClient: createCheckpointClient,
-		timeout:                timeout,
-		statusCheckInterval:    statusCheckInterval,
+		cfg:                    cfg,
 		nodeRepo:               nodeRepo,
 		chunkRepo:              chunkRepo,
 	}
@@ -120,7 +123,7 @@ func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[j
 		return fmt.Errorf("create checkpoint: %w", err)
 	}
 
-	t := time.NewTicker(w.statusCheckInterval)
+	t := time.NewTicker(w.cfg.StatusCheckInterval)
 
 	for {
 		select {
@@ -169,5 +172,5 @@ func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[j
 }
 
 func (w *CreateCheckpointWorker) Timeout(*river.Job[job.CreateCheckpoint]) time.Duration {
-	return w.timeout
+	return w.cfg.Timeout
 }

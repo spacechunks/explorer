@@ -42,6 +42,7 @@ type S3Store interface {
 	WriteTo(ctx context.Context, key string, w io.Writer) error
 	ObjectExists(ctx context.Context, key string) (bool, error)
 	Put(ctx context.Context, keyPrefix string, objects []Object) error
+	SimplePut(ctx context.Context, key string, r io.Reader, metadata map[string]string) error
 }
 
 type S3ObjectStore struct {
@@ -155,6 +156,12 @@ func (s S3ObjectStore) Put(ctx context.Context, keyPrefix string, objects []Obje
 	return nil
 }
 
-func (s S3ObjectStore) Get(ctx context.Context, keyPrefix string, hashes []string) ([]io.Reader, error) {
-	return nil, nil
+func (s S3ObjectStore) SimplePut(ctx context.Context, key string, r io.Reader, metadata map[string]string) error {
+	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:   &s.bucket,
+		Key:      &key,
+		Body:     r,
+		Metadata: metadata,
+	})
+	return err
 }

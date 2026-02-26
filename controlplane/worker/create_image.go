@@ -37,14 +37,18 @@ import (
 	"github.com/spacechunks/explorer/internal/tarhelper"
 )
 
+type CreateImageWorkerConfig struct {
+	ImagePlatform string
+}
+
 type CreateImageWorker struct {
 	logger *slog.Logger
 	river.WorkerDefaults[job.CreateImage]
-	repo          chunk.Repository
-	store         blob.S3Store
-	imgService    image.Service
-	jobClient     job.Client
-	imagePlatform string
+	repo       chunk.Repository
+	store      blob.S3Store
+	imgService image.Service
+	jobClient  job.Client
+	cfg        CreateImageWorkerConfig
 }
 
 func NewCreateImageWorker(
@@ -53,15 +57,15 @@ func NewCreateImageWorker(
 	imgSvc image.Service,
 	jobClient job.Client,
 	store blob.S3Store,
-	imagePlatform string,
+	cfg CreateImageWorkerConfig,
 ) *CreateImageWorker {
 	return &CreateImageWorker{
-		logger:        logger,
-		repo:          repo,
-		store:         store,
-		imgService:    imgSvc,
-		jobClient:     jobClient,
-		imagePlatform: imagePlatform,
+		logger:     logger,
+		repo:       repo,
+		store:      store,
+		imgService: imgSvc,
+		jobClient:  jobClient,
+		cfg:        cfg,
 	}
 }
 
@@ -90,7 +94,7 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		return fmt.Errorf("validate args: %w", err)
 	}
 
-	baseImg, err := w.imgService.Pull(ctx, riverJob.Args.BaseImage, w.imagePlatform)
+	baseImg, err := w.imgService.Pull(ctx, riverJob.Args.BaseImage, w.cfg.ImagePlatform)
 	if err != nil {
 		return fmt.Errorf("pull image: %w", err)
 	}
