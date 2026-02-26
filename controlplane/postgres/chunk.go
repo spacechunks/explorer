@@ -260,6 +260,27 @@ func (db *DB) UpdateThumbnail(ctx context.Context, chunkID string, imgHash strin
 	return nil
 }
 
+func (db *DB) AllChunkThumbnailHashes(ctx context.Context) (map[string]string, error) {
+	var ret map[string]string
+
+	if err := db.do(ctx, func(q *query.Queries) error {
+		rows, err := q.AllChunkThumbnailHashes(ctx)
+		if err != nil {
+			return err
+		}
+		ret = make(map[string]string, len(rows))
+		for _, r := range rows {
+			ret[r.ID] = r.ThumbnailHash.String
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
 func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (resource.Chunk, error) {
 	rows, err := q.GetChunkByID(ctx, id)
 	if err != nil {

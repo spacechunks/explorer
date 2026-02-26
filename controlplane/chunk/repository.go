@@ -53,4 +53,5 @@ type Repository interface {
 	SupportedMinecraftVersions(ctx context.Context) ([]string, error)
 	MinecraftVersionExists(context.Context, string) (bool, error)
 	UpdateThumbnail(ctx context.Context, chunkID string, imgHash string) error
+	AllChunkThumbnailHashes(ctx context.Context) (map[string]string, error)
 }
