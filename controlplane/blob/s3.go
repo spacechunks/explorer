@@ -41,7 +41,7 @@ type S3Store interface {
 		expiry time.Duration) (string, time.Time, error)
 	WriteTo(ctx context.Context, key string, w io.Writer) error
 	ObjectExists(ctx context.Context, key string) (bool, error)
-	Put(ctx context.Context, keyPrefix string, objects []Object) error
+	PutBlob(ctx context.Context, keyPrefix string, objects []Object) error
 	SimplePut(ctx context.Context, key string, r io.Reader, metadata map[string]string) error
 }
 
@@ -122,9 +122,9 @@ func (s S3ObjectStore) WriteTo(ctx context.Context, key string, w io.Writer) err
 	return nil
 }
 
-// Put uploads all the given objects to S3. Note that the objects
+// PutBlob uploads all the given objects to S3. Note that the objects
 // underlying io.ReadSeekCloser will be closed after it has been uploaded.
-func (s S3ObjectStore) Put(ctx context.Context, keyPrefix string, objects []Object) error {
+func (s S3ObjectStore) PutBlob(ctx context.Context, keyPrefix string, objects []Object) error {
 	uploader := manager.NewUploader(s.client)
 
 	for _, obj := range objects {

@@ -147,12 +147,12 @@ func (_c *MockBlobS3Store_PresignURL_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// Put provides a mock function with given fields: ctx, keyPrefix, objects
-func (_m *MockBlobS3Store) Put(ctx context.Context, keyPrefix string, objects []blob.Object) error {
+// PutBlob provides a mock function with given fields: ctx, keyPrefix, objects
+func (_m *MockBlobS3Store) PutBlob(ctx context.Context, keyPrefix string, objects []blob.Object) error {
 	ret := _m.Called(ctx, keyPrefix, objects)
 
 	if len(ret) == 0 {
-		panic("no return value specified for Put")
+		panic("no return value specified for PutBlob")
 	}
 
 	var r0 error
@@ -165,32 +165,32 @@ func (_m *MockBlobS3Store) Put(ctx context.Context, keyPrefix string, objects []
 	return r0
 }
 
-// MockBlobS3Store_Put_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Put'
-type MockBlobS3Store_Put_Call struct {
+// MockBlobS3Store_PutBlob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PutBlob'
+type MockBlobS3Store_PutBlob_Call struct {
 	*mock.Call
 }
 
-// Put is a helper method to define mock.On call
+// PutBlob is a helper method to define mock.On call
 //   - ctx context.Context
 //   - keyPrefix string
 //   - objects []blob.Object
-func (_e *MockBlobS3Store_Expecter) Put(ctx interface{}, keyPrefix interface{}, objects interface{}) *MockBlobS3Store_Put_Call {
-	return &MockBlobS3Store_Put_Call{Call: _e.mock.On("Put", ctx, keyPrefix, objects)}
+func (_e *MockBlobS3Store_Expecter) PutBlob(ctx interface{}, keyPrefix interface{}, objects interface{}) *MockBlobS3Store_PutBlob_Call {
+	return &MockBlobS3Store_PutBlob_Call{Call: _e.mock.On("PutBlob", ctx, keyPrefix, objects)}
 }
 
-func (_c *MockBlobS3Store_Put_Call) Run(run func(ctx context.Context, keyPrefix string, objects []blob.Object)) *MockBlobS3Store_Put_Call {
+func (_c *MockBlobS3Store_PutBlob_Call) Run(run func(ctx context.Context, keyPrefix string, objects []blob.Object)) *MockBlobS3Store_PutBlob_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string), args[2].([]blob.Object))
 	})
 	return _c
 }
 
-func (_c *MockBlobS3Store_Put_Call) Return(_a0 error) *MockBlobS3Store_Put_Call {
+func (_c *MockBlobS3Store_PutBlob_Call) Return(_a0 error) *MockBlobS3Store_PutBlob_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockBlobS3Store_Put_Call) RunAndReturn(run func(context.Context, string, []blob.Object) error) *MockBlobS3Store_Put_Call {
+func (_c *MockBlobS3Store_PutBlob_Call) RunAndReturn(run func(context.Context, string, []blob.Object) error) *MockBlobS3Store_PutBlob_Call {
 	_c.Call.Return(run)
 	return _c
 }

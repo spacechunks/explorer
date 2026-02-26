@@ -143,7 +143,7 @@ func (s *svc) UpdateThumbnail(ctx context.Context, chunkID string, imgData []byt
 		return fmt.Errorf("db: %w", err)
 	}
 
-	if err := s.s3Store.Put(ctx, blob.CASKeyPrefix, []blob.Object{obj}); err != nil {
+	if err := s.s3Store.PutBlob(ctx, blob.CASKeyPrefix, []blob.Object{obj}); err != nil {
 		return fmt.Errorf("put image: %w", err)
 	}
 

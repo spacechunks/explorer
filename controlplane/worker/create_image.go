@@ -197,7 +197,7 @@ func (w *CreateImageWorker) upload(ctx context.Context, filePaths []string) erro
 	}
 
 	// store will check if there are any duplicates
-	if err := w.store.Put(ctx, blob.CASKeyPrefix, objs); err != nil {
+	if err := w.store.PutBlob(ctx, blob.CASKeyPrefix, objs); err != nil {
 		return fmt.Errorf("upload objects: %w", err)
 	}
 

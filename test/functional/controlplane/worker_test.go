@@ -154,7 +154,7 @@ func TestImageWorkerCreatesImageWithMissingFilesDownloadedFromBlobStore(t *testi
 	})
 	require.NoError(t, err)
 
-	err = store.Put(ctx, blob.CASKeyPrefix, objs)
+	err = store.PutBlob(ctx, blob.CASKeyPrefix, objs)
 	require.NoError(t, err)
 
 	err = pg.DB.InsertJob(ctx, flavorVersionID, string(resource.FlavorVersionBuildStatusBuildImage), job.CreateImage{
