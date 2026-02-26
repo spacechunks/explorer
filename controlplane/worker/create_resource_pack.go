@@ -76,17 +76,23 @@ func NewCreateResourcePackWorker(
 	}
 }
 
-func (w *CreateResourcePackWorker) Work(ctx context.Context, _ *river.Job[job.CreateResourcePack]) error {
+func (w *CreateResourcePackWorker) Work(ctx context.Context, riverJob *river.Job[job.CreateResourcePack]) error {
 	// FIXME: at some point we only want to upload the pack if it has actually changed.
 
-	dir, err := os.OpenRoot(w.cfg.WorkingDir)
+	workingDir := fmt.Sprintf("%s/%d", w.cfg.WorkingDir, riverJob.ID)
+
+	if err := os.MkdirAll(workingDir, os.ModePerm); err != nil {
+		return fmt.Errorf("create working dir: %w", err)
+	}
+
+	dir, err := os.OpenRoot(workingDir)
 	if err != nil {
 		return fmt.Errorf("open build dir: %w", err)
 	}
 
 	defer func() {
-		dir.RemoveAll(w.cfg.WorkingDir)
 		dir.Close()
+		os.RemoveAll(workingDir)
 	}()
 
 	if err := w.fetchAndUnzipBasePackTo(ctx, dir, outDir); err != nil {
@@ -94,8 +100,6 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, _ *river.Job[job.Cr
 	}
 
 	outDirPath := filepath.Join(dir.Name(), outDir)
-
-	w.logger.InfoContext(ctx, "merge dir", "path", outDirPath)
 
 	itemTemplate, err := os.ReadFile(filepath.Join(outDirPath, w.cfg.ItemTemplatePath))
 	if err != nil {

@@ -358,7 +358,7 @@ func CreateRiverClient(
 		PeriodicJobs: []*river.PeriodicJob{
 			river.NewPeriodicJob(river.PeriodicInterval(packBuildInterval), func() (river.JobArgs, *river.InsertOpts) {
 				return job.CreateResourcePack{}, nil
-			}, nil),
+			}, &river.PeriodicJobOpts{RunOnStart: true}),
 		},
 		Workers:     workers,
 		Logger:      logger.With("component", "river"),

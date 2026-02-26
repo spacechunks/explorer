@@ -26,7 +26,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 	"github.com/spacechunks/explorer/controlplane/blob"
+	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/test"
@@ -135,6 +138,12 @@ func TestBuildResourcePackWorkerSuccessfullyBuildsPack(t *testing.T) {
 		cfg,
 	)
 
-	err := w.Work(ctx, nil)
+	riverJob := &river.Job[job.CreateResourcePack]{
+		JobRow: &rivertype.JobRow{
+			ID: 1337,
+		},
+	}
+
+	err := w.Work(ctx, riverJob)
 	require.NoError(t, err)
 }
