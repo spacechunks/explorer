@@ -93,18 +93,18 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, _ *river.Job[job.Cr
 		return fmt.Errorf("fetch and unzip base pack: %w", err)
 	}
 
-	mergedDirPath := filepath.Join(dir.Name(), outDir)
+	outDirPath := filepath.Join(dir.Name(), outDir)
 
-	w.logger.InfoContext(ctx, "merge dir", "path", mergedDirPath)
+	w.logger.InfoContext(ctx, "merge dir", "path", outDirPath)
 
-	itemTemplate, err := os.ReadFile(filepath.Join(mergedDirPath, w.cfg.ItemTemplatePath))
+	itemTemplate, err := os.ReadFile(filepath.Join(outDirPath, w.cfg.ItemTemplatePath))
 	if err != nil {
 		return fmt.Errorf("read item template: %w", err)
 	}
 
 	w.logger.InfoContext(ctx, "item template", "template", string(itemTemplate))
 
-	modelTemplate, err := os.ReadFile(filepath.Join(mergedDirPath, w.cfg.ModelTemplatePath))
+	modelTemplate, err := os.ReadFile(filepath.Join(outDirPath, w.cfg.ModelTemplatePath))
 	if err != nil {
 		return fmt.Errorf("read model template: %w", err)
 	}
@@ -202,7 +202,7 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, _ *river.Job[job.Cr
 	// and their content have not changed. we use the hash to for testing to check for
 	// correctness and systems down the line also benefit if the hash only changes if the pack
 	// has been actually modified.
-	if err := filepath.Walk(mergedDirPath, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(outDirPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -211,7 +211,7 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, _ *river.Job[job.Cr
 			return nil
 		}
 
-		relPath, err := filepath.Rel(mergedDirPath, path)
+		relPath, err := filepath.Rel(outDirPath, path)
 		if err != nil {
 			return err
 		}
