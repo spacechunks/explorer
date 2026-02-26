@@ -20,6 +20,7 @@ package controlplane
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
 	"io/fs"
 	"os"
@@ -42,6 +43,7 @@ import (
 	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/internal/tarhelper"
+	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/spacechunks/explorer/test/functional/controlplane/testdata"
 	"github.com/stretchr/testify/require"
@@ -52,7 +54,7 @@ var auth = remote.WithAuth(&image.Auth{
 	Password: fixture.OCIRegistryPass,
 })
 
-func setup(
+func imageWorkerSetup(
 	t *testing.T,
 	ctx context.Context,
 	c *resource.Chunk,
@@ -60,9 +62,9 @@ func setup(
 	changeSet []byte,
 ) (*fixture.Postgres, string, name.Reference) {
 	var (
-		pg       = fixture.NewPostgres()
-		endpoint = fixture.RunRegistry(t)
-		fakes3   = fixture.RunFakeS3(t)
+		pg               = fixture.NewPostgres()
+		registryEndpoint = fixture.RunRegistry(t)
+		fakes3           = fixture.RunFakeS3(t)
 	)
 
 	pg.Run(t, ctx)
@@ -72,7 +74,7 @@ func setup(
 	pusher, err := remote.NewPusher(auth)
 	require.NoError(t, err)
 
-	baseImgRef, err := name.ParseReference(fmt.Sprintf("%s/%s", endpoint, fixture.BaseImage))
+	baseImgRef, err := name.ParseReference(fmt.Sprintf("%s/%s", registryEndpoint, fixture.BaseImage))
 	require.NoError(t, err)
 
 	err = pusher.Push(ctx, baseImgRef, imgtestdata.Image(t))
@@ -80,7 +82,7 @@ func setup(
 
 	fakes3.UploadObject(t, blob.ChangeSetKey(c.Flavors[0].Versions[0].ID), changeSet)
 
-	return pg, endpoint, baseImgRef
+	return pg, registryEndpoint, baseImgRef
 }
 
 func TestImageWorkerCreatesImageWithNoMissingFiles(t *testing.T) {
@@ -92,7 +94,7 @@ func TestImageWorkerCreatesImageWithNoMissingFiles(t *testing.T) {
 		}))
 	)
 
-	pg, endpoint, baseImgRef := setup(t, ctx, c, auth, testdata.FullChangeSetFile)
+	pg, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, testdata.FullChangeSetFile)
 
 	flavorVersionID := c.Flavors[0].Versions[0].ID
 
@@ -131,7 +133,7 @@ func TestImageWorkerCreatesImageWithMissingFilesDownloadedFromBlobStore(t *testi
 		})
 	)
 
-	pg, endpoint, baseImgRef := setup(t, ctx, c, auth, testdata.AddTestFileChangeSet)
+	pg, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, testdata.AddTestFileChangeSet)
 
 	var (
 		flavorVersionID = c.Flavors[0].Versions[0].ID
@@ -163,6 +165,85 @@ func TestImageWorkerCreatesImageWithMissingFilesDownloadedFromBlobStore(t *testi
 	require.NoError(t, err)
 
 	checkImage(t, ctx, auth, endpoint, flavorVersionID, fileHashes)
+}
+
+func TestResourcePackWorkerRunsSuccessfully(t *testing.T) {
+	var (
+		ctx             = context.Background()
+		itemTemplate    = `{"model":{"type":"minecraft:model","model":"spacechunks:item/spc/test/{chunk_id}"}}`
+		modelTemplate   = `{"parent":"spacechunks:item/explorer/chunk_viewer/flat_ui_element","textures":{"layer0":"spacechunks:item/spc/test/{chunk_id}"}}`
+		templatePack, _ = test.CreateResourcePackZip(t, map[string]string{
+			"assets/spc/items/test/_template.json":       itemTemplate,
+			"assets/spc/models/item/test/_template.json": modelTemplate,
+		})
+		c1 = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Thumbnail = resource.Thumbnail{
+				Hash: "id1",
+			}
+		})
+		c2 = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Thumbnail = resource.Thumbnail{
+				Hash: "id2",
+			}
+		})
+
+		fakes3 = fixture.RunFakeS3(t)
+		cp     = fixture.NewControlPlane(t)
+	)
+
+	fakes3.UploadObject(t, fixture.ResourcePackTemplateKey, templatePack.Bytes())
+	fakes3.UploadObject(t, blob.CASKeyPrefix+"/"+"id1", []byte(""))
+	fakes3.UploadObject(t, blob.CASKeyPrefix+"/"+"id2", []byte(""))
+
+	cp.Run(t)
+
+	cp.Postgres.CreateChunk(t, &c1, fixture.CreateOptionsAll)
+	cp.Postgres.CreateChunk(t, &c2, fixture.CreateOptionsAll)
+
+	_, expectedHash := test.CreateResourcePackZip(t, map[string]string{
+		// items
+		"assets/spc/items/test/_template.json":              itemTemplate,
+		fmt.Sprintf("assets/spc/items/test/%s.json", c1.ID): strings.ReplaceAll(itemTemplate, "{chunk_id}", c1.ID),
+		fmt.Sprintf("assets/spc/items/test/%s.json", c2.ID): strings.ReplaceAll(itemTemplate, "{chunk_id}", c2.ID),
+
+		// models
+		"assets/spc/models/item/test/_template.json":              modelTemplate,
+		fmt.Sprintf("assets/spc/models/item/test/%s.json", c1.ID): strings.ReplaceAll(modelTemplate, "{chunk_id}", c1.ID),
+		fmt.Sprintf("assets/spc/models/item/test/%s.json", c2.ID): strings.ReplaceAll(modelTemplate, "{chunk_id}", c2.ID),
+
+		// textures
+		fmt.Sprintf("assets/spc/textures/item/test/%s.png", c1.ID): "",
+		fmt.Sprintf("assets/spc/textures/item/test/%s.png", c2.ID): "",
+	})
+
+	var (
+		timeoutCtx, cancel = context.WithTimeout(ctx, 20*time.Second)
+		ticker             = time.NewTicker(1 * time.Second)
+	)
+
+	defer cancel()
+
+	for {
+		select {
+		case <-timeoutCtx.Done():
+			t.Fatal("timout reached")
+			return
+		case <-ticker.C:
+			key := "explorer/latest.zip"
+			if !fakes3.ObjectExists(t, key) {
+				t.Log("waiting for object", key)
+				continue
+			}
+			data, metadata := fakes3.GetObject(t, key)
+
+			actualHash := fmt.Sprintf("%x", sha1.Sum(data))
+
+			require.Equal(t, expectedHash, actualHash, "sha1 of binary doesnt match")
+			require.Equal(t, expectedHash, metadata["sha1"], "sha1 in metadata does not match")
+
+			return
+		}
+	}
 }
 
 func checkImage(

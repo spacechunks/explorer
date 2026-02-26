@@ -47,10 +47,11 @@ import (
 )
 
 const (
-	ControlPlaneAddr = "localhost:9012"
-	BaseImage        = "base-image:latest"
-	OAuthClientID    = "public-functest-client"
-	APITokenIssuer   = "functest-issuer.explorer.chunks.cloud"
+	ControlPlaneAddr        = "localhost:9012"
+	BaseImage               = "base-image:latest"
+	OAuthClientID           = "public-functest-client"
+	APITokenIssuer          = "functest-issuer.explorer.chunks.cloud"
+	ResourcePackTemplateKey = "explorer/pack_template.zip"
 )
 
 type ControlPlane struct {
@@ -132,14 +133,22 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 				AccessKey:                     "accesskey",
 				SecretKey:                     "secretkey",
 				// should stay at 2 seconds so TestGetUploadURLRenews passes
-				PresignedURLExpiry: 2 * time.Second,
-				UsePathStyle:       false,
-				OAuthClientID:      OAuthClientID,
-				OAuthIssuerURL:     c.IDP.Endpoint,
-				APITokenIssuer:     APITokenIssuer,
-				APITokenExpiry:     5 * time.Second,
-				APITokenSigningKey: keyPem.String(),
-				ThumbnailMaxSizeKB: 100,
+				PresignedURLExpiry:            2 * time.Second,
+				UsePathStyle:                  false,
+				OAuthClientID:                 OAuthClientID,
+				OAuthIssuerURL:                c.IDP.Endpoint,
+				APITokenIssuer:                APITokenIssuer,
+				APITokenExpiry:                5 * time.Second,
+				APITokenSigningKey:            keyPem.String(),
+				ThumbnailMaxSizeKB:            100,
+				ResourcePackBuildInterval:     2 * time.Second,
+				ResourcePackWorkingDir:        t.TempDir(),
+				ResourcePackTemplateKey:       ResourcePackTemplateKey,
+				ResourcePackItemTemplatePath:  "assets/spc/items/test/_template.json",
+				ResourcePackModelTemplatePath: "assets/spc/models/item/test/_template.json",
+				ResourcePackItemDir:           "assets/spc/items/test",
+				ResourcePackModelDir:          "assets/spc/models/item/test",
+				ResourcePackTextureDir:        "assets/spc/textures/item/test",
 			})
 	)
 

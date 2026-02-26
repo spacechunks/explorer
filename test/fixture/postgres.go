@@ -39,6 +39,7 @@ import (
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
@@ -151,11 +152,17 @@ func (p *Postgres) CreateRiverClient(t *testing.T) {
 		imgService,
 		blob.NewS3Store(Bucket, s3client, s3.NewPresignClient(s3client)),
 		p.Pool,
-		5*time.Second,
+		p.DB,
+		p.DB,
 		1*time.Second,
-		p.DB,
-		p.DB,
-		runtime.GOOS+"/"+runtime.GOARCH,
+		worker.CreateImageWorkerConfig{
+			ImagePlatform: runtime.GOOS + "/" + runtime.GOARCH,
+		},
+		worker.CreateCheckpointWorkerConfig{
+			Timeout:             5 * time.Second,
+			StatusCheckInterval: 1 * time.Second,
+		},
+		worker.CreateResourcePackWorkerConfig{},
 	)
 	require.NoError(t, err)
 

@@ -19,10 +19,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package test
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha1"
 	"fmt"
+	"maps"
 	"net"
+	"slices"
 	"testing"
 	"time"
 
@@ -64,4 +69,31 @@ func NewUUIDv7(t *testing.T) string {
 	id, err := uuid.NewV7()
 	require.NoError(t, err)
 	return id.String()
+}
+
+func CreateResourcePackZip(t *testing.T, files map[string]string) (*bytes.Buffer, string) {
+	var (
+		buf = &bytes.Buffer{}
+		zw  = zip.NewWriter(buf)
+	)
+
+	// sort paths alphabetically, because zip files created by
+	// walking a directory on the filesystem also has entries
+	// ordered this way. removing this will break CreateResourcePackWorker
+	// tests.
+	paths := slices.Collect(maps.Keys(files))
+	slices.Sort(paths)
+
+	for _, p := range paths {
+		w, err := zw.Create(p)
+		require.NoError(t, err)
+
+		_, err = w.Write([]byte(files[p]))
+		require.NoError(t, err)
+	}
+
+	err := zw.Close()
+	require.NoError(t, err)
+
+	return buf, fmt.Sprintf("%x", sha1.Sum(buf.Bytes()))
 }
