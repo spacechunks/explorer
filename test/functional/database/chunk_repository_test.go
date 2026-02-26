@@ -159,11 +159,16 @@ func TestGetAllThumbnailHashes(t *testing.T) {
 		c2 = fixture.Chunk(func(tmp *resource.Chunk) {
 			tmp.Thumbnail.Hash = "h2"
 		})
+		null = fixture.Chunk()
 	)
 	pg.Run(t, ctx)
 
 	pg.CreateChunk(t, &c1, fixture.CreateOptionsAll)
 	pg.CreateChunk(t, &c2, fixture.CreateOptionsAll)
+	pg.CreateChunk(t, &null, fixture.CreateOptionsAll)
+
+	_, err := pg.Pool.Exec(ctx, `UPDATE chunks SET thumbnail_hash = NULL WHERE id = $1`, null.ID)
+	require.NoError(t, err)
 
 	expected := map[string]string{
 		c1.ID: "h1",
