@@ -113,7 +113,7 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, _ *river.Job[job.Cr
 
 	// for now, it is fine to simply fetch all thumbnails there are at once.
 	// there are smarter ways to do this like, only fetching the ones that
-	// have changed, for example. right now, for the forseeable future this
+	// have changed, for example. right now, for the foreseeable future this
 	// will not really be a concern, so we went with the simplest solution
 	// possible. we can focus on this later once this really becomes a problem.
 	hashes, err := w.repo.AllChunkThumbnailHashes(ctx)
