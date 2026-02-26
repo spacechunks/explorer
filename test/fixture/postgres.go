@@ -102,6 +102,10 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	require.NoError(t, err)
 
 	mate := dbmate.New(u)
+
+	err = mate.Wait()
+	require.NoError(t, err)
+
 	mate.MigrationsDir = []string{"../../../controlplane/postgres/migrations"}
 	require.NoError(t, mate.Migrate())
 
