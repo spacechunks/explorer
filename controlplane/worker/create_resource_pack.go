@@ -77,6 +77,8 @@ func NewCreateResourcePackWorker(
 }
 
 func (w *CreateResourcePackWorker) Work(ctx context.Context, _ *river.Job[job.CreateResourcePack]) error {
+	// FIXME: at some point we only want to upload the pack if it has actually changed.
+
 	dir, err := os.OpenRoot(w.cfg.WorkingDir)
 	if err != nil {
 		return fmt.Errorf("open build dir: %w", err)
@@ -109,6 +111,11 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, _ *river.Job[job.Cr
 
 	w.logger.InfoContext(ctx, "model template", "template", string(modelTemplate))
 
+	// for now, it is fine to simply fetch all thumbnails there are at once.
+	// there are smarter ways to do this like, only fetching the ones that
+	// have changed, for example. right now, for the forseeable future this
+	// will not really be a concern, so we went with the simplest solution
+	// possible. we can focus on this later once this really becomes a problem.
 	hashes, err := w.repo.AllChunkThumbnailHashes(ctx)
 	if err != nil {
 		return fmt.Errorf("thumbnail hashes: %w", err)
