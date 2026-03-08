@@ -138,6 +138,29 @@ func (s *svc) RemoveWorkload(ctx context.Context, id string) error {
 	}); err != nil {
 		return fmt.Errorf("remove pod sandbox: %w", err)
 	}
+
+	resp, err := s.criService.ListContainers(ctx, &runtimev1.ListContainersRequest{
+		Filter: &runtimev1.ContainerFilter{
+			PodSandboxId: id,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("list containers: %w", err)
+	}
+
+	for _, c := range resp.Containers {
+		if _, err := s.criService.RemoveContainer(ctx, &runtimev1.RemoveContainerRequest{
+			ContainerId: c.Id,
+		}); err != nil {
+			s.logger.InfoContext(ctx,
+				"removing container failed",
+				"container_id", c.Id,
+				"workload_id", id,
+				"err", err,
+			)
+		}
+	}
+
 	return nil
 }
 

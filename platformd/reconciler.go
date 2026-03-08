@@ -140,48 +140,7 @@ func (r *reconciler) tick(ctx context.Context) {
 	}
 
 	for _, ins := range discResp.Instances {
-		id := ins.GetId()
-		switch ins.GetState() {
-		case instancev1alpha1.InstanceState_PENDING, instancev1alpha1.InstanceState_CREATING:
-			if err := r.handleInstanceCreation(ctx, ins); err != nil {
-				if errors.Is(err, errMaxAttemptsReached) {
-					r.logger.WarnContext(ctx,
-						"max attempts reached",
-						"instance_id", id,
-						"attempt", r.attempts[id],
-					)
-					continue
-				}
-				r.attempts[id] = r.attempts[id] + 1
-				r.logger.ErrorContext(ctx,
-					"failed to run workload",
-					"instance_id", id,
-					"attempt", r.attempts[id],
-					"err", err,
-				)
-			}
-			continue
-		// DELETING is set by the control plane once an instance
-		// should be stopped and removed
-		case instancev1alpha1.InstanceState_DELETING:
-			if err := r.handleInstanceDeleting(ctx, ins); err != nil {
-				r.logger.ErrorContext(ctx, "failed to delete instance", "instance_id", id)
-			}
-			continue
-		case instancev1alpha1.InstanceState_RUNNING:
-			if err := r.handleInstanceRunning(ctx, ins); err != nil {
-				r.logger.ErrorContext(ctx,
-					"handling a running instance failed",
-					"instance_id", id,
-					"err", err,
-				)
-			}
-			continue
-		default:
-			// TODO: if creation failed remove pod
-			//r.logger.InfoContext(ctx, "skipping instance", "state", ins.GetState()) // TODO: debug
-			continue
-		}
+		go r.reconcile(ctx, ins)
 	}
 
 	var (
@@ -228,6 +187,55 @@ func (r *reconciler) tick(ctx context.Context) {
 
 	// set the sync interval again, in case we errored before
 	r.ticker.Reset(r.cfg.SyncInterval)
+}
+
+func (r *reconciler) reconcile(ctx context.Context, ins *instancev1alpha1.Instance) {
+	id := ins.GetId()
+	switch ins.GetState() {
+	case instancev1alpha1.InstanceState_PENDING, instancev1alpha1.InstanceState_CREATING:
+		if err := r.handleInstanceCreation(ctx, ins); err != nil {
+			if errors.Is(err, errMaxAttemptsReached) {
+				r.logger.WarnContext(ctx,
+					"max attempts reached",
+					"instance_id", id,
+					"attempt", r.attempts[id],
+				)
+			}
+			r.attempts[id] = r.attempts[id] + 1
+			r.logger.ErrorContext(ctx,
+				"failed to run workload",
+				"instance_id", id,
+				"attempt", r.attempts[id],
+				"err", err,
+			)
+		}
+	// DELETING is set by the control plane once an instance
+	// should be stopped and removed
+	case instancev1alpha1.InstanceState_DELETING:
+		if err := r.handleInstanceDeleting(ctx, ins); err != nil {
+			r.logger.ErrorContext(ctx, "failed to delete instance", "instance_id", id)
+		}
+	case instancev1alpha1.InstanceState_RUNNING:
+		if err := r.handleInstanceRunning(ctx, ins); err != nil {
+			r.logger.ErrorContext(ctx,
+				"handling a running instance failed",
+				"instance_id", id,
+				"err", err,
+			)
+		}
+	case instancev1alpha1.InstanceState_CREATION_FAILED:
+		if err := r.wlService.RemoveWorkload(ctx, id); err != nil {
+			r.logger.ErrorContext(ctx, "failed to remove workload", "instance_id", id)
+			return
+		}
+		r.store.Update(id, status.Status{
+			WorkloadStatus: &status.WorkloadStatus{
+				State: status.WorkloadStateDeleted,
+			},
+		})
+	default:
+		r.logger.DebugContext(ctx, "skipping instance", "state", ins.GetState()) // TODO: debug
+	}
 }
 
 func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *instancev1alpha1.Instance) error {
