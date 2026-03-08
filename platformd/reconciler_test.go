@@ -444,6 +444,37 @@ func TestReconciler(t *testing.T) {
 					Return(nil, errors.New("some error"))
 			},
 		},
+		{
+			name: "CREATION_FAILED instance is deleted",
+			prep: func(
+				wlSvc *mock.MockWorkloadService,
+				insClient *mock.MockV1alpha1InstanceServiceClient,
+				store *mock.MockStatusStore,
+			) {
+				ins := discoverInstance(t, insClient, nodeKey, instancev1alpha1.InstanceState_CREATION_FAILED)
+				wlSvc.EXPECT().
+					RemoveWorkload(mocky.Anything, ins.GetId()).
+					Return(nil)
+
+				store.EXPECT().
+					Update(ins.GetId(), status.Status{
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateDeleted,
+						},
+					})
+
+				store.EXPECT().View().Return(map[string]status.Status{
+					ins.GetId(): {
+						WorkloadStatus: &status.WorkloadStatus{
+							State: status.WorkloadStateDeleted,
+						},
+					},
+				})
+
+				expectReportedStatus(insClient, ins.GetId(), instancev1alpha1.InstanceState_DELETED, 0)
+				store.EXPECT().Del(ins.GetId())
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -167,6 +167,35 @@ func TestRemoveWorkload(t *testing.T) {
 		}).
 		Return(&runtimev1.RemovePodSandboxResponse{}, nil)
 
+	mockCRIService.EXPECT().
+		ListContainers(ctx, &runtimev1.ListContainersRequest{
+			Filter: &runtimev1.ContainerFilter{
+				PodSandboxId: wlID,
+			},
+		}).
+		Return(&runtimev1.ListContainersResponse{
+			Containers: []*runtimev1.Container{
+				{
+					Id: "container-1",
+				},
+				{
+					Id: "container-2",
+				},
+			},
+		}, nil)
+
+	mockCRIService.EXPECT().
+		RemoveContainer(ctx, &runtimev1.RemoveContainerRequest{
+			ContainerId: "container-1",
+		}).
+		Return(&runtimev1.RemoveContainerResponse{}, nil)
+
+	mockCRIService.EXPECT().
+		RemoveContainer(ctx, &runtimev1.RemoveContainerRequest{
+			ContainerId: "container-2",
+		}).
+		Return(&runtimev1.RemoveContainerResponse{}, nil)
+
 	require.NoError(t, svc.RemoveWorkload(ctx, wlID))
 }
 
