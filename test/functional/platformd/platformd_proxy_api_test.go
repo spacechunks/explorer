@@ -103,7 +103,7 @@ func TestDeleteListener(t *testing.T) {
 
 	// FIXME(yannic): implement some sort of WaitReady function into
 	//                proxy package, that blocks until envoy has connected.
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	actual := readListener(t)
 
