@@ -96,7 +96,7 @@ func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
 
 	require.NoError(t, svc.ApplyGlobalResources(ctx))
 
-	unixSock, err := net.Listen("unix", "@"+platformdAddr)
+	unixSock, err := net.Listen("unix", platformdAddr)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		grpcServ.Stop()
@@ -106,5 +106,5 @@ func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
 		require.NoError(t, grpcServ.Serve(unixSock))
 	}()
 
-	test.WaitServerReady(t, "unix", "@"+platformdAddr, 20*time.Second)
+	test.WaitServerReady(t, "unix", platformdAddr, 20*time.Second)
 }

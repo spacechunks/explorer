@@ -45,7 +45,7 @@ func RunWorkloadAPIFixtures(t *testing.T) {
 		criServ = grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 	)
 
-	criSock, err := net.Listen("unix", "@"+platformdAddr)
+	criSock, err := net.Listen("unix", platformdAddr)
 	require.NoError(t, err)
 
 	cri := newFakeCRI()
