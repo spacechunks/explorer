@@ -173,11 +173,18 @@ func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
 		},
 	}
 
-	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		// we need to terminate the container, because multiple envoy containers cause problems
+		if err := testcontainers.TerminateContainer(ctr); err != nil {
+			t.Logf("cannot terminate container: %v", err)
+		}
+	})
 
 	test.WaitServerReady(t, "tcp", EnvoyAdminAddr, 20*time.Second)
 }
