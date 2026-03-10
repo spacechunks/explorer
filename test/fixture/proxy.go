@@ -21,6 +21,7 @@ package fixture
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/netip"
@@ -29,6 +30,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
 	"github.com/spacechunks/explorer/platformd/proxy"
@@ -76,7 +78,8 @@ static_resources:
         - endpoint:
             address:
               pipe:
-                path: 'tmp/platformd.sock'
+                path: '/tmp/platformd.sock'
+                mode: 0777
     # It is recommended to configure either HTTP/2 or TCP keepalives in order to detect
     # connection issues, and allow Envoy to reconnect. TCP keepalive is less expensive, but
     # may be inadequate if there is a TCP proxy between Envoy and the management server.
@@ -110,8 +113,38 @@ func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
 		envoyImage = os.Getenv("FUNCTESTS_ENVOY_IMAGE")
 	)
 
+	proxyv1alpha1.RegisterProxyServiceServer(grpcServ, proxyServ)
+	xds.CreateAndRegisterServer(context.Background(), logger, grpcServ, ca)
+
+	require.NoError(t, svc.ApplyGlobalResources(ctx))
+
+	unixSock, err := net.Listen("unix", platformdAddr)
+	require.NoError(t, err)
+
+	err = os.Chown(platformdAddr, 9012, 9012)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		grpcServ.Stop()
+		unixSock.Close()
+	})
+	go func() {
+		require.NoError(t, grpcServ.Serve(unixSock))
+	}()
+
+	test.WaitServerReady(t, "unix", platformdAddr, 20*time.Second)
+
+	// unix socket must be created, before we start envoy, otherwise we cannot mount it.
+
 	req := testcontainers.ContainerRequest{
 		Image: envoyImage,
+		ConfigModifier: func(cfg *container.Config) {
+			cfg.User = fmt.Sprintf(
+				"%s:%s",
+				os.Getenv("FUNCTESTS_PLATFORMD_UID"),
+				os.Getenv("FUNCTESTS_PLATFORMD_GID"),
+			)
+		},
 		Cmd: []string{
 			"-c", "/etc/envoy/config.yaml",
 		},
@@ -125,6 +158,13 @@ func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
 		HostConfigModifier: func(cfg *container.HostConfig) {
 			cfg.NetworkMode = "host"
 			cfg.AutoRemove = true
+			cfg.Mounts = []mount.Mount{
+				{
+					Type:   mount.TypeBind,
+					Source: "/tmp/platformd.sock",
+					Target: "/tmp/platformd.sock",
+				},
+			}
 		},
 		LogConsumerCfg: &testcontainers.LogConsumerConfig{
 			Consumers: []testcontainers.LogConsumer{
@@ -133,28 +173,11 @@ func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
 		},
 	}
 
-	_, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 	require.NoError(t, err)
 
 	test.WaitServerReady(t, "tcp", EnvoyAdminAddr, 20*time.Second)
-
-	proxyv1alpha1.RegisterProxyServiceServer(grpcServ, proxyServ)
-	xds.CreateAndRegisterServer(context.Background(), logger, grpcServ, ca)
-
-	require.NoError(t, svc.ApplyGlobalResources(ctx))
-
-	unixSock, err := net.Listen("unix", platformdAddr)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		grpcServ.Stop()
-		unixSock.Close()
-	})
-	go func() {
-		require.NoError(t, grpcServ.Serve(unixSock))
-	}()
-
-	test.WaitServerReady(t, "unix", platformdAddr, 20*time.Second)
 }
