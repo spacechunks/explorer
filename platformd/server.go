@@ -297,6 +297,15 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			return fmt.Errorf("failed to listen on unix socket: %v", err)
 		}
 
+		if err := os.Chown(
+			cfg.ManagementServerListenSock,
+			int(cfg.ManagementSocketUID),
+			int(cfg.ManagementSocketGID),
+		); err != nil {
+			s.stopCh <- struct{}{}
+			return fmt.Errorf("failed to chown mgmt server socket: %w", err)
+		}
+
 		if err := mgmtServer.Serve(unixSock); err != nil {
 			s.stopCh <- struct{}{}
 			return fmt.Errorf("failed to serve mgmt server: %w", err)

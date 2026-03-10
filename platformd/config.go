@@ -35,4 +35,6 @@ type Config struct {
 		ContainerReadyTimeout    time.Duration
 		WaitAfterServerInit      time.Duration
 	}
+	ManagementSocketUID uint64
+	ManagementSocketGID uint64
 }

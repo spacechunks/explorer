@@ -1,5 +1,7 @@
 {
   "management-server-listen-sock":  "/run/platformd/platformd.sock",
+  "management-server-listen-sock-uid": 9012,
+  "management-server-listen-sock-gid": 9012,
   "cri-listen-sock": "unix:///var/run/crio/crio.sock",
   "getsockopt-cgroup": "/sys/fs/cgroup",
   "dns-server": "127.0.0.1:1053",
