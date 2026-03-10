@@ -32,7 +32,7 @@ const platformdAddr = "/tmp/platformd.sock"
 
 func PlatformdClientConn(t *testing.T) *grpc.ClientConn {
 	conn, err := grpc.NewClient(
-		"unix://" + platformdAddr,
+		"unix://"+platformdAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	require.NoError(t, err)
