@@ -28,11 +28,11 @@ import (
 	_ "github.com/amacneil/dbmate/v2/pkg/driver/postgres"
 )
 
-const platformdAddr = "/run/platformd/platformd.sock"
+const platformdAddr = "/tmp/platformd.sock"
 
 func PlatformdClientConn(t *testing.T) *grpc.ClientConn {
 	conn, err := grpc.NewClient(
-		platformdAddr,
+		"unix://" + platformdAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	require.NoError(t, err)

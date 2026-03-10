@@ -19,17 +19,16 @@
 package fixture
 
 import (
+	"bytes"
 	"context"
 	"log/slog"
 	"net"
 	"net/netip"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	proxyv1alpha1 "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1"
 	"github.com/spacechunks/explorer/platformd/proxy"
@@ -44,6 +43,56 @@ import (
 var (
 	EnvoyAdminAddr = "127.0.0.1:5555"
 	DNSUpstream    = netip.MustParseAddrPort("127.0.0.1:53")
+	envoyCfg       = `
+node:
+  cluster: system
+  id: proxy-0
+
+admin:
+  profile_path: /tmp/envoy.prof
+  address:
+    socket_address:
+      address: 127.0.0.1
+      port_value: 5555
+
+dynamic_resources:
+  ads_config:
+    api_type: GRPC
+    grpc_services:
+    - envoy_grpc:
+        cluster_name: ads
+  cds_config:
+    ads: {}
+  lds_config:
+    ads: {}
+
+static_resources:
+  clusters:
+  - name: ads
+    load_assignment:
+      cluster_name: ads
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              pipe:
+                path: 'tmp/platformd.sock'
+    # It is recommended to configure either HTTP/2 or TCP keepalives in order to detect
+    # connection issues, and allow Envoy to reconnect. TCP keepalive is less expensive, but
+    # may be inadequate if there is a TCP proxy between Envoy and the management server.
+    # HTTP/2 keepalive is slightly more expensive, but may detect issues through more types
+    # of intermediate proxies.
+    typed_extension_protocol_options:
+      envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+        "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+        explicit_http_config:
+          http2_protocol_options:
+            connection_keepalive:
+              interval: 30s
+              timeout: 5s
+    upstream_connection_options:
+      tcp_keepalive: {}
+`
 )
 
 func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
@@ -59,31 +108,32 @@ func RunProxyAPIFixtures(ctx context.Context, t *testing.T) {
 		)
 		proxyServ  = proxy.NewServer(svc)
 		envoyImage = os.Getenv("FUNCTESTS_ENVOY_IMAGE")
-		envoyCfg   = os.Getenv("FUNCTESTS_ENVOY_CONFIG")
 	)
-
-	path, err := filepath.Abs(envoyCfg)
-	require.NoError(t, err)
 
 	req := testcontainers.ContainerRequest{
 		Image: envoyImage,
 		Cmd: []string{
 			"-c", "/etc/envoy/config.yaml",
 		},
+		Files: []testcontainers.ContainerFile{
+			{
+				Reader:            bytes.NewReader([]byte(envoyCfg)),
+				ContainerFilePath: "/etc/envoy/config.yaml",
+				FileMode:          0777,
+			},
+		},
 		HostConfigModifier: func(cfg *container.HostConfig) {
 			cfg.NetworkMode = "host"
 			cfg.AutoRemove = true
-			cfg.Mounts = []mount.Mount{
-				{
-					Type:   mount.TypeBind,
-					Source: path,
-					Target: "/etc/envoy/config.yaml",
-				},
-			}
+		},
+		LogConsumerCfg: &testcontainers.LogConsumerConfig{
+			Consumers: []testcontainers.LogConsumer{
+				&testcontainers.StdoutLogConsumer{},
+			},
 		},
 	}
 
-	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	_, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})

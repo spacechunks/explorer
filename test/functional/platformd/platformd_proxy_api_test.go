@@ -43,12 +43,11 @@ import (
 )
 
 func TestCreateListener(t *testing.T) {
-	var (
-		ctx = context.Background()
-		c   = proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
-	)
+	ctx := context.Background()
 
 	fixture.RunProxyAPIFixtures(ctx, t)
+
+	c := proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
 
 	var (
 		// ips used here have to be present on some interface on the machine the
