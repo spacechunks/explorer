@@ -9,6 +9,8 @@ images:
 mounts:
   - location: "/Users/yannic/proj/spc/explorer"
     writable: true
+  - location: "/Users/yannic/proj/spc/worktrees/explorer"
+    writable: true
 mountType: "virtiofs"
 portForwards:
   - guestPort: 3011
