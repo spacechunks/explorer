@@ -21,7 +21,7 @@ func main() {
 	var (
 		logger                       = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		fs                           = flag.NewFlagSet("platformd", flag.ContinueOnError)
-		proxyServiceListenSock       = fs.String("management-server-listen-sock", "/var/run/platformd/platformd.sock", "path to the unix domain socket to listen on")              //nolint:lll
+		proxyServiceListenSock       = fs.String("management-server-listen-sock", "/run/platformd/platformd.sock", "path to the unix domain socket to listen on")                  //nolint:lll
 		criListenSock                = fs.String("cri-listen-sock", "/var/run/crio/crio.sock", "path to the unix domain socket the CRI is listening on")                           //nolint:lll
 		envoyImage                   = fs.String("envoy-image", "", "container image to use for envoy")                                                                            //nolint:lll
 		coreDNSImage                 = fs.String("coredns-image", "", "container image to use for CoreDNS")                                                                        //nolint:lll

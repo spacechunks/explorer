@@ -30,7 +30,7 @@ static_resources:
         - endpoint:
             address:
               pipe:
-                path: '@/run/platformd/platformd.sock'
+                path: 'run/platformd/platformd.sock'
     # It is recommended to configure either HTTP/2 or TCP keepalives in order to detect
     # connection issues, and allow Envoy to reconnect. TCP keepalive is less expensive, but
     # may be inadequate if there is a TCP proxy between Envoy and the management server.
