@@ -86,13 +86,13 @@ func TestCreateListener(t *testing.T) {
 }
 
 func TestDeleteListener(t *testing.T) {
+	ctx := context.Background()
+	fixture.RunProxyAPIFixtures(ctx, t)
+
 	var (
-		ctx  = context.Background()
 		wlID = "abc"
 		c    = proxyv1alpha1.NewProxyServiceClient(fixture.PlatformdClientConn(t))
 	)
-
-	fixture.RunProxyAPIFixtures(ctx, t)
 
 	createListeners(t, ctx, wlID, "127.0.0.1", c)
 
