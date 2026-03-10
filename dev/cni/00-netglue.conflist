@@ -5,7 +5,7 @@
     {
       "type": "netglue",
       "hostIface": "eth0",
-      "platformdListenSock": "unix-abstract:/run/platformd/platformd.sock",
+      "platformdListenSock": "/run/platformd/platformd.sock",
       "ipam": {
         "type": "host-local",
         "ranges":[
