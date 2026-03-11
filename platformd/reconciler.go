@@ -256,7 +256,7 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 	if st := r.store.Get(id); st != nil &&
 		st.WorkloadStatus != nil &&
 		st.WorkloadStatus.State != status.WorkloadStateCreating {
-		r.logger.InfoContext(ctx, "skip")
+		r.logger.InfoContext(ctx, "skip", "instance_id", id)
 		return nil
 	}
 

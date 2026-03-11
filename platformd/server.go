@@ -140,7 +140,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		)
 
 		proxyServer = proxy.NewServer(proxySvc)
-		wlServer    = workload.NewServer(statusStore)
+		wlServer    = workload.NewServer(statusStore, wlSvc)
 		checkServer = checkpoint.NewServer(checkSvc)
 		reconciler  = newReconciler(s.logger, reconcilerConfig{
 			MaxAttempts:       cfg.MaxAttempts,
