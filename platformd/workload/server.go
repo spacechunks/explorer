@@ -28,12 +28,14 @@ import (
 
 type Server struct {
 	workloadv1alpha2.UnimplementedWorkloadServiceServer
-	store status.Store
+	store   status.Store
+	service Service
 }
 
-func NewServer(store status.Store) *Server {
+func NewServer(store status.Store, service Service) *Server {
 	return &Server{
-		store: store,
+		store:   store,
+		service: service,
 	}
 }
 
@@ -55,4 +57,29 @@ func (s *Server) WorkloadStatus(
 	return &workloadv1alpha2.WorkloadStatusResponse{
 		Status: transport,
 	}, nil
+}
+
+// TODO: tests
+
+func (s *Server) StopWorkload(
+	ctx context.Context,
+	req *workloadv1alpha2.WorkloadStopRequest,
+) (*workloadv1alpha2.WorkloadStopResponse, error) {
+	id := req.GetId()
+
+	if id == "" {
+		return nil, fmt.Errorf("workload id required")
+	}
+
+	if err := s.service.RemoveWorkload(ctx, id); err != nil {
+		return nil, fmt.Errorf("remove workload: %w", err)
+	}
+
+	s.store.Update(id, status.Status{
+		WorkloadStatus: &status.WorkloadStatus{
+			State: status.WorkloadStateDeleted,
+		},
+	})
+
+	return &workloadv1alpha2.WorkloadStopResponse{}, nil
 }
