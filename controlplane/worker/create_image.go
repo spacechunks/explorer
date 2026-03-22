@@ -32,6 +32,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/controlplane/serverconfig"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/tarhelper"
@@ -152,7 +153,14 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		return fmt.Errorf("download missing: %w", err)
 	}
 
-	// TODO: adjust configs
+	rt, err := os.OpenRoot(serverRootDir)
+	if err != nil {
+		return fmt.Errorf("open root: %w", err)
+	}
+
+	if err := serverconfig.SanitizeConfigs(rt); err != nil {
+		return fmt.Errorf("sanitize configs: %w", err)
+	}
 
 	// it is VERY important we specify the parent of the server root directory,
 	// because only paths starting INSIDE the passed directory are preserved.
@@ -162,8 +170,6 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		return fmt.Errorf("append layer: %w", err)
 	}
 
-	// FIXME: if we implement users add user id to ref
-	//        => <registry>/<userID>/<flavor-version-id>:<base|checkpoint>
 	ref := fmt.Sprintf("%s/%s:base", riverJob.Args.OCIRegistry, riverJob.Args.FlavorVersionID)
 
 	if err := w.imgService.Push(ctx, img, ref); err != nil {
