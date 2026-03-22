@@ -24,7 +24,7 @@ type paperGlobal struct {
 
 type proxiesConfig struct {
 	ProxyProtocol bool `json:"proxy-protocol"`
-	Velocity struct {
+	Velocity      struct {
 		Enabled    bool   `json:"enabled"`
 		OnlineMode bool   `json:"online-mode"`
 		Secret     string `json:"secret"`
