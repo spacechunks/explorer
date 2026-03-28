@@ -7,16 +7,14 @@ import (
 	"github.com/spacechunks/explorer/controlplane/blob"
 )
 
-/*
+var defaultPaperGlobalStr = `
 proxies:
-	bungee-cord:
-	  online-mode: true
-	proxy-protocol: false
-	velocity:
-	  enabled: false
-	  online-mode: true
-	  secret: ""
-*/
+  proxy-protocol: false
+  velocity:
+    enabled: true
+    online-mode: true
+    secret: ""
+`
 
 type paperGlobal struct {
 	Proxies proxiesConfig `json:"proxies"`
