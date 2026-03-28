@@ -87,3 +87,48 @@ use-native-transport = true
 		t.Fatalf("mismatch (-want +got):\n%s", d)
 	}
 }
+
+func TestSanatizeConfigWritesDefaultConfigs(t *testing.T) {
+	root, err := os.OpenRoot(t.TempDir())
+	require.NoError(t, err)
+
+	err = serverconfig.SanitizeConfigs(root)
+	require.NoError(t, err)
+
+	expectedPaperGlobal := `
+proxies:
+  proxy-protocol: false
+  velocity:
+    enabled: true
+    online-mode: true
+    secret: ""
+`
+
+	expectedProperties := `
+server-ip = 0.0.0.0
+server-port = 25565
+management-server-allowed-origins = *
+management-server-enabled = true
+management-server-host = localhost
+management-server-port = 26656
+management-server-secret = change-me-later
+management-server-tls-enabled = false
+online-mode = false
+log-ips = false
+use-native-transport = true
+`
+
+	actualPaperGlobal, err := root.ReadFile("config/paper-global.yml")
+	require.NoError(t, err)
+
+	actualProperties, err := root.ReadFile("server.properties")
+	require.NoError(t, err)
+
+	if d := cmp.Diff(expectedPaperGlobal, string(actualPaperGlobal)); d != "" {
+		t.Fatalf("mismatch (-want +got):\n%s", d)
+	}
+
+	if d := cmp.Diff(expectedProperties, string(actualProperties)); d != "" {
+		t.Fatalf("mismatch (-want +got):\n%s", d)
+	}
+}
