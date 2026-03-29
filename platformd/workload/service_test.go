@@ -146,6 +146,7 @@ func TestRemoveWorkload(t *testing.T) {
 	var (
 		ctx     = context.Background()
 		wlID    = test.NewUUIDv7(t)
+		podID   = "pod-test"
 		logger  = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		regAuth = cri.RegistryAuth{
 			Username: "user",
@@ -156,21 +157,37 @@ func TestRemoveWorkload(t *testing.T) {
 	)
 
 	mockCRIService.EXPECT().
+		ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
+			Filter: &runtimev1.PodSandboxFilter{
+				LabelSelector: map[string]string{
+					workload.LabelWorkloadID: wlID,
+				},
+			},
+		}).
+		Return(&runtimev1.ListPodSandboxResponse{
+			Items: []*runtimev1.PodSandbox{
+				{
+					Id: podID,
+				},
+			},
+		}, nil)
+
+	mockCRIService.EXPECT().
 		StopPodSandbox(ctx, &runtimev1.StopPodSandboxRequest{
-			PodSandboxId: wlID,
+			PodSandboxId: podID,
 		}).
 		Return(&runtimev1.StopPodSandboxResponse{}, nil)
 
 	mockCRIService.EXPECT().
 		RemovePodSandbox(ctx, &runtimev1.RemovePodSandboxRequest{
-			PodSandboxId: wlID,
+			PodSandboxId: podID,
 		}).
 		Return(&runtimev1.RemovePodSandboxResponse{}, nil)
 
 	mockCRIService.EXPECT().
 		ListContainers(ctx, &runtimev1.ListContainersRequest{
 			Filter: &runtimev1.ContainerFilter{
-				PodSandboxId: wlID,
+				PodSandboxId: podID,
 			},
 		}).
 		Return(&runtimev1.ListContainersResponse{
