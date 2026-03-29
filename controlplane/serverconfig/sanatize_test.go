@@ -49,6 +49,8 @@ use-native-transport=true
 	err = root.WriteFile("server.properties", []byte(properties), os.ModePerm)
 	require.NoError(t, err)
 
+	serverconfig.SetVelocitySecret("secret2")
+
 	err = serverconfig.SanitizeConfigs(root)
 	require.NoError(t, err)
 
@@ -57,7 +59,7 @@ use-native-transport=true
   velocity:
     enabled: true
     online-mode: true
-    secret: ""
+    secret: secret2
 `
 
 	expectedProperties := `log-ips = false
@@ -92,7 +94,7 @@ func TestSanatizeConfigWritesDefaultConfigs(t *testing.T) {
 	root, err := os.OpenRoot(t.TempDir())
 	require.NoError(t, err)
 
-	serverconfig.SetVelocitySecret("secret")
+	serverconfig.SetVelocitySecret("secret1")
 
 	err = serverconfig.SanitizeConfigs(root)
 	require.NoError(t, err)
@@ -103,7 +105,7 @@ proxies:
   velocity:
     enabled: true
     online-mode: true
-    secret: secret
+    secret: secret1
 `
 
 	expectedProperties := `
