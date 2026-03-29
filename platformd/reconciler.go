@@ -25,6 +25,7 @@ import (
 	"log/slog"
 	"maps"
 	"strconv"
+	"sync"
 	"time"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
@@ -139,9 +140,17 @@ func (r *reconciler) tick(ctx context.Context) {
 		return
 	}
 
+	var wg sync.WaitGroup
+
 	for _, ins := range discResp.Instances {
-		go r.reconcile(ctx, ins)
+		wg.Add(1)
+		go func() {
+			r.reconcile(ctx, ins)
+			wg.Done()
+		}()
 	}
+
+	wg.Wait()
 
 	var (
 		statuses = r.store.View()
@@ -238,13 +247,11 @@ func (r *reconciler) reconcile(ctx context.Context, ins *instancev1alpha1.Instan
 	}
 }
 
-func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *instancev1alpha1.Instance) error {
+func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *instancev1alpha1.Instance) (reterr error) {
 	var (
 		id      = instance.GetId()
 		attempt = r.attempts[id]
 	)
-
-	r.logger.InfoContext(ctx, "handling pending instance", "instance_id", id, "attempt", attempt)
 
 	// if the instance is not in state CREATING, skip it.
 	// this check is necessary, because it can happen that we
@@ -256,18 +263,11 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 	if st := r.store.Get(id); st != nil &&
 		st.WorkloadStatus != nil &&
 		st.WorkloadStatus.State != status.WorkloadStateCreating {
-		r.logger.InfoContext(ctx, "skip", "instance_id", id)
+		r.logger.InfoContext(ctx, "instance currently creating, skip", "instance_id", id)
 		return nil
 	}
 
-	if attempt >= r.cfg.MaxAttempts {
-		r.store.Update(id, status.Status{
-			WorkloadStatus: &status.WorkloadStatus{
-				State: status.WorkloadStateCreationFailed,
-			},
-		})
-		return errMaxAttemptsReached
-	}
+	r.logger.InfoContext(ctx, "handling pending instance", "instance_id", id, "attempt", attempt)
 
 	attempt++
 

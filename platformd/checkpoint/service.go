@@ -393,7 +393,7 @@ func (s *ServiceImpl) podConfig(id string) *runtimev1.PodSandboxConfig {
 func (s *ServiceImpl) ctrConfig(checkID string, baseImgURL string) *runtimev1.ContainerConfig {
 	return &runtimev1.ContainerConfig{
 		Metadata: &runtimev1.ContainerMetadata{
-			Name: "payload",
+			Name: "payload_" + checkID,
 		},
 		Image: &runtimev1.ImageSpec{
 			UserSpecifiedImage: baseImgURL,
