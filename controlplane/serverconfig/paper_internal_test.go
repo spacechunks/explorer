@@ -9,6 +9,8 @@ import (
 )
 
 func TestPaperConfigAdjustments(t *testing.T) {
+	SetVelocitySecret("secret")
+
 	input := `
 proxies:
   bungee-cord:
@@ -29,7 +31,7 @@ proxies:
 			}{
 				Enabled:    true,
 				OnlineMode: true,
-				Secret:     "",
+				Secret:     "secret",
 			},
 		},
 	}

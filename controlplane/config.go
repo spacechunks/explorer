@@ -50,4 +50,5 @@ type Config struct {
 	ResourcePackModelDir          string
 	ResourcePackItemDir           string
 	ResourcePackTextureDir        string
+	VelocitySecret                string
 }

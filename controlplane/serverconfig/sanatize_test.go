@@ -92,6 +92,8 @@ func TestSanatizeConfigWritesDefaultConfigs(t *testing.T) {
 	root, err := os.OpenRoot(t.TempDir())
 	require.NoError(t, err)
 
+	serverconfig.SetVelocitySecret("secret")
+
 	err = serverconfig.SanitizeConfigs(root)
 	require.NoError(t, err)
 
@@ -101,7 +103,7 @@ proxies:
   velocity:
     enabled: true
     online-mode: true
-    secret: ""
+    secret: secret
 `
 
 	expectedProperties := `

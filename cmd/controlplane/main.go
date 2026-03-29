@@ -68,6 +68,7 @@ func main() {
 		packModelDir             = fs.String("resource-pack-model-dir", "", "path inside the resource pack to the directory where the models will live. e.g. assets/mynamespace/models/item")       //nolint:lll
 		packItemDir              = fs.String("resource-pack-item-dir", "", "path inside the resource pack to the directory where the items will live. e.g. assets/mynamespace/items")               //nolint:lll
 		packTextureDir           = fs.String("resource-pack-texture-dir", "", "path inside the resource pack to the directory where the textures will live. e.g. assets/mynamespace/textures/item") //nolint:lll
+		velocitySecret           = fs.String("velocity-secret", "", "the velocity secret to set in the paper server configuration")                                                                 //nolint:lll
 
 	)
 	if err := ff.Parse(fs, os.Args[1:],
@@ -107,6 +108,7 @@ func main() {
 			ResourcePackModelDir:          *packModelDir,
 			ResourcePackItemDir:           *packItemDir,
 			ResourcePackTextureDir:        *packTextureDir,
+			VelocitySecret:                *velocitySecret,
 		}
 		ctx    = context.Background()
 		server = controlplane.NewServer(logger, cfg)

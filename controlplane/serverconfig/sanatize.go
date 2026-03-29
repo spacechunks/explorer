@@ -83,7 +83,7 @@ func writeDefaultConfig(root *os.Root, path string) error {
 	def := ""
 	switch path {
 	case "config/paper-global.yml":
-		def = defaultPaperGlobalStr
+		def = defaultPaperGlobalStr()
 	case "server.properties":
 		def = defaultServerPropertiesStr
 	}
