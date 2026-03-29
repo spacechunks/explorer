@@ -64,6 +64,9 @@ rm -f crictl-$VERSION-linux-$ARCH.tar.gz
 cp ./10-ignore.link /etc/systemd/network/10-ignore.link
 systemctl restart systemd-networkd
 
+groupadd platformd -g 9012
+useradd platformd -u 9012 -g 9012
+
 crictl pull docker.io/nginx:stable-alpine-slim
 pod=$(crictl -t 1m runp pod.json)
 ctr=$(crictl -t 1m create $pod ctr.json pod.json)
