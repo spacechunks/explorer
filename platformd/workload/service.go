@@ -126,22 +126,40 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 
 func (s *svc) RemoveWorkload(ctx context.Context, id string) error {
 	s.logger.InfoContext(ctx, "removing workload", "workload_id", id)
+	listResp, err := s.criService.ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
+		Filter: &runtimev1.PodSandboxFilter{
+			LabelSelector: map[string]string{
+				LabelWorkloadID: id,
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("list pod sandbox: %w", err)
+	}
+
+	if len(listResp.Items) == 0 {
+		s.logger.InfoContext(ctx, "skip removing workload, it's not found")
+		return nil
+	}
+
+	podID := listResp.Items[0].Id
+
 	// FIXME: stop container of pod first then call stop sandbox.
 	if _, err := s.criService.StopPodSandbox(ctx, &runtimev1.StopPodSandboxRequest{
-		PodSandboxId: id,
+		PodSandboxId: podID,
 	}); err != nil {
 		return fmt.Errorf("stop pod sandbox: %w", err)
 	}
 
 	if _, err := s.criService.RemovePodSandbox(ctx, &runtimev1.RemovePodSandboxRequest{
-		PodSandboxId: id,
+		PodSandboxId: podID,
 	}); err != nil {
 		return fmt.Errorf("remove pod sandbox: %w", err)
 	}
 
 	resp, err := s.criService.ListContainers(ctx, &runtimev1.ListContainersRequest{
 		Filter: &runtimev1.ContainerFilter{
-			PodSandboxId: id,
+			PodSandboxId: podID,
 		},
 	})
 	if err != nil {
