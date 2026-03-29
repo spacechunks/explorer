@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
@@ -201,7 +202,54 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("create checkpoint location dir: %w", err)
 	}
 
-	// before we start our grpc services make sure our system workloads are running
+	var (
+		g  multierror.Group
+		wg sync.WaitGroup
+	)
+
+	g.Go(func() error {
+		checkSock, err := net.Listen("tcp", cfg.CheckpointConfig.ListenAddr)
+		if err != nil {
+			s.stopCh <- struct{}{}
+			return fmt.Errorf("failed to listen on unix socket: %v", err)
+		}
+
+		if err := checkGRPCServer.Serve(checkSock); err != nil {
+			s.stopCh <- struct{}{}
+			return fmt.Errorf("failed to serve mgmt server: %w", err)
+		}
+		return nil
+	})
+
+	wg.Add(1)
+
+	g.Go(func() error {
+		unixSock, err := net.Listen("unix", cfg.ManagementServerListenSock)
+		if err != nil {
+			s.stopCh <- struct{}{}
+			return fmt.Errorf("failed to listen on unix socket: %v", err)
+		}
+
+		if err := os.Chown(
+			cfg.ManagementServerListenSock,
+			int(cfg.ManagementSocketUID),
+			int(cfg.ManagementSocketGID),
+		); err != nil {
+			s.stopCh <- struct{}{}
+			return fmt.Errorf("failed to chown mgmt server socket: %w", err)
+		}
+
+		wg.Done()
+
+		if err := mgmtServer.Serve(unixSock); err != nil {
+			s.stopCh <- struct{}{}
+			return fmt.Errorf("failed to serve mgmt server: %w", err)
+		}
+		return nil
+	})
+
+	s.logger.Info("waiting for sockets")
+	wg.Wait()
 
 	if err := criSvc.EnsurePod(ctx, cri.RunOptions{
 		PodConfig: &runtimev1.PodSandboxConfig{
@@ -231,6 +279,20 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 				{
 					HostPath:      "/etc/platformd/proxy.conf",
 					ContainerPath: "/etc/envoy/config.yaml",
+				},
+				{
+					HostPath:      cfg.ManagementServerListenSock,
+					ContainerPath: cfg.ManagementServerListenSock,
+				},
+			},
+			Linux: &runtimev1.LinuxContainerConfig{
+				SecurityContext: &runtimev1.LinuxContainerSecurityContext{
+					RunAsUser: &runtimev1.Int64Value{
+						Value: int64(cfg.ManagementSocketUID),
+					},
+					RunAsGroup: &runtimev1.Int64Value{
+						Value: int64(cfg.ManagementSocketGID),
+					},
 				},
 			},
 		},
@@ -273,45 +335,6 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	}); err != nil {
 		return fmt.Errorf("ensure coredns: %w", err)
 	}
-
-	var g multierror.Group
-
-	g.Go(func() error {
-		checkSock, err := net.Listen("tcp", cfg.CheckpointConfig.ListenAddr)
-		if err != nil {
-			s.stopCh <- struct{}{}
-			return fmt.Errorf("failed to listen on unix socket: %v", err)
-		}
-
-		if err := checkGRPCServer.Serve(checkSock); err != nil {
-			s.stopCh <- struct{}{}
-			return fmt.Errorf("failed to serve mgmt server: %w", err)
-		}
-		return nil
-	})
-
-	g.Go(func() error {
-		unixSock, err := net.Listen("unix", cfg.ManagementServerListenSock)
-		if err != nil {
-			s.stopCh <- struct{}{}
-			return fmt.Errorf("failed to listen on unix socket: %v", err)
-		}
-
-		if err := os.Chown(
-			cfg.ManagementServerListenSock,
-			int(cfg.ManagementSocketUID),
-			int(cfg.ManagementSocketGID),
-		); err != nil {
-			s.stopCh <- struct{}{}
-			return fmt.Errorf("failed to chown mgmt server socket: %w", err)
-		}
-
-		if err := mgmtServer.Serve(unixSock); err != nil {
-			s.stopCh <- struct{}{}
-			return fmt.Errorf("failed to serve mgmt server: %w", err)
-		}
-		return nil
-	})
 
 	// start reconciler after mgmt server has been started,
 	// because otherwise creating pending instances will
