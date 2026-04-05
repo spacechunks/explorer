@@ -101,6 +101,13 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		}
 		wlSvc = workload.NewService(
 			s.logger,
+			workload.Config{
+				MCManagementAPIToken: cfg.WorkloadConfig.MCManagementAPIToken,
+				ServerMonImage:       cfg.WorkloadConfig.ServerMonImage,
+				PlatformdListenSock:  cfg.ManagementServerListenSock,
+				PlatformdSocketUID:   cfg.ManagementSocketUID,
+				PlatformdSocketGID:   cfg.ManagementSocketGID,
+			},
 			criSvc,
 			registryAuth,
 		)

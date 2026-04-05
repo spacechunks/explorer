@@ -25,5 +25,7 @@
   "checkpoint-cpu-period": 100000,
   "checkpoint-cpu-quota": 200000,
   "checkpoint-memory-limit-bytes": 2000000000,
-  "checkpoint-container-ready-timeout": "1m"
+  "checkpoint-container-ready-timeout": "1m",
+  "mc-server-management-api-token":  "",
+  "servermon-image": "ghcr.io/spacechunks/explorer/servermon:dev"
 }

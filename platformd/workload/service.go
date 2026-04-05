@@ -23,10 +23,12 @@ type svc struct {
 	logger       *slog.Logger
 	criService   cri.Service
 	registryAuth cri.RegistryAuth
+	cfg          Config
 }
 
 func NewService(
 	logger *slog.Logger,
+	cfg Config,
 	criService cri.Service,
 	registryAuth cri.RegistryAuth,
 ) Service {
@@ -34,6 +36,7 @@ func NewService(
 		logger:       logger.With("component", "workload-service"),
 		criService:   criService,
 		registryAuth: registryAuth,
+		cfg:          cfg,
 	}
 }
 
@@ -99,7 +102,59 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 	logger = logger.With("pod_id", sboxResp.PodSandboxId)
 	logger.InfoContext(ctx, "started pod sandbox")
 
-	req := &runtimev1.CreateContainerRequest{
+	serverMonReq := &runtimev1.CreateContainerRequest{
+		PodSandboxId: sboxResp.PodSandboxId,
+		Config: &runtimev1.ContainerConfig{
+			Metadata: &runtimev1.ContainerMetadata{
+				Name: "servermon",
+			},
+			Image: &runtimev1.ImageSpec{
+				UserSpecifiedImage: s.cfg.ServerMonImage,
+				Image:              s.cfg.ServerMonImage,
+			},
+			LogPath: fmt.Sprintf("%s_%s", w.Namespace, "servermon"),
+			Mounts: []*runtimev1.Mount{
+				{
+					HostPath:      s.cfg.PlatformdListenSock,
+					ContainerPath: s.cfg.PlatformdListenSock,
+				},
+			},
+			Linux: &runtimev1.LinuxContainerConfig{
+				SecurityContext: &runtimev1.LinuxContainerSecurityContext{
+					RunAsUser: &runtimev1.Int64Value{
+						Value: int64(s.cfg.PlatformdSocketUID),
+					},
+					RunAsGroup: &runtimev1.Int64Value{
+						Value: int64(s.cfg.PlatformdSocketGID),
+					},
+				},
+			},
+			Envs: []*runtimev1.KeyValue{
+				{
+					Key:   "PLATFORMD_WORKLOAD_ID",
+					Value: w.ID,
+				},
+				{
+					Key:   "SERVERMON_MC_SERVER_MANAGEMENT_API_TOKEN",
+					Value: s.cfg.MCManagementAPIToken,
+				},
+				{
+					Key:   "SERVERMON_PLATFORMD_LISTEN_SOCK",
+					Value: s.cfg.PlatformdListenSock,
+				},
+			},
+		},
+		SandboxConfig: sboxCfg,
+	}
+
+	serverMonCtrID, err := s.criService.RunContainer(ctx, serverMonReq)
+	if err != nil {
+		return fmt.Errorf("run servermon container: %w", err)
+	}
+
+	logger.InfoContext(ctx, "started mc server container", "container_id", serverMonCtrID)
+
+	mcServerReq := &runtimev1.CreateContainerRequest{
 		PodSandboxId: sboxResp.PodSandboxId,
 		Config: &runtimev1.ContainerConfig{
 			Metadata: &runtimev1.ContainerMetadata{
@@ -115,12 +170,12 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 		SandboxConfig: sboxCfg,
 	}
 
-	ctrID, err := s.criService.RunContainer(ctx, req)
+	mcCtrID, err := s.criService.RunContainer(ctx, mcServerReq)
 	if err != nil {
-		return fmt.Errorf("run container: %w", err)
+		return fmt.Errorf("run mc server container: %w", err)
 	}
 
-	logger.InfoContext(ctx, "started container", "container_id", ctrID)
+	logger.InfoContext(ctx, "started mc server container", "container_id", mcCtrID)
 	return nil
 }
 

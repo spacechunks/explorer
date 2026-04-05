@@ -37,4 +37,8 @@ type Config struct {
 	}
 	ManagementSocketUID uint64
 	ManagementSocketGID uint64
+	WorkloadConfig      struct {
+		MCManagementAPIToken string
+		ServerMonImage       string
+	}
 }

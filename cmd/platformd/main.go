@@ -49,6 +49,8 @@ func main() {
 		checkStatusRetentionDuration = fs.Duration("checkpoint-status-retention-period", 1*time.Minute, "timeout for checkpoint creation")                                         //nolint:lll
 		checkContainerReadyTimeout   = fs.Duration("checkpoint-container-ready-timeout", 1*time.Minute, "maximum time to wait until the container is ready for checkpointing")     //nolint:lll
 		checkWaitAfterServerInit     = fs.Duration("checkpoint-wait-server-init", 10*time.Second, "how long to wait before performing a checkpoint after server has initialized ") //nolint:lll
+		mcServerManagementAPIToken   = fs.String("mc-server-management-api-token", "", "token to use for the minecraft server management api")                                     //nolint:lll
+		serverMonImage               = fs.String("servermon-image", "", "image to use for the servermon container")                                                                //nolint:lll
 		_                            = fs.String("config", "/etc/platformd/config.json", "path to the config file")                                                                //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
@@ -93,6 +95,13 @@ func main() {
 			},
 			ManagementSocketUID: *mgmtSockUID,
 			ManagementSocketGID: *mgmtSockGID,
+			WorkloadConfig: struct {
+				MCManagementAPIToken string
+				ServerMonImage       string
+			}{
+				MCManagementAPIToken: *mcServerManagementAPIToken,
+				ServerMonImage:       *serverMonImage,
+			},
 		}
 		ctx    = context.Background()
 		server = platformd.NewServer(logger)
