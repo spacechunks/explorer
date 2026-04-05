@@ -145,8 +145,8 @@ func (r *reconciler) tick(ctx context.Context) {
 	for _, ins := range discResp.Instances {
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			r.reconcile(ctx, ins)
-			wg.Done()
 		}()
 	}
 
@@ -209,6 +209,7 @@ func (r *reconciler) reconcile(ctx context.Context, ins *instancev1alpha1.Instan
 					"instance_id", id,
 					"attempt", r.attempts[id],
 				)
+				return
 			}
 			r.attempts[id] = r.attempts[id] + 1
 			r.logger.ErrorContext(ctx,
@@ -252,6 +253,15 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 		id      = instance.GetId()
 		attempt = r.attempts[id]
 	)
+
+	if attempt >= 5 {
+		r.store.Update(id, status.Status{
+			WorkloadStatus: &status.WorkloadStatus{
+				State: status.WorkloadStateCreationFailed,
+			},
+		})
+		return errMaxAttemptsReached
+	}
 
 	// if the instance is not in state CREATING, skip it.
 	// this check is necessary, because it can happen that we

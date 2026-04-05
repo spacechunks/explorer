@@ -148,11 +148,6 @@ func TestServerMonKeepsWorkloadWhenPlayersArePresent(t *testing.T) {
 
 	defer cancel()
 
-	wlMock.
-		EXPECT().
-		StopWorkload(mocky.Anything, mocky.Anything).
-		Return(&workloadv1alpha2.WorkloadStopResponse{}, nil)
-
 	go fake.Run(t, 30748)
 	go func() {
 		err := mon.Run(ctx)
