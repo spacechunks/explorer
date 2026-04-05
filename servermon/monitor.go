@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"sync/atomic"
 	"time"
 
 	gorilla "github.com/gorilla/websocket"
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/sourcegraph/jsonrpc2/websocket"
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 )
 
 type Config struct {
@@ -20,12 +23,14 @@ type Config struct {
 type Monitor struct {
 	logger *slog.Logger
 	conf   Config
+	client workloadv1alpha2.WorkloadServiceClient
 }
 
-func New(logger *slog.Logger, cfg Config) Monitor {
+func New(logger *slog.Logger, cfg Config, client workloadv1alpha2.WorkloadServiceClient) Monitor {
 	return Monitor{
 		logger: logger,
 		conf:   cfg,
+		client: client,
 	}
 }
 
@@ -51,28 +56,56 @@ func (m Monitor) Run(ctx context.Context) error {
 	checkTicker := time.NewTicker(m.conf.PlayerCountCheckInterval)
 	defer checkTicker.Stop()
 
-	joined := false
+	joined := atomic.Bool{}
 
-	for {
-		select {
-		case <-listTicker.C:
+	workloadID := os.Getenv("PLATFORMD_WORKLOAD_ID")
+	if workloadID == "" {
+		return fmt.Errorf("PLATFORMD_WORKLOAD_ID not set")
+	}
+
+	go func() {
+		for range listTicker.C {
 			players := make([]player, 0)
 
 			if err := rpcConn.Call(ctx, "minecraft:players", nil, &players); err != nil {
-				return fmt.Errorf("call players: %w", err)
+				m.logger.ErrorContext(ctx, "failed to call players", "err", err)
+				continue
 			}
+
+			m.logger.Info("got players", "player_count", len(players))
 
 			if len(players) > 0 {
-				joined = true
+				joined.Store(true)
 			}
-		case <-checkTicker.C:
-			if joined {
-				m.logger.Info("JOINED")
-				joined = false
-			} else {
-				m.logger.Info("KILL")
+		}
+	}()
+
+	go func() {
+		for range checkTicker.C {
+			if joined.Load() {
+				joined.Store(false)
+				break
 			}
 
+			m.logger.Info(
+				"player count has been 0 for too long, cleaning up",
+				"check_interval", m.conf.PlayerCountCheckInterval,
+			)
+
+			if _, err := m.client.StopWorkload(ctx, &workloadv1alpha2.WorkloadStopRequest{
+				Id: workloadID,
+			}); err != nil {
+				m.logger.Error(
+					"failed to stop workload, retry happens next player count check",
+					"workload_id", workloadID,
+					"err", err,
+				)
+			}
+		}
+	}()
+
+	for {
+		select {
 		case <-ctx.Done():
 			return nil
 		}
