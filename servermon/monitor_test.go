@@ -3,6 +3,7 @@ package servermon_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -65,12 +66,18 @@ func (f fakeManagementAPI) serveWs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (f fakeManagementAPI) Run(t *testing.T) {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+func (f fakeManagementAPI) Run(t *testing.T, port int) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		f.serveWs(w, r)
 	})
 
-	if err := http.ListenAndServe(":1337", nil); err != nil {
+	s := http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: mux,
+	}
+
+	if err := s.ListenAndServe(); err != nil {
 		require.NoError(t, err)
 	}
 }
@@ -89,7 +96,7 @@ func TestServerMonStopsWorkload(t *testing.T) {
 			slog.New(slog.NewTextHandler(os.Stdout, nil)),
 			servermon.Config{
 				PlayerCountCheckInterval:      2 * time.Second,
-				MCServerManagementAPIEndpoint: "ws://localhost:1337",
+				MCServerManagementAPIEndpoint: "ws://localhost:30749",
 			},
 			wlMock,
 		)
@@ -106,7 +113,7 @@ func TestServerMonStopsWorkload(t *testing.T) {
 		}).
 		Return(&workloadv1alpha2.WorkloadStopResponse{}, nil)
 
-	go fake.Run(t)
+	go fake.Run(t, 30749)
 	go func() {
 		err := mon.Run(ctx)
 		require.NoError(t, err)
@@ -131,7 +138,7 @@ func TestServerMonKeepsWorkloadWhenPlayersArePresent(t *testing.T) {
 			slog.New(slog.NewTextHandler(os.Stdout, nil)),
 			servermon.Config{
 				PlayerCountCheckInterval:      2 * time.Second,
-				MCServerManagementAPIEndpoint: "ws://localhost:1337",
+				MCServerManagementAPIEndpoint: "ws://localhost:30748",
 			},
 			wlMock,
 		)
@@ -146,7 +153,7 @@ func TestServerMonKeepsWorkloadWhenPlayersArePresent(t *testing.T) {
 		StopWorkload(mocky.Anything, mocky.Anything).
 		Return(&workloadv1alpha2.WorkloadStopResponse{}, nil)
 
-	go fake.Run(t)
+	go fake.Run(t, 30748)
 	go func() {
 		err := mon.Run(ctx)
 		require.NoError(t, err)
