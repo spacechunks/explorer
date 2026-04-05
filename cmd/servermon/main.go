@@ -10,7 +10,10 @@ import (
 	"time"
 
 	"github.com/peterbourgon/ff/v3"
+	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
 	"github.com/spacechunks/explorer/servermon"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -21,6 +24,7 @@ func main() {
 		playerCountCheckInterval = fs.Duration("player-count-check-interval", 2*time.Minute, "in what interval the player count of the server will be checked")                       //nolint:lll
 		mgmtEndpoint             = fs.String("mc-server-management-api-endpoint", "http://localhost:26656", "the endpoint at which the minecraft server management api is available") //nolint:lll
 		mgmtAPIToken             = fs.String("mc-server-management-api-token", "", "token to use for the minecraft server management api")                                            //nolint:lll
+		platformdListenSock      = fs.String("platformd-listen-sock", "", "path to the platformd management api unix socket file")                                                    //nolint:lll
 	)
 
 	if err := ff.Parse(fs, os.Args[1:],
@@ -32,13 +36,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	conn, err := grpc.NewClient(
+		*platformdListenSock,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		logger.ErrorContext(ctx, "failed to dial platformd management api", "err", err)
+		os.Exit(1)
+	}
+
 	var (
 		cfg = servermon.Config{
 			PlayerCountCheckInterval:      *playerCountCheckInterval,
 			MCServerManagementAPIEndpoint: *mgmtEndpoint,
 			MCServerManagementAPIToken:    *mgmtAPIToken,
 		}
-		mon = servermon.New(logger, cfg)
+		mon = servermon.New(logger, cfg, workloadv1alpha2.NewWorkloadServiceClient(conn))
 	)
 
 	go func() {
