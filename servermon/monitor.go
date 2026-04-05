@@ -104,12 +104,8 @@ func (m Monitor) Run(ctx context.Context) error {
 		}
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		}
-	}
+	<-ctx.Done()
+	return nil
 }
 
 // Handle is present, because jsonrpc2 crashes if we pass a nil handler to jsonrpc2.NewConn
