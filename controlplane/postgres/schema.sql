@@ -1,5 +1,5 @@
 -- Dumped from database version 17.2 (Debian 17.2-1.pgdg120+1)
--- Dumped by pg_dump version 17.8
+-- Dumped by pg_dump version 17.9
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -178,7 +178,8 @@ CREATE TABLE public.instances (
 
 CREATE TABLE public.minecraft_versions (
     version character varying NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    image_url character varying(256)
 );
 
 
@@ -612,7 +613,6 @@ ALTER TABLE ONLY public.river_client_queue
 --
 
 
-
 --
 -- Dbmate schema migrations
 --
@@ -628,4 +628,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20251105222512'),
     ('20251112170710'),
     ('20251112171323'),
-    ('20260223165838');
+    ('20260223165838'),
+    ('20260407125522');

@@ -787,6 +787,17 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 	return items, nil
 }
 
+const getMinecraftVersionByVersionName = `-- name: GetMinecraftVersionByVersionName :one
+SELECT version, created_at, image_url FROM minecraft_versions WHERE version = $1
+`
+
+func (q *Queries) GetMinecraftVersionByVersionName(ctx context.Context, version string) (MinecraftVersion, error) {
+	row := q.db.QueryRow(ctx, getMinecraftVersionByVersionName, version)
+	var i MinecraftVersion
+	err := row.Scan(&i.Version, &i.CreatedAt, &i.ImageUrl)
+	return i, err
+}
+
 const latestFlavorVersionByFlavorID = `-- name: LatestFlavorVersionByFlavorID :one
 SELECT id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, created_at, presigned_url_expiry_date, presigned_url, minecraft_version FROM flavor_versions WHERE flavor_id = $1
 ORDER BY created_at DESC LIMIT 1
@@ -1117,20 +1128,6 @@ UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1
 func (q *Queries) MarkFlavorVersionFilesUploaded(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, markFlavorVersionFilesUploaded, id)
 	return err
-}
-
-const minecraftVersionExists = `-- name: MinecraftVersionExists :one
-SELECT EXISTS(
-    SELECT 1 FROM minecraft_versions
-    WHERE version = $1
-)
-`
-
-func (q *Queries) MinecraftVersionExists(ctx context.Context, version string) (bool, error) {
-	row := q.db.QueryRow(ctx, minecraftVersionExists, version)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
 }
 
 const randomNode = `-- name: RandomNode :one

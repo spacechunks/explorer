@@ -216,6 +216,7 @@ type Instance struct {
 type MinecraftVersion struct {
 	Version   string
 	CreatedAt pgtype.Timestamptz
+	ImageUrl  pgtype.Text
 }
 
 type Node struct {

@@ -21,6 +21,7 @@ package database
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jackc/pgx/v5"
@@ -176,6 +177,36 @@ func TestGetAllThumbnailHashes(t *testing.T) {
 	}
 
 	actual, err := pg.DB.AllChunkThumbnailHashes(ctx)
+	require.NoError(t, err)
+
+	if d := cmp.Diff(expected, actual); d != "" {
+		t.Errorf("mismatch (-want +got):\n%s", d)
+	}
+}
+
+func TestGetMinecraftVersion(t *testing.T) {
+	var (
+		ctx      = context.Background()
+		pg       = fixture.NewPostgres()
+		expected = resource.MinecraftVersion{
+			Version:   "1.21.7",
+			ImageURL:  "localhost/lol",
+			CreatedAt: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		}
+	)
+
+	pg.Run(t, ctx)
+
+	_, err := pg.Pool.Exec(
+		ctx,
+		`INSERT INTO minecraft_versions (version, image_url, created_at) VALUES ($1, $2, $3)`,
+		expected.Version,
+		expected.ImageURL,
+		expected.CreatedAt,
+	)
+	require.NoError(t, err)
+
+	actual, err := pg.DB.GetMinecraftVersionByVersion(ctx, "1.21.7")
 	require.NoError(t, err)
 
 	if d := cmp.Diff(expected, actual); d != "" {

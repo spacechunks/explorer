@@ -113,7 +113,12 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	require.NoError(t, err)
 
 	// seed data that is globally needed
-	_, err = pool.Exec(ctx, `INSERT INTO minecraft_versions (version) VALUES ($1)`, MinecraftVersion)
+	_, err = pool.Exec(
+		ctx,
+		`INSERT INTO minecraft_versions (version, image_url) VALUES ($1, $2)`,
+		MinecraftVersion,
+		"http://example.com/mc-image",
+	)
 	require.NoError(t, err)
 
 	// the default users main purpose at the moment is, multiple users

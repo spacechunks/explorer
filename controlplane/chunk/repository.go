@@ -51,7 +51,7 @@ type Repository interface {
 	) error
 	UpdateFlavorVersionPresignedURLData(ctx context.Context, flavorVersionID string, date time.Time, url string) error
 	SupportedMinecraftVersions(ctx context.Context) ([]string, error)
-	MinecraftVersionExists(context.Context, string) (bool, error)
+	GetMinecraftVersionByVersion(context.Context, string) (resource.MinecraftVersion, error)
 	UpdateThumbnail(ctx context.Context, chunkID string, imgHash string) error
 	AllChunkThumbnailHashes(ctx context.Context) (map[string]string, error)
 }
