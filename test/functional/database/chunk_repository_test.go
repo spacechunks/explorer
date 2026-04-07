@@ -21,6 +21,7 @@ package database
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jackc/pgx/v5"
@@ -73,7 +74,9 @@ func TestGetChunkByID(t *testing.T) {
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
 	)
+
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 
 	expected := fixture.Chunk()
 
@@ -92,7 +95,9 @@ func TestInsertJob(t *testing.T) {
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
 	)
+
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 	pg.CreateRiverClient(t)
 
 	c := fixture.Chunk()
@@ -126,7 +131,9 @@ func TestUpdateThumbnail(t *testing.T) {
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
 	)
+
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 
 	var (
 		expectedHash = "some-hash"
@@ -161,7 +168,9 @@ func TestGetAllThumbnailHashes(t *testing.T) {
 		})
 		null = fixture.Chunk()
 	)
+
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 
 	pg.CreateChunk(t, &c1, fixture.CreateOptionsAll)
 	pg.CreateChunk(t, &c2, fixture.CreateOptionsAll)
@@ -176,6 +185,36 @@ func TestGetAllThumbnailHashes(t *testing.T) {
 	}
 
 	actual, err := pg.DB.AllChunkThumbnailHashes(ctx)
+	require.NoError(t, err)
+
+	if d := cmp.Diff(expected, actual); d != "" {
+		t.Errorf("mismatch (-want +got):\n%s", d)
+	}
+}
+
+func TestGetMinecraftVersion(t *testing.T) {
+	var (
+		ctx      = context.Background()
+		pg       = fixture.NewPostgres()
+		expected = resource.MinecraftVersion{
+			Version:   "1.21.7",
+			ImageURL:  "localhost/lol",
+			CreatedAt: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		}
+	)
+
+	pg.Run(t, ctx)
+
+	_, err := pg.Pool.Exec(
+		ctx,
+		`INSERT INTO minecraft_versions (version, image_url, created_at) VALUES ($1, $2, $3)`,
+		expected.Version,
+		expected.ImageURL,
+		expected.CreatedAt,
+	)
+	require.NoError(t, err)
+
+	actual, err := pg.DB.GetMinecraftVersionByVersion(ctx, "1.21.7")
 	require.NoError(t, err)
 
 	if d := cmp.Diff(expected, actual); d != "" {

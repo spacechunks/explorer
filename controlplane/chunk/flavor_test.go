@@ -23,7 +23,9 @@ import (
 	"log/slog"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
@@ -191,8 +193,12 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(false, nil)
 
 				repo.EXPECT().
-					MinecraftVersionExists(mocky.Anything, newVersion.MinecraftVersion).
-					Return(true, nil)
+					GetMinecraftVersionByVersion(mocky.Anything, newVersion.MinecraftVersion).
+					Return(resource.MinecraftVersion{
+						Version:   newVersion.MinecraftVersion,
+						ImageURL:  "some-url",
+						CreatedAt: time.Time{},
+					}, nil)
 
 				repo.EXPECT().
 					LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).
@@ -242,8 +248,12 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(false, nil)
 
 				repo.EXPECT().
-					MinecraftVersionExists(mocky.Anything, newVersion.MinecraftVersion).
-					Return(true, nil)
+					GetMinecraftVersionByVersion(mocky.Anything, newVersion.MinecraftVersion).
+					Return(resource.MinecraftVersion{
+						Version:   newVersion.MinecraftVersion,
+						ImageURL:  "some-url",
+						CreatedAt: time.Time{},
+					}, nil)
 
 				repo.EXPECT().
 					LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).
@@ -296,8 +306,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(false, nil)
 
 				repo.EXPECT().
-					MinecraftVersionExists(mocky.Anything, newVersion.MinecraftVersion).
-					Return(false, nil)
+					GetMinecraftVersionByVersion(mocky.Anything, newVersion.MinecraftVersion).
+					Return(resource.MinecraftVersion{}, pgx.ErrNoRows)
 			},
 			err: apierrs.ErrMinecraftVersionNotSupported,
 		},

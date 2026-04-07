@@ -105,6 +105,28 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 		opt(&defaultOpts)
 	}
 
+	// seed data that is globally needed
+	_, err := c.Postgres.Pool.Exec(
+		ctx,
+		`INSERT INTO minecraft_versions (version, image_url) VALUES ($1, $2)`,
+		MinecraftVersion,
+		fmt.Sprintf("%s/base-image:latest", defaultOpts.OCIRegistryEndpoint),
+	)
+	require.NoError(t, err)
+
+	// the default users main purpose at the moment is, multiple users
+	// being in the database when testing (the default user + user created
+	// by the test itself). we need this, because there was a bug where a
+	// query returned the wrong result when multiple users were present. this
+	// bug went undiscovered until later manual testing.
+	_, err = c.Postgres.Pool.Exec(ctx, `
+		INSERT INTO users
+		    (id, nickname, email, created_at, updated_at)
+		VALUES
+		    ('019a88ab-3240-7f61-b560-cc755d5572a0', 'default', 'default@example.com', now(), now())`,
+	)
+	require.NoError(t, err)
+
 	der, err := x509.MarshalECPrivateKey(c.SigningKey)
 	require.NoError(t, err)
 

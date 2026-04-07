@@ -112,23 +112,6 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	pool, err := pgxpool.New(ctx, p.ConnString)
 	require.NoError(t, err)
 
-	// seed data that is globally needed
-	_, err = pool.Exec(ctx, `INSERT INTO minecraft_versions (version) VALUES ($1)`, MinecraftVersion)
-	require.NoError(t, err)
-
-	// the default users main purpose at the moment is, multiple users
-	// being in the database when testing (the default user + user created
-	// by the test itself). we need this, because there was a bug where a
-	// query returned the wrong result when multiple users were present. this
-	// bug went undiscovered until later manual testing.
-	_, err = pool.Exec(ctx, `
-		INSERT INTO users
-		    (id, nickname, email, created_at, updated_at)
-		VALUES
-		    ('019a88ab-3240-7f61-b560-cc755d5572a0', 'default', 'default@example.com', now(), now())`,
-	)
-	require.NoError(t, err)
-
 	p.Pool = pool
 	p.DB = postgres.NewDB(p.logger, pool)
 }
@@ -311,5 +294,16 @@ func (p *Postgres) InsertNode(t *testing.T) {
 	ctx := context.Background()
 	q := `INSERT INTO nodes (id, name, address, checkpoint_api_endpoint) VALUES ($1, $2, $3, $4)`
 	_, err := p.Pool.Exec(ctx, q, Node().ID, Node().Name, Node().Addr, Node().CheckpointAPIEndpoint)
+	require.NoError(t, err)
+}
+
+func (p *Postgres) InsertMinecraftVersion(t *testing.T) {
+	ctx := context.Background()
+	_, err := p.Pool.Exec(
+		ctx,
+		`INSERT INTO minecraft_versions (version, image_url) VALUES ($1, $2)`,
+		MinecraftVersion,
+		"http://example.com/minecraft",
+	)
 	require.NoError(t, err)
 }

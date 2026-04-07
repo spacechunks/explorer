@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/spacechunks/explorer/controlplane/authz"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/contextkey"
@@ -98,17 +99,17 @@ func (s *svc) CreateFlavorVersion(
 		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrFlavorVersionExists
 	}
 
-	exists, err = s.repo.MinecraftVersionExists(ctx, version.MinecraftVersion)
+	_, err = s.repo.GetMinecraftVersionByVersion(ctx, version.MinecraftVersion)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return resource.FlavorVersion{},
+				resource.FlavorVersionDiff{},
+				apierrs.ErrMinecraftVersionNotSupported
+		}
+
 		return resource.FlavorVersion{},
 			resource.FlavorVersionDiff{},
 			fmt.Errorf("minecraft version exists: %w", err)
-	}
-
-	if !exists {
-		return resource.FlavorVersion{},
-			resource.FlavorVersionDiff{},
-			apierrs.ErrMinecraftVersionNotSupported
 	}
 
 	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
@@ -277,9 +278,14 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 		return nil
 	}
 
+	mcVersion, err := s.repo.GetMinecraftVersionByVersion(ctx, version.MinecraftVersion)
+	if err != nil {
+		return fmt.Errorf("minecraft version: %w", err)
+	}
+
 	if err := s.jobClient.InsertJob(ctx, versionID, string(resource.FlavorVersionBuildStatusBuildImage), job.CreateImage{
 		FlavorVersionID: versionID,
-		BaseImage:       s.cfg.BaseImage,
+		BaseImage:       mcVersion.ImageURL,
 		OCIRegistry:     s.cfg.Registry,
 	}); err != nil {
 		return fmt.Errorf("insert create image job: %w", err)

@@ -228,18 +228,23 @@ func (db *DB) SupportedMinecraftVersions(ctx context.Context) ([]string, error) 
 	return ret, nil
 }
 
-func (db *DB) MinecraftVersionExists(ctx context.Context, version string) (bool, error) {
-	var ret bool
+func (db *DB) GetMinecraftVersionByVersion(ctx context.Context, version string) (resource.MinecraftVersion, error) {
+	var ret resource.MinecraftVersion
 	if err := db.do(ctx, func(q *query.Queries) error {
-		exists, err := q.MinecraftVersionExists(ctx, version)
+		v, err := q.GetMinecraftVersionByVersionName(ctx, version)
 		if err != nil {
 			return err
 		}
 
-		ret = exists
+		ret = resource.MinecraftVersion{
+			Version:   v.Version,
+			ImageURL:  v.ImageUrl.String,
+			CreatedAt: v.CreatedAt.Time,
+		}
+
 		return nil
 	}); err != nil {
-		return false, err
+		return resource.MinecraftVersion{}, err
 	}
 	return ret, nil
 }
