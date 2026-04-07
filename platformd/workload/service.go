@@ -117,7 +117,7 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 				Image:              w.CheckpointImage,
 			},
 			Labels:  w.Labels,
-			LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
+			LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, w.Name),
 		},
 		SandboxConfig: sboxCfg,
 	}
@@ -135,11 +135,14 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 			Metadata: &runtimev1.ContainerMetadata{
 				Name: "servermon",
 			},
+			Labels: map[string]string{
+				LabelWorkloadID: w.ID,
+			},
 			Image: &runtimev1.ImageSpec{
 				UserSpecifiedImage: s.cfg.ServerMonImage,
 				Image:              s.cfg.ServerMonImage,
 			},
-			LogPath: fmt.Sprintf("%s_%s", w.Namespace, "servermon"),
+			LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, "servermon"),
 			Mounts: []*runtimev1.Mount{
 				{
 					HostPath:      s.cfg.PlatformdListenSock,
@@ -261,13 +264,23 @@ func (s *svc) GetWorkloadHealth(ctx context.Context, id string) (status.Workload
 		return status.WorkloadHealthStatusUnhealthy, nil
 	}
 
-	switch resp.GetContainers()[0].State {
-	case runtimev1.ContainerState_CONTAINER_RUNNING:
-		return status.WorkloadHealthStatusHealthy, nil
-	case runtimev1.ContainerState_CONTAINER_EXITED,
-		runtimev1.ContainerState_CONTAINER_CREATED,
-		runtimev1.ContainerState_CONTAINER_UNKNOWN:
-		return status.WorkloadHealthStatusUnhealthy, nil
+	for _, c := range resp.Containers {
+		switch c.State {
+		case runtimev1.ContainerState_CONTAINER_RUNNING:
+			return status.WorkloadHealthStatusHealthy, nil
+		case runtimev1.ContainerState_CONTAINER_EXITED,
+			runtimev1.ContainerState_CONTAINER_CREATED,
+			runtimev1.ContainerState_CONTAINER_UNKNOWN:
+			s.logger.InfoContext(
+				ctx,
+				"workload unhealthy due to container state",
+				"state", c.State,
+				"container_name", c.Metadata.Name,
+				"container_id", c.Id,
+				"workload_id", id,
+			)
+			return status.WorkloadHealthStatusUnhealthy, nil
+		}
 	}
 
 	return status.WorkloadHealthStatusHealthy, nil
