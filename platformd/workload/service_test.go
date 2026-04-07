@@ -105,7 +105,7 @@ func TestRunWorkload(t *testing.T) {
 								Image:              w.CheckpointImage,
 							},
 							Labels:  w.Labels,
-							LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
+							LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, w.Name),
 						},
 						SandboxConfig: sboxCfg,
 					}
@@ -115,11 +115,14 @@ func TestRunWorkload(t *testing.T) {
 							Metadata: &runtimev1.ContainerMetadata{
 								Name: "servermon",
 							},
+							Labels: map[string]string{
+								workload.LabelWorkloadID: w.ID,
+							},
 							Image: &runtimev1.ImageSpec{
 								UserSpecifiedImage: cfg.ServerMonImage,
 								Image:              cfg.ServerMonImage,
 							},
-							LogPath: fmt.Sprintf("%s_%s", w.Namespace, "servermon"),
+							LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, "servermon"),
 							Mounts: []*runtimev1.Mount{
 								{
 									HostPath:      cfg.PlatformdListenSock,
@@ -279,27 +282,39 @@ func TestRemoveWorkload(t *testing.T) {
 func TestGetWorkloadHealth(t *testing.T) {
 	tests := []struct {
 		name     string
-		state    runtimev1.ContainerState
+		states   []runtimev1.ContainerState
 		expected status.WorkloadHealthStatus
 	}{
 		{
-			name:     "HEALTHY: ContainerState_CONTAINER_RUNNING",
-			state:    runtimev1.ContainerState_CONTAINER_RUNNING,
+			name: "HEALTHY: all ContainerState_CONTAINER_RUNNING",
+			states: []runtimev1.ContainerState{
+				runtimev1.ContainerState_CONTAINER_RUNNING,
+				runtimev1.ContainerState_CONTAINER_RUNNING,
+			},
 			expected: status.WorkloadHealthStatusHealthy,
 		},
 		{
-			name:     "UNHEALTHY: ContainerState_CONTAINER_CREATED",
-			state:    runtimev1.ContainerState_CONTAINER_CREATED,
+			name: "UNHEALTHY: ContainerState_CONTAINER_CREATED",
+			states: []runtimev1.ContainerState{
+				runtimev1.ContainerState_CONTAINER_CREATED,
+				runtimev1.ContainerState_CONTAINER_RUNNING,
+			},
 			expected: status.WorkloadHealthStatusUnhealthy,
 		},
 		{
-			name:     "UNHEALTHY: ContainerState_CONTAINER_UNKNOWN",
-			state:    runtimev1.ContainerState_CONTAINER_UNKNOWN,
+			name: "UNHEALTHY: ContainerState_CONTAINER_UNKNOWN",
+			states: []runtimev1.ContainerState{
+				runtimev1.ContainerState_CONTAINER_UNKNOWN,
+				runtimev1.ContainerState_CONTAINER_RUNNING,
+			},
 			expected: status.WorkloadHealthStatusUnhealthy,
 		},
 		{
-			name:     "UNHEALTHY: ContainerState_CONTAINER_EXITED",
-			state:    runtimev1.ContainerState_CONTAINER_EXITED,
+			name: "UNHEALTHY: ContainerState_CONTAINER_EXITED",
+			states: []runtimev1.ContainerState{
+				runtimev1.ContainerState_CONTAINER_EXITED,
+				runtimev1.ContainerState_CONTAINER_RUNNING,
+			},
 			expected: status.WorkloadHealthStatusUnhealthy,
 		},
 	}
@@ -316,6 +331,16 @@ func TestGetWorkloadHealth(t *testing.T) {
 				svc = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth)
 			)
 
+			var ctrs []*runtimev1.Container
+			for _, s := range tt.states {
+				ctrs = append(ctrs, &runtimev1.Container{
+					Metadata: &runtimev1.ContainerMetadata{
+						Name: "ctr",
+					},
+					State: s,
+				})
+			}
+
 			mockCRIService.EXPECT().
 				ListContainers(ctx, &runtimev1.ListContainersRequest{
 					Filter: &runtimev1.ContainerFilter{
@@ -325,11 +350,7 @@ func TestGetWorkloadHealth(t *testing.T) {
 					},
 				}).
 				Return(&runtimev1.ListContainersResponse{
-					Containers: []*runtimev1.Container{
-						{
-							State: tt.state,
-						},
-					},
+					Containers: ctrs,
 				}, nil)
 
 			st, err := svc.GetWorkloadHealth(ctx, "")
