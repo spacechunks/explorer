@@ -105,7 +105,7 @@ func TestRunWorkload(t *testing.T) {
 								Image:              w.CheckpointImage,
 							},
 							Labels:  w.Labels,
-							LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
+							LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, w.Name),
 						},
 						SandboxConfig: sboxCfg,
 					}
@@ -115,11 +115,14 @@ func TestRunWorkload(t *testing.T) {
 							Metadata: &runtimev1.ContainerMetadata{
 								Name: "servermon",
 							},
+							Labels: map[string]string{
+								workload.LabelWorkloadID: w.ID,
+							},
 							Image: &runtimev1.ImageSpec{
 								UserSpecifiedImage: cfg.ServerMonImage,
 								Image:              cfg.ServerMonImage,
 							},
-							LogPath: fmt.Sprintf("%s_%s", w.Namespace, "servermon"),
+							LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, "servermon"),
 							Mounts: []*runtimev1.Mount{
 								{
 									HostPath:      cfg.PlatformdListenSock,
@@ -331,6 +334,9 @@ func TestGetWorkloadHealth(t *testing.T) {
 			var ctrs []*runtimev1.Container
 			for _, s := range tt.states {
 				ctrs = append(ctrs, &runtimev1.Container{
+					Metadata: &runtimev1.ContainerMetadata{
+						Name: "ctr",
+					},
 					State: s,
 				})
 			}
