@@ -26,7 +26,6 @@ type Config struct {
 	OCIRegistry                   string
 	OCIRegistryUser               string
 	OCIRegistryPass               string
-	BaseImage                     string
 	ImageCacheDir                 string
 	ImagePlatform                 string
 	CheckpointJobTimeout          time.Duration

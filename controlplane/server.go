@@ -177,7 +177,6 @@ func (s *Server) Run(ctx context.Context) error {
 			authz.NewRuleEvaluator(db),
 			chunk.Config{
 				Registry:           s.cfg.OCIRegistry,
-				BaseImage:          s.cfg.BaseImage,
 				Bucket:             s.cfg.Bucket,
 				PresignedURLExpiry: s.cfg.PresignedURLExpiry,
 				ThumbnailMaxSizeKB: s.cfg.ThumbnailMaxSizeKB,
