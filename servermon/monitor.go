@@ -3,6 +3,7 @@ package servermon
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/url"
@@ -42,14 +43,27 @@ type player struct {
 }
 
 func (m Monitor) Run(ctx context.Context) error {
-	if err := waitEndpointReady(m.conf.MCServerManagementAPIEndpoint, 20 * time.Second); err != nil {
+	if err := waitEndpointReady(m.conf.MCServerManagementAPIEndpoint, 20*time.Second); err != nil {
 		return fmt.Errorf("wait endpoint ready: %w", err)
 	}
 
-	wsConn, _, err := gorilla.DefaultDialer.Dial(m.conf.MCServerManagementAPIEndpoint, map[string][]string{
+	wsConn, resp, err := gorilla.DefaultDialer.Dial(m.conf.MCServerManagementAPIEndpoint, map[string][]string{
 		"Authorization": {"Bearer " + m.conf.MCServerManagementAPIToken},
 	})
 	if err != nil {
+		// connecting in general is broken, otherwise we have a response
+		if resp == nil {
+			return fmt.Errorf("dial: %w", err)
+		}
+
+		data, _ := io.ReadAll(resp.Body)
+		m.logger.ErrorContext(
+			ctx,
+			"failed to connect to management api",
+			"err", err,
+			"status_code", resp.StatusCode,
+			"body", string(data),
+		)
 		return fmt.Errorf("dial: %w", err)
 	}
 
@@ -69,16 +83,18 @@ func (m Monitor) Run(ctx context.Context) error {
 		return fmt.Errorf("PLATFORMD_WORKLOAD_ID not set")
 	}
 
+	logger := m.logger.With("workload_id", workloadID)
+
 	go func() {
 		for range listTicker.C {
 			players := make([]player, 0)
 
 			if err := rpcConn.Call(ctx, "minecraft:players", nil, &players); err != nil {
-				m.logger.ErrorContext(ctx, "failed to call players", "err", err)
+				logger.ErrorContext(ctx, "failed to call players", "err", err)
 				continue
 			}
 
-			m.logger.Info("got players", "player_count", len(players))
+			logger.Debug("got players", "player_count", len(players))
 
 			if len(players) > 0 {
 				joined.Store(true)
@@ -93,7 +109,7 @@ func (m Monitor) Run(ctx context.Context) error {
 				break
 			}
 
-			m.logger.Info(
+			logger.Info(
 				"player count has been 0 for too long, cleaning up",
 				"check_interval", m.conf.PlayerCountCheckInterval,
 			)
@@ -101,7 +117,7 @@ func (m Monitor) Run(ctx context.Context) error {
 			if _, err := m.client.StopWorkload(ctx, &workloadv1alpha2.WorkloadStopRequest{
 				Id: workloadID,
 			}); err != nil {
-				m.logger.Error(
+				logger.Error(
 					"failed to stop workload, retry happens next player count check",
 					"workload_id", workloadID,
 					"err", err,
