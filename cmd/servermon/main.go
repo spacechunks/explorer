@@ -21,10 +21,10 @@ func main() {
 		logger                   = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 		ctx, cancel              = context.WithCancel(context.Background())
 		fs                       = flag.NewFlagSet("servermon", flag.ContinueOnError)
-		playerCountCheckInterval = fs.Duration("player-count-check-interval", 2*time.Minute, "in what interval the player count of the server will be checked")                       //nolint:lll
-		mgmtEndpoint             = fs.String("mc-server-management-api-endpoint", "http://localhost:26656", "the endpoint at which the minecraft server management api is available") //nolint:lll
-		mgmtAPIToken             = fs.String("mc-server-management-api-token", "", "token to use for the minecraft server management api")                                            //nolint:lll
-		platformdListenSock      = fs.String("platformd-listen-sock", "", "path to the platformd management api unix socket file")                                                    //nolint:lll
+		playerCountCheckInterval = fs.Duration("player-count-check-interval", 2*time.Minute, "in what interval the player count of the server will be checked")                     //nolint:lll
+		mgmtEndpoint             = fs.String("mc-server-management-api-endpoint", "ws://localhost:26656", "the endpoint at which the minecraft server management api is available") //nolint:lll
+		mgmtAPIToken             = fs.String("mc-server-management-api-token", "", "token to use for the minecraft server management api")                                          //nolint:lll
+		platformdListenSock      = fs.String("platformd-listen-sock", "", "path to the platformd management api unix socket file")                                                  //nolint:lll
 	)
 
 	if err := ff.Parse(fs, os.Args[1:],

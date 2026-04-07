@@ -188,7 +188,7 @@ func newPlan(logger *slog.Logger, cfg publishConfig, supportedVersions []string,
 		// is to be considered "changed"
 
 		if remoteVersion == nil {
-			if c := checkHashes(local, remote); c != nil {
+			if c := checkHashes(local, remote); c != nil { // TODO: remove
 				p.conflicts = append(p.conflicts, c)
 				continue
 			}
