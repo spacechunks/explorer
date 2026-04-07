@@ -43,8 +43,9 @@ func TestRunWorkload(t *testing.T) {
 	tests := []struct {
 		name    string
 		w       workload.Workload
+		cfg     workload.Config
 		attempt uint
-		prep    func(*mock.MockCriService, workload.Workload, uint)
+		prep    func(*mock.MockCriService, workload.Config, workload.Workload, uint)
 	}{
 		{
 			name: "everyhing works",
@@ -59,8 +60,15 @@ func TestRunWorkload(t *testing.T) {
 				CPUQuota:         200000,
 				MemoryLimitBytes: 100000,
 			},
+			cfg: workload.Config{
+				MCManagementAPIToken: "some-token",
+				ServerMonImage:       "server-mon",
+				PlatformdListenSock:  "/var/run/platform.sock",
+				PlatformdSocketUID:   1337,
+				PlatformdSocketGID:   1337,
+			},
 			attempt: 1,
-			prep: func(criService *mock.MockCriService, w workload.Workload, attempt uint) {
+			prep: func(criService *mock.MockCriService, cfg workload.Config, w workload.Workload, attempt uint) {
 				var (
 					podID   = "pod-test"
 					sboxCfg = &runtimev1.PodSandboxConfig{
@@ -86,7 +94,7 @@ func TestRunWorkload(t *testing.T) {
 							},
 						},
 					}
-					ctrReq = &runtimev1.CreateContainerRequest{
+					mcCtrReq = &runtimev1.CreateContainerRequest{
 						PodSandboxId: podID,
 						Config: &runtimev1.ContainerConfig{
 							Metadata: &runtimev1.ContainerMetadata{
@@ -98,6 +106,50 @@ func TestRunWorkload(t *testing.T) {
 							},
 							Labels:  w.Labels,
 							LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
+						},
+						SandboxConfig: sboxCfg,
+					}
+					serverMonCtrReq = &runtimev1.CreateContainerRequest{
+						PodSandboxId: podID,
+						Config: &runtimev1.ContainerConfig{
+							Metadata: &runtimev1.ContainerMetadata{
+								Name: "servermon",
+							},
+							Image: &runtimev1.ImageSpec{
+								UserSpecifiedImage: cfg.ServerMonImage,
+								Image:              cfg.ServerMonImage,
+							},
+							LogPath: fmt.Sprintf("%s_%s", w.Namespace, "servermon"),
+							Mounts: []*runtimev1.Mount{
+								{
+									HostPath:      cfg.PlatformdListenSock,
+									ContainerPath: cfg.PlatformdListenSock,
+								},
+							},
+							Linux: &runtimev1.LinuxContainerConfig{
+								SecurityContext: &runtimev1.LinuxContainerSecurityContext{
+									RunAsUser: &runtimev1.Int64Value{
+										Value: int64(cfg.PlatformdSocketUID),
+									},
+									RunAsGroup: &runtimev1.Int64Value{
+										Value: int64(cfg.PlatformdSocketGID),
+									},
+								},
+							},
+							Envs: []*runtimev1.KeyValue{
+								{
+									Key:   "PLATFORMD_WORKLOAD_ID",
+									Value: w.ID,
+								},
+								{
+									Key:   "SERVERMON_MC_SERVER_MANAGEMENT_API_TOKEN",
+									Value: cfg.MCManagementAPIToken,
+								},
+								{
+									Key:   "SERVERMON_PLATFORMD_LISTEN_SOCK",
+									Value: cfg.PlatformdListenSock,
+								},
+							},
 						},
 						SandboxConfig: sboxCfg,
 					}
@@ -120,7 +172,15 @@ func TestRunWorkload(t *testing.T) {
 					Return(false, nil)
 
 				criService.EXPECT().
-					RunContainer(mocky.Anything, ctrReq).
+					RunContainer(mocky.Anything, mcCtrReq).
+					Return("", nil)
+
+				criService.EXPECT().
+					EnsureImage(mocky.Anything, cfg.ServerMonImage, cri.Unauthenticated).
+					Return(false, nil)
+
+				criService.EXPECT().
+					RunContainer(mocky.Anything, serverMonCtrReq).
 					Return("", nil)
 			},
 		},
@@ -131,10 +191,10 @@ func TestRunWorkload(t *testing.T) {
 				ctx            = context.Background()
 				logger         = slog.New(slog.NewTextHandler(os.Stdout, nil))
 				mockCRIService = mock.NewMockCriService(t)
-				svc            = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth)
+				svc            = workload.NewService(logger, tt.cfg, mockCRIService, regAuth)
 			)
 
-			tt.prep(mockCRIService, tt.w, tt.attempt)
+			tt.prep(mockCRIService, tt.cfg, tt.w, tt.attempt)
 
 			err := svc.RunWorkload(ctx, tt.w, tt.attempt)
 			require.NoError(t, err)

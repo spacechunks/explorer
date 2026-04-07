@@ -33,11 +33,12 @@ func sanatizeServerProperties(data []byte) ([]byte, error) {
 		"management-server-enabled":         true,
 		"management-server-host":            "localhost",
 		"management-server-port":            26656,
-		"management-server-secret":          "Q7fL9x2aVbW4nK8tYp3ZcR6mH1sJd5uE0qTgA8wB", // must be 40 chars long
-		"management-server-tls-enabled":     false,
-		"online-mode":                       false,
-		"log-ips":                           false,
-		"use-native-transport":              true,
+		// FIXME: management server is only accessible using localhost, but at some point don't hardcode it
+		"management-server-secret":      "Q7fL9x2aVbW4nK8tYp3ZcR6mH1sJd5uE0qTgA8wB",
+		"management-server-tls-enabled": false,
+		"online-mode":                   false,
+		"log-ips":                       false,
+		"use-native-transport":          true,
 	}
 
 	for k, v := range vals {
