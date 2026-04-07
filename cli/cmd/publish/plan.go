@@ -78,18 +78,6 @@ func (c versionExistConflict) Print() {
 	fmt.Printf("%s - A Flavor with version %s already exists.\n", indent2, c.flavor.version)
 }
 
-type versionHashExistsConflict struct {
-	flavor localFlavor
-}
-
-func (c versionHashExistsConflict) Flavor() localFlavor {
-	return c.flavor
-}
-
-func (c versionHashExistsConflict) Print() {
-	fmt.Printf("%s - A version  with the same set of files exist.\n", indent2)
-}
-
 type errorConflict struct {
 	flavor localFlavor
 	err    error
@@ -188,11 +176,6 @@ func newPlan(logger *slog.Logger, cfg publishConfig, supportedVersions []string,
 		// is to be considered "changed"
 
 		if remoteVersion == nil {
-			if c := checkHashes(local, remote); c != nil { // TODO: remove
-				p.conflicts = append(p.conflicts, c)
-				continue
-			}
-
 			// if the remote version has not been created yet, BUT
 			// there are previous versions present, it means that
 			// this flavor has changed.
@@ -400,17 +383,6 @@ func (p plan) print() {
 	}
 
 	fmt.Println(Reset)
-}
-
-func checkHashes(local localFlavor, remote *chunkv1alpha1.Flavor) conflict {
-	if found := slices.ContainsFunc(remote.Versions, func(v *chunkv1alpha1.FlavorVersion) bool {
-		return local.hash == v.Hash
-	}); found {
-		return versionHashExistsConflict{
-			flavor: local,
-		}
-	}
-	return nil
 }
 
 //func test() {
