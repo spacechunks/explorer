@@ -131,7 +131,7 @@ func TestRunWorkload(t *testing.T) {
 				ctx            = context.Background()
 				logger         = slog.New(slog.NewTextHandler(os.Stdout, nil))
 				mockCRIService = mock.NewMockCriService(t)
-				svc            = workload.NewService(logger, mockCRIService, regAuth)
+				svc            = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth)
 			)
 
 			tt.prep(mockCRIService, tt.w, tt.attempt)
@@ -153,7 +153,7 @@ func TestRemoveWorkload(t *testing.T) {
 			Password: "pass",
 		}
 		mockCRIService = mock.NewMockCriService(t)
-		svc            = workload.NewService(logger, mockCRIService, regAuth)
+		svc            = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth)
 	)
 
 	mockCRIService.EXPECT().
@@ -253,7 +253,7 @@ func TestGetWorkloadHealth(t *testing.T) {
 					Username: "user",
 					Password: "pass",
 				}
-				svc = workload.NewService(logger, mockCRIService, regAuth)
+				svc = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth)
 			)
 
 			mockCRIService.EXPECT().
