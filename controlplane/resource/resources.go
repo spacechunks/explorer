@@ -139,3 +139,13 @@ const (
 	InstanceStateDeleted   InstanceState = "DELETED"
 	InstanceCreationFailed InstanceState = "CREATION_FAILED"
 )
+
+/*
+ * minecraft version
+ */
+
+type MinecraftVersion struct {
+	Version   string
+	ImageURL  string
+	CreatedAt time.Time
+}
