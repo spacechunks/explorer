@@ -146,7 +146,6 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 				OCIRegistry:                   defaultOpts.OCIRegistryEndpoint,
 				OCIRegistryUser:               OCIRegsitryUser,
 				OCIRegistryPass:               OCIRegistryPass,
-				BaseImage:                     fmt.Sprintf("%s/base-image:latest", defaultOpts.OCIRegistryEndpoint),
 				ImageCacheDir:                 t.TempDir(),
 				ImagePlatform:                 "",
 				CheckpointJobTimeout:          20 * time.Second,

@@ -44,7 +44,6 @@ func main() {
 		ociRegistry              = fs.String("oci-registry", "", "registry to use to pull and push images")                                                                                                       //nolint:lll
 		ociRegistryUser          = fs.String("oci-registry-user", "", "oci registry username used for authentication against configured oci registry")                                                            //nolint:lll
 		ociRegistryPass          = fs.String("oci-registry-pass", "", "oci registry password used for authentication against configured oci registry")                                                            //nolint:lll
-		baseImage                = fs.String("base-image", "", "base image to use for creating flavor version images")                                                                                            //nolint:lll
 		imageCacheDir            = fs.String("image-cache-dir", "/tmp/explorer-images", "directory used to cache base image")                                                                                     //nolint:lll
 		imagePlatform            = fs.String("image-platform", "linux/amd64", "the platform that will be specified when pulling the base image. must match with all configured platformd hosts e.g. linux/amd64") //nolint:lll
 		checkJobTimeout          = fs.Duration("checkpoint-job-timeout", 5*time.Minute, "when to abort the checkpointing job")                                                                                    //nolint:lll
@@ -84,7 +83,6 @@ func main() {
 			OCIRegistry:                   *ociRegistry,
 			OCIRegistryUser:               *ociRegistryUser,
 			OCIRegistryPass:               *ociRegistryPass,
-			BaseImage:                     *baseImage,
 			ImageCacheDir:                 *imageCacheDir,
 			ImagePlatform:                 *imagePlatform,
 			CheckpointJobTimeout:          *checkJobTimeout,
