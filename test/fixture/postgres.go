@@ -296,3 +296,14 @@ func (p *Postgres) InsertNode(t *testing.T) {
 	_, err := p.Pool.Exec(ctx, q, Node().ID, Node().Name, Node().Addr, Node().CheckpointAPIEndpoint)
 	require.NoError(t, err)
 }
+
+func (p *Postgres) InsertMinecraftVersion(t *testing.T) {
+	ctx := context.Background()
+	_, err := p.Pool.Exec(
+		ctx,
+		`INSERT INTO minecraft_versions (version, image_url) VALUES ($1, $2)`,
+		MinecraftVersion,
+		"http://example.com/minecraft",
+	)
+	require.NoError(t, err)
+}

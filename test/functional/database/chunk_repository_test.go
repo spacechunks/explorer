@@ -74,7 +74,9 @@ func TestGetChunkByID(t *testing.T) {
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
 	)
+
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 
 	expected := fixture.Chunk()
 
@@ -93,7 +95,9 @@ func TestInsertJob(t *testing.T) {
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
 	)
+
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 	pg.CreateRiverClient(t)
 
 	c := fixture.Chunk()
@@ -127,7 +131,9 @@ func TestUpdateThumbnail(t *testing.T) {
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
 	)
+
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 
 	var (
 		expectedHash = "some-hash"
@@ -162,7 +168,9 @@ func TestGetAllThumbnailHashes(t *testing.T) {
 		})
 		null = fixture.Chunk()
 	)
+
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 
 	pg.CreateChunk(t, &c1, fixture.CreateOptionsAll)
 	pg.CreateChunk(t, &c2, fixture.CreateOptionsAll)

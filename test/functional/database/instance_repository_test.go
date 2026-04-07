@@ -48,6 +48,7 @@ func TestCreateInstance(t *testing.T) {
 
 	pg.Run(t, ctx)
 	pg.InsertNode(t)
+	pg.InsertMinecraftVersion(t)
 
 	c.Flavors = []resource.Flavor{c.Flavors[0]}
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
@@ -86,6 +87,7 @@ func TestDBListInstances(t *testing.T) {
 	pg.Run(t, ctx)
 
 	pg.InsertNode(t)
+	pg.InsertMinecraftVersion(t)
 
 	// make sure we only have one flavor, the fixture has 2 configured by default
 	// but for this test we only we need one.
@@ -161,6 +163,7 @@ func TestGetInstanceByID(t *testing.T) {
 
 			pg.Run(t, ctx)
 			pg.InsertNode(t)
+			pg.InsertMinecraftVersion(t)
 
 			if tt.create {
 				pg.CreateChunk(t, &tt.expected.Chunk, fixture.CreateOptionsAll)
@@ -216,6 +219,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 
 	pg.Run(t, ctx)
 	pg.InsertNode(t)
+	pg.InsertMinecraftVersion(t)
 
 	chunks := []resource.Chunk{
 		fixture.Chunk(func(c *resource.Chunk) {

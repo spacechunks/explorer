@@ -35,6 +35,7 @@ func TestChunkOwner(t *testing.T) {
 	)
 
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 	actual, err := pg.DB.ChunkOwner(ctx, c.ID)
@@ -53,6 +54,7 @@ func TestFlavorOwner(t *testing.T) {
 	)
 
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 	actual, err := pg.DB.FlavorOwner(ctx, c.Flavors[0].ID)
@@ -71,6 +73,7 @@ func TestFlavorVersionOwner(t *testing.T) {
 	)
 
 	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 	actual, err := pg.DB.FlavorVersionOwner(ctx, c.Flavors[0].Versions[0].ID)
