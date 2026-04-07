@@ -96,11 +96,38 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 	}
 
 	if _, err := s.criService.EnsureImage(ctx, w.CheckpointImage, s.registryAuth); err != nil {
-		return fmt.Errorf("pull image if not present: %w", err)
+		return fmt.Errorf("pull checkpoint image if not present: %w", err)
+	}
+
+	if _, err := s.criService.EnsureImage(ctx, s.cfg.ServerMonImage, cri.Unauthenticated); err != nil {
+		return fmt.Errorf("pull servermon image if not present: %w", err)
 	}
 
 	logger = logger.With("pod_id", sboxResp.PodSandboxId)
 	logger.InfoContext(ctx, "started pod sandbox")
+
+	mcServerReq := &runtimev1.CreateContainerRequest{
+		PodSandboxId: sboxResp.PodSandboxId,
+		Config: &runtimev1.ContainerConfig{
+			Metadata: &runtimev1.ContainerMetadata{
+				Name: w.Name,
+			},
+			Image: &runtimev1.ImageSpec{
+				UserSpecifiedImage: w.CheckpointImage,
+				Image:              w.CheckpointImage,
+			},
+			Labels:  w.Labels,
+			LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
+		},
+		SandboxConfig: sboxCfg,
+	}
+
+	mcCtrID, err := s.criService.RunContainer(ctx, mcServerReq)
+	if err != nil {
+		return fmt.Errorf("run mc server container: %w", err)
+	}
+
+	logger.InfoContext(ctx, "started mc server container", "container_id", mcCtrID)
 
 	serverMonReq := &runtimev1.CreateContainerRequest{
 		PodSandboxId: sboxResp.PodSandboxId,
@@ -152,30 +179,8 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 		return fmt.Errorf("run servermon container: %w", err)
 	}
 
-	logger.InfoContext(ctx, "started mc server container", "container_id", serverMonCtrID)
+	logger.InfoContext(ctx, "started servermon container", "container_id", serverMonCtrID)
 
-	mcServerReq := &runtimev1.CreateContainerRequest{
-		PodSandboxId: sboxResp.PodSandboxId,
-		Config: &runtimev1.ContainerConfig{
-			Metadata: &runtimev1.ContainerMetadata{
-				Name: w.Name,
-			},
-			Image: &runtimev1.ImageSpec{
-				UserSpecifiedImage: w.CheckpointImage,
-				Image:              w.CheckpointImage,
-			},
-			Labels:  w.Labels,
-			LogPath: fmt.Sprintf("%s_%s", w.Namespace, w.Name),
-		},
-		SandboxConfig: sboxCfg,
-	}
-
-	mcCtrID, err := s.criService.RunContainer(ctx, mcServerReq)
-	if err != nil {
-		return fmt.Errorf("run mc server container: %w", err)
-	}
-
-	logger.InfoContext(ctx, "started mc server container", "container_id", mcCtrID)
 	return nil
 }
 

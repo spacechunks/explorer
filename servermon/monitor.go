@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
+	"net/url"
 	"os"
 	"sync/atomic"
 	"time"
@@ -40,6 +42,10 @@ type player struct {
 }
 
 func (m Monitor) Run(ctx context.Context) error {
+	if err := waitEndpointReady(m.conf.MCServerManagementAPIEndpoint, 20 * time.Second); err != nil {
+		return fmt.Errorf("wait endpoint ready: %w", err)
+	}
+
 	wsConn, _, err := gorilla.DefaultDialer.Dial(m.conf.MCServerManagementAPIEndpoint, map[string][]string{
 		"Authorization": {"Bearer " + m.conf.MCServerManagementAPIToken},
 	})
@@ -111,3 +117,27 @@ func (m Monitor) Run(ctx context.Context) error {
 // Handle is present, because jsonrpc2 crashes if we pass a nil handler to jsonrpc2.NewConn
 // and receive a message afterward.
 func (m Monitor) Handle(_ context.Context, _ *jsonrpc2.Conn, _ *jsonrpc2.Request) {}
+
+func waitEndpointReady(endpoint string, timeout time.Duration) error {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("parse endpoint: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	for {
+		conn, err := net.DialTimeout("tcp", u.Host, 1*time.Second)
+		if err == nil {
+			conn.Close()
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("%s did not respond within %v", u.Host, timeout)
+		case <-time.After(2 * time.Second):
+			continue
+		}
+	}
+}
