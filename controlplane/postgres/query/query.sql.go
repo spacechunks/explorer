@@ -561,6 +561,24 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 	return items, nil
 }
 
+const getFlavorByID = `-- name: GetFlavorByID :one
+SELECT id, chunk_id, name, created_at, updated_at, deleted_at FROM flavors WHERE id = $1
+`
+
+func (q *Queries) GetFlavorByID(ctx context.Context, id string) (Flavor, error) {
+	row := q.db.QueryRow(ctx, getFlavorByID, id)
+	var i Flavor
+	err := row.Scan(
+		&i.ID,
+		&i.ChunkID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getInstance = `-- name: GetInstance :many
 SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id

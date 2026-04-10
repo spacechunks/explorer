@@ -55,4 +55,5 @@ type Repository interface {
 	UpdateThumbnail(ctx context.Context, chunkID string, imgHash string) error
 	AllChunkThumbnailHashes(ctx context.Context) (map[string]string, error)
 	DeleteFlavor(ctx context.Context, id string) error
+	GetFlavorByID(ctx context.Context, id string) (resource.Flavor, error)
 }
