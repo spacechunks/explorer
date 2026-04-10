@@ -327,6 +327,39 @@ func (db *DB) UpdateFlavorVersionPresignedURLData(
 	})
 }
 
+func (db *DB) DeleteFlavor(ctx context.Context, id string) error {
+	return db.do(ctx, func(q *query.Queries) error {
+		return q.DeleteFlavor(ctx, id)
+	})
+}
+
+func (db *DB) GetFlavorByID(ctx context.Context, id string) (resource.Flavor, error) {
+	var ret resource.Flavor
+	if err := db.do(ctx, func(q *query.Queries) error {
+		f, err := q.GetFlavorByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		ret = resource.Flavor{
+			ID:        f.ID,
+			Name:      f.Name,
+			CreatedAt: f.CreatedAt,
+			UpdatedAt: f.UpdatedAt,
+		}
+
+		var deletedAt *time.Time
+		if f.DeletedAt.Valid {
+			deletedAt = &f.DeletedAt.Time
+		}
+
+		ret.DeletedAt = deletedAt
+		return nil
+	}); err != nil {
+		return resource.Flavor{}, err
+	}
+	return ret, nil
+}
+
 func (db *DB) InsertJob(ctx context.Context, flavorVersionID string, status string, job river.JobArgs) error {
 	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.UpdateFlavorVersionBuildStatus(ctx, query.UpdateFlavorVersionBuildStatusParams{

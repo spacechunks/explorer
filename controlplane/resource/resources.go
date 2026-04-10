@@ -73,6 +73,7 @@ type Flavor struct {
 	Versions  []FlavorVersion
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	DeletedAt *time.Time
 }
 
 type FlavorVersionDiff struct {

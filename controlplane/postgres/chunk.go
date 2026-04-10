@@ -238,7 +238,7 @@ func (db *DB) GetMinecraftVersionByVersion(ctx context.Context, version string) 
 
 		ret = resource.MinecraftVersion{
 			Version:   v.Version,
-			ImageURL:  v.ImageUrl.String,
+			ImageURL:  v.ImageUrl,
 			CreatedAt: v.CreatedAt.Time,
 		}
 

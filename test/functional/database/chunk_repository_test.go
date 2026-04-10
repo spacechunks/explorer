@@ -221,3 +221,54 @@ func TestGetMinecraftVersion(t *testing.T) {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
 }
+
+func TestDeleteFlavor(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	flavorID := c.Flavors[0].ID
+
+	err := pg.DB.DeleteFlavor(ctx, flavorID)
+	require.NoError(t, err)
+
+	var worked int
+	err = pg.Pool.
+		QueryRow(ctx, `SELECT 1 FROM flavors WHERE id = $1 AND deleted_at IS NOT NULL`, flavorID).
+		Scan(&worked)
+	require.NoError(t, err)
+
+	require.Equalf(t, 1, worked, "expected deleted at to be not null")
+}
+
+func TestGetFlavorByID(t *testing.T) {
+	var (
+		ctx  = context.Background()
+		pg   = fixture.NewPostgres()
+		date = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+		c    = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Flavors[0].DeletedAt = &date
+		})
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	expected := c.Flavors[0]
+
+	actual, err := pg.DB.GetFlavorByID(ctx, expected.ID)
+	require.NoError(t, err)
+
+	assert.Equal(t, expected.ID, actual.ID)
+	assert.Equal(t, expected.Name, actual.Name)
+	assert.NotEmpty(t, actual.CreatedAt)
+	assert.NotEmpty(t, actual.UpdatedAt)
+	assert.Equal(t, expected.DeletedAt, actual.DeletedAt)
+}
