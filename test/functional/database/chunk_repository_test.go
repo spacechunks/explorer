@@ -221,3 +221,28 @@ func TestGetMinecraftVersion(t *testing.T) {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
 }
+
+func TestDeleteFlavor(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	flavorID := c.Flavors[0].ID
+
+	err := pg.DB.DeleteFlavor(ctx, flavorID)
+	require.NoError(t, err)
+
+	var worked int
+	err = pg.Pool.
+		QueryRow(ctx, `SELECT 1 FROM flavors WHERE id = $1 AND deleted_at IS NOT NULL`, flavorID).
+		Scan(&worked)
+	require.NoError(t, err)
+
+	require.Equalf(t, 1, worked, "expected deleted at to be not null")
+}

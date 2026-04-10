@@ -151,7 +151,8 @@ CREATE TABLE public.flavors (
     chunk_id uuid NOT NULL,
     name character varying(25) NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone
 );
 
 
@@ -179,7 +180,7 @@ CREATE TABLE public.instances (
 CREATE TABLE public.minecraft_versions (
     version character varying NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
-    image_url character varying(256)
+    image_url character varying(256) NOT NULL
 );
 
 
@@ -629,4 +630,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20251112170710'),
     ('20251112171323'),
     ('20260223165838'),
-    ('20260407125522');
+    ('20260407125522'),
+    ('20260407181558'),
+    ('20260410102614');

@@ -145,6 +145,9 @@ SELECT u.* FROM users u
     JOIN users ON u.id = c.owner_id
 LIMIT 1;
 
+-- name: DeleteFlavor :exec
+UPDATE flavors SET deleted_at = now() WHERE id = $1;
+
 /*
  * BLOB STORE
  */

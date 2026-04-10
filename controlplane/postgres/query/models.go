@@ -177,6 +177,7 @@ type Flavor struct {
 	Name      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	DeletedAt pgtype.Timestamptz
 }
 
 type FlavorVersion struct {
@@ -216,7 +217,7 @@ type Instance struct {
 type MinecraftVersion struct {
 	Version   string
 	CreatedAt pgtype.Timestamptz
-	ImageUrl  pgtype.Text
+	ImageUrl  string
 }
 
 type Node struct {

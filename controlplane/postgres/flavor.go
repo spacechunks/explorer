@@ -327,6 +327,12 @@ func (db *DB) UpdateFlavorVersionPresignedURLData(
 	})
 }
 
+func (db *DB) DeleteFlavor(ctx context.Context, id string) error {
+	return db.do(ctx, func(q *query.Queries) error {
+		return q.DeleteFlavor(ctx, id)
+	})
+}
+
 func (db *DB) InsertJob(ctx context.Context, flavorVersionID string, status string, job river.JobArgs) error {
 	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.UpdateFlavorVersionBuildStatus(ctx, query.UpdateFlavorVersionBuildStatusParams{
