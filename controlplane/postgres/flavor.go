@@ -343,13 +343,13 @@ func (db *DB) GetFlavorByID(ctx context.Context, id string) (resource.Flavor, er
 		ret = resource.Flavor{
 			ID:        f.ID,
 			Name:      f.Name,
-			CreatedAt: f.CreatedAt,
-			UpdatedAt: f.UpdatedAt,
+			CreatedAt: f.CreatedAt.UTC(),
+			UpdatedAt: f.UpdatedAt.UTC(),
 		}
 
 		var deletedAt *time.Time
 		if f.DeletedAt.Valid {
-			deletedAt = &f.DeletedAt.Time
+			deletedAt = new(f.DeletedAt.Time.UTC())
 		}
 
 		ret.DeletedAt = deletedAt
