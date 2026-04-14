@@ -106,8 +106,6 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 	}
 
 	// seed data that is globally needed
-	c.Postgres.InsertNode(t)
-
 	_, err := c.Postgres.Pool.Exec(
 		ctx,
 		`INSERT INTO minecraft_versions (version, image_url) VALUES ($1, $2)`,
