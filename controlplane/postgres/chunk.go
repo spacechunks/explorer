@@ -504,7 +504,7 @@ func collectChunks(rows []chunkRelationsRow) resource.Chunk {
 	c.Flavors = slices.Collect(maps.Values(flavorMap))
 	sort.Slice(c.Flavors, func(i, j int) bool {
 		// the latest flavor will be the first entry in the slice
-		return c.Flavors[i].CreatedAt.Before(c.Flavors[j].CreatedAt)
+		return c.Flavors[i].CreatedAt.After(c.Flavors[j].CreatedAt)
 	})
 
 	ret = c
