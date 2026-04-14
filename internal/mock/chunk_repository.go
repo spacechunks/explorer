@@ -312,6 +312,53 @@ func (_c *MockChunkRepository_CreateFlavorVersion_Call) RunAndReturn(run func(co
 	return _c
 }
 
+// DeleteFlavor provides a mock function with given fields: ctx, id
+func (_m *MockChunkRepository) DeleteFlavor(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteFlavor")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockChunkRepository_DeleteFlavor_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteFlavor'
+type MockChunkRepository_DeleteFlavor_Call struct {
+	*mock.Call
+}
+
+// DeleteFlavor is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockChunkRepository_Expecter) DeleteFlavor(ctx interface{}, id interface{}) *MockChunkRepository_DeleteFlavor_Call {
+	return &MockChunkRepository_DeleteFlavor_Call{Call: _e.mock.On("DeleteFlavor", ctx, id)}
+}
+
+func (_c *MockChunkRepository_DeleteFlavor_Call) Run(run func(ctx context.Context, id string)) *MockChunkRepository_DeleteFlavor_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_DeleteFlavor_Call) Return(_a0 error) *MockChunkRepository_DeleteFlavor_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockChunkRepository_DeleteFlavor_Call) RunAndReturn(run func(context.Context, string) error) *MockChunkRepository_DeleteFlavor_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FlavorNameExists provides a mock function with given fields: ctx, chunkID, name
 func (_m *MockChunkRepository) FlavorNameExists(ctx context.Context, chunkID string, name string) (bool, error) {
 	ret := _m.Called(ctx, chunkID, name)
@@ -595,6 +642,63 @@ func (_c *MockChunkRepository_GetChunkByID_Call) Return(_a0 resource.Chunk, _a1 
 }
 
 func (_c *MockChunkRepository_GetChunkByID_Call) RunAndReturn(run func(context.Context, string) (resource.Chunk, error)) *MockChunkRepository_GetChunkByID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetFlavorByID provides a mock function with given fields: ctx, id
+func (_m *MockChunkRepository) GetFlavorByID(ctx context.Context, id string) (resource.Flavor, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetFlavorByID")
+	}
+
+	var r0 resource.Flavor
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (resource.Flavor, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) resource.Flavor); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Get(0).(resource.Flavor)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockChunkRepository_GetFlavorByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFlavorByID'
+type MockChunkRepository_GetFlavorByID_Call struct {
+	*mock.Call
+}
+
+// GetFlavorByID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockChunkRepository_Expecter) GetFlavorByID(ctx interface{}, id interface{}) *MockChunkRepository_GetFlavorByID_Call {
+	return &MockChunkRepository_GetFlavorByID_Call{Call: _e.mock.On("GetFlavorByID", ctx, id)}
+}
+
+func (_c *MockChunkRepository_GetFlavorByID_Call) Run(run func(ctx context.Context, id string)) *MockChunkRepository_GetFlavorByID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_GetFlavorByID_Call) Return(_a0 resource.Flavor, _a1 error) *MockChunkRepository_GetFlavorByID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockChunkRepository_GetFlavorByID_Call) RunAndReturn(run func(context.Context, string) (resource.Flavor, error)) *MockChunkRepository_GetFlavorByID_Call {
 	_c.Call.Return(run)
 	return _c
 }
