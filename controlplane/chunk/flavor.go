@@ -54,6 +54,13 @@ func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor resource.
 		return resource.Flavor{}, fmt.Errorf("access: %w", err)
 	}
 
+	// FIXME: get the flavor by name and then check if the deleted timestamp
+	//        is set. if it is, return conflict error or something. returning
+	//        ErrFlavorNameExists is a bit in consistent as we return not found
+	//        in other endpoints.
+
+	// this will also prevent creation of flavors that are being deleted,
+	// because they are still present in the db.
 	exists, err := s.repo.FlavorNameExists(ctx, chunkID, flavor.Name)
 	if err != nil {
 		return resource.Flavor{}, fmt.Errorf("flavor name exists: %w", err)
@@ -86,6 +93,15 @@ func (s *svc) CreateFlavorVersion(
 		authz.WithOwnershipRule(actorID, authz.FlavorResourceDef(flavorID)),
 	); err != nil {
 		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("access: %w", err)
+	}
+
+	f, err := s.repo.GetFlavorByID(ctx, flavorID)
+	if err != nil {
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("flavor by id: %w", err)
+	}
+
+	if f.DeletedAt != nil {
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrNotFound
 	}
 
 	exists, err := s.repo.FlavorVersionExists(ctx, flavorID, version.Version)
@@ -289,6 +305,36 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 		OCIRegistry:     s.cfg.Registry,
 	}); err != nil {
 		return fmt.Errorf("insert create image job: %w", err)
+	}
+
+	return nil
+}
+
+func (s *svc) DeleteFlavor(ctx context.Context, id string) error {
+	actorID, ok := ctx.Value(contextkey.ActorID).(string)
+	if !ok {
+		return errors.New("actor_id not found in context")
+	}
+
+	if err := s.access.AccessAuthorized(
+		ctx,
+		authz.WithOwnershipRule(actorID, authz.FlavorResourceDef(id)),
+	); err != nil {
+		return fmt.Errorf("access: %w", err)
+	}
+
+	f, err := s.repo.GetFlavorByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get: %w", err)
+	}
+
+	// return if it's already set to prevent overrides
+	if f.DeletedAt != nil {
+		return nil
+	}
+
+	if err := s.repo.DeleteFlavor(ctx, id); err != nil {
+		return fmt.Errorf("delete: %w", err)
 	}
 
 	return nil

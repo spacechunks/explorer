@@ -69,6 +69,7 @@ func imageWorkerSetup(
 
 	pg.Run(t, ctx)
 	pg.CreateRiverClient(t)
+	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, c, fixture.CreateOptionsAll)
 
 	pusher, err := remote.NewPusher(auth)

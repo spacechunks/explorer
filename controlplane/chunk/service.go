@@ -44,6 +44,7 @@ type Service interface {
 	GetUploadURL(ctx context.Context, flavorVersionID string, tarballHash string) (string, error)
 	GetSupportedMinecraftVersions(ctx context.Context) ([]string, error)
 	UpdateThumbnail(ctx context.Context, chunkID string, imageData []byte) error
+	DeleteFlavor(ctx context.Context, id string) error
 }
 
 type Config struct {

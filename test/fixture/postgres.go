@@ -211,13 +211,20 @@ func (p *Postgres) CreateChunk(t *testing.T, c *resource.Chunk, opts CreateOptio
 func (p *Postgres) CreateFlavor(t *testing.T, chunkID string, f *resource.Flavor, opts CreateOptions) {
 	var (
 		ctx = context.Background()
-		tmp = f.Versions // copy here, because CreateFlavor will overwrite it
+		id  = test.NewUUIDv7(t)
 	)
 
-	createdFlavor, err := p.DB.CreateFlavor(ctx, chunkID, *f)
-	require.NoError(t, err)
+	f.ID = id
 
-	createdFlavor.Versions = tmp
+	q := `
+INSERT INTO flavors
+    (id, chunk_id, name, created_at, updated_at, deleted_at)
+VALUES
+    ($1, $2, $3, $4, $5, $6);
+`
+
+	_, err := p.Pool.Exec(ctx, q, id, chunkID, f.Name, f.CreatedAt, f.UpdatedAt, f.DeletedAt)
+	require.NoError(t, err)
 
 	if opts.WithFlavorVersions {
 		// insert versions in reverse order to ensure that
@@ -226,14 +233,12 @@ func (p *Postgres) CreateFlavor(t *testing.T, chunkID string, f *resource.Flavor
 		// without reversing the slice would mean that the latest
 		// version has the oldest timestamp and the oldest version has
 		// the most recent timestamp.
-		slices.Reverse(createdFlavor.Versions)
-		for i := range createdFlavor.Versions {
-			p.CreateFlavorVersion(t, createdFlavor.ID, &createdFlavor.Versions[i])
+		slices.Reverse(f.Versions)
+		for i := range f.Versions {
+			p.CreateFlavorVersion(t, f.ID, &f.Versions[i])
 		}
-		slices.Reverse(createdFlavor.Versions) // reverse again to our desired ordering latest -> oldest
+		slices.Reverse(f.Versions) // reverse again to our desired ordering latest -> oldest
 	}
-
-	*f = createdFlavor
 }
 
 // CreateInstance inserts an instance and the chunk as well as all flavors

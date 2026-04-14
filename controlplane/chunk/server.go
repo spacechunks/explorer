@@ -234,3 +234,18 @@ func (s *Server) UploadThumbnail(
 	}
 	return &chunkv1alpha1.UploadThumbnailResponse{}, nil
 }
+
+func (s *Server) DeleteFlavor(
+	ctx context.Context,
+	req *chunkv1alpha1.DeleteFlavorRequest,
+) (*chunkv1alpha1.DeleteFlavorResponse, error) {
+	if _, err := uuid.Parse(req.Id); err != nil {
+		return nil, apierrs.ErrInvalidChunkID
+	}
+
+	if err := s.service.DeleteFlavor(ctx, req.Id); err != nil {
+		return nil, fmt.Errorf("delete flavor: %w", err)
+	}
+
+	return &chunkv1alpha1.DeleteFlavorResponse{}, nil
+}

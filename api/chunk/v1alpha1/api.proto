@@ -72,7 +72,9 @@ service ChunkService {
   //
   // Defined error codes:
   // - ALREADY_EXISTS:
-  //   - a flavor with the given name already exists for this chunk
+  //   - a flavor with the given name already exists for this chunk.
+  //     this error will also be returned if the flavor is currently
+  //     in the process of being deleted.
   // - INVALID_ARGUMENT:
   //   - the provided chunk id is invalid
   //   - the provided flavor name is invalid
@@ -85,6 +87,8 @@ service ChunkService {
   // an already existing version.
   //
   // Defined error codes:
+  // - NOT_FOUND
+  //   - the affected flavor does not exist
   // - ALREADY_EXISTS:
   //   - the flavor version about to be created is already present
   //   - a version with the exact same set of files already exists
@@ -130,6 +134,16 @@ service ChunkService {
   //   - thumbnail size must be 512x512 pixels
   //   - thumbnail size too big
   rpc UploadThumbnail(UploadThumbnailRequest) returns (UploadThumbnailResponse);
+
+  // DeleteFlavor initiates the process for a Flavor to be deleted. Deletion does not happen
+  // instantaneously, it can take a few minutes for a Flavor to be fully deleted. During this
+  // time any interaction with the flavor is blocked. This means that updates are no longer
+  // possible and creating Instances based on the Flavors versions is also not possible.
+  //
+  // Defined error codes:
+  // - INVALID_ARGUMENT:
+  //   - flavor id is invalid
+  rpc DeleteFlavor(DeleteFlavorRequest) returns (DeleteFlavorResponse);
 }
 
 message CreateChunkRequest {
@@ -232,3 +246,11 @@ message UploadThumbnailRequest {
 
 message UploadThumbnailResponse {
 }
+
+message DeleteFlavorRequest {
+  string id = 1;
+}
+
+message DeleteFlavorResponse {
+}
+

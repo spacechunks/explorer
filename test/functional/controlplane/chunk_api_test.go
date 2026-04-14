@@ -33,6 +33,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
+	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
@@ -1112,4 +1113,143 @@ func TestThumbnailActuallyUploadedToS3(t *testing.T) {
 	require.NoError(t, err)
 
 	fakes3.RequireObjectExists(t, blob.CASKeyPrefix+"/"+h)
+}
+
+func TestAPIDeleteFlavor(t *testing.T) {
+	var (
+		ctx = context.Background()
+		cp  = fixture.NewControlPlane(t)
+		c   = fixture.Chunk()
+		u   = fixture.User()
+	)
+
+	cp.Run(t)
+	client := cp.ChunkClient(t)
+
+	cp.Postgres.CreateUser(t, &u)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.AddUserAPIKey(t, &ctx, u)
+
+	expected := c
+	expected.Flavors = []resource.Flavor{
+		c.Flavors[1],
+	}
+
+	_, err := client.DeleteFlavor(ctx, &chunkv1alpha1.DeleteFlavorRequest{
+		Id: c.Flavors[0].ID,
+	})
+	require.NoError(t, err)
+
+	resp, err := client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
+		Id: c.ID,
+	})
+	require.NoError(t, err)
+
+	if d := cmp.Diff(
+		resp.Chunk,
+		chunk.ChunkToTransport(expected),
+		protocmp.Transform(),
+		test.IgnoredProtoChunkFields,
+		test.IgnoredProtoFlavorVersionFields,
+		test.IgnoredProtoFlavorFields,
+		test.IgnoredProtoUserFields,
+	); d != "" {
+		t.Errorf("mismatch (-want +got):\n%s", d)
+	}
+}
+
+func TestFlavorInteractionsDontWorkAfterDelete(t *testing.T) {
+	tests := []struct {
+		name           string
+		err            error
+		chunkAction    func(context.Context, chunkv1alpha1.ChunkServiceClient, resource.Chunk, resource.Flavor) error
+		instanceAction func(context.Context, instancev1alpha1.InstanceServiceClient, resource.Chunk, resource.Flavor) error
+	}{
+		{
+			name: "create flavor version",
+			chunkAction: func(
+				ctx context.Context,
+				c chunkv1alpha1.ChunkServiceClient,
+				chunk resource.Chunk,
+				flavor resource.Flavor,
+			) error {
+				_, err := c.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
+					FlavorId: flavor.ID,
+					Version: &chunkv1alpha1.FlavorVersion{
+						Version:          "v1",
+						Hash:             "awdawdawdawd",
+						MinecraftVersion: fixture.MinecraftVersion,
+					},
+				})
+				return err
+			},
+			err: apierrs.ErrNotFound.GRPCStatus().Err(),
+		},
+		{
+			name: "create new flavor with deleted name",
+			chunkAction: func(
+				ctx context.Context,
+				c chunkv1alpha1.ChunkServiceClient,
+				chunk resource.Chunk,
+				flavor resource.Flavor,
+			) error {
+				_, err := c.CreateFlavor(ctx, &chunkv1alpha1.CreateFlavorRequest{
+					ChunkId: chunk.ID,
+					Name:    flavor.Name,
+				})
+				return err
+			},
+			err: apierrs.ErrFlavorNameExists.GRPCStatus().Err(),
+		},
+		{
+			name: "run flavor version",
+			instanceAction: func(
+				ctx context.Context,
+				c instancev1alpha1.InstanceServiceClient,
+				chunk resource.Chunk,
+				flavor resource.Flavor,
+			) error {
+				_, err := c.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
+					ChunkId:         chunk.ID,
+					FlavorVersionId: flavor.Versions[0].ID,
+				})
+				return err
+			},
+			err: apierrs.ErrFlavorVersionNotFound.GRPCStatus().Err(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				cp  = fixture.NewControlPlane(t)
+				c   = fixture.Chunk()
+				u   = fixture.User()
+			)
+
+			cp.Run(t)
+			chunkClient := cp.ChunkClient(t)
+			insClient := cp.InstanceClient(t)
+
+			cp.Postgres.CreateUser(t, &u)
+			cp.Postgres.InsertNode(t)
+			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+			cp.AddUserAPIKey(t, &ctx, u)
+
+			_, err := chunkClient.DeleteFlavor(ctx, &chunkv1alpha1.DeleteFlavorRequest{
+				Id: c.Flavors[0].ID,
+			})
+			require.NoError(t, err)
+
+			if tt.chunkAction != nil {
+				err = tt.chunkAction(ctx, chunkClient, c, c.Flavors[0])
+				require.ErrorIs(t, err, tt.err)
+			}
+
+			if tt.instanceAction != nil {
+				err = tt.instanceAction(ctx, insClient, c, c.Flavors[0])
+				require.ErrorIs(t, err, tt.err)
+			}
+		})
+	}
 }

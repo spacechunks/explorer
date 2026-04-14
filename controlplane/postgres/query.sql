@@ -18,7 +18,7 @@ VALUES
 -- TODO: read multiple
 -- name: GetChunkByID :many
 SELECT * FROM chunks c
-    LEFT JOIN flavors f ON f.chunk_id = c.id
+    LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
@@ -41,7 +41,7 @@ SELECT EXISTS(
 
 -- name: ListChunks :many
 SELECT * FROM chunks c
-    LEFT JOIN flavors f ON f.chunk_id = c.id
+    LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id;
@@ -77,7 +77,7 @@ VALUES
 SELECT * FROM flavors f
     JOIN flavor_versions v ON v.flavor_id = f.id
     JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-WHERE chunk_id = $1;
+WHERE chunk_id = $1 and f.deleted_at IS NULL;
 
 -- name: FlavorNameExists :one
 SELECT EXISTS(
@@ -140,10 +140,16 @@ LIMIT 1;
 -- name: ChunkOwnerByFlavorVersionID :one
 SELECT u.* FROM users u
     JOIN flavor_versions fv ON fv.id = $1
-    JOIN flavors f ON f.id = fv.flavor_id
+    JOIN flavors f ON f.id = fv.flavor_id AND f.deleted_at IS NULL
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
 LIMIT 1;
+
+-- name: DeleteFlavor :exec
+UPDATE flavors SET deleted_at = now() WHERE id = $1;
+
+-- name: GetFlavorByID :one
+SELECT * FROM flavors WHERE id = $1;
 
 /*
  * BLOB STORE
