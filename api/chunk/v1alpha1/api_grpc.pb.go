@@ -47,6 +47,7 @@ const (
 	ChunkService_GetUploadURL_FullMethodName                  = "/chunk.v1alpha1.ChunkService/GetUploadURL"
 	ChunkService_GetSupportedMinecraftVersions_FullMethodName = "/chunk.v1alpha1.ChunkService/GetSupportedMinecraftVersions"
 	ChunkService_UploadThumbnail_FullMethodName               = "/chunk.v1alpha1.ChunkService/UploadThumbnail"
+	ChunkService_DeleteFlavor_FullMethodName                  = "/chunk.v1alpha1.ChunkService/DeleteFlavor"
 )
 
 // ChunkServiceClient is the client API for ChunkService service.
@@ -97,7 +98,9 @@ type ChunkServiceClient interface {
 	//
 	// Defined error codes:
 	// - ALREADY_EXISTS:
-	//   - a flavor with the given name already exists for this chunk
+	//   - a flavor with the given name already exists for this chunk.
+	//     this error will also be returned if the flavor is currently
+	//     in the process of being deleted.
 	//
 	// - INVALID_ARGUMENT:
 	//   - the provided chunk id is invalid
@@ -110,6 +113,9 @@ type ChunkServiceClient interface {
 	// an already existing version.
 	//
 	// Defined error codes:
+	// - NOT_FOUND
+	//   - the affected flavor does not exist
+	//
 	// - ALREADY_EXISTS:
 	//   - the flavor version about to be created is already present
 	//   - a version with the exact same set of files already exists
@@ -154,6 +160,15 @@ type ChunkServiceClient interface {
 	//   - thumbnail size must be 512x512 pixels
 	//   - thumbnail size too big
 	UploadThumbnail(ctx context.Context, in *UploadThumbnailRequest, opts ...grpc.CallOption) (*UploadThumbnailResponse, error)
+	// DeleteFlavor initiates the process for a Flavor to be deleted. Deletion does not happen
+	// instantaneously, it can take a few minutes for a Flavor to be fully deleted. During this
+	// time any interaction with the flavor is blocked. This means that updates are no longer
+	// possible and creating Instances based on the Flavors versions is also not possible.
+	//
+	// Defined error codes:
+	// - INVALID_ARGUMENT:
+	//   - flavor id is invalid
+	DeleteFlavor(ctx context.Context, in *DeleteFlavorRequest, opts ...grpc.CallOption) (*DeleteFlavorResponse, error)
 }
 
 type chunkServiceClient struct {
@@ -264,6 +279,16 @@ func (c *chunkServiceClient) UploadThumbnail(ctx context.Context, in *UploadThum
 	return out, nil
 }
 
+func (c *chunkServiceClient) DeleteFlavor(ctx context.Context, in *DeleteFlavorRequest, opts ...grpc.CallOption) (*DeleteFlavorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteFlavorResponse)
+	err := c.cc.Invoke(ctx, ChunkService_DeleteFlavor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChunkServiceServer is the server API for ChunkService service.
 // All implementations must embed UnimplementedChunkServiceServer
 // for forward compatibility.
@@ -312,7 +337,9 @@ type ChunkServiceServer interface {
 	//
 	// Defined error codes:
 	// - ALREADY_EXISTS:
-	//   - a flavor with the given name already exists for this chunk
+	//   - a flavor with the given name already exists for this chunk.
+	//     this error will also be returned if the flavor is currently
+	//     in the process of being deleted.
 	//
 	// - INVALID_ARGUMENT:
 	//   - the provided chunk id is invalid
@@ -325,6 +352,9 @@ type ChunkServiceServer interface {
 	// an already existing version.
 	//
 	// Defined error codes:
+	// - NOT_FOUND
+	//   - the affected flavor does not exist
+	//
 	// - ALREADY_EXISTS:
 	//   - the flavor version about to be created is already present
 	//   - a version with the exact same set of files already exists
@@ -369,6 +399,15 @@ type ChunkServiceServer interface {
 	//   - thumbnail size must be 512x512 pixels
 	//   - thumbnail size too big
 	UploadThumbnail(context.Context, *UploadThumbnailRequest) (*UploadThumbnailResponse, error)
+	// DeleteFlavor initiates the process for a Flavor to be deleted. Deletion does not happen
+	// instantaneously, it can take a few minutes for a Flavor to be fully deleted. During this
+	// time any interaction with the flavor is blocked. This means that updates are no longer
+	// possible and creating Instances based on the Flavors versions is also not possible.
+	//
+	// Defined error codes:
+	// - INVALID_ARGUMENT:
+	//   - flavor id is invalid
+	DeleteFlavor(context.Context, *DeleteFlavorRequest) (*DeleteFlavorResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
 
@@ -408,6 +447,9 @@ func (UnimplementedChunkServiceServer) GetSupportedMinecraftVersions(context.Con
 }
 func (UnimplementedChunkServiceServer) UploadThumbnail(context.Context, *UploadThumbnailRequest) (*UploadThumbnailResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UploadThumbnail not implemented")
+}
+func (UnimplementedChunkServiceServer) DeleteFlavor(context.Context, *DeleteFlavorRequest) (*DeleteFlavorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteFlavor not implemented")
 }
 func (UnimplementedChunkServiceServer) mustEmbedUnimplementedChunkServiceServer() {}
 func (UnimplementedChunkServiceServer) testEmbeddedByValue()                      {}
@@ -610,6 +652,24 @@ func _ChunkService_UploadThumbnail_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChunkService_DeleteFlavor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteFlavorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).DeleteFlavor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_DeleteFlavor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).DeleteFlavor(ctx, req.(*DeleteFlavorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChunkService_ServiceDesc is the grpc.ServiceDesc for ChunkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -656,6 +716,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UploadThumbnail",
 			Handler:    _ChunkService_UploadThumbnail_Handler,
+		},
+		{
+			MethodName: "DeleteFlavor",
+			Handler:    _ChunkService_DeleteFlavor_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
