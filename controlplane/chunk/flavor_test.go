@@ -189,6 +189,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(nil)
 
 				repo.EXPECT().
+					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
+					Return(fixture.Flavor(), nil)
+
+				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
 					Return(false, nil)
 
@@ -244,6 +248,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(nil)
 
 				repo.EXPECT().
+					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
+					Return(fixture.Flavor(), nil)
+
+				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
 					Return(false, nil)
 
@@ -279,6 +287,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(nil)
 
 				repo.EXPECT().
+					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
+					Return(fixture.Flavor(), nil)
+
+				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
 					Return(true, nil)
 			},
@@ -302,6 +314,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(nil)
 
 				repo.EXPECT().
+					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
+					Return(fixture.Flavor(), nil)
+
+				repo.EXPECT().
 					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
 					Return(false, nil)
 
@@ -310,6 +326,33 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(resource.MinecraftVersion{}, pgx.ErrNoRows)
 			},
 			err: apierrs.ErrMinecraftVersionNotSupported,
+		},
+		{
+			name:        "flavor deleted",
+			prevVersion: fixture.FlavorVersion(),
+			newVersion:  fixture.FlavorVersion(),
+			prep: func(
+				repo *mock.MockChunkRepository,
+				newVersion resource.FlavorVersion,
+				prevVersion resource.FlavorVersion,
+				access *mock.MockAuthzAccessEvaluator,
+			) {
+				access.EXPECT().
+					AccessAuthorized(
+						mocky.Anything,
+						mocky.AnythingOfType("authz.AccessRuleOption"),
+					).
+					Return(nil)
+
+				f := fixture.Flavor(func(tmp *resource.Flavor) {
+					tmp.DeletedAt = new(time.Now())
+				})
+
+				repo.EXPECT().
+					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
+					Return(f, nil)
+			},
+			err: apierrs.ErrNotFound,
 		},
 	}
 	for _, tt := range tests {
