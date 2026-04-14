@@ -69,6 +69,7 @@ func imageWorkerSetup(
 
 	pg.Run(t, ctx)
 	pg.CreateRiverClient(t)
+	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, c, fixture.CreateOptionsAll)
 
 	pusher, err := remote.NewPusher(auth)
@@ -95,8 +96,6 @@ func TestImageWorkerCreatesImageWithNoMissingFiles(t *testing.T) {
 	)
 
 	pg, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, testdata.FullChangeSetFile)
-
-	pg.InsertMinecraftVersion(t)
 
 	flavorVersionID := c.Flavors[0].Versions[0].ID
 
