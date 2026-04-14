@@ -128,7 +128,7 @@ func (q *Queries) ChunkOwnerByFlavorID(ctx context.Context, id string) (User, er
 const chunkOwnerByFlavorVersionID = `-- name: ChunkOwnerByFlavorVersionID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
     JOIN flavor_versions fv ON fv.id = $1
-    JOIN flavors f ON f.id = fv.flavor_id
+    JOIN flavors f ON f.id = fv.flavor_id AND f.deleted_at IS NULL
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
 LIMIT 1
@@ -457,7 +457,7 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 
 const getChunkByID = `-- name: GetChunkByID :many
 SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
-    LEFT JOIN flavors f ON f.chunk_id = c.id
+    LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
@@ -856,7 +856,7 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 
 const listChunks = `-- name: ListChunks :many
 SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
-    LEFT JOIN flavors f ON f.chunk_id = c.id
+    LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
@@ -962,7 +962,7 @@ const listFlavorsByChunkID = `-- name: ListFlavorsByChunkID :many
 SELECT f.id, chunk_id, name, f.created_at, updated_at, deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at FROM flavors f
     JOIN flavor_versions v ON v.flavor_id = f.id
     JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-WHERE chunk_id = $1
+WHERE chunk_id = $1 and f.deleted_at IS NULL
 `
 
 type ListFlavorsByChunkIDRow struct {

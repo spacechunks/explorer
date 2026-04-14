@@ -272,3 +272,42 @@ func TestGetFlavorByID(t *testing.T) {
 	assert.NotEmpty(t, actual.UpdatedAt)
 	assert.Equal(t, expected.DeletedAt, actual.DeletedAt)
 }
+
+func TestListChunksDoesNotReturnDeletedFlavors(t *testing.T) {
+	var (
+		ctx  = context.Background()
+		pg   = fixture.NewPostgres()
+		date = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+		c    = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Flavors[0].DeletedAt = &date
+		})
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	expected := []resource.Chunk{
+		{
+			ID:          c.ID,
+			Name:        c.Name,
+			Description: c.Description,
+			Tags:        c.Tags,
+			Flavors: []resource.Flavor{
+				c.Flavors[1],
+			},
+			Owner:     c.Owner,
+			CreatedAt: c.CreatedAt,
+			UpdatedAt: c.UpdatedAt,
+			Thumbnail: c.Thumbnail,
+		},
+	}
+
+	actual, err := pg.DB.ListChunks(ctx)
+	require.NoError(t, err)
+
+	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
+		t.Errorf("mismatch (-want +got):\n%s", d)
+	}
+}
