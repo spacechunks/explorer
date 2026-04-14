@@ -96,6 +96,8 @@ func TestImageWorkerCreatesImageWithNoMissingFiles(t *testing.T) {
 
 	pg, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, testdata.FullChangeSetFile)
 
+	pg.InsertMinecraftVersion(t)
+
 	flavorVersionID := c.Flavors[0].Versions[0].ID
 
 	err := pg.DB.InsertJob(ctx, flavorVersionID, string(resource.FlavorVersionBuildStatusBuildImage), job.CreateImage{
