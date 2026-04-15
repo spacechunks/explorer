@@ -46,6 +46,7 @@ type Chunk struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Thumbnail   Thumbnail
+	DeletedAt   *time.Time
 }
 
 type Thumbnail struct {

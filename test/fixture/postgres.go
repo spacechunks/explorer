@@ -185,24 +185,36 @@ func (p *Postgres) CreateChunk(t *testing.T, c *resource.Chunk, opts CreateOptio
 		p.CreateUser(t, &c.Owner)
 	}
 
-	createdChunk, err := p.DB.CreateChunk(ctx, *c)
+	q := `
+INSERT INTO chunks 
+	(id, name, description, tags, created_at, updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, deleted_at)
+VALUES
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+`
+	_, err := p.Pool.Exec(
+		ctx,
+		q,
+		c.ID,
+		c.Name,
+		c.Description,
+		c.Tags,
+		c.CreatedAt,
+		c.UpdatedAt,
+		c.Owner.ID,
+		c.Thumbnail.Hash,
+		time.Now(),
+		c.DeletedAt,
+	)
 	require.NoError(t, err)
-
-	err = p.DB.UpdateThumbnail(ctx, createdChunk.ID, c.Thumbnail.Hash)
-	require.NoError(t, err)
-
-	createdChunk.Thumbnail.Hash = c.Thumbnail.Hash
 
 	if opts.WithFlavors {
 		flavors := make([]resource.Flavor, 0, len(c.Flavors))
 		for i := range c.Flavors {
-			p.CreateFlavor(t, createdChunk.ID, &c.Flavors[i], opts)
+			p.CreateFlavor(t, c.ID, &c.Flavors[i], opts)
 			flavors = append(flavors, c.Flavors[i])
 		}
-		createdChunk.Flavors = flavors
+		c.Flavors = flavors
 	}
-
-	*c = createdChunk
 }
 
 // CreateFlavor inserts a flavor. it also updates the passed object

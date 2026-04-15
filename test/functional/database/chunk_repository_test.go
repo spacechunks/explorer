@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertest"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/test"
@@ -333,4 +334,23 @@ func TestMarkChunkDeleted(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equalf(t, 1, worked, "expected deleted at to be not null")
+}
+
+func TestGetChunkByIDReturnsErrorIfChunkDeletedAtIsSet(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+
+	expected := fixture.Chunk(func(tmp *resource.Chunk) {
+		tmp.DeletedAt = new(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
+	})
+
+	pg.CreateChunk(t, &expected, fixture.CreateOptionsAll)
+
+	_, err := pg.DB.GetChunkByID(ctx, expected.ID)
+	require.ErrorIs(t, err, apierrs.ErrChunkNotFound)
 }

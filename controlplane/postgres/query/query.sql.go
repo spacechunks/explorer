@@ -461,7 +461,7 @@ SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, th
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.id = $1
+WHERE c.id = $1 AND c.deleted_at IS NULL
 `
 
 type GetChunkByIDRow struct {
