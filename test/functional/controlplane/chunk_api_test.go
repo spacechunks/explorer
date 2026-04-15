@@ -1327,3 +1327,54 @@ func TestGetChunkReturnsNotFoundIfChunkDeleted(t *testing.T) {
 
 	require.ErrorIs(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err())
 }
+
+func TestAPIDeleteChunk(t *testing.T) {
+	var (
+		ctx = context.Background()
+		cp  = fixture.NewControlPlane(t)
+		c   = fixture.Chunk()
+	)
+
+	cp.Run(t)
+
+	cp.Postgres.InsertNode(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.AddUserAPIKey(t, &ctx, c.Owner)
+
+	chunkClient := cp.ChunkClient(t)
+	insClient := cp.InstanceClient(t)
+
+	_, err := chunkClient.DeleteChunk(ctx, &chunkv1alpha1.DeleteChunkRequest{
+		Id: c.ID,
+	})
+	require.NoError(t, err)
+
+	_, err = chunkClient.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
+		Id: c.ID,
+	})
+	require.ErrorIs(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err(), "get chunk")
+
+	_, err = chunkClient.UpdateChunk(ctx, &chunkv1alpha1.UpdateChunkRequest{
+		Id: c.ID,
+	})
+	require.ErrorIsf(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err(), "update chunk")
+
+	_, err = chunkClient.UploadThumbnail(ctx, &chunkv1alpha1.UploadThumbnailRequest{
+		ChunkId: c.ID,
+	})
+	require.ErrorIsf(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err(), "upload thumbnail")
+
+	for _, f := range c.Flavors {
+		_, err = chunkClient.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
+			FlavorId: f.ID,
+			Version:  chunk.FlavorVersionToTransport(f.Versions[0]),
+		})
+		require.ErrorIsf(t, err, apierrs.ErrNotFound.GRPCStatus().Err(), "create flavor version (%s)", f.Name)
+
+		_, err = insClient.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
+			ChunkId:         c.ID,
+			FlavorVersionId: f.Versions[0].ID,
+		})
+		require.ErrorIsf(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err(), "run flavor version (%s)", f.Name)
+	}
+}

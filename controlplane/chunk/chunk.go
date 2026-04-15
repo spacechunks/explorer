@@ -155,6 +155,23 @@ func (s *svc) UpdateThumbnail(ctx context.Context, chunkID string, imgData []byt
 	return nil
 }
 
+func (s *svc) DeleteChunk(ctx context.Context, id string) error {
+	if err := s.authorized(ctx, id); err != nil {
+		return fmt.Errorf("authorize: %w", err)
+	}
+
+	_, err := s.repo.GetChunkByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get: %w", err)
+	}
+
+	if err := s.repo.MarkChunkAndFlavorsDeleted(ctx, id); err != nil {
+		return fmt.Errorf("mark chunk: %w", err)
+	}
+
+	return nil
+}
+
 func validateChunkFields(chunk resource.Chunk) error {
 	// FIXME:
 	//  - remove hardcoded limits for tags
