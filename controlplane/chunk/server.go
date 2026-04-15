@@ -249,3 +249,18 @@ func (s *Server) DeleteFlavor(
 
 	return &chunkv1alpha1.DeleteFlavorResponse{}, nil
 }
+
+func (s *Server) DeleteChunk(
+	ctx context.Context,
+	req *chunkv1alpha1.DeleteChunkRequest,
+) (*chunkv1alpha1.DeleteChunkResponse, error) {
+	if _, err := uuid.Parse(req.Id); err != nil {
+		return nil, apierrs.ErrInvalidChunkID
+	}
+
+	if err := s.service.DeleteChunk(ctx, req.Id); err != nil {
+		return nil, fmt.Errorf("delete chunk: %w", err)
+	}
+
+	return &chunkv1alpha1.DeleteChunkResponse{}, nil
+}

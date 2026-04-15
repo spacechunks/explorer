@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +42,7 @@ func TestChunkOwner(t *testing.T) {
 	actual, err := pg.DB.ChunkOwner(ctx, c.ID)
 	require.NoError(t, err)
 
-	if d := cmp.Diff(c.Owner, actual); d != "" {
+	if d := cmp.Diff(c.Owner, actual, test.IgnoreFields(test.IgnoredUserFields...)); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)
 	}
 }
@@ -60,7 +61,7 @@ func TestFlavorOwner(t *testing.T) {
 	actual, err := pg.DB.FlavorOwner(ctx, c.Flavors[0].ID)
 	require.NoError(t, err)
 
-	if d := cmp.Diff(c.Owner, actual); d != "" {
+	if d := cmp.Diff(c.Owner, actual, test.IgnoreFields(test.IgnoredUserFields...)); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)
 	}
 }
@@ -79,7 +80,7 @@ func TestFlavorVersionOwner(t *testing.T) {
 	actual, err := pg.DB.FlavorVersionOwner(ctx, c.Flavors[0].Versions[0].ID)
 	require.NoError(t, err)
 
-	if d := cmp.Diff(c.Owner, actual); d != "" {
+	if d := cmp.Diff(c.Owner, actual, test.IgnoreFields(test.IgnoredUserFields...)); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)
 	}
 }

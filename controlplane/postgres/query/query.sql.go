@@ -71,20 +71,6 @@ func (q *Queries) AllMinecraftVersions(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
-const chunkExists = `-- name: ChunkExists :one
-SELECT EXISTS(
-    SELECT 1 FROM chunks
-    WHERE id = $1
-)
-`
-
-func (q *Queries) ChunkExists(ctx context.Context, id string) (bool, error) {
-	row := q.db.QueryRow(ctx, chunkExists, id)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
 const chunkOwnerByChunkID = `-- name: ChunkOwnerByChunkID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
     LEFT JOIN chunks c ON c.owner_id = u.id
@@ -455,16 +441,16 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 	return hash, err
 }
 
-const getChunkByID = `-- name: GetChunkByID :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
+const getChunkByIDIgnoreDeleted = `-- name: GetChunkByIDIgnoreDeleted :many
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.id = $1
+WHERE c.id = $1 AND c.deleted_at IS NULL
 `
 
-type GetChunkByIDRow struct {
+type GetChunkByIDIgnoreDeletedRow struct {
 	ID                     string
 	Name                   string
 	Description            string
@@ -474,12 +460,13 @@ type GetChunkByIDRow struct {
 	OwnerID                string
 	ThumbnailHash          pgtype.Text
 	ThumbnailUpdatedAt     time.Time
+	DeletedAt              pgtype.Timestamptz
 	ID_2                   *string
 	ChunkID                *string
 	Name_2                 pgtype.Text
 	CreatedAt_2            pgtype.Timestamptz
 	UpdatedAt_2            pgtype.Timestamptz
-	DeletedAt              pgtype.Timestamptz
+	DeletedAt_2            pgtype.Timestamptz
 	ID_3                   *string
 	FlavorID               *string
 	Hash                   pgtype.Text
@@ -504,15 +491,15 @@ type GetChunkByIDRow struct {
 }
 
 // TODO: read multiple
-func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRow, error) {
-	rows, err := q.db.Query(ctx, getChunkByID, id)
+func (q *Queries) GetChunkByIDIgnoreDeleted(ctx context.Context, id string) ([]GetChunkByIDIgnoreDeletedRow, error) {
+	rows, err := q.db.Query(ctx, getChunkByIDIgnoreDeleted, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetChunkByIDRow
+	var items []GetChunkByIDIgnoreDeletedRow
 	for rows.Next() {
-		var i GetChunkByIDRow
+		var i GetChunkByIDIgnoreDeletedRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -523,12 +510,13 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 			&i.OwnerID,
 			&i.ThumbnailHash,
 			&i.ThumbnailUpdatedAt,
+			&i.DeletedAt,
 			&i.ID_2,
 			&i.ChunkID,
 			&i.Name_2,
 			&i.CreatedAt_2,
 			&i.UpdatedAt_2,
-			&i.DeletedAt,
+			&i.DeletedAt_2,
 			&i.ID_3,
 			&i.FlavorID,
 			&i.Hash,
@@ -580,7 +568,7 @@ func (q *Queries) GetFlavorByID(ctx context.Context, id string) (Flavor, error) 
 }
 
 const getInstance = `-- name: GetInstance :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
@@ -620,12 +608,13 @@ type GetInstanceRow struct {
 	OwnerID_2              string
 	ThumbnailHash          pgtype.Text
 	ThumbnailUpdatedAt     time.Time
+	DeletedAt              pgtype.Timestamptz
 	ID_4                   string
 	ChunkID_2              string
 	Name_2                 string
 	CreatedAt_4            time.Time
 	UpdatedAt_3            time.Time
-	DeletedAt              pgtype.Timestamptz
+	DeletedAt_2            pgtype.Timestamptz
 	ID_5                   string
 	Name_3                 string
 	Address                netip.Addr
@@ -678,12 +667,13 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.OwnerID_2,
 			&i.ThumbnailHash,
 			&i.ThumbnailUpdatedAt,
+			&i.DeletedAt,
 			&i.ID_4,
 			&i.ChunkID_2,
 			&i.Name_2,
 			&i.CreatedAt_4,
 			&i.UpdatedAt_3,
-			&i.DeletedAt,
+			&i.DeletedAt_2,
 			&i.ID_5,
 			&i.Name_3,
 			&i.Address,
@@ -706,7 +696,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 }
 
 const getInstancesByNodeID = `-- name: GetInstancesByNodeID :many
-SELECT i.id, chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
+SELECT i.id, chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
@@ -745,6 +735,7 @@ type GetInstancesByNodeIDRow struct {
 	OwnerID_2              string
 	ThumbnailHash          pgtype.Text
 	ThumbnailUpdatedAt     time.Time
+	DeletedAt              pgtype.Timestamptz
 	ID_4                   string
 	Name_2                 string
 	Address                netip.Addr
@@ -797,6 +788,7 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 			&i.OwnerID_2,
 			&i.ThumbnailHash,
 			&i.ThumbnailUpdatedAt,
+			&i.DeletedAt,
 			&i.ID_4,
 			&i.Name_2,
 			&i.Address,
@@ -854,15 +846,16 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 	return i, err
 }
 
-const listChunks = `-- name: ListChunks :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
+const listChunksIgnoreDeleted = `-- name: ListChunksIgnoreDeleted :many
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
+WHERE c.deleted_at IS NULL
 `
 
-type ListChunksRow struct {
+type ListChunksIgnoreDeletedRow struct {
 	ID                     string
 	Name                   string
 	Description            string
@@ -872,12 +865,13 @@ type ListChunksRow struct {
 	OwnerID                string
 	ThumbnailHash          pgtype.Text
 	ThumbnailUpdatedAt     time.Time
+	DeletedAt              pgtype.Timestamptz
 	ID_2                   *string
 	ChunkID                *string
 	Name_2                 pgtype.Text
 	CreatedAt_2            pgtype.Timestamptz
 	UpdatedAt_2            pgtype.Timestamptz
-	DeletedAt              pgtype.Timestamptz
+	DeletedAt_2            pgtype.Timestamptz
 	ID_3                   *string
 	FlavorID               *string
 	Hash                   pgtype.Text
@@ -901,15 +895,15 @@ type ListChunksRow struct {
 	UpdatedAt_3            pgtype.Timestamptz
 }
 
-func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
-	rows, err := q.db.Query(ctx, listChunks)
+func (q *Queries) ListChunksIgnoreDeleted(ctx context.Context) ([]ListChunksIgnoreDeletedRow, error) {
+	rows, err := q.db.Query(ctx, listChunksIgnoreDeleted)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListChunksRow
+	var items []ListChunksIgnoreDeletedRow
 	for rows.Next() {
-		var i ListChunksRow
+		var i ListChunksIgnoreDeletedRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -920,12 +914,13 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 			&i.OwnerID,
 			&i.ThumbnailHash,
 			&i.ThumbnailUpdatedAt,
+			&i.DeletedAt,
 			&i.ID_2,
 			&i.ChunkID,
 			&i.Name_2,
 			&i.CreatedAt_2,
 			&i.UpdatedAt_2,
-			&i.DeletedAt,
+			&i.DeletedAt_2,
 			&i.ID_3,
 			&i.FlavorID,
 			&i.Hash,
@@ -1034,7 +1029,7 @@ func (q *Queries) ListFlavorsByChunkID(ctx context.Context, chunkID string) ([]L
 }
 
 const listInstances = `-- name: ListInstances :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
@@ -1073,12 +1068,13 @@ type ListInstancesRow struct {
 	OwnerID_2              string
 	ThumbnailHash          pgtype.Text
 	ThumbnailUpdatedAt     time.Time
+	DeletedAt              pgtype.Timestamptz
 	ID_4                   string
 	ChunkID_2              string
 	Name_2                 string
 	CreatedAt_4            time.Time
 	UpdatedAt_3            time.Time
-	DeletedAt              pgtype.Timestamptz
+	DeletedAt_2            pgtype.Timestamptz
 	ID_5                   string
 	Name_3                 string
 	Address                netip.Addr
@@ -1131,12 +1127,13 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 			&i.OwnerID_2,
 			&i.ThumbnailHash,
 			&i.ThumbnailUpdatedAt,
+			&i.DeletedAt,
 			&i.ID_4,
 			&i.ChunkID_2,
 			&i.Name_2,
 			&i.CreatedAt_4,
 			&i.UpdatedAt_3,
-			&i.DeletedAt,
+			&i.DeletedAt_2,
 			&i.ID_5,
 			&i.Name_3,
 			&i.Address,
@@ -1156,6 +1153,15 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 		return nil, err
 	}
 	return items, nil
+}
+
+const markChunkDeleted = `-- name: MarkChunkAndFlavorsDeleted :exec
+UPDATE chunks SET deleted_at = now() WHERE id = $1
+`
+
+func (q *Queries) MarkChunkDeleted(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, markChunkDeleted, id)
+	return err
 }
 
 const markFlavorVersionFilesUploaded = `-- name: MarkFlavorVersionFilesUploaded :exec

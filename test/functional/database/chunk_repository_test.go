@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertest"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/test"
@@ -161,9 +162,11 @@ func TestGetAllThumbnailHashes(t *testing.T) {
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
 		c1  = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.ID = test.NewUUIDv7(t)
 			tmp.Thumbnail.Hash = "h1"
 		})
 		c2 = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.ID = test.NewUUIDv7(t)
 			tmp.Thumbnail.Hash = "h2"
 		})
 		null = fixture.Chunk()
@@ -308,6 +311,80 @@ func TestListChunksDoesNotReturnDeletedFlavors(t *testing.T) {
 	require.NoError(t, err)
 
 	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
+		t.Errorf("mismatch (-want +got):\n%s", d)
+	}
+}
+
+func TestMarkChunkDeleted(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	err := pg.DB.MarkChunkAndFlavorsDeleted(ctx, c.ID)
+	require.NoError(t, err)
+
+	var worked int
+	err = pg.Pool.
+		QueryRow(ctx, `SELECT 1 FROM chunks WHERE id = $1 AND deleted_at IS NOT NULL`, c.ID).
+		Scan(&worked)
+	require.NoError(t, err)
+
+	require.Equalf(t, 1, worked, "expected chunk deleted_at to be not null")
+
+	for _, f := range c.Flavors {
+		var tmp int
+		err = pg.Pool.
+			QueryRow(ctx, `SELECT 1 FROM flavors WHERE id = $1 AND deleted_at IS NOT NULL`, f.ID).
+			Scan(&tmp)
+		require.NoError(t, err)
+
+		require.Equalf(t, 1, tmp, "expected flavor deleted_at to be not null (%s)", f.Name)
+	}
+}
+
+func TestGetChunkByIDReturnsErrorIfChunkDeletedAtIsSet(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+
+	expected := fixture.Chunk(func(tmp *resource.Chunk) {
+		tmp.DeletedAt = new(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
+	})
+
+	pg.CreateChunk(t, &expected, fixture.CreateOptionsAll)
+
+	_, err := pg.DB.GetChunkByID(ctx, expected.ID)
+	require.ErrorIs(t, err, apierrs.ErrChunkNotFound)
+}
+
+func TestListChunksDoesNotReturnDeletedChunks(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.DeletedAt = new(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
+		})
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	actual, err := pg.DB.ListChunks(ctx)
+	require.NoError(t, err)
+
+	if d := cmp.Diff([]resource.Chunk{}, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
 }

@@ -114,6 +114,11 @@ func (s *svc) UpdateThumbnail(ctx context.Context, chunkID string, imgData []byt
 		return fmt.Errorf("authorize: %w", err)
 	}
 
+	// make sure that the chunk is actually not deleted
+	if _, err := s.repo.GetChunkByID(ctx, chunkID); err != nil {
+		return fmt.Errorf("get chunk: %w", err)
+	}
+
 	cfg, _, err := image.DecodeConfig(bytes.NewBuffer(imgData))
 	if err != nil {
 		if errors.Is(err, image.ErrFormat) {
@@ -145,6 +150,23 @@ func (s *svc) UpdateThumbnail(ctx context.Context, chunkID string, imgData []byt
 
 	if err := s.s3Store.PutBlob(ctx, blob.CASKeyPrefix, []blob.Object{obj}); err != nil {
 		return fmt.Errorf("put image: %w", err)
+	}
+
+	return nil
+}
+
+func (s *svc) DeleteChunk(ctx context.Context, id string) error {
+	if err := s.authorized(ctx, id); err != nil {
+		return fmt.Errorf("authorize: %w", err)
+	}
+
+	_, err := s.repo.GetChunkByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get: %w", err)
+	}
+
+	if err := s.repo.MarkChunkAndFlavorsDeleted(ctx, id); err != nil {
+		return fmt.Errorf("mark chunk: %w", err)
 	}
 
 	return nil

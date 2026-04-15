@@ -16,13 +16,13 @@ VALUES
     ($1, $2, $3, $4, $5, $6, $7);
 
 -- TODO: read multiple
--- name: GetChunkByID :many
+-- name: GetChunkByIDIgnoreDeleted :many
 SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.id = $1;
+WHERE c.id = $1 AND c.deleted_at IS NULL;
 
 -- name: UpdateChunk :exec
 UPDATE chunks
@@ -33,18 +33,13 @@ SET
     updated_at = now()
 WHERE id = $4;
 
--- name: ChunkExists :one
-SELECT EXISTS(
-    SELECT 1 FROM chunks
-    WHERE id = $1
-);
-
--- name: ListChunks :many
+-- name: ListChunksIgnoreDeleted :many
 SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-    LEFT JOIN users u ON u.id = c.owner_id;
+    LEFT JOIN users u ON u.id = c.owner_id
+WHERE c.deleted_at IS NULL;
 
 
 -- name: ChunkOwnerByChunkID :one
@@ -61,6 +56,9 @@ WHERE id = $2;
 -- name: AllChunkThumbnailHashes :many
 SELECT id, thumbnail_hash FROM chunks
 WHERE thumbnail_hash IS NOT NULL;
+
+-- name: MarkChunkDeleted :exec
+UPDATE chunks SET deleted_at = now() WHERE id = $1;
 
 /*
  * FLAVORS

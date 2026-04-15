@@ -106,7 +106,8 @@ CREATE TABLE public.chunks (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     owner_id uuid NOT NULL,
     thumbnail_hash character varying(16),
-    thumbnail_updated_at timestamp with time zone DEFAULT now() NOT NULL
+    thumbnail_updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    deleted_at timestamp with time zone
 );
 
 
@@ -632,4 +633,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260223165838'),
     ('20260407125522'),
     ('20260407181558'),
-    ('20260410102614');
+    ('20260410102614'),
+    ('20260415141037');

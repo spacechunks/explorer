@@ -169,6 +169,7 @@ type Chunk struct {
 	OwnerID            string
 	ThumbnailHash      pgtype.Text
 	ThumbnailUpdatedAt time.Time
+	DeletedAt          pgtype.Timestamptz
 }
 
 type Flavor struct {

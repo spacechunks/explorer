@@ -117,27 +117,10 @@ func (db *DB) UpdateChunk(ctx context.Context, c resource.Chunk) (resource.Chunk
 	return ret, nil
 }
 
-func (db *DB) ChunkExists(ctx context.Context, id string) (bool, error) {
-	var ret bool
-	if err := db.do(ctx, func(q *query.Queries) error {
-		ok, err := q.ChunkExists(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		ret = ok
-		return nil
-	}); err != nil {
-		return false, err
-	}
-
-	return ret, nil
-}
-
 func (db *DB) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
-	var ret []resource.Chunk
+	ret := make([]resource.Chunk, 0)
 	if err := db.do(ctx, func(q *query.Queries) error {
-		rows, err := q.ListChunks(ctx)
+		rows, err := q.ListChunksIgnoreDeleted(ctx)
 		if err != nil {
 			return err
 		}
@@ -286,8 +269,28 @@ func (db *DB) AllChunkThumbnailHashes(ctx context.Context) (map[string]string, e
 	return ret, nil
 }
 
+func (db *DB) MarkChunkAndFlavorsDeleted(ctx context.Context, id string) error {
+	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
+		c, err := db.getChunkByID(ctx, q, id)
+		if err != nil {
+			return fmt.Errorf("get by id: %w", err)
+		}
+
+		if err := q.MarkChunkDeleted(ctx, id); err != nil {
+			return fmt.Errorf("mark chunk deleted: %w", err)
+		}
+
+		for _, f := range c.Flavors {
+			if err := q.DeleteFlavor(ctx, f.ID); err != nil {
+				return fmt.Errorf("delete flavor: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
 func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (resource.Chunk, error) {
-	rows, err := q.GetChunkByID(ctx, id)
+	rows, err := q.GetChunkByIDIgnoreDeleted(ctx, id)
 	if err != nil {
 		return resource.Chunk{}, err
 	}
