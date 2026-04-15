@@ -33,12 +33,6 @@ SET
     updated_at = now()
 WHERE id = $4;
 
--- name: ChunkExists :one
-SELECT EXISTS(
-    SELECT 1 FROM chunks
-    WHERE id = $1
-);
-
 -- name: ListChunks :many
 SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
