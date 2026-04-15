@@ -162,9 +162,11 @@ func TestGetAllThumbnailHashes(t *testing.T) {
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
 		c1  = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.ID = test.NewUUIDv7(t)
 			tmp.Thumbnail.Hash = "h1"
 		})
 		c2 = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.ID = test.NewUUIDv7(t)
 			tmp.Thumbnail.Hash = "h2"
 		})
 		null = fixture.Chunk()
