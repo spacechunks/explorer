@@ -192,6 +192,7 @@ func TestGetChunk(t *testing.T) {
 				test.IgnoredProtoChunkFields,
 				test.IgnoredProtoFlavorFields,
 				test.IgnoredProtoFlavorVersionFields,
+				test.IgnoredProtoUserFields,
 			); d != "" {
 				t.Fatalf("diff (-want +got):\n%s", d)
 			}

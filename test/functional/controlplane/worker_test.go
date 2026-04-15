@@ -178,11 +178,13 @@ func TestResourcePackWorkerRunsSuccessfully(t *testing.T) {
 			"assets/spc/models/item/test/_template.json": modelTemplate,
 		})
 		c1 = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.ID = test.NewUUIDv7(t)
 			tmp.Thumbnail = resource.Thumbnail{
 				Hash: "id1",
 			}
 		})
 		c2 = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.ID = test.NewUUIDv7(t)
 			tmp.Thumbnail = resource.Thumbnail{
 				Hash: "id2",
 			}
