@@ -876,11 +876,11 @@ func (_c *MockChunkRepository_ListChunks_Call) RunAndReturn(run func(context.Con
 }
 
 // MarkChunkDeleted provides a mock function with given fields: ctx, id
-func (_m *MockChunkRepository) MarkChunkDeleted(ctx context.Context, id string) error {
+func (_m *MockChunkRepository) MarkChunkAndFlavorsDeleted(ctx context.Context, id string) error {
 	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
-		panic("no return value specified for MarkChunkDeleted")
+		panic("no return value specified for MarkChunkAndFlavorsDeleted")
 	}
 
 	var r0 error
@@ -893,7 +893,7 @@ func (_m *MockChunkRepository) MarkChunkDeleted(ctx context.Context, id string) 
 	return r0
 }
 
-// MockChunkRepository_MarkChunkDeleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkChunkDeleted'
+// MockChunkRepository_MarkChunkDeleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkChunkAndFlavorsDeleted'
 type MockChunkRepository_MarkChunkDeleted_Call struct {
 	*mock.Call
 }
@@ -902,7 +902,7 @@ type MockChunkRepository_MarkChunkDeleted_Call struct {
 //   - ctx context.Context
 //   - id string
 func (_e *MockChunkRepository_Expecter) MarkChunkDeleted(ctx interface{}, id interface{}) *MockChunkRepository_MarkChunkDeleted_Call {
-	return &MockChunkRepository_MarkChunkDeleted_Call{Call: _e.mock.On("MarkChunkDeleted", ctx, id)}
+	return &MockChunkRepository_MarkChunkDeleted_Call{Call: _e.mock.On("MarkChunkAndFlavorsDeleted", ctx, id)}
 }
 
 func (_c *MockChunkRepository_MarkChunkDeleted_Call) Run(run func(ctx context.Context, id string)) *MockChunkRepository_MarkChunkDeleted_Call {

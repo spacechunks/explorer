@@ -324,7 +324,7 @@ func TestMarkChunkDeleted(t *testing.T) {
 	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
-	err := pg.DB.MarkChunkDeleted(ctx, c.ID)
+	err := pg.DB.MarkChunkAndFlavorsDeleted(ctx, c.ID)
 	require.NoError(t, err)
 
 	var worked int
@@ -333,7 +333,17 @@ func TestMarkChunkDeleted(t *testing.T) {
 		Scan(&worked)
 	require.NoError(t, err)
 
-	require.Equalf(t, 1, worked, "expected deleted at to be not null")
+	require.Equalf(t, 1, worked, "expected chunk deleted_at to be not null")
+
+	for _, f := range c.Flavors {
+		var tmp int
+		err = pg.Pool.
+			QueryRow(ctx, `SELECT 1 FROM flavors WHERE id = $1 AND deleted_at IS NOT NULL`, f.ID).
+			Scan(&tmp)
+		require.NoError(t, err)
+
+		require.Equalf(t, 1, tmp, "expected flavor deleted_at to be not null (%s)", f.Name)
+	}
 }
 
 func TestGetChunkByIDReturnsErrorIfChunkDeletedAtIsSet(t *testing.T) {

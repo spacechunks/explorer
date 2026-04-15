@@ -1155,7 +1155,7 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 	return items, nil
 }
 
-const markChunkDeleted = `-- name: MarkChunkDeleted :exec
+const markChunkDeleted = `-- name: MarkChunkAndFlavorsDeleted :exec
 UPDATE chunks SET deleted_at = now() WHERE id = $1
 `
 

@@ -269,9 +269,23 @@ func (db *DB) AllChunkThumbnailHashes(ctx context.Context) (map[string]string, e
 	return ret, nil
 }
 
-func (db *DB) MarkChunkDeleted(ctx context.Context, id string) error {
-	return db.do(ctx, func(q *query.Queries) error {
-		return q.MarkChunkDeleted(ctx, id)
+func (db *DB) MarkChunkAndFlavorsDeleted(ctx context.Context, id string) error {
+	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
+		c, err := db.getChunkByID(ctx, q, id)
+		if err != nil {
+			return fmt.Errorf("get by id: %w", err)
+		}
+
+		if err := q.MarkChunkDeleted(ctx, id); err != nil {
+			return fmt.Errorf("mark chunk deleted: %w", err)
+		}
+
+		for _, f := range c.Flavors {
+			if err := q.DeleteFlavor(ctx, f.ID); err != nil {
+				return fmt.Errorf("delete flavor: %w", err)
+			}
+		}
+		return nil
 	})
 }
 
