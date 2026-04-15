@@ -81,63 +81,6 @@ func (_c *MockChunkRepository_AllChunkThumbnailHashes_Call) RunAndReturn(run fun
 	return _c
 }
 
-// ChunkExists provides a mock function with given fields: ctx, id
-func (_m *MockChunkRepository) ChunkExists(ctx context.Context, id string) (bool, error) {
-	ret := _m.Called(ctx, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ChunkExists")
-	}
-
-	var r0 bool
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
-		return rf(ctx, id)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) bool); ok {
-		r0 = rf(ctx, id)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockChunkRepository_ChunkExists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChunkExists'
-type MockChunkRepository_ChunkExists_Call struct {
-	*mock.Call
-}
-
-// ChunkExists is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id string
-func (_e *MockChunkRepository_Expecter) ChunkExists(ctx interface{}, id interface{}) *MockChunkRepository_ChunkExists_Call {
-	return &MockChunkRepository_ChunkExists_Call{Call: _e.mock.On("ChunkExists", ctx, id)}
-}
-
-func (_c *MockChunkRepository_ChunkExists_Call) Run(run func(ctx context.Context, id string)) *MockChunkRepository_ChunkExists_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockChunkRepository_ChunkExists_Call) Return(_a0 bool, _a1 error) *MockChunkRepository_ChunkExists_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockChunkRepository_ChunkExists_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *MockChunkRepository_ChunkExists_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // CreateChunk provides a mock function with given fields: ctx, _a1
 func (_m *MockChunkRepository) CreateChunk(ctx context.Context, _a1 resource.Chunk) (resource.Chunk, error) {
 	ret := _m.Called(ctx, _a1)
@@ -875,7 +818,7 @@ func (_c *MockChunkRepository_ListChunks_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
-// MarkChunkDeleted provides a mock function with given fields: ctx, id
+// MarkChunkAndFlavorsDeleted provides a mock function with given fields: ctx, id
 func (_m *MockChunkRepository) MarkChunkAndFlavorsDeleted(ctx context.Context, id string) error {
 	ret := _m.Called(ctx, id)
 
@@ -893,31 +836,31 @@ func (_m *MockChunkRepository) MarkChunkAndFlavorsDeleted(ctx context.Context, i
 	return r0
 }
 
-// MockChunkRepository_MarkChunkDeleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkChunkAndFlavorsDeleted'
-type MockChunkRepository_MarkChunkDeleted_Call struct {
+// MockChunkRepository_MarkChunkAndFlavorsDeleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkChunkAndFlavorsDeleted'
+type MockChunkRepository_MarkChunkAndFlavorsDeleted_Call struct {
 	*mock.Call
 }
 
-// MarkChunkDeleted is a helper method to define mock.On call
+// MarkChunkAndFlavorsDeleted is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-func (_e *MockChunkRepository_Expecter) MarkChunkDeleted(ctx interface{}, id interface{}) *MockChunkRepository_MarkChunkDeleted_Call {
-	return &MockChunkRepository_MarkChunkDeleted_Call{Call: _e.mock.On("MarkChunkAndFlavorsDeleted", ctx, id)}
+func (_e *MockChunkRepository_Expecter) MarkChunkAndFlavorsDeleted(ctx interface{}, id interface{}) *MockChunkRepository_MarkChunkAndFlavorsDeleted_Call {
+	return &MockChunkRepository_MarkChunkAndFlavorsDeleted_Call{Call: _e.mock.On("MarkChunkAndFlavorsDeleted", ctx, id)}
 }
 
-func (_c *MockChunkRepository_MarkChunkDeleted_Call) Run(run func(ctx context.Context, id string)) *MockChunkRepository_MarkChunkDeleted_Call {
+func (_c *MockChunkRepository_MarkChunkAndFlavorsDeleted_Call) Run(run func(ctx context.Context, id string)) *MockChunkRepository_MarkChunkAndFlavorsDeleted_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockChunkRepository_MarkChunkDeleted_Call) Return(_a0 error) *MockChunkRepository_MarkChunkDeleted_Call {
+func (_c *MockChunkRepository_MarkChunkAndFlavorsDeleted_Call) Return(_a0 error) *MockChunkRepository_MarkChunkAndFlavorsDeleted_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockChunkRepository_MarkChunkDeleted_Call) RunAndReturn(run func(context.Context, string) error) *MockChunkRepository_MarkChunkDeleted_Call {
+func (_c *MockChunkRepository_MarkChunkAndFlavorsDeleted_Call) RunAndReturn(run func(context.Context, string) error) *MockChunkRepository_MarkChunkAndFlavorsDeleted_Call {
 	_c.Call.Return(run)
 	return _c
 }
