@@ -56,4 +56,5 @@ type Repository interface {
 	AllChunkThumbnailHashes(ctx context.Context) (map[string]string, error)
 	DeleteFlavor(ctx context.Context, id string) error
 	GetFlavorByID(ctx context.Context, id string) (resource.Flavor, error)
+	MarkChunkDeleted(ctx context.Context, id string) error
 }

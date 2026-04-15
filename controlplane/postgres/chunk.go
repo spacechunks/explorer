@@ -286,6 +286,12 @@ func (db *DB) AllChunkThumbnailHashes(ctx context.Context) (map[string]string, e
 	return ret, nil
 }
 
+func (db *DB) MarkChunkDeleted(ctx context.Context, id string) error {
+	return db.do(ctx, func(q *query.Queries) error {
+		return q.MarkChunkDeleted(ctx, id)
+	})
+}
+
 func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (resource.Chunk, error) {
 	rows, err := q.GetChunkByID(ctx, id)
 	if err != nil {

@@ -875,6 +875,53 @@ func (_c *MockChunkRepository_ListChunks_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
+// MarkChunkDeleted provides a mock function with given fields: ctx, id
+func (_m *MockChunkRepository) MarkChunkDeleted(ctx context.Context, id string) error {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkChunkDeleted")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockChunkRepository_MarkChunkDeleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkChunkDeleted'
+type MockChunkRepository_MarkChunkDeleted_Call struct {
+	*mock.Call
+}
+
+// MarkChunkDeleted is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockChunkRepository_Expecter) MarkChunkDeleted(ctx interface{}, id interface{}) *MockChunkRepository_MarkChunkDeleted_Call {
+	return &MockChunkRepository_MarkChunkDeleted_Call{Call: _e.mock.On("MarkChunkDeleted", ctx, id)}
+}
+
+func (_c *MockChunkRepository_MarkChunkDeleted_Call) Run(run func(ctx context.Context, id string)) *MockChunkRepository_MarkChunkDeleted_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_MarkChunkDeleted_Call) Return(_a0 error) *MockChunkRepository_MarkChunkDeleted_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockChunkRepository_MarkChunkDeleted_Call) RunAndReturn(run func(context.Context, string) error) *MockChunkRepository_MarkChunkDeleted_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MarkFlavorVersionFilesUploaded provides a mock function with given fields: ctx, flavorVersionID
 func (_m *MockChunkRepository) MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error {
 	ret := _m.Called(ctx, flavorVersionID)

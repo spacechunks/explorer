@@ -62,6 +62,9 @@ WHERE id = $2;
 SELECT id, thumbnail_hash FROM chunks
 WHERE thumbnail_hash IS NOT NULL;
 
+-- name: MarkChunkDeleted :exec
+UPDATE chunks SET deleted_at = now() WHERE id = $1;
+
 /*
  * FLAVORS
  */

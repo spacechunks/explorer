@@ -311,3 +311,26 @@ func TestListChunksDoesNotReturnDeletedFlavors(t *testing.T) {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
 }
+
+func TestMarkChunkDeleted(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	err := pg.DB.MarkChunkDeleted(ctx, c.ID)
+	require.NoError(t, err)
+
+	var worked int
+	err = pg.Pool.
+		QueryRow(ctx, `SELECT 1 FROM chunks WHERE id = $1 AND deleted_at IS NOT NULL`, c.ID).
+		Scan(&worked)
+	require.NoError(t, err)
+
+	require.Equalf(t, 1, worked, "expected deleted at to be not null")
+}
