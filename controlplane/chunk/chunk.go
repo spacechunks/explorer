@@ -114,6 +114,11 @@ func (s *svc) UpdateThumbnail(ctx context.Context, chunkID string, imgData []byt
 		return fmt.Errorf("authorize: %w", err)
 	}
 
+	// make sure that the chunk is actually not deleted
+	if _, err := s.repo.GetChunkByID(ctx, chunkID); err != nil {
+		return fmt.Errorf("get chunk: %w", err)
+	}
+
 	cfg, _, err := image.DecodeConfig(bytes.NewBuffer(imgData))
 	if err != nil {
 		if errors.Is(err, image.ErrFormat) {

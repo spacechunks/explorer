@@ -230,6 +230,11 @@ func TestListChunks(t *testing.T) {
 				}),
 			}
 		}),
+		fixture.Chunk(func(c *resource.Chunk) { // this one should not appear
+			c.ID = test.NewUUIDv7(t)
+			c.Owner = u
+			c.DeletedAt = new(time.Now())
+		}),
 	}
 
 	for i := range chunks {
@@ -241,8 +246,11 @@ func TestListChunks(t *testing.T) {
 	resp, err := client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{})
 	require.NoError(t, err)
 
-	expected := make([]*chunkv1alpha1.Chunk, 0, len(chunks))
+	expected := make([]*chunkv1alpha1.Chunk, 0)
 	for _, c := range chunks {
+		if c.DeletedAt != nil {
+			continue
+		}
 		expected = append(expected, chunk.ChunkToTransport(c))
 	}
 
@@ -261,6 +269,7 @@ func TestListChunks(t *testing.T) {
 		test.IgnoredProtoChunkFields,
 		test.IgnoredProtoFlavorFields,
 		test.IgnoredProtoFlavorVersionFields,
+		test.IgnoredProtoUserFields,
 	); d != "" {
 		t.Fatalf("diff (-want +got):\n%s", d)
 	}
@@ -269,6 +278,7 @@ func TestListChunks(t *testing.T) {
 func TestUpdateChunk(t *testing.T) {
 	tests := []struct {
 		name string
+		c    *resource.Chunk
 		req  *chunkv1alpha1.UpdateChunkRequest
 		err  error
 	}{
@@ -336,24 +346,39 @@ func TestUpdateChunk(t *testing.T) {
 			},
 			err: apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
 		},
+		{
+			name: "chunk not found because it's deleted",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Name: "new-name",
+			},
+			c: new(fixture.Chunk(func(tmp *resource.Chunk) {
+				tmp.DeletedAt = new(time.Time)
+			})),
+			err: apierrs.ErrChunkNotFound.GRPCStatus().Err(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = context.Background()
 				cp  = fixture.NewControlPlane(t)
-				c   = fixture.Chunk()
 			)
 
 			cp.Run(t)
-			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+			if tt.c == nil {
+				tt.c = new(fixture.Chunk())
+			}
+
+			cp.Postgres.CreateChunk(t, tt.c, fixture.CreateOptionsAll)
 
 			if tt.req.Id == "" {
-				tt.req.Id = c.ID
+				tt.req.Id = tt.c.ID
 			}
 
 			client := cp.ChunkClient(t)
-			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			cp.AddUserAPIKey(t, &ctx, tt.c.Owner)
 
 			resp, err := client.UpdateChunk(ctx, tt.req)
 
@@ -364,7 +389,7 @@ func TestUpdateChunk(t *testing.T) {
 
 			require.NoError(t, err)
 
-			expected := chunk.ChunkToTransport(c)
+			expected := chunk.ChunkToTransport(*tt.c)
 
 			if tt.req.Name != "" {
 				expected.Name = tt.req.Name
@@ -385,6 +410,7 @@ func TestUpdateChunk(t *testing.T) {
 				test.IgnoredProtoChunkFields,
 				test.IgnoredProtoFlavorFields,
 				test.IgnoredProtoFlavorVersionFields,
+				test.IgnoredProtoUserFields,
 			); d != "" {
 				t.Fatalf("diff (-want +got):\n%s", d)
 			}
@@ -1115,6 +1141,31 @@ func TestThumbnailActuallyUploadedToS3(t *testing.T) {
 	fakes3.RequireObjectExists(t, blob.CASKeyPrefix+"/"+h)
 }
 
+func TestThumbnailUploadDoesNotWorkIfChunkIsDeleted(t *testing.T) {
+	var (
+		ctx = context.Background()
+		cp  = fixture.NewControlPlane(t)
+		c   = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.DeletedAt = new(time.Now())
+		})
+		u = fixture.User()
+	)
+
+	cp.Run(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.Postgres.CreateUser(t, &u)
+	cp.AddUserAPIKey(t, &ctx, u)
+
+	client := cp.ChunkClient(t)
+
+	_, err := client.UploadThumbnail(ctx, &chunkv1alpha1.UploadThumbnailRequest{
+		ChunkId: c.ID,
+		Image:   testdata.ValidThumbnail,
+	})
+
+	require.ErrorIs(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err())
+}
+
 func TestAPIDeleteFlavor(t *testing.T) {
 	var (
 		ctx = context.Background()
@@ -1252,4 +1303,27 @@ func TestFlavorInteractionsDontWorkAfterDelete(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetChunkReturnsNotFoundIfChunkDeleted(t *testing.T) {
+	var (
+		ctx = context.Background()
+		cp  = fixture.NewControlPlane(t)
+		c   = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.DeletedAt = new(time.Now())
+		})
+	)
+
+	cp.Run(t)
+
+	cp.AddUserAPIKey(t, &ctx, c.Owner)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	client := cp.ChunkClient(t)
+
+	_, err := client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
+		Id: c.ID,
+	})
+
+	require.ErrorIs(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err())
 }
