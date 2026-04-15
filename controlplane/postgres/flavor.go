@@ -336,8 +336,11 @@ func (db *DB) DeleteFlavor(ctx context.Context, id string) error {
 func (db *DB) GetFlavorByID(ctx context.Context, id string) (resource.Flavor, error) {
 	var ret resource.Flavor
 	if err := db.do(ctx, func(q *query.Queries) error {
-		f, err := q.GetFlavorByID(ctx, id)
+		f, err := q.GetFlavorByIDIgnoreDeleted(ctx, id)
 		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return apierrs.ErrNotFound
+			}
 			return err
 		}
 		ret = resource.Flavor{
@@ -346,13 +349,6 @@ func (db *DB) GetFlavorByID(ctx context.Context, id string) (resource.Flavor, er
 			CreatedAt: f.CreatedAt.UTC(),
 			UpdatedAt: f.UpdatedAt.UTC(),
 		}
-
-		var deletedAt *time.Time
-		if f.DeletedAt.Valid {
-			deletedAt = new(f.DeletedAt.Time.UTC())
-		}
-
-		ret.DeletedAt = deletedAt
 		return nil
 	}); err != nil {
 		return resource.Flavor{}, err

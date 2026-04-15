@@ -71,12 +71,6 @@ INSERT INTO flavors
 VALUES
     ($1, $2, $3, $4, $5);
 
--- name: ListFlavorsByChunkID :many
-SELECT * FROM flavors f
-    JOIN flavor_versions v ON v.flavor_id = f.id
-    JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-WHERE chunk_id = $1 and f.deleted_at IS NULL;
-
 -- name: FlavorNameExists :one
 SELECT EXISTS(
     SELECT 1 FROM flavors
@@ -135,7 +129,7 @@ SELECT u.* FROM users u
     JOIN users ON u.id = c.owner_id
 LIMIT 1;
 
--- name: ChunkOwnerByFlavorVersionID :one
+-- name: ChunkOwnerByFlavorVersionIDIgnoreDeleted :one
 SELECT u.* FROM users u
     JOIN flavor_versions fv ON fv.id = $1
     JOIN flavors f ON f.id = fv.flavor_id AND f.deleted_at IS NULL
@@ -146,8 +140,8 @@ LIMIT 1;
 -- name: DeleteFlavor :exec
 UPDATE flavors SET deleted_at = now() WHERE id = $1;
 
--- name: GetFlavorByID :one
-SELECT * FROM flavors WHERE id = $1;
+-- name: GetFlavorByIDIgnoreDeleted :one
+SELECT * FROM flavors WHERE id = $1 AND deleted_at IS NULL;
 
 /*
  * BLOB STORE

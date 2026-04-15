@@ -250,7 +250,7 @@ func TestDeleteFlavor(t *testing.T) {
 	require.Equalf(t, 1, worked, "expected deleted at to be not null")
 }
 
-func TestGetFlavorByID(t *testing.T) {
+func TestGetFlavorByIDNotFoundWhenDeleted(t *testing.T) {
 	var (
 		ctx  = context.Background()
 		pg   = fixture.NewPostgres()
@@ -266,14 +266,30 @@ func TestGetFlavorByID(t *testing.T) {
 
 	expected := c.Flavors[0]
 
+	_, err := pg.DB.GetFlavorByID(ctx, expected.ID)
+	require.ErrorIs(t, err, apierrs.ErrNotFound)
+}
+
+func TestGetFlavorByID(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	expected := c.Flavors[0]
+	expected.Versions = nil // get by ID does not return the versions atm
+
 	actual, err := pg.DB.GetFlavorByID(ctx, expected.ID)
 	require.NoError(t, err)
 
-	assert.Equal(t, expected.ID, actual.ID)
-	assert.Equal(t, expected.Name, actual.Name)
-	assert.NotEmpty(t, actual.CreatedAt)
-	assert.NotEmpty(t, actual.UpdatedAt)
-	assert.Equal(t, expected.DeletedAt, actual.DeletedAt)
+	if d := cmp.Diff(expected, actual); d != "" {
+		t.Errorf("mismatch (-want +got):\n%s", d)
+	}
 }
 
 func TestListChunksDoesNotReturnDeletedFlavors(t *testing.T) {

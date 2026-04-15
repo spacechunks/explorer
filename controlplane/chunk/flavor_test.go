@@ -344,13 +344,9 @@ func TestCreateFlavorVersion(t *testing.T) {
 					).
 					Return(nil)
 
-				f := fixture.Flavor(func(tmp *resource.Flavor) {
-					tmp.DeletedAt = new(time.Now())
-				})
-
 				repo.EXPECT().
 					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
-					Return(f, nil)
+					Return(resource.Flavor{}, apierrs.ErrNotFound)
 			},
 			err: apierrs.ErrNotFound,
 		},

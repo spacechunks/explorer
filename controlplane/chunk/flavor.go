@@ -95,13 +95,9 @@ func (s *svc) CreateFlavorVersion(
 		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("access: %w", err)
 	}
 
-	f, err := s.repo.GetFlavorByID(ctx, flavorID)
-	if err != nil {
+	// make sure that the flavor is actually not deleted
+	if _, err := s.repo.GetFlavorByID(ctx, flavorID); err != nil {
 		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("flavor by id: %w", err)
-	}
-
-	if f.DeletedAt != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrNotFound
 	}
 
 	exists, err := s.repo.FlavorVersionExists(ctx, flavorID, version.Version)
@@ -323,14 +319,9 @@ func (s *svc) DeleteFlavor(ctx context.Context, id string) error {
 		return fmt.Errorf("access: %w", err)
 	}
 
-	f, err := s.repo.GetFlavorByID(ctx, id)
+	_, err := s.repo.GetFlavorByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("get: %w", err)
-	}
-
-	// return if it's already set to prevent overrides
-	if f.DeletedAt != nil {
-		return nil
 	}
 
 	if err := s.repo.DeleteFlavor(ctx, id); err != nil {
