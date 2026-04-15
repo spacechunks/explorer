@@ -56,7 +56,7 @@ service ChunkService {
   //
   // Defined error codes:
   // - NOT_FOUND:
-  //   - chunk with the provided id does not exist
+  //   - chunk with the provided id does not exist or is deleted
   // - INVALID_ARGUMENT:
   //   - chunk id is invalid
   //   - name is invalid
@@ -128,6 +128,8 @@ service ChunkService {
   // UploadThumbnail uploads the given PNG image. Formats other than PNG are not supported.
   //
   // Defined error codes:
+  // - NOT_FOUND:
+  //   - the targeted chunk does not exist
   // - INVALID_ARGUMENT:
   //   - chunk id is invalid
   //   - thumbnail image must be PNG
@@ -144,6 +146,19 @@ service ChunkService {
   // - INVALID_ARGUMENT:
   //   - flavor id is invalid
   rpc DeleteFlavor(DeleteFlavorRequest) returns (DeleteFlavorResponse);
+
+  // DeleteChunk initiates the process for a Chunk to be deleted. This will also delete all
+  // Flavors associated with this Chunk. Deletion does not happen instantaneously, it can take
+  // a few minutes for a Chunk to be fully deleted. During this time any interaction with the
+  // Chunk and its Flavors is blocked. This means that updates are no longer possible and creating
+  // Instances based on the Flavors versions is also not possible.
+  //
+  // Defined error codes:
+  // - NOT_FOUND:
+  //   - the targeted chunk does not exist
+  // - INVALID_ARGUMENT:
+  //   - chunk id is invalid
+  rpc DeleteChunk(DeleteChunkRequest) returns (DeleteChunkResponse);
 }
 
 message CreateChunkRequest {
@@ -252,5 +267,12 @@ message DeleteFlavorRequest {
 }
 
 message DeleteFlavorResponse {
+}
+
+message DeleteChunkRequest {
+  string id = 1;
+}
+
+message DeleteChunkResponse {
 }
 

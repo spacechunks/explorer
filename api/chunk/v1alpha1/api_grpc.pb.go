@@ -48,6 +48,7 @@ const (
 	ChunkService_GetSupportedMinecraftVersions_FullMethodName = "/chunk.v1alpha1.ChunkService/GetSupportedMinecraftVersions"
 	ChunkService_UploadThumbnail_FullMethodName               = "/chunk.v1alpha1.ChunkService/UploadThumbnail"
 	ChunkService_DeleteFlavor_FullMethodName                  = "/chunk.v1alpha1.ChunkService/DeleteFlavor"
+	ChunkService_DeleteChunk_FullMethodName                   = "/chunk.v1alpha1.ChunkService/DeleteChunk"
 )
 
 // ChunkServiceClient is the client API for ChunkService service.
@@ -169,6 +170,7 @@ type ChunkServiceClient interface {
 	// - INVALID_ARGUMENT:
 	//   - flavor id is invalid
 	DeleteFlavor(ctx context.Context, in *DeleteFlavorRequest, opts ...grpc.CallOption) (*DeleteFlavorResponse, error)
+	DeleteChunk(ctx context.Context, in *DeleteChunkRequest, opts ...grpc.CallOption) (*DeleteChunkResponse, error)
 }
 
 type chunkServiceClient struct {
@@ -283,6 +285,16 @@ func (c *chunkServiceClient) DeleteFlavor(ctx context.Context, in *DeleteFlavorR
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteFlavorResponse)
 	err := c.cc.Invoke(ctx, ChunkService_DeleteFlavor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chunkServiceClient) DeleteChunk(ctx context.Context, in *DeleteChunkRequest, opts ...grpc.CallOption) (*DeleteChunkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteChunkResponse)
+	err := c.cc.Invoke(ctx, ChunkService_DeleteChunk_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -408,6 +420,7 @@ type ChunkServiceServer interface {
 	// - INVALID_ARGUMENT:
 	//   - flavor id is invalid
 	DeleteFlavor(context.Context, *DeleteFlavorRequest) (*DeleteFlavorResponse, error)
+	DeleteChunk(context.Context, *DeleteChunkRequest) (*DeleteChunkResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
 
@@ -450,6 +463,9 @@ func (UnimplementedChunkServiceServer) UploadThumbnail(context.Context, *UploadT
 }
 func (UnimplementedChunkServiceServer) DeleteFlavor(context.Context, *DeleteFlavorRequest) (*DeleteFlavorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteFlavor not implemented")
+}
+func (UnimplementedChunkServiceServer) DeleteChunk(context.Context, *DeleteChunkRequest) (*DeleteChunkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteChunk not implemented")
 }
 func (UnimplementedChunkServiceServer) mustEmbedUnimplementedChunkServiceServer() {}
 func (UnimplementedChunkServiceServer) testEmbeddedByValue()                      {}
@@ -670,6 +686,24 @@ func _ChunkService_DeleteFlavor_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChunkService_DeleteChunk_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteChunkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).DeleteChunk(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_DeleteChunk_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).DeleteChunk(ctx, req.(*DeleteChunkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChunkService_ServiceDesc is the grpc.ServiceDesc for ChunkService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -720,6 +754,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteFlavor",
 			Handler:    _ChunkService_DeleteFlavor_Handler,
+		},
+		{
+			MethodName: "DeleteChunk",
+			Handler:    _ChunkService_DeleteChunk_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
