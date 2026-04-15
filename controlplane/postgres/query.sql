@@ -38,7 +38,8 @@ SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-    LEFT JOIN users u ON u.id = c.owner_id;
+    LEFT JOIN users u ON u.id = c.owner_id
+WHERE c.deleted_at IS NULL;
 
 
 -- name: ChunkOwnerByChunkID :one

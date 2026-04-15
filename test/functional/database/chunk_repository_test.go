@@ -354,3 +354,25 @@ func TestGetChunkByIDReturnsErrorIfChunkDeletedAtIsSet(t *testing.T) {
 	_, err := pg.DB.GetChunkByID(ctx, expected.ID)
 	require.ErrorIs(t, err, apierrs.ErrChunkNotFound)
 }
+
+func TestListChunksDoesNotReturnDeletedChunks(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.DeletedAt = new(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
+		})
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	actual, err := pg.DB.ListChunks(ctx)
+	require.NoError(t, err)
+
+	if d := cmp.Diff([]resource.Chunk{}, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
+		t.Errorf("mismatch (-want +got):\n%s", d)
+	}
+}

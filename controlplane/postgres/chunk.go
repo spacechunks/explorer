@@ -117,25 +117,8 @@ func (db *DB) UpdateChunk(ctx context.Context, c resource.Chunk) (resource.Chunk
 	return ret, nil
 }
 
-func (db *DB) ChunkExists(ctx context.Context, id string) (bool, error) {
-	var ret bool
-	if err := db.do(ctx, func(q *query.Queries) error {
-		ok, err := q.ChunkExists(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		ret = ok
-		return nil
-	}); err != nil {
-		return false, err
-	}
-
-	return ret, nil
-}
-
 func (db *DB) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
-	var ret []resource.Chunk
+	ret := make([]resource.Chunk, 0)
 	if err := db.do(ctx, func(q *query.Queries) error {
 		rows, err := q.ListChunks(ctx)
 		if err != nil {

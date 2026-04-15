@@ -71,20 +71,6 @@ func (q *Queries) AllMinecraftVersions(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
-const chunkExists = `-- name: ChunkExists :one
-SELECT EXISTS(
-    SELECT 1 FROM chunks
-    WHERE id = $1
-)
-`
-
-func (q *Queries) ChunkExists(ctx context.Context, id string) (bool, error) {
-	row := q.db.QueryRow(ctx, chunkExists, id)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
 const chunkOwnerByChunkID = `-- name: ChunkOwnerByChunkID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
     LEFT JOIN chunks c ON c.owner_id = u.id
@@ -866,6 +852,7 @@ SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, th
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
+WHERE c.deleted_at IS NULL
 `
 
 type ListChunksRow struct {
