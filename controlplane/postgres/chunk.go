@@ -120,7 +120,7 @@ func (db *DB) UpdateChunk(ctx context.Context, c resource.Chunk) (resource.Chunk
 func (db *DB) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
 	ret := make([]resource.Chunk, 0)
 	if err := db.do(ctx, func(q *query.Queries) error {
-		rows, err := q.ListChunks(ctx)
+		rows, err := q.ListChunksIgnoreDeleted(ctx)
 		if err != nil {
 			return err
 		}
@@ -276,7 +276,7 @@ func (db *DB) MarkChunkDeleted(ctx context.Context, id string) error {
 }
 
 func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (resource.Chunk, error) {
-	rows, err := q.GetChunkByID(ctx, id)
+	rows, err := q.GetChunkByIDIgnoreDeleted(ctx, id)
 	if err != nil {
 		return resource.Chunk{}, err
 	}

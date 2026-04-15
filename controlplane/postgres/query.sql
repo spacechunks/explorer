@@ -16,7 +16,7 @@ VALUES
     ($1, $2, $3, $4, $5, $6, $7);
 
 -- TODO: read multiple
--- name: GetChunkByID :many
+-- name: GetChunkByIDIgnoreDeleted :many
 SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
@@ -33,7 +33,7 @@ SET
     updated_at = now()
 WHERE id = $4;
 
--- name: ListChunks :many
+-- name: ListChunksIgnoreDeleted :many
 SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
