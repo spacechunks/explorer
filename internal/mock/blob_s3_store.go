@@ -81,9 +81,9 @@ func (_c *MockBlobS3Store_ObjectExists_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// PresignURL provides a mock function with given fields: ctx, key, contentHash, expiry
-func (_m *MockBlobS3Store) PresignURL(ctx context.Context, key string, contentHash string, expiry time.Duration) (string, time.Time, error) {
-	ret := _m.Called(ctx, key, contentHash, expiry)
+// PresignURL provides a mock function with given fields: ctx, key, contentHash, expiry, contentLength
+func (_m *MockBlobS3Store) PresignURL(ctx context.Context, key string, contentHash string, expiry time.Duration, contentLength uint64) (string, time.Time, error) {
+	ret := _m.Called(ctx, key, contentHash, expiry, contentLength)
 
 	if len(ret) == 0 {
 		panic("no return value specified for PresignURL")
@@ -92,23 +92,23 @@ func (_m *MockBlobS3Store) PresignURL(ctx context.Context, key string, contentHa
 	var r0 string
 	var r1 time.Time
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration) (string, time.Time, error)); ok {
-		return rf(ctx, key, contentHash, expiry)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration, uint64) (string, time.Time, error)); ok {
+		return rf(ctx, key, contentHash, expiry, contentLength)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration) string); ok {
-		r0 = rf(ctx, key, contentHash, expiry)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, time.Duration, uint64) string); ok {
+		r0 = rf(ctx, key, contentHash, expiry, contentLength)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, time.Duration) time.Time); ok {
-		r1 = rf(ctx, key, contentHash, expiry)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, time.Duration, uint64) time.Time); ok {
+		r1 = rf(ctx, key, contentHash, expiry, contentLength)
 	} else {
 		r1 = ret.Get(1).(time.Time)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string, string, time.Duration) error); ok {
-		r2 = rf(ctx, key, contentHash, expiry)
+	if rf, ok := ret.Get(2).(func(context.Context, string, string, time.Duration, uint64) error); ok {
+		r2 = rf(ctx, key, contentHash, expiry, contentLength)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -126,13 +126,14 @@ type MockBlobS3Store_PresignURL_Call struct {
 //   - key string
 //   - contentHash string
 //   - expiry time.Duration
-func (_e *MockBlobS3Store_Expecter) PresignURL(ctx interface{}, key interface{}, contentHash interface{}, expiry interface{}) *MockBlobS3Store_PresignURL_Call {
-	return &MockBlobS3Store_PresignURL_Call{Call: _e.mock.On("PresignURL", ctx, key, contentHash, expiry)}
+//   - contentLength uint64
+func (_e *MockBlobS3Store_Expecter) PresignURL(ctx interface{}, key interface{}, contentHash interface{}, expiry interface{}, contentLength interface{}) *MockBlobS3Store_PresignURL_Call {
+	return &MockBlobS3Store_PresignURL_Call{Call: _e.mock.On("PresignURL", ctx, key, contentHash, expiry, contentLength)}
 }
 
-func (_c *MockBlobS3Store_PresignURL_Call) Run(run func(ctx context.Context, key string, contentHash string, expiry time.Duration)) *MockBlobS3Store_PresignURL_Call {
+func (_c *MockBlobS3Store_PresignURL_Call) Run(run func(ctx context.Context, key string, contentHash string, expiry time.Duration, contentLength uint64)) *MockBlobS3Store_PresignURL_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(time.Duration))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(time.Duration), args[4].(uint64))
 	})
 	return _c
 }
@@ -142,7 +143,7 @@ func (_c *MockBlobS3Store_PresignURL_Call) Return(_a0 string, _a1 time.Time, _a2
 	return _c
 }
 
-func (_c *MockBlobS3Store_PresignURL_Call) RunAndReturn(run func(context.Context, string, string, time.Duration) (string, time.Time, error)) *MockBlobS3Store_PresignURL_Call {
+func (_c *MockBlobS3Store_PresignURL_Call) RunAndReturn(run func(context.Context, string, string, time.Duration, uint64) (string, time.Time, error)) *MockBlobS3Store_PresignURL_Call {
 	_c.Call.Return(run)
 	return _c
 }
