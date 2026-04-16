@@ -68,7 +68,7 @@ func main() {
 		packItemDir              = fs.String("resource-pack-item-dir", "", "path inside the resource pack to the directory where the items will live. e.g. assets/mynamespace/items")               //nolint:lll
 		packTextureDir           = fs.String("resource-pack-texture-dir", "", "path inside the resource pack to the directory where the textures will live. e.g. assets/mynamespace/textures/item") //nolint:lll
 		velocitySecret           = fs.String("velocity-secret", "", "the velocity secret to set in the paper server configuration")                                                                 //nolint:lll
-
+		changeSetTarballMaxSize  = fs.Uint64("change-set-tarball-max-size", 1073741824, "the maximum allowed size in bytes of the change set tarball")                                              //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
@@ -107,6 +107,7 @@ func main() {
 			ResourcePackItemDir:           *packItemDir,
 			ResourcePackTextureDir:        *packTextureDir,
 			VelocitySecret:                *velocitySecret,
+			ChangeSetTarballMaxSizeBytes:  *changeSetTarballMaxSize,
 		}
 		ctx    = context.Background()
 		server = controlplane.NewServer(logger, cfg)

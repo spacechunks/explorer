@@ -50,4 +50,5 @@ type Config struct {
 	ResourcePackItemDir           string
 	ResourcePackTextureDir        string
 	VelocitySecret                string
+	ChangeSetTarballMaxSizeBytes  uint64
 }

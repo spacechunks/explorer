@@ -198,7 +198,7 @@ func (s *Server) GetUploadURL(
 		return nil, apierrs.ErrInvalidHash
 	}
 
-	url, err := s.service.GetUploadURL(ctx, req.GetFlavorVersionId(), req.GetTarballHash())
+	url, err := s.service.GetUploadURL(ctx, req.GetFlavorVersionId(), req.GetTarballHash(), req.GetTarballSizeBytes())
 	if err != nil {
 		return nil, fmt.Errorf("upload url: %w", err)
 	}

@@ -774,14 +774,16 @@ func TestGetUploadURLWorks(t *testing.T) {
 	client := cp.ChunkClient(t)
 
 	resp, err := client.GetUploadURL(ctx, &chunkv1alpha1.GetUploadURLRequest{
-		FlavorVersionId: c.Flavors[0].Versions[0].ID,
-		TarballHash:     "blabla",
+		FlavorVersionId:  c.Flavors[0].Versions[0].ID,
+		TarballHash:      "blabla",
+		TarballSizeBytes: 10,
 	})
 	require.NoError(t, err)
 
 	u, err := url.Parse(resp.Url)
 	require.NoError(t, err)
 
+	require.Contains(t, u.Query().Get("X-Amz-SignedHeaders"), "content-length")
 	require.Equal(t, "blabla", u.Query().Get("X-Amz-Checksum-Sha256"))
 }
 
@@ -868,6 +870,15 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 			req:  &chunkv1alpha1.GetUploadURLRequest{},
 			err:  apierrs.ErrFlavorFilesUploaded.GRPCStatus().Err(),
 		},
+		{
+			name: "changeset file too large",
+			req: &chunkv1alpha1.GetUploadURLRequest{
+				FlavorVersionId:  "blabla",
+				TarballHash:      "blabla",
+				TarballSizeBytes: fixture.MaxChangeSetTarballSize + 1,
+			},
+			err: apierrs.ErrChangeSetTarballTooBig.GRPCStatus().Err(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -891,6 +902,10 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 					FlavorVersionId: c.Flavors[0].Versions[0].ID,
 					TarballHash:     "blabla",
 				}
+			}
+
+			if errors.Is(tt.err, apierrs.ErrChangeSetTarballTooBig.GRPCStatus().Err()) {
+				tt.req.FlavorVersionId = c.Flavors[0].Versions[0].ID
 			}
 
 			cp.AddUserAPIKey(t, &ctx, c.Owner)
