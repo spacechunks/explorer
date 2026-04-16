@@ -313,8 +313,9 @@ func (b builder) handleUpload(ctx context.Context, data *buildData) error {
 	digest := sha256.Sum256(tarData)
 
 	uploadURLResp, err := b.client.GetUploadURL(ctx, &chunkv1alpha1.GetUploadURLRequest{
-		FlavorVersionId: remoteVersion.Id,
-		TarballHash:     base64.StdEncoding.EncodeToString(digest[:]),
+		FlavorVersionId:  remoteVersion.Id,
+		TarballHash:      base64.StdEncoding.EncodeToString(digest[:]),
+		TarballSizeBytes: uint64(len(tarData)),
 	})
 	if err != nil {
 		return fmt.Errorf("error while getting upload url: %w", err)
