@@ -239,6 +239,8 @@ message GetUploadURLRequest {
 
   // tarball_hash is the base64 encoded, 256-bit SHA256 digest of the tarball
   string tarball_hash = 2;
+
+  uint64 tarball_size_bytes = 3;
 }
 
 message GetUploadURLResponse {

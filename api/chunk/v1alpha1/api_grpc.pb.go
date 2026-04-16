@@ -84,7 +84,7 @@ type ChunkServiceClient interface {
 	//
 	// Defined error codes:
 	// - NOT_FOUND:
-	//   - chunk with the provided id does not exist
+	//   - chunk with the provided id does not exist or is deleted
 	//
 	// - INVALID_ARGUMENT:
 	//   - chunk id is invalid
@@ -155,6 +155,9 @@ type ChunkServiceClient interface {
 	// UploadThumbnail uploads the given PNG image. Formats other than PNG are not supported.
 	//
 	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted chunk does not exist
+	//
 	// - INVALID_ARGUMENT:
 	//   - chunk id is invalid
 	//   - thumbnail image must be PNG
@@ -170,6 +173,18 @@ type ChunkServiceClient interface {
 	// - INVALID_ARGUMENT:
 	//   - flavor id is invalid
 	DeleteFlavor(ctx context.Context, in *DeleteFlavorRequest, opts ...grpc.CallOption) (*DeleteFlavorResponse, error)
+	// DeleteChunk initiates the process for a Chunk to be deleted. This will also delete all
+	// Flavors associated with this Chunk. Deletion does not happen instantaneously, it can take
+	// a few minutes for a Chunk to be fully deleted. During this time any interaction with the
+	// Chunk and its Flavors is blocked. This means that updates are no longer possible and creating
+	// Instances based on the Flavors versions is also not possible.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted chunk does not exist
+	//
+	// - INVALID_ARGUMENT:
+	//   - chunk id is invalid
 	DeleteChunk(ctx context.Context, in *DeleteChunkRequest, opts ...grpc.CallOption) (*DeleteChunkResponse, error)
 }
 
@@ -334,7 +349,7 @@ type ChunkServiceServer interface {
 	//
 	// Defined error codes:
 	// - NOT_FOUND:
-	//   - chunk with the provided id does not exist
+	//   - chunk with the provided id does not exist or is deleted
 	//
 	// - INVALID_ARGUMENT:
 	//   - chunk id is invalid
@@ -405,6 +420,9 @@ type ChunkServiceServer interface {
 	// UploadThumbnail uploads the given PNG image. Formats other than PNG are not supported.
 	//
 	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted chunk does not exist
+	//
 	// - INVALID_ARGUMENT:
 	//   - chunk id is invalid
 	//   - thumbnail image must be PNG
@@ -420,6 +438,18 @@ type ChunkServiceServer interface {
 	// - INVALID_ARGUMENT:
 	//   - flavor id is invalid
 	DeleteFlavor(context.Context, *DeleteFlavorRequest) (*DeleteFlavorResponse, error)
+	// DeleteChunk initiates the process for a Chunk to be deleted. This will also delete all
+	// Flavors associated with this Chunk. Deletion does not happen instantaneously, it can take
+	// a few minutes for a Chunk to be fully deleted. During this time any interaction with the
+	// Chunk and its Flavors is blocked. This means that updates are no longer possible and creating
+	// Instances based on the Flavors versions is also not possible.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted chunk does not exist
+	//
+	// - INVALID_ARGUMENT:
+	//   - chunk id is invalid
 	DeleteChunk(context.Context, *DeleteChunkRequest) (*DeleteChunkResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }
