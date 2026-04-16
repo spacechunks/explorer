@@ -20,7 +20,6 @@ package errors
 
 import (
 	"github.com/gogo/protobuf/proto"
-	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -70,26 +69,11 @@ var (
 	ErrMinecraftVersionNotSupported = New(codes.FailedPrecondition, "minecraft version not found")
 	ErrHashMismatch                 = New(codes.FailedPrecondition, "hash does not match")
 	ErrInvalidHash                  = New(codes.InvalidArgument, "invalid hash")
-	ErrFilesAlreadyExist            = New(codes.AlreadyExists, "files already exist")
-	ErrFlavorNotFound               = New(codes.NotFound, "flavor does not exist")
 	ErrFlavorFilesNotUploaded       = New(codes.FailedPrecondition, "flavor files have not been uploaded")
 	ErrFlavorFilesUploaded          = New(codes.AlreadyExists, "flavor files have already been uploaded")
 	ErrFlavorVersionNotFound        = New(codes.NotFound, "flavor version does not exist")
+	ErrChangeSetTarballTooBig       = New(codes.InvalidArgument, "tarball size exceeds maximum allowed")
 )
-
-func FlavorVersionDuplicate(version string) Error {
-	return New(
-		codes.FailedPrecondition,
-		"flavor version is a duplicate",
-		&errdetails.ErrorInfo{
-			Reason: "DUPLICATE",
-			Domain: "explorer.chunks.space",
-			Metadata: map[string]string{
-				"version": version,
-			},
-		},
-	)
-}
 
 /*
  * instance related errors

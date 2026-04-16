@@ -41,7 +41,12 @@ type Service interface {
 		version resource.FlavorVersion,
 	) (resource.FlavorVersion, resource.FlavorVersionDiff, error)
 	BuildFlavorVersion(ctx context.Context, versionID string) error
-	GetUploadURL(ctx context.Context, flavorVersionID string, tarballHash string) (string, error)
+	GetUploadURL(
+		ctx context.Context,
+		flavorVersionID string,
+		tarballHash string,
+		tarballSizeBytes uint64,
+	) (string, error)
 	GetSupportedMinecraftVersions(ctx context.Context) ([]string, error)
 	UpdateThumbnail(ctx context.Context, chunkID string, imageData []byte) error
 	DeleteFlavor(ctx context.Context, id string) error
@@ -49,11 +54,11 @@ type Service interface {
 }
 
 type Config struct {
-	Registry           string
-	BaseImage          string
-	Bucket             string
-	PresignedURLExpiry time.Duration
-	ThumbnailMaxSizeKB int
+	Registry                     string
+	Bucket                       string
+	PresignedURLExpiry           time.Duration
+	ThumbnailMaxSizeKB           int
+	ChangesetTarballMaxSizeBytes uint64
 }
 
 type svc struct {

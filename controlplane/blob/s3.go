@@ -38,7 +38,9 @@ type S3Store interface {
 		ctx context.Context,
 		key string,
 		contentHash string,
-		expiry time.Duration) (string, time.Time, error)
+		expiry time.Duration,
+		contentLength uint64,
+	) (string, time.Time, error)
 	WriteTo(ctx context.Context, key string, w io.Writer) error
 	ObjectExists(ctx context.Context, key string) (bool, error)
 	PutBlob(ctx context.Context, keyPrefix string, objects []Object) error
@@ -64,6 +66,7 @@ func (s S3ObjectStore) PresignURL(
 	key string,
 	contentHash string,
 	expiry time.Duration,
+	contentLength uint64,
 ) (string, time.Time, error) {
 	// TODO: add content length to prevent users from uploading too large files
 	req, err := s.presigner.PresignPutObject(ctx, &s3.PutObjectInput{
@@ -71,6 +74,7 @@ func (s S3ObjectStore) PresignURL(
 		Key:               &key,
 		ChecksumAlgorithm: types.ChecksumAlgorithmSha256,
 		ChecksumSHA256:    &contentHash,
+		ContentLength:     new(int64(contentLength)),
 	}, s3.WithPresignExpires(expiry))
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("presign: %w", err)

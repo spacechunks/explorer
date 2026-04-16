@@ -52,6 +52,7 @@ const (
 	OAuthClientID           = "public-functest-client"
 	APITokenIssuer          = "functest-issuer.explorer.chunks.cloud"
 	ResourcePackTemplateKey = "explorer/pack_template.zip"
+	MaxChangeSetTarballSize = 1024
 )
 
 type ControlPlane struct {
@@ -170,6 +171,7 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 				ResourcePackItemDir:           "assets/spc/items/test",
 				ResourcePackModelDir:          "assets/spc/models/item/test",
 				ResourcePackTextureDir:        "assets/spc/textures/item/test",
+				ChangeSetTarballMaxSizeBytes:  MaxChangeSetTarballSize,
 			})
 	)
 

@@ -176,10 +176,11 @@ func (s *Server) Run(ctx context.Context) error {
 			blobStore,
 			authz.NewRuleEvaluator(db),
 			chunk.Config{
-				Registry:           s.cfg.OCIRegistry,
-				Bucket:             s.cfg.Bucket,
-				PresignedURLExpiry: s.cfg.PresignedURLExpiry,
-				ThumbnailMaxSizeKB: s.cfg.ThumbnailMaxSizeKB,
+				Registry:                     s.cfg.OCIRegistry,
+				Bucket:                       s.cfg.Bucket,
+				PresignedURLExpiry:           s.cfg.PresignedURLExpiry,
+				ThumbnailMaxSizeKB:           s.cfg.ThumbnailMaxSizeKB,
+				ChangesetTarballMaxSizeBytes: s.cfg.ChangeSetTarballMaxSizeBytes,
 			})
 		chunkServer = chunk.NewServer(chunkService)
 		insService  = instance.NewService(s.logger, db, db, chunkService)
