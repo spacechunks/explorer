@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
 func (db *DB) ArchiveChunk(ctx context.Context, chunk resource.Chunk) error {
-	return db.do(ctx, func(q *query.Queries) error {
+	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		data, err := json.Marshal(chunk)
 		if err != nil {
 			return fmt.Errorf("marshal: %w", err)
@@ -26,12 +27,16 @@ func (db *DB) ArchiveChunk(ctx context.Context, chunk resource.Chunk) error {
 			return fmt.Errorf("archive: %w", err)
 		}
 
+		if err := q.DeleteChunk(ctx, chunk.ID); err != nil {
+			return fmt.Errorf("delete: %w", err)
+		}
+
 		return nil
 	})
 }
 
 func (db *DB) ArchiveFlavor(ctx context.Context, chunkID string, flavor resource.Flavor) error {
-	return db.do(ctx, func(q *query.Queries) error {
+	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		data, err := json.Marshal(flavor)
 		if err != nil {
 			return fmt.Errorf("marshal: %w", err)
@@ -46,12 +51,16 @@ func (db *DB) ArchiveFlavor(ctx context.Context, chunkID string, flavor resource
 			return fmt.Errorf("archive: %w", err)
 		}
 
+		if err := q.DeleteFlavor(ctx, flavor.ID); err != nil {
+			return fmt.Errorf("delete: %w", err)
+		}
+
 		return nil
 	})
 }
 
 func (db *DB) ArchiveFlavorVersion(ctx context.Context, flavorID string, version resource.FlavorVersion) error {
-	return db.do(ctx, func(q *query.Queries) error {
+	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		data, err := json.Marshal(version)
 		if err != nil {
 			return fmt.Errorf("marshal: %w", err)
@@ -64,6 +73,10 @@ func (db *DB) ArchiveFlavorVersion(ctx context.Context, flavorID string, version
 			CreatedAt: time.Now(),
 		}); err != nil {
 			return fmt.Errorf("archive: %w", err)
+		}
+
+		if err := q.DeleteFlavorVersion(ctx, version.ID); err != nil {
+			return fmt.Errorf("delete: %w", err)
 		}
 
 		return nil

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"testing"
 
@@ -16,7 +17,9 @@ func TestArchiveChunk(t *testing.T) {
 	var (
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
-		c   = fixture.Chunk()
+		c   = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Flavors = nil
+		})
 	)
 
 	pg.Run(t, ctx)
@@ -57,6 +60,9 @@ func TestArchiveChunk(t *testing.T) {
 	if d := cmp.Diff(string(expected), string(actual)); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)
 	}
+
+	err = pg.Pool.QueryRow(ctx, `SELECT id FROM chunks WHERE id = $1`, c.ID).Scan()
+	require.ErrorIs(t, err, sql.ErrNoRows)
 }
 
 func TestArchiveFlavor(t *testing.T) {
@@ -70,12 +76,9 @@ func TestArchiveFlavor(t *testing.T) {
 	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
-	err := pg.DB.ArchiveChunk(ctx, c)
-	require.NoError(t, err)
-
 	f := c.Flavors[0]
 
-	err = pg.DB.ArchiveFlavor(ctx, c.ID, f)
+	err := pg.DB.ArchiveFlavor(ctx, c.ID, f)
 	require.NoError(t, err)
 
 	r := pg.Pool.QueryRow(ctx, `SELECT id, chunk_id, data FROM flavor_archive WHERE id = $1`, f.ID)
@@ -109,6 +112,9 @@ func TestArchiveFlavor(t *testing.T) {
 	if d := cmp.Diff(string(expected), string(actual)); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)
 	}
+
+	err = pg.Pool.QueryRow(ctx, `SELECT id FROM flavors WHERE id = $1`, f.ID).Scan()
+	require.ErrorIs(t, err, sql.ErrNoRows)
 }
 
 func TestArchiveFlavorVersion(t *testing.T) {
@@ -122,17 +128,10 @@ func TestArchiveFlavorVersion(t *testing.T) {
 	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
-	err := pg.DB.ArchiveChunk(ctx, c)
-	require.NoError(t, err)
-
 	f := c.Flavors[0]
-
-	err = pg.DB.ArchiveFlavor(ctx, c.ID, f)
-	require.NoError(t, err)
-
 	v := f.Versions[0]
 
-	err = pg.DB.ArchiveFlavorVersion(ctx, f.ID, v)
+	err := pg.DB.ArchiveFlavorVersion(ctx, f.ID, v)
 	require.NoError(t, err)
 
 	r := pg.Pool.QueryRow(ctx, `SELECT id, flavor_id, data FROM flavor_version_archive WHERE id = $1`, v.ID)
@@ -166,4 +165,7 @@ func TestArchiveFlavorVersion(t *testing.T) {
 	if d := cmp.Diff(string(expected), string(actual)); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)
 	}
+
+	err = pg.Pool.QueryRow(ctx, `SELECT id FROM flavor_versions WHERE id = $1`, v.ID).Scan()
+	require.ErrorIs(t, err, sql.ErrNoRows)
 }

@@ -408,12 +408,30 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const deleteChunk = `-- name: DeleteChunk :exec
+DELETE FROM chunks WHERE id = $1
+`
+
+func (q *Queries) DeleteChunk(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteChunk, id)
+	return err
+}
+
 const deleteFlavor = `-- name: DeleteFlavor :exec
-UPDATE flavors SET deleted_at = now() WHERE id = $1
+DELETE FROM flavors WHERE id = $1
 `
 
 func (q *Queries) DeleteFlavor(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteFlavor, id)
+	return err
+}
+
+const deleteFlavorVersion = `-- name: DeleteFlavorVersion :exec
+DELETE FROM flavor_versions WHERE id = $1
+`
+
+func (q *Queries) DeleteFlavorVersion(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteFlavorVersion, id)
 	return err
 }
 
@@ -1202,6 +1220,15 @@ UPDATE chunks SET deleted_at = now() WHERE id = $1
 
 func (q *Queries) MarkChunkDeleted(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, markChunkDeleted, id)
+	return err
+}
+
+const markFlavorDeleted = `-- name: MarkFlavorDeleted :exec
+UPDATE flavors SET deleted_at = now() WHERE id = $1
+`
+
+func (q *Queries) MarkFlavorDeleted(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, markFlavorDeleted, id)
 	return err
 }
 

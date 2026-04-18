@@ -60,6 +60,9 @@ WHERE thumbnail_hash IS NOT NULL;
 -- name: MarkChunkDeleted :exec
 UPDATE chunks SET deleted_at = now() WHERE id = $1;
 
+-- name: DeleteChunk :exec
+DELETE FROM chunks WHERE id = $1;
+
 /*
  * FLAVORS
  */
@@ -137,7 +140,7 @@ SELECT u.* FROM users u
     JOIN users ON u.id = c.owner_id
 LIMIT 1;
 
--- name: DeleteFlavor :exec
+-- name: MarkFlavorDeleted :exec
 UPDATE flavors SET deleted_at = now() WHERE id = $1;
 
 -- name: GetFlavorByIDIgnoreDeleted :one
@@ -145,6 +148,12 @@ SELECT * FROM flavors WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: AllDeletedFlavors :many
 SELECT id, chunk_id FROM flavors WHERE deleted_at IS NOT NULL;
+
+-- name: DeleteFlavor :exec
+DELETE FROM flavors WHERE id = $1;
+
+-- name: DeleteFlavorVersion :exec
+DELETE FROM flavor_versions WHERE id = $1;
 
 /*
  * BLOB STORE

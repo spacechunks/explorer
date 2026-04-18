@@ -91,7 +91,7 @@ func Flavor(mod ...func(f *resource.Flavor)) resource.Flavor {
 				}
 			}),
 			FlavorVersion(func(v *resource.FlavorVersion) {
-				v.ID = "01953e68-4ca6-73b1-89b4-86455ffd78e7"
+				v.ID = "019da178-1347-7259-9f12-867550ae078d"
 				v.Version = "v1"
 			}),
 		},

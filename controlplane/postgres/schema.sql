@@ -549,6 +549,20 @@ CREATE INDEX archived_chunk_owner_idx ON public.chunk_archive USING btree (owner
 
 
 --
+-- Name: archived_flavor_chunk_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX archived_flavor_chunk_id_idx ON public.flavor_archive USING btree (chunk_id);
+
+
+--
+-- Name: archived_flavor_version_flavor_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX archived_flavor_version_flavor_id_idx ON public.flavor_version_archive USING btree (flavor_id);
+
+
+--
 -- Name: flavor_version_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -603,22 +617,6 @@ CREATE UNIQUE INDEX river_job_unique_idx ON public.river_job USING btree (unique
 
 ALTER TABLE ONLY public.chunks
     ADD CONSTRAINT chunks_owner_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id);
-
-
---
--- Name: flavor_archive flavor_archive_chunk_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.flavor_archive
-    ADD CONSTRAINT flavor_archive_chunk_id_fkey FOREIGN KEY (chunk_id) REFERENCES public.chunk_archive(id);
-
-
---
--- Name: flavor_version_archive flavor_version_archive_flavor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.flavor_version_archive
-    ADD CONSTRAINT flavor_version_archive_flavor_id_fkey FOREIGN KEY (flavor_id) REFERENCES public.flavor_archive(id);
 
 
 --
