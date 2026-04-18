@@ -94,6 +94,18 @@ CREATE TABLE public.blobs (
 
 
 --
+-- Name: chunk_archive; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chunk_archive (
+    id uuid NOT NULL,
+    owner_id uuid NOT NULL,
+    data jsonb NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
 -- Name: chunks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -108,6 +120,30 @@ CREATE TABLE public.chunks (
     thumbnail_hash character varying(16),
     thumbnail_updated_at timestamp with time zone DEFAULT now() NOT NULL,
     deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: flavor_archive; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flavor_archive (
+    id uuid NOT NULL,
+    chunk_id uuid NOT NULL,
+    data jsonb NOT NULL,
+    created_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: flavor_version_archive; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flavor_version_archive (
+    id uuid NOT NULL,
+    flavor_id uuid NOT NULL,
+    data jsonb NOT NULL,
+    created_at timestamp with time zone NOT NULL
 );
 
 
@@ -346,11 +382,35 @@ ALTER TABLE ONLY public.blobs
 
 
 --
+-- Name: chunk_archive chunk_archive_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chunk_archive
+    ADD CONSTRAINT chunk_archive_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: chunks chunks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chunks
     ADD CONSTRAINT chunks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: flavor_archive flavor_archive_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavor_archive
+    ADD CONSTRAINT flavor_archive_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: flavor_version_archive flavor_version_archive_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavor_version_archive
+    ADD CONSTRAINT flavor_version_archive_pkey PRIMARY KEY (id);
 
 
 --
@@ -482,6 +542,13 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: archived_chunk_owner_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX archived_chunk_owner_idx ON public.chunk_archive USING btree (owner_id);
+
+
+--
 -- Name: flavor_version_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -536,6 +603,22 @@ CREATE UNIQUE INDEX river_job_unique_idx ON public.river_job USING btree (unique
 
 ALTER TABLE ONLY public.chunks
     ADD CONSTRAINT chunks_owner_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id);
+
+
+--
+-- Name: flavor_archive flavor_archive_chunk_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavor_archive
+    ADD CONSTRAINT flavor_archive_chunk_id_fkey FOREIGN KEY (chunk_id) REFERENCES public.chunk_archive(id);
+
+
+--
+-- Name: flavor_version_archive flavor_version_archive_flavor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flavor_version_archive
+    ADD CONSTRAINT flavor_version_archive_flavor_id_fkey FOREIGN KEY (flavor_id) REFERENCES public.flavor_archive(id);
 
 
 --
@@ -614,7 +697,6 @@ ALTER TABLE ONLY public.river_client_queue
 -- PostgreSQL database dump complete
 --
 
-
 --
 -- Dbmate schema migrations
 --
@@ -634,4 +716,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260407125522'),
     ('20260407181558'),
     ('20260410102614'),
-    ('20260415141037');
+    ('20260415141037'),
+    ('20260417174036');

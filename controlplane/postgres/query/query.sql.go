@@ -43,6 +43,35 @@ func (q *Queries) AllChunkThumbnailHashes(ctx context.Context) ([]AllChunkThumbn
 	return items, nil
 }
 
+const allDeletedFlavors = `-- name: AllDeletedFlavors :many
+SELECT id, chunk_id FROM flavors WHERE deleted_at IS NOT NULL
+`
+
+type AllDeletedFlavorsRow struct {
+	ID      string
+	ChunkID string
+}
+
+func (q *Queries) AllDeletedFlavors(ctx context.Context) ([]AllDeletedFlavorsRow, error) {
+	rows, err := q.db.Query(ctx, allDeletedFlavors)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AllDeletedFlavorsRow
+	for rows.Next() {
+		var i AllDeletedFlavorsRow
+		if err := rows.Scan(&i.ID, &i.ChunkID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const allMinecraftVersions = `-- name: AllMinecraftVersions :many
 /*
  * MINECRAFT VERSIONS
@@ -69,6 +98,82 @@ func (q *Queries) AllMinecraftVersions(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const archiveChunk = `-- name: ArchiveChunk :exec
+/*
+ * ARCHIVE
+ */
+
+INSERT INTO chunk_archive
+    (id, owner_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4)
+`
+
+type ArchiveChunkParams struct {
+	ID        string
+	OwnerID   string
+	Data      []byte
+	CreatedAt time.Time
+}
+
+func (q *Queries) ArchiveChunk(ctx context.Context, arg ArchiveChunkParams) error {
+	_, err := q.db.Exec(ctx, archiveChunk,
+		arg.ID,
+		arg.OwnerID,
+		arg.Data,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const archiveFlavor = `-- name: ArchiveFlavor :exec
+INSERT INTO flavor_archive
+    (id, chunk_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4)
+`
+
+type ArchiveFlavorParams struct {
+	ID        string
+	ChunkID   string
+	Data      []byte
+	CreatedAt time.Time
+}
+
+func (q *Queries) ArchiveFlavor(ctx context.Context, arg ArchiveFlavorParams) error {
+	_, err := q.db.Exec(ctx, archiveFlavor,
+		arg.ID,
+		arg.ChunkID,
+		arg.Data,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const archiveFlavorVersion = `-- name: ArchiveFlavorVersion :exec
+INSERT INTO flavor_version_archive
+    (id, flavor_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4)
+`
+
+type ArchiveFlavorVersionParams struct {
+	ID        string
+	FlavorID  string
+	Data      []byte
+	CreatedAt time.Time
+}
+
+func (q *Queries) ArchiveFlavorVersion(ctx context.Context, arg ArchiveFlavorVersionParams) error {
+	_, err := q.db.Exec(ctx, archiveFlavorVersion,
+		arg.ID,
+		arg.FlavorID,
+		arg.Data,
+		arg.CreatedAt,
+	)
+	return err
 }
 
 const chunkOwnerByChunkID = `-- name: ChunkOwnerByChunkID :one
@@ -131,6 +236,17 @@ func (q *Queries) ChunkOwnerByFlavorVersionIDIgnoreDeleted(ctx context.Context, 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const countInstancesByFlavorID = `-- name: CountInstancesByFlavorID :one
+SELECT COUNT(*) FROM instances WHERE flavor_version_id = $1
+`
+
+func (q *Queries) CountInstancesByFlavorID(ctx context.Context, flavorVersionID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countInstancesByFlavorID, flavorVersionID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const createChunk = `-- name: CreateChunk :exec

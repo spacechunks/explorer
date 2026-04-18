@@ -37,16 +37,16 @@ const (
  */
 
 type Chunk struct {
-	ID          string
-	Name        string
-	Description string
-	Tags        []string
-	Flavors     []Flavor
-	Owner       User
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Thumbnail   Thumbnail
-	DeletedAt   *time.Time
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Tags        []string   `json:"tags"`
+	Flavors     []Flavor   `json:"flavors"`
+	Owner       User       `json:"owner"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+	Thumbnail   Thumbnail  `json:"thumbnail"`
+	DeletedAt   *time.Time `json:"deletedAt"`
 }
 
 type Thumbnail struct {
@@ -69,12 +69,12 @@ const (
 )
 
 type Flavor struct {
-	ID        string
-	Name      string
-	Versions  []FlavorVersion
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
+	ID        string          `json:"id"`
+	Name      string          `json:"name"`
+	Versions  []FlavorVersion `json:"versions"`
+	CreatedAt time.Time       `json:"createdAt"`
+	UpdatedAt time.Time       `json:"updatedAt"`
+	DeletedAt *time.Time      `json:"deletedAt"`
 }
 
 type FlavorVersionDiff struct {
@@ -84,17 +84,17 @@ type FlavorVersionDiff struct {
 }
 
 type FlavorVersion struct {
-	ID                     string
-	Version                string
-	MinecraftVersion       string
-	Hash                   string
-	ChangeHash             string
-	FileHashes             []file.Hash
-	FilesUploaded          bool
-	BuildStatus            FlavorVersionBuildStatus
-	CreatedAt              time.Time
-	PresignedURLExpiryDate *time.Time
-	PresignedURL           *string
+	ID                     string                   `json:"id"`
+	Version                string                   `json:"version"`
+	MinecraftVersion       string                   `json:"minecraftVersion"`
+	Hash                   string                   `json:"hash"`
+	ChangeHash             string                   `json:"changeHash"`
+	FileHashes             []file.Hash              `json:"fileHashes"`
+	FilesUploaded          bool                     `json:"filesUploaded"`
+	BuildStatus            FlavorVersionBuildStatus `json:"buildStatus"`
+	CreatedAt              time.Time                `json:"createdAt"`
+	PresignedURLExpiryDate *time.Time               `json:"presignedURLExpiryDate"`
+	PresignedURL           *string                  `json:"presignedURL"`
 }
 
 /*
@@ -102,11 +102,11 @@ type FlavorVersion struct {
  */
 
 type User struct {
-	ID        string
-	Nickname  string
-	Email     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        string    `json:"id"`
+	Nickname  string    `json:"nickname"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 /*
@@ -147,7 +147,7 @@ const (
  */
 
 type MinecraftVersion struct {
-	Version   string
-	ImageURL  string
-	CreatedAt time.Time
+	Version   string    `json:"version"`
+	ImageURL  string    `json:"imageURL"`
+	CreatedAt time.Time `json:"createdAt"`
 }

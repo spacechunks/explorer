@@ -143,6 +143,9 @@ UPDATE flavors SET deleted_at = now() WHERE id = $1;
 -- name: GetFlavorByIDIgnoreDeleted :one
 SELECT * FROM flavors WHERE id = $1 AND deleted_at IS NULL;
 
+-- name: AllDeletedFlavors :many
+SELECT id, chunk_id FROM flavors WHERE deleted_at IS NOT NULL;
+
 /*
  * BLOB STORE
  */
@@ -201,6 +204,9 @@ WHERE id = $3;
 -- name: BulkDeleteInstances :batchexec
 DELETE FROM instances WHERE id = $1;
 
+-- name: CountInstancesByFlavorID :one
+SELECT COUNT(*) FROM instances WHERE flavor_version_id = $1;
+
 /*
  * MINECRAFT VERSIONS
  */
@@ -223,4 +229,26 @@ INSERT INTO users
     (id, nickname, email, created_at, updated_at)
 VALUES
     ($1, $2, $3, $4, $5);
+
+/*
+ * ARCHIVE
+ */
+
+-- name: ArchiveChunk :exec
+INSERT INTO chunk_archive
+    (id, owner_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4);
+
+-- name: ArchiveFlavor :exec
+INSERT INTO flavor_archive
+    (id, chunk_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4);
+
+-- name: ArchiveFlavorVersion :exec
+INSERT INTO flavor_version_archive
+    (id, flavor_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4);
 

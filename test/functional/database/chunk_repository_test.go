@@ -404,3 +404,36 @@ func TestListChunksDoesNotReturnDeletedChunks(t *testing.T) {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
 }
+
+func TestAllDeletedFlavors(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c1  = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.ID = test.NewUUIDv7(t)
+			tmp.DeletedAt = new(time.Now())
+			tmp.Flavors[0].DeletedAt = new(time.Now())
+		})
+		c2 = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.ID = test.NewUUIDv7(t)
+			tmp.DeletedAt = new(time.Now())
+			tmp.Flavors[0].DeletedAt = new(time.Now())
+		})
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+
+	pg.CreateChunk(t, &c1, fixture.CreateOptionsAll)
+	pg.CreateChunk(t, &c2, fixture.CreateOptionsAll)
+
+	actual, err := pg.DB.AllDeletedFlavors(ctx)
+	require.NoError(t, err)
+
+	expected := map[string]string{
+		c1.Flavors[0].ID: c1.ID,
+		c2.Flavors[0].ID: c2.ID,
+	}
+
+	require.Equal(t, expected, actual)
+}

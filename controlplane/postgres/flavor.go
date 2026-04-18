@@ -356,6 +356,28 @@ func (db *DB) GetFlavorByID(ctx context.Context, id string) (resource.Flavor, er
 	return ret, nil
 }
 
+func (db *DB) AllDeletedFlavors(ctx context.Context) (map[string]string, error) {
+	var ret map[string]string
+
+	if err := db.do(ctx, func(q *query.Queries) error {
+		rows, err := q.AllDeletedFlavors(ctx)
+		if err != nil {
+			return err
+		}
+
+		ret = make(map[string]string, len(rows))
+		for _, r := range rows {
+			ret[r.ID] = r.ChunkID
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
 func (db *DB) InsertJob(ctx context.Context, flavorVersionID string, status string, job river.JobArgs) error {
 	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.UpdateFlavorVersionBuildStatus(ctx, query.UpdateFlavorVersionBuildStatusParams{

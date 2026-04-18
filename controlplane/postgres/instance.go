@@ -286,6 +286,17 @@ func (db *DB) ApplyStatusReports(ctx context.Context, reports []resource.Instanc
 	return nil
 }
 
+func (db *DB) CountInstancesByFlavorVersionID(ctx context.Context, flavorVersionID string) (uint, error) {
+	var ret uint
+	err := db.do(ctx, func(q *query.Queries) error {
+		c, err := q.CountInstancesByFlavorID(ctx, flavorVersionID)
+		ret = uint(c)
+		return err
+	})
+
+	return ret, err
+}
+
 func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) (resource.Instance, error) {
 	rows, err := q.GetInstance(ctx, id)
 	if err != nil {

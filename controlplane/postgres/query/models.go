@@ -172,6 +172,13 @@ type Chunk struct {
 	DeletedAt          pgtype.Timestamptz
 }
 
+type ChunkArchive struct {
+	ID        string
+	OwnerID   string
+	Data      []byte
+	CreatedAt time.Time
+}
+
 type Flavor struct {
 	ID        string
 	ChunkID   string
@@ -179,6 +186,13 @@ type Flavor struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt pgtype.Timestamptz
+}
+
+type FlavorArchive struct {
+	ID        string
+	ChunkID   string
+	Data      []byte
+	CreatedAt time.Time
 }
 
 type FlavorVersion struct {
@@ -194,6 +208,13 @@ type FlavorVersion struct {
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
 	MinecraftVersion       string
+}
+
+type FlavorVersionArchive struct {
+	ID        string
+	FlavorID  string
+	Data      []byte
+	CreatedAt time.Time
 }
 
 type FlavorVersionFile struct {
