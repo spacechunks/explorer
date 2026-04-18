@@ -245,6 +245,16 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 		return fmt.Errorf("access: %w", err)
 	}
 
+	flavorID, err := s.repo.FlavorIDByFlavorVersionID(ctx, versionID)
+	if err != nil {
+		return fmt.Errorf("get flavor id: %w", err)
+	}
+
+	// make sure that the flavor is actually not deleted
+	if _, err := s.repo.GetFlavorByID(ctx, flavorID); err != nil {
+		return fmt.Errorf("flavor by id: %w", err)
+	}
+
 	version, err := s.repo.FlavorVersionByID(ctx, versionID)
 	if err != nil {
 		return fmt.Errorf("flavor version: %w", err)
@@ -324,7 +334,7 @@ func (s *svc) DeleteFlavor(ctx context.Context, id string) error {
 		return fmt.Errorf("get: %w", err)
 	}
 
-	if err := s.repo.DeleteFlavor(ctx, id); err != nil {
+	if err := s.repo.MarkFlavorDeleted(ctx, id); err != nil {
 		return fmt.Errorf("delete: %w", err)
 	}
 

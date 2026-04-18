@@ -1284,6 +1284,21 @@ func TestFlavorInteractionsDontWorkAfterDelete(t *testing.T) {
 			},
 			err: apierrs.ErrFlavorVersionNotFound.GRPCStatus().Err(),
 		},
+		{
+			name: "build flavor versions",
+			chunkAction: func(
+				ctx context.Context,
+				c chunkv1alpha1.ChunkServiceClient,
+				chunk resource.Chunk,
+				flavor resource.Flavor,
+			) error {
+				_, err := c.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{
+					FlavorVersionId: flavor.Versions[0].ID,
+				})
+				return err
+			},
+			err: apierrs.ErrNotFound.GRPCStatus().Err(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1295,13 +1310,15 @@ func TestFlavorInteractionsDontWorkAfterDelete(t *testing.T) {
 			)
 
 			cp.Run(t)
+
+			cp.Postgres.InsertNode(t)
 			chunkClient := cp.ChunkClient(t)
-			insClient := cp.InstanceClient(t)
 
 			cp.Postgres.CreateUser(t, &u)
-			cp.Postgres.InsertNode(t)
 			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
 			cp.AddUserAPIKey(t, &ctx, u)
+
+			insClient := cp.InstanceClient(t)
 
 			_, err := chunkClient.DeleteFlavor(ctx, &chunkv1alpha1.DeleteFlavorRequest{
 				Id: c.Flavors[0].ID,

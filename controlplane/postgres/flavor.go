@@ -378,6 +378,22 @@ func (db *DB) AllDeletedFlavors(ctx context.Context) (map[string]string, error) 
 	return ret, nil
 }
 
+func (db *DB) FlavorIDByFlavorVersionID(ctx context.Context, id string) (string, error) {
+	var ret string
+	err := db.do(ctx, func(q *query.Queries) error {
+		flavorID, err := q.FlavorIDByFlavorVersionID(ctx, id)
+		ret = flavorID
+		return err
+	})
+	return ret, err
+}
+
+func (db *DB) MarkFlavorDeleted(ctx context.Context, id string) error {
+	return db.do(ctx, func(q *query.Queries) error {
+		return q.MarkFlavorDeleted(ctx, id)
+	})
+}
+
 func (db *DB) InsertJob(ctx context.Context, flavorVersionID string, status string, job river.JobArgs) error {
 	return db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.UpdateFlavorVersionBuildStatus(ctx, query.UpdateFlavorVersionBuildStatusParams{

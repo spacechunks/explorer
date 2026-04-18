@@ -437,3 +437,20 @@ func TestAllDeletedFlavors(t *testing.T) {
 
 	require.Equal(t, expected, actual)
 }
+
+func TestFlavorIDByFlavorVersionByID(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	actual, err := pg.DB.FlavorIDByFlavorVersionID(ctx, c.Flavors[0].Versions[0].ID)
+	require.NoError(t, err)
+
+	require.Equal(t, c.Flavors[0].ID, actual)
+}

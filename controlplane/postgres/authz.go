@@ -39,7 +39,7 @@ func (db *DB) FlavorOwner(ctx context.Context, flavorID string) (resource.User, 
 
 func (db *DB) FlavorVersionOwner(ctx context.Context, flavorVersionID string) (resource.User, error) {
 	return getOwner(ctx, db, func(ctx context.Context, q *query.Queries) (query.User, error) {
-		return q.ChunkOwnerByFlavorVersionIDIgnoreDeleted(ctx, flavorVersionID)
+		return q.ChunkOwnerByFlavorVersionID(ctx, flavorVersionID)
 	})
 }
 

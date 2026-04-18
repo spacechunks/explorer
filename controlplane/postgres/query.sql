@@ -132,10 +132,10 @@ SELECT u.* FROM users u
     JOIN users ON u.id = c.owner_id
 LIMIT 1;
 
--- name: ChunkOwnerByFlavorVersionIDIgnoreDeleted :one
+-- name: ChunkOwnerByFlavorVersionID :one
 SELECT u.* FROM users u
     JOIN flavor_versions fv ON fv.id = $1
-    JOIN flavors f ON f.id = fv.flavor_id AND f.deleted_at IS NULL
+    JOIN flavors f ON f.id = fv.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
 LIMIT 1;
@@ -144,7 +144,9 @@ LIMIT 1;
 UPDATE flavors SET deleted_at = now() WHERE id = $1;
 
 -- name: GetFlavorByIDIgnoreDeleted :one
-SELECT * FROM flavors WHERE id = $1 AND deleted_at IS NULL;
+SELECT * FROM flavors
+--     JOIN flavor_versions fv ON fv.flavor_id = $1
+WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: AllDeletedFlavors :many
 SELECT id, chunk_id FROM flavors WHERE deleted_at IS NOT NULL;
@@ -154,6 +156,9 @@ DELETE FROM flavors WHERE id = $1;
 
 -- name: DeleteFlavorVersion :exec
 DELETE FROM flavor_versions WHERE id = $1;
+
+-- name: FlavorIDByFlavorVersionID :one
+SELECT flavor_id FROM flavor_versions WHERE id = $1;
 
 /*
  * BLOB STORE

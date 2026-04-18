@@ -216,17 +216,17 @@ func (q *Queries) ChunkOwnerByFlavorID(ctx context.Context, id string) (User, er
 	return i, err
 }
 
-const chunkOwnerByFlavorVersionIDIgnoreDeleted = `-- name: ChunkOwnerByFlavorVersionIDIgnoreDeleted :one
+const chunkOwnerByFlavorVersionID = `-- name: ChunkOwnerByFlavorVersionID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
     JOIN flavor_versions fv ON fv.id = $1
-    JOIN flavors f ON f.id = fv.flavor_id AND f.deleted_at IS NULL
+    JOIN flavors f ON f.id = fv.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
 LIMIT 1
 `
 
-func (q *Queries) ChunkOwnerByFlavorVersionIDIgnoreDeleted(ctx context.Context, id string) (User, error) {
-	row := q.db.QueryRow(ctx, chunkOwnerByFlavorVersionIDIgnoreDeleted, id)
+func (q *Queries) ChunkOwnerByFlavorVersionID(ctx context.Context, id string) (User, error) {
+	row := q.db.QueryRow(ctx, chunkOwnerByFlavorVersionID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -433,6 +433,17 @@ DELETE FROM flavor_versions WHERE id = $1
 func (q *Queries) DeleteFlavorVersion(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteFlavorVersion, id)
 	return err
+}
+
+const flavorIDByFlavorVersionID = `-- name: FlavorIDByFlavorVersionID :one
+SELECT flavor_id FROM flavor_versions WHERE id = $1
+`
+
+func (q *Queries) FlavorIDByFlavorVersionID(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, flavorIDByFlavorVersionID, id)
+	var flavor_id string
+	err := row.Scan(&flavor_id)
+	return flavor_id, err
 }
 
 const flavorNameExists = `-- name: FlavorNameExists :one
@@ -684,9 +695,11 @@ func (q *Queries) GetChunkByIDIgnoreDeleted(ctx context.Context, id string) ([]G
 }
 
 const getFlavorByIDIgnoreDeleted = `-- name: GetFlavorByIDIgnoreDeleted :one
-SELECT id, chunk_id, name, created_at, updated_at, deleted_at FROM flavors WHERE id = $1 AND deleted_at IS NULL
+SELECT id, chunk_id, name, created_at, updated_at, deleted_at FROM flavors
+WHERE id = $1 AND deleted_at IS NULL
 `
 
+// JOIN flavor_versions fv ON fv.flavor_id = $1
 func (q *Queries) GetFlavorByIDIgnoreDeleted(ctx context.Context, id string) (Flavor, error) {
 	row := q.db.QueryRow(ctx, getFlavorByIDIgnoreDeleted, id)
 	var i Flavor

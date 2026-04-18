@@ -57,6 +57,8 @@ type Repository interface {
 	GetFlavorByID(ctx context.Context, id string) (resource.Flavor, error)
 	MarkChunkAndFlavorsDeleted(ctx context.Context, id string) error
 	AllDeletedFlavors(ctx context.Context) (map[string]string, error)
+	FlavorIDByFlavorVersionID(ctx context.Context, id string) (string, error)
+	MarkFlavorDeleted(ctx context.Context, id string) error
 }
 
 type ArchiveRepository interface {
