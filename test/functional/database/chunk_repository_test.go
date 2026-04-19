@@ -226,7 +226,7 @@ func TestGetMinecraftVersion(t *testing.T) {
 	}
 }
 
-func TestDeleteFlavor(t *testing.T) {
+func TestMarkFlavorDeleted(t *testing.T) {
 	var (
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
@@ -239,7 +239,7 @@ func TestDeleteFlavor(t *testing.T) {
 
 	flavorID := c.Flavors[0].ID
 
-	err := pg.DB.DeleteFlavor(ctx, flavorID)
+	err := pg.DB.MarkFlavorDeleted(ctx, flavorID)
 	require.NoError(t, err)
 
 	var worked int
