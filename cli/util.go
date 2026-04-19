@@ -19,7 +19,20 @@
 package cli
 
 import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+
 	"github.com/rodaine/table"
+)
+
+var (
+	ColorReset          = "\033[0m"
+	ColorRed            = "\033[31m"
+	ColorGreen          = "\033[32m"
+	ColorYellow         = "\033[33m"
+	ColorCyan           = "\033[36m"
 )
 
 func Find[T any](s []*T, filter func(i *T) bool) *T {
@@ -55,4 +68,20 @@ func Section() table.Table {
 		return ""
 	})
 	return t
+}
+
+func Prompt(label string) bool {
+	var s string
+	r := bufio.NewReader(os.Stdin)
+	for {
+		_, _ = fmt.Fprint(os.Stdout, label+" ")
+		s, _ = r.ReadString('\n')
+		s = strings.TrimSpace(s)
+		if strings.ToLower(s) == "yes" || strings.ToLower(s) == "y" {
+			return true
+		}
+		if strings.ToLower(s) == "no" || strings.ToLower(s) == "n" {
+			return false
+		}
+	}
 }

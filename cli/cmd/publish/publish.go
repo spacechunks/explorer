@@ -19,7 +19,6 @@
 package publish
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io/fs"
@@ -74,6 +73,11 @@ type localFlavor struct {
 	path             string
 	hash             string
 	files            []file.Hash
+}
+
+type deletedFlavor struct {
+	id   string
+	name string
 }
 
 func (f localFlavor) serverRelPath(path string) string {
@@ -194,12 +198,16 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 		plan := newPlan(cliCtx.Logger, cfg, resp.Versions, chunk)
 		plan.print()
 
-		if len(plan.addedFlavors)+len(plan.changedFlavors)+len(plan.actionables) == 0 && !plan.updateThumbnail {
+		if len(plan.addedFlavors)+
+			len(plan.changedFlavors)+
+			len(plan.actionables)+
+			len(plan.deletedFlavors) == 0 &&
+			!plan.updateThumbnail {
 			fmt.Println("Nothing to publish.")
 			return nil
 		}
 
-		if !prompt("Are you sure you want to publish? (y/n):") {
+		if !cli.Prompt("Are you sure you want to publish? (y/n):") {
 			return nil
 		}
 
@@ -228,6 +236,14 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 				}); err != nil {
 					fmt.Printf("Thumbnail: Error uploading thumbnail: %v\n", err)
 				}
+			}
+		}
+
+		for _, df := range plan.deletedFlavors {
+			if _, err := cliCtx.Client.DeleteFlavor(ctx, &chunkv1alpha1.DeleteFlavorRequest{
+				Id: df.id,
+			}); err != nil {
+				fmt.Printf("Error deleting flavor '%s': %v\n", df.name, err)
 			}
 		}
 
@@ -303,7 +319,7 @@ func display(updates map[string]buildUpdate) {
 		c++
 		fmt.Printf("%s: ", upd.data.local.name)
 		if upd.err != nil {
-			fmt.Printf("%s%s%s\n", Red, upd.err.Error(), Reset)
+			fmt.Printf("%s%s%s\n", cli.ColorRed, upd.err.Error(), cli.ColorReset)
 		}
 
 		if upd.uploadProgress != nil {
@@ -312,9 +328,9 @@ func display(updates map[string]buildUpdate) {
 
 		if upd.buildStatus != nil {
 			if *upd.buildStatus == "COMPLETED" {
-				fmt.Printf("%s%s%s", Green, *upd.buildStatus, Reset)
+				fmt.Printf("%s%s%s", cli.ColorGreen, *upd.buildStatus, cli.ColorReset)
 			} else if strings.Contains(*upd.buildStatus, "FAILED") {
-				fmt.Printf("%s%s%s", Red, *upd.buildStatus, Reset)
+				fmt.Printf("%s%s%s", cli.ColorRed, *upd.buildStatus, cli.ColorReset)
 			} else {
 				fmt.Printf("%s", *upd.buildStatus)
 			}
@@ -424,22 +440,6 @@ func localFileHashes(logger *slog.Logger, flavorPath string) (string, []file.Has
 	}
 
 	return file.HashTreeRootString(tree), fileHashes, nil
-}
-
-func prompt(label string) bool {
-	var s string
-	r := bufio.NewReader(os.Stdin)
-	for {
-		_, _ = fmt.Fprint(os.Stdout, label+" ")
-		s, _ = r.ReadString('\n')
-		s = strings.TrimSpace(s)
-		if strings.ToLower(s) == "yes" || strings.ToLower(s) == "y" {
-			return true
-		}
-		if strings.ToLower(s) == "no" || strings.ToLower(s) == "n" {
-			return false
-		}
-	}
 }
 
 func readConfigWithResolvedPaths(configPath string) (publishConfig, error) {
