@@ -586,16 +586,16 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 	return hash, err
 }
 
-const getChunkByIDIgnoreDeleted = `-- name: GetChunkByIDIgnoreDeleted :many
+const getChunkByID = `-- name: GetChunkByID :many
 SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.id = $1 AND c.deleted_at IS NULL
+WHERE c.id = $1
 `
 
-type GetChunkByIDIgnoreDeletedRow struct {
+type GetChunkByIDRow struct {
 	ID                     string
 	Name                   string
 	Description            string
@@ -636,15 +636,15 @@ type GetChunkByIDIgnoreDeletedRow struct {
 }
 
 // TODO: read multiple
-func (q *Queries) GetChunkByIDIgnoreDeleted(ctx context.Context, id string) ([]GetChunkByIDIgnoreDeletedRow, error) {
-	rows, err := q.db.Query(ctx, getChunkByIDIgnoreDeleted, id)
+func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRow, error) {
+	rows, err := q.db.Query(ctx, getChunkByID, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetChunkByIDIgnoreDeletedRow
+	var items []GetChunkByIDRow
 	for rows.Next() {
-		var i GetChunkByIDIgnoreDeletedRow
+		var i GetChunkByIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -1039,16 +1039,15 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 	return i, err
 }
 
-const listChunksIgnoreDeleted = `-- name: ListChunksIgnoreDeleted :many
+const listChunks = `-- name: ListChunks :many
 SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.deleted_at IS NULL
 `
 
-type ListChunksIgnoreDeletedRow struct {
+type ListChunksRow struct {
 	ID                     string
 	Name                   string
 	Description            string
@@ -1088,15 +1087,15 @@ type ListChunksIgnoreDeletedRow struct {
 	UpdatedAt_3            pgtype.Timestamptz
 }
 
-func (q *Queries) ListChunksIgnoreDeleted(ctx context.Context) ([]ListChunksIgnoreDeletedRow, error) {
-	rows, err := q.db.Query(ctx, listChunksIgnoreDeleted)
+func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
+	rows, err := q.db.Query(ctx, listChunks)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListChunksIgnoreDeletedRow
+	var items []ListChunksRow
 	for rows.Next() {
-		var i ListChunksIgnoreDeletedRow
+		var i ListChunksRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,

@@ -60,6 +60,11 @@ func (s *svc) GetChunk(ctx context.Context, id string) (resource.Chunk, error) {
 	if err != nil {
 		return resource.Chunk{}, err
 	}
+
+	if c.DeletedAt != nil {
+		return resource.Chunk{}, apierrs.ErrChunkNotFound
+	}
+
 	return c, nil
 }
 
@@ -71,6 +76,10 @@ func (s *svc) UpdateChunk(ctx context.Context, new resource.Chunk) (resource.Chu
 	old, err := s.repo.GetChunkByID(ctx, new.ID)
 	if err != nil {
 		return resource.Chunk{}, fmt.Errorf("get chunk: %w", err)
+	}
+
+	if old.DeletedAt != nil {
+		return resource.Chunk{}, apierrs.ErrChunkNotFound
 	}
 
 	if err := s.authorized(ctx, old.ID); err != nil {
@@ -114,9 +123,13 @@ func (s *svc) UpdateThumbnail(ctx context.Context, chunkID string, imgData []byt
 		return fmt.Errorf("authorize: %w", err)
 	}
 
-	// make sure that the chunk is actually not deleted
-	if _, err := s.repo.GetChunkByID(ctx, chunkID); err != nil {
+	c, err := s.repo.GetChunkByID(ctx, chunkID)
+	if err != nil {
 		return fmt.Errorf("get chunk: %w", err)
+	}
+
+	if c.DeletedAt != nil {
+		return apierrs.ErrChunkNotFound
 	}
 
 	cfg, _, err := image.DecodeConfig(bytes.NewBuffer(imgData))
@@ -160,9 +173,13 @@ func (s *svc) DeleteChunk(ctx context.Context, id string) error {
 		return fmt.Errorf("authorize: %w", err)
 	}
 
-	_, err := s.repo.GetChunkByID(ctx, id)
+	c, err := s.repo.GetChunkByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("get: %w", err)
+	}
+
+	if c.DeletedAt != nil {
+		return nil
 	}
 
 	if err := s.repo.MarkChunkAndFlavorsDeleted(ctx, id); err != nil {

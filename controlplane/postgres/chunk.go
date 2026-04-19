@@ -120,7 +120,7 @@ func (db *DB) UpdateChunk(ctx context.Context, c resource.Chunk) (resource.Chunk
 func (db *DB) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
 	ret := make([]resource.Chunk, 0)
 	if err := db.do(ctx, func(q *query.Queries) error {
-		rows, err := q.ListChunksIgnoreDeleted(ctx)
+		rows, err := q.ListChunks(ctx)
 		if err != nil {
 			return err
 		}
@@ -176,9 +176,21 @@ func (db *DB) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
 				thumbnailHash = &r.ThumbnailHash.String
 			}
 
+			var chunkDeletedAt *time.Time
+			if r.DeletedAt.Valid {
+				chunkDeletedAt = &r.DeletedAt.Time
+			}
+
+			var flavorDeletedAt *time.Time
+			if r.DeletedAt_2.Valid {
+				flavorDeletedAt = &r.DeletedAt_2.Time
+			}
+
 			rel.PresingedURLExpiryDate = expiryDate
 			rel.PresignedURL = presignedURL
 			rel.ThumbnailHash = thumbnailHash
+			rel.ChunkDeletedAt = chunkDeletedAt
+			rel.FlavorDeletedAt = flavorDeletedAt
 
 			m[r.ID] = append(m[r.ID], rel)
 		}
@@ -281,7 +293,7 @@ func (db *DB) MarkChunkAndFlavorsDeleted(ctx context.Context, id string) error {
 		}
 
 		for _, f := range c.Flavors {
-			if err := q.DeleteFlavor(ctx, f.ID); err != nil {
+			if err := q.MarkFlavorDeleted(ctx, f.ID); err != nil {
 				return fmt.Errorf("delete flavor: %w", err)
 			}
 		}
@@ -290,7 +302,7 @@ func (db *DB) MarkChunkAndFlavorsDeleted(ctx context.Context, id string) error {
 }
 
 func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (resource.Chunk, error) {
-	rows, err := q.GetChunkByIDIgnoreDeleted(ctx, id)
+	rows, err := q.GetChunkByID(ctx, id)
 	if err != nil {
 		return resource.Chunk{}, err
 	}
@@ -312,8 +324,8 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (re
 
 			FlavorID:        r.ID_2,
 			FlavorName:      r.Name_2.String,
-			FlavorCreatedAt: r.CreatedAt_2.Time,
-			FlavorUpdatedAt: r.UpdatedAt_2.Time,
+			FlavorCreatedAt: r.CreatedAt_2.Time.UTC(),
+			FlavorUpdatedAt: r.UpdatedAt_2.Time.UTC(),
 
 			FlavorVersionID:        r.ID_3,
 			FlavorVersionFlavorID:  r.FlavorID,
@@ -323,7 +335,7 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (re
 			BuildStatus:            string(r.BuildStatus.BuildStatus),
 			ChangeHash:             r.ChangeHash.String,
 			FilesUploaded:          r.FilesUploaded.Bool,
-			FlavorVersionCreatedAt: r.CreatedAt_3.Time,
+			FlavorVersionCreatedAt: r.CreatedAt_3.Time.UTC(),
 
 			FilePath: r.FilePath.String,
 			FileHash: r.FileHash.String,
@@ -331,8 +343,8 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (re
 			UserID:        *r.ID_4,
 			UserNickname:  r.Nickname.String,
 			UserEmail:     r.Email.String,
-			UserCreatedAt: r.CreatedAt_5.Time,
-			UserUpdatedAt: r.UpdatedAt_3.Time,
+			UserCreatedAt: r.CreatedAt_5.Time.UTC(),
+			UserUpdatedAt: r.UpdatedAt_3.Time.UTC(),
 		}
 
 		// sqlc is not able to generate a *time.Time from nullable timestamptz
@@ -351,9 +363,21 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (re
 			thumbnailHash = &r.ThumbnailHash.String
 		}
 
+		var chunkDeletedAt *time.Time
+		if r.DeletedAt.Valid {
+			chunkDeletedAt = &r.DeletedAt.Time
+		}
+
+		var flavorDeletedAt *time.Time
+		if r.DeletedAt_2.Valid {
+			flavorDeletedAt = &r.DeletedAt_2.Time
+		}
+
 		rel.PresingedURLExpiryDate = expiryDate
 		rel.PresignedURL = presignedURL
 		rel.ThumbnailHash = thumbnailHash
+		rel.ChunkDeletedAt = chunkDeletedAt
+		rel.FlavorDeletedAt = flavorDeletedAt
 
 		relationRows = append(relationRows, rel)
 	}
@@ -368,12 +392,14 @@ type chunkRelationsRow struct {
 	Tags           []string
 	ChunkCreatedAt time.Time
 	ChunkUpdatedAt time.Time
+	ChunkDeletedAt *time.Time
 	ThumbnailHash  *string
 
 	FlavorID        *string
 	FlavorName      string
 	FlavorCreatedAt time.Time
 	FlavorUpdatedAt time.Time
+	FlavorDeletedAt *time.Time
 
 	FlavorVersionID        *string
 	FlavorVersionFlavorID  *string
@@ -417,6 +443,7 @@ func collectChunks(rows []chunkRelationsRow) resource.Chunk {
 			Tags:        row.Tags,
 			CreatedAt:   row.ChunkCreatedAt.UTC(),
 			UpdatedAt:   row.ChunkUpdatedAt.UTC(),
+			DeletedAt:   row.ChunkDeletedAt,
 			Owner: resource.User{
 				ID:        row.UserID,
 				Nickname:  row.UserNickname,
@@ -442,6 +469,7 @@ func collectChunks(rows []chunkRelationsRow) resource.Chunk {
 					Name:      r.FlavorName,
 					CreatedAt: r.FlavorCreatedAt,
 					UpdatedAt: r.FlavorUpdatedAt,
+					DeletedAt: r.FlavorDeletedAt,
 				}
 			}
 		}
