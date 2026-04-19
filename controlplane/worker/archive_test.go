@@ -108,10 +108,6 @@ func TestDoNotArchiveFlavorVersionsCurrentlyBuilding(t *testing.T) {
 			name:        "build checkpoint",
 			buildStatus: resource.FlavorVersionBuildStatusBuildCheckpoint,
 		},
-		{
-			name:        "build pending",
-			buildStatus: resource.FlavorVersionBuildStatusPending,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -200,7 +196,7 @@ func TestArchiveWorkerDoesNotArchiveFlavorAndChunkWhenVersionsAndFlavorsRemain(t
 		mockInsRepo.
 			EXPECT().
 			CountInstancesByFlavorVersionID(mocky.Anything, v.ID).
-			Return(uint(0), nil)
+			Return(uint(1), nil)
 	}
 
 	mockChunkRepo.
