@@ -27,13 +27,13 @@ import (
 	"io"
 	"unicode/utf8"
 
+	_ "image/png"
+
 	"github.com/spacechunks/explorer/controlplane/authz"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/resource"
-
-	_ "image/png"
 )
 
 func (s *svc) CreateChunk(ctx context.Context, chunk resource.Chunk) (resource.Chunk, error) {
@@ -107,10 +107,20 @@ func (s *svc) UpdateChunk(ctx context.Context, new resource.Chunk) (resource.Chu
 }
 
 func (s *svc) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
-	ret, err := s.repo.ListChunks(ctx)
+	var ret []resource.Chunk
+
+	l, err := s.repo.ListChunks(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	for _, c := range l {
+		if c.DeletedAt != nil {
+			continue
+		}
+		ret = append(ret, c)
+	}
+
 	return ret, nil
 }
 
