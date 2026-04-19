@@ -123,7 +123,11 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		}
 	}()
 
-	tb, err := os.Create("changeset.tar.gz")
+	if err := os.MkdirAll(rootDir, os.ModePerm); err != nil {
+		return fmt.Errorf("create root dir: %w", err)
+	}
+
+	tb, err := os.Create(rootDir + "/changeset.tar.gz")
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
 	}
