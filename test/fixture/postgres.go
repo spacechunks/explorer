@@ -151,7 +151,7 @@ func (p *Postgres) CreateRiverClient(t *testing.T) {
 			StatusCheckInterval: 1 * time.Second,
 		},
 		worker.CreateResourcePackWorkerConfig{
-			PackTemplateKey:   "blabla",
+			PackTemplateKey: "blabla",
 		},
 		p.DB,
 		p.DB,
