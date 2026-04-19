@@ -43,6 +43,35 @@ func (q *Queries) AllChunkThumbnailHashes(ctx context.Context) ([]AllChunkThumbn
 	return items, nil
 }
 
+const allDeletedFlavors = `-- name: AllDeletedFlavors :many
+SELECT id, chunk_id FROM flavors WHERE deleted_at IS NOT NULL
+`
+
+type AllDeletedFlavorsRow struct {
+	ID      string
+	ChunkID string
+}
+
+func (q *Queries) AllDeletedFlavors(ctx context.Context) ([]AllDeletedFlavorsRow, error) {
+	rows, err := q.db.Query(ctx, allDeletedFlavors)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AllDeletedFlavorsRow
+	for rows.Next() {
+		var i AllDeletedFlavorsRow
+		if err := rows.Scan(&i.ID, &i.ChunkID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const allMinecraftVersions = `-- name: AllMinecraftVersions :many
 /*
  * MINECRAFT VERSIONS
@@ -69,6 +98,82 @@ func (q *Queries) AllMinecraftVersions(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const archiveChunk = `-- name: ArchiveChunk :exec
+/*
+ * ARCHIVE
+ */
+
+INSERT INTO chunk_archive
+    (id, owner_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4)
+`
+
+type ArchiveChunkParams struct {
+	ID        string
+	OwnerID   string
+	Data      []byte
+	CreatedAt time.Time
+}
+
+func (q *Queries) ArchiveChunk(ctx context.Context, arg ArchiveChunkParams) error {
+	_, err := q.db.Exec(ctx, archiveChunk,
+		arg.ID,
+		arg.OwnerID,
+		arg.Data,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const archiveFlavor = `-- name: ArchiveFlavor :exec
+INSERT INTO flavor_archive
+    (id, chunk_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4)
+`
+
+type ArchiveFlavorParams struct {
+	ID        string
+	ChunkID   string
+	Data      []byte
+	CreatedAt time.Time
+}
+
+func (q *Queries) ArchiveFlavor(ctx context.Context, arg ArchiveFlavorParams) error {
+	_, err := q.db.Exec(ctx, archiveFlavor,
+		arg.ID,
+		arg.ChunkID,
+		arg.Data,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const archiveFlavorVersion = `-- name: ArchiveFlavorVersion :exec
+INSERT INTO flavor_version_archive
+    (id, flavor_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4)
+`
+
+type ArchiveFlavorVersionParams struct {
+	ID        string
+	FlavorID  string
+	Data      []byte
+	CreatedAt time.Time
+}
+
+func (q *Queries) ArchiveFlavorVersion(ctx context.Context, arg ArchiveFlavorVersionParams) error {
+	_, err := q.db.Exec(ctx, archiveFlavorVersion,
+		arg.ID,
+		arg.FlavorID,
+		arg.Data,
+		arg.CreatedAt,
+	)
+	return err
 }
 
 const chunkOwnerByChunkID = `-- name: ChunkOwnerByChunkID :one
@@ -111,17 +216,17 @@ func (q *Queries) ChunkOwnerByFlavorID(ctx context.Context, id string) (User, er
 	return i, err
 }
 
-const chunkOwnerByFlavorVersionIDIgnoreDeleted = `-- name: ChunkOwnerByFlavorVersionIDIgnoreDeleted :one
+const chunkOwnerByFlavorVersionID = `-- name: ChunkOwnerByFlavorVersionID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
     JOIN flavor_versions fv ON fv.id = $1
-    JOIN flavors f ON f.id = fv.flavor_id AND f.deleted_at IS NULL
+    JOIN flavors f ON f.id = fv.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
 LIMIT 1
 `
 
-func (q *Queries) ChunkOwnerByFlavorVersionIDIgnoreDeleted(ctx context.Context, id string) (User, error) {
-	row := q.db.QueryRow(ctx, chunkOwnerByFlavorVersionIDIgnoreDeleted, id)
+func (q *Queries) ChunkOwnerByFlavorVersionID(ctx context.Context, id string) (User, error) {
+	row := q.db.QueryRow(ctx, chunkOwnerByFlavorVersionID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -131,6 +236,17 @@ func (q *Queries) ChunkOwnerByFlavorVersionIDIgnoreDeleted(ctx context.Context, 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const countInstancesByFlavorID = `-- name: CountInstancesByFlavorID :one
+SELECT COUNT(*) FROM instances WHERE flavor_version_id = $1
+`
+
+func (q *Queries) CountInstancesByFlavorID(ctx context.Context, flavorVersionID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countInstancesByFlavorID, flavorVersionID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const createChunk = `-- name: CreateChunk :exec
@@ -292,13 +408,42 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const deleteChunk = `-- name: DeleteChunk :exec
+DELETE FROM chunks WHERE id = $1
+`
+
+func (q *Queries) DeleteChunk(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteChunk, id)
+	return err
+}
+
 const deleteFlavor = `-- name: DeleteFlavor :exec
-UPDATE flavors SET deleted_at = now() WHERE id = $1
+DELETE FROM flavors WHERE id = $1
 `
 
 func (q *Queries) DeleteFlavor(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteFlavor, id)
 	return err
+}
+
+const deleteFlavorVersion = `-- name: DeleteFlavorVersion :exec
+DELETE FROM flavor_versions WHERE id = $1
+`
+
+func (q *Queries) DeleteFlavorVersion(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, deleteFlavorVersion, id)
+	return err
+}
+
+const flavorIDByFlavorVersionID = `-- name: FlavorIDByFlavorVersionID :one
+SELECT flavor_id FROM flavor_versions WHERE id = $1
+`
+
+func (q *Queries) FlavorIDByFlavorVersionID(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, flavorIDByFlavorVersionID, id)
+	var flavor_id string
+	err := row.Scan(&flavor_id)
+	return flavor_id, err
 }
 
 const flavorNameExists = `-- name: FlavorNameExists :one
@@ -441,16 +586,16 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 	return hash, err
 }
 
-const getChunkByIDIgnoreDeleted = `-- name: GetChunkByIDIgnoreDeleted :many
+const getChunkByID = `-- name: GetChunkByID :many
 SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.id = $1 AND c.deleted_at IS NULL
+WHERE c.id = $1
 `
 
-type GetChunkByIDIgnoreDeletedRow struct {
+type GetChunkByIDRow struct {
 	ID                     string
 	Name                   string
 	Description            string
@@ -491,15 +636,15 @@ type GetChunkByIDIgnoreDeletedRow struct {
 }
 
 // TODO: read multiple
-func (q *Queries) GetChunkByIDIgnoreDeleted(ctx context.Context, id string) ([]GetChunkByIDIgnoreDeletedRow, error) {
-	rows, err := q.db.Query(ctx, getChunkByIDIgnoreDeleted, id)
+func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRow, error) {
+	rows, err := q.db.Query(ctx, getChunkByID, id)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetChunkByIDIgnoreDeletedRow
+	var items []GetChunkByIDRow
 	for rows.Next() {
-		var i GetChunkByIDIgnoreDeletedRow
+		var i GetChunkByIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -549,22 +694,70 @@ func (q *Queries) GetChunkByIDIgnoreDeleted(ctx context.Context, id string) ([]G
 	return items, nil
 }
 
-const getFlavorByIDIgnoreDeleted = `-- name: GetFlavorByIDIgnoreDeleted :one
-SELECT id, chunk_id, name, created_at, updated_at, deleted_at FROM flavors WHERE id = $1 AND deleted_at IS NULL
+const getFlavorByID = `-- name: GetFlavorByID :many
+SELECT f.id, chunk_id, name, f.created_at, updated_at, deleted_at, fv.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, fv.created_at, presigned_url_expiry_date, presigned_url, minecraft_version FROM flavors f
+    LEFT JOIN flavor_versions fv ON fv.flavor_id = $1
+WHERE f.id = $1
 `
 
-func (q *Queries) GetFlavorByIDIgnoreDeleted(ctx context.Context, id string) (Flavor, error) {
-	row := q.db.QueryRow(ctx, getFlavorByIDIgnoreDeleted, id)
-	var i Flavor
-	err := row.Scan(
-		&i.ID,
-		&i.ChunkID,
-		&i.Name,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeletedAt,
-	)
-	return i, err
+type GetFlavorByIDRow struct {
+	ID                     string
+	ChunkID                string
+	Name                   string
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	DeletedAt              pgtype.Timestamptz
+	ID_2                   *string
+	FlavorID               *string
+	Hash                   pgtype.Text
+	ChangeHash             pgtype.Text
+	BuildStatus            NullBuildStatus
+	Version                pgtype.Text
+	FilesUploaded          pgtype.Bool
+	PrevVersionID          *string
+	CreatedAt_2            pgtype.Timestamptz
+	PresignedUrlExpiryDate pgtype.Timestamptz
+	PresignedUrl           pgtype.Text
+	MinecraftVersion       pgtype.Text
+}
+
+func (q *Queries) GetFlavorByID(ctx context.Context, flavorID string) ([]GetFlavorByIDRow, error) {
+	rows, err := q.db.Query(ctx, getFlavorByID, flavorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFlavorByIDRow
+	for rows.Next() {
+		var i GetFlavorByIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ChunkID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.ID_2,
+			&i.FlavorID,
+			&i.Hash,
+			&i.ChangeHash,
+			&i.BuildStatus,
+			&i.Version,
+			&i.FilesUploaded,
+			&i.PrevVersionID,
+			&i.CreatedAt_2,
+			&i.PresignedUrlExpiryDate,
+			&i.PresignedUrl,
+			&i.MinecraftVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getInstance = `-- name: GetInstance :many
@@ -846,16 +1039,15 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 	return i, err
 }
 
-const listChunksIgnoreDeleted = `-- name: ListChunksIgnoreDeleted :many
+const listChunks = `-- name: ListChunks :many
 SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.deleted_at IS NULL
 `
 
-type ListChunksIgnoreDeletedRow struct {
+type ListChunksRow struct {
 	ID                     string
 	Name                   string
 	Description            string
@@ -895,15 +1087,15 @@ type ListChunksIgnoreDeletedRow struct {
 	UpdatedAt_3            pgtype.Timestamptz
 }
 
-func (q *Queries) ListChunksIgnoreDeleted(ctx context.Context) ([]ListChunksIgnoreDeletedRow, error) {
-	rows, err := q.db.Query(ctx, listChunksIgnoreDeleted)
+func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
+	rows, err := q.db.Query(ctx, listChunks)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListChunksIgnoreDeletedRow
+	var items []ListChunksRow
 	for rows.Next() {
-		var i ListChunksIgnoreDeletedRow
+		var i ListChunksRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -1086,6 +1278,15 @@ UPDATE chunks SET deleted_at = now() WHERE id = $1
 
 func (q *Queries) MarkChunkDeleted(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, markChunkDeleted, id)
+	return err
+}
+
+const markFlavorDeleted = `-- name: MarkFlavorDeleted :exec
+UPDATE flavors SET deleted_at = now() WHERE id = $1
+`
+
+func (q *Queries) MarkFlavorDeleted(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, markFlavorDeleted, id)
 	return err
 }
 

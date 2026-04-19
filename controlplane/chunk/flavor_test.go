@@ -189,7 +189,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(nil)
 
 				repo.EXPECT().
-					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
+					FlavorByID(mocky.Anything, fixture.Flavor().ID).
 					Return(fixture.Flavor(), nil)
 
 				repo.EXPECT().
@@ -248,7 +248,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(nil)
 
 				repo.EXPECT().
-					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
+					FlavorByID(mocky.Anything, fixture.Flavor().ID).
 					Return(fixture.Flavor(), nil)
 
 				repo.EXPECT().
@@ -287,7 +287,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(nil)
 
 				repo.EXPECT().
-					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
+					FlavorByID(mocky.Anything, fixture.Flavor().ID).
 					Return(fixture.Flavor(), nil)
 
 				repo.EXPECT().
@@ -314,7 +314,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(nil)
 
 				repo.EXPECT().
-					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
+					FlavorByID(mocky.Anything, fixture.Flavor().ID).
 					Return(fixture.Flavor(), nil)
 
 				repo.EXPECT().
@@ -345,7 +345,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(nil)
 
 				repo.EXPECT().
-					GetFlavorByID(mocky.Anything, fixture.Flavor().ID).
+					FlavorByID(mocky.Anything, fixture.Flavor().ID).
 					Return(resource.Flavor{}, apierrs.ErrNotFound)
 			},
 			err: apierrs.ErrNotFound,

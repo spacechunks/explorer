@@ -142,6 +142,7 @@ func (p *Postgres) CreateRiverClient(t *testing.T) {
 		p.DB,
 		p.DB,
 		1*time.Second,
+		5*time.Second,
 		worker.CreateImageWorkerConfig{
 			ImagePlatform: runtime.GOOS + "/" + runtime.GOARCH,
 		},
@@ -149,7 +150,11 @@ func (p *Postgres) CreateRiverClient(t *testing.T) {
 			Timeout:             5 * time.Second,
 			StatusCheckInterval: 1 * time.Second,
 		},
-		worker.CreateResourcePackWorkerConfig{},
+		worker.CreateResourcePackWorkerConfig{
+			PackTemplateKey: "blabla",
+		},
+		p.DB,
+		p.DB,
 	)
 	require.NoError(t, err)
 

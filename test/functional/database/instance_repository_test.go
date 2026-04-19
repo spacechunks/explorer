@@ -300,4 +300,42 @@ func TestGetInstancesByNodeID(t *testing.T) {
 	}
 }
 
+func TestCountInstancesByFlavorID(t *testing.T) {
+	var (
+		ctx    = context.Background()
+		pg     = fixture.NewPostgres()
+		nodeID = fixture.Node().ID
+		c      = fixture.Chunk()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertNode(t)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	version := c.Flavors[0].Versions[0]
+
+	ins1 := fixture.Instance(func(tmp *resource.Instance) {
+		tmp.ID = test.NewUUIDv7(t)
+		tmp.FlavorVersion = version
+		tmp.Owner = c.Owner
+	})
+	ins2 := fixture.Instance(func(tmp *resource.Instance) {
+		tmp.ID = test.NewUUIDv7(t)
+		tmp.FlavorVersion = version
+		tmp.Owner = c.Owner
+	})
+
+	_, err := pg.DB.CreateInstance(ctx, ins1, nodeID)
+	require.NoError(t, err)
+
+	_, err = pg.DB.CreateInstance(ctx, ins2, nodeID)
+	require.NoError(t, err)
+
+	count, err := pg.DB.CountInstancesByFlavorVersionID(ctx, version.ID)
+	require.NoError(t, err)
+
+	require.Equal(t, uint(2), count)
+}
+
 // TODO: add test for applystatusreports

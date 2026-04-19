@@ -121,6 +121,7 @@ func (s *Server) Run(ctx context.Context) error {
 		db,
 		db,
 		s.cfg.ResourcePackBuildInterval,
+		s.cfg.ArchiveInterval,
 		worker.CreateImageWorkerConfig{
 			ImagePlatform: s.cfg.ImagePlatform,
 		},
@@ -137,6 +138,8 @@ func (s *Server) Run(ctx context.Context) error {
 			ItemDir:           s.cfg.ResourcePackItemDir,
 			TextureDir:        s.cfg.ResourcePackTextureDir,
 		},
+		db,
+		db,
 	)
 	if err != nil {
 		return fmt.Errorf("create river client: %w", err)
@@ -310,9 +313,12 @@ func CreateRiverClient(
 	nodeRepo node.Repository,
 	jobClient job.Client,
 	packBuildInterval time.Duration,
+	archiveInterval time.Duration,
 	imgWorkerCfg worker.CreateImageWorkerConfig,
 	checkWorkerCfg worker.CreateCheckpointWorkerConfig,
 	packWorkerCfg worker.CreateResourcePackWorkerConfig,
+	insRepo instance.Repository,
+	archiveRepo chunk.ArchiveRepository,
 ) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 
@@ -352,6 +358,17 @@ func CreateRiverClient(
 		return nil, fmt.Errorf("add create checkpoint worker: %w", err)
 	}
 
+	archiveWorker := worker.NewArchiveWorker(
+		logger.With("component", "archive-worker"),
+		chunkRepo,
+		insRepo,
+		archiveRepo,
+	)
+
+	if err := river.AddWorkerSafely[job.Archive](workers, archiveWorker); err != nil {
+		return nil, fmt.Errorf("add create archive worker: %w", err)
+	}
+
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues: map[string]river.QueueConfig{
 			river.QueueDefault: {
@@ -361,6 +378,9 @@ func CreateRiverClient(
 		PeriodicJobs: []*river.PeriodicJob{
 			river.NewPeriodicJob(river.PeriodicInterval(packBuildInterval), func() (river.JobArgs, *river.InsertOpts) {
 				return job.CreateResourcePack{}, nil
+			}, &river.PeriodicJobOpts{RunOnStart: true}),
+			river.NewPeriodicJob(river.PeriodicInterval(archiveInterval), func() (river.JobArgs, *river.InsertOpts) {
+				return job.Archive{}, nil
 			}, &river.PeriodicJobOpts{RunOnStart: true}),
 		},
 		Workers:     workers,

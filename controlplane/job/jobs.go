@@ -82,3 +82,10 @@ type CreateResourcePack struct {
 func (CreateResourcePack) Kind() string {
 	return "build_resource_pack"
 }
+
+type Archive struct {
+}
+
+func (Archive) Kind() string {
+	return "archive"
+}

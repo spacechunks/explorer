@@ -333,22 +333,110 @@ func (db *DB) DeleteFlavor(ctx context.Context, id string) error {
 	})
 }
 
-func (db *DB) GetFlavorByID(ctx context.Context, id string) (resource.Flavor, error) {
-	var ret resource.Flavor
+func (db *DB) AllDeletedFlavors(ctx context.Context) (map[string]string, error) {
+	var ret map[string]string
+
 	if err := db.do(ctx, func(q *query.Queries) error {
-		f, err := q.GetFlavorByIDIgnoreDeleted(ctx, id)
+		rows, err := q.AllDeletedFlavors(ctx)
 		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return apierrs.ErrNotFound
-			}
 			return err
 		}
-		ret = resource.Flavor{
-			ID:        f.ID,
-			Name:      f.Name,
-			CreatedAt: f.CreatedAt.UTC(),
-			UpdatedAt: f.UpdatedAt.UTC(),
+
+		ret = make(map[string]string, len(rows))
+		for _, r := range rows {
+			ret[r.ID] = r.ChunkID
 		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
+func (db *DB) FlavorIDByFlavorVersionID(ctx context.Context, id string) (string, error) {
+	var ret string
+	err := db.do(ctx, func(q *query.Queries) error {
+		flavorID, err := q.FlavorIDByFlavorVersionID(ctx, id)
+		ret = flavorID
+		return err
+	})
+	return ret, err
+}
+
+func (db *DB) MarkFlavorDeleted(ctx context.Context, id string) error {
+	return db.do(ctx, func(q *query.Queries) error {
+		return q.MarkFlavorDeleted(ctx, id)
+	})
+}
+
+func (db *DB) FlavorByID(ctx context.Context, id string) (resource.Flavor, error) {
+	var ret resource.Flavor
+	if err := db.do(ctx, func(q *query.Queries) error {
+		rows, err := q.GetFlavorByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if len(rows) == 0 {
+			return apierrs.ErrNotFound
+		}
+
+		row := rows[0]
+
+		ret = resource.Flavor{
+			ID:        row.ID,
+			Name:      row.Name,
+			CreatedAt: row.CreatedAt,
+			UpdatedAt: row.UpdatedAt,
+		}
+
+		var deletedAt *time.Time
+		if row.DeletedAt.Valid {
+			deletedAt = &row.DeletedAt.Time
+		}
+
+		ret.DeletedAt = deletedAt
+
+		vers := make([]resource.FlavorVersion, 0, len(rows))
+		for _, r := range rows {
+			// when id is null we do not have any version data
+			if r.ID_2 == nil {
+				continue
+			}
+			// file hashes are missing, because we don't need it atm
+
+			var expiryDate *time.Time
+			if row.PresignedUrlExpiryDate.Valid {
+				expiryDate = &row.PresignedUrlExpiryDate.Time
+			}
+
+			var presignedURL *string
+			if row.PresignedUrl.Valid {
+				presignedURL = &row.PresignedUrl.String
+			}
+
+			vers = append(vers, resource.FlavorVersion{
+				ID:                     *r.ID_2,
+				Version:                r.Version.String,
+				MinecraftVersion:       r.MinecraftVersion.String,
+				Hash:                   r.Hash.String,
+				ChangeHash:             r.ChangeHash.String,
+				FilesUploaded:          r.FilesUploaded.Bool,
+				BuildStatus:            resource.FlavorVersionBuildStatus(r.BuildStatus.BuildStatus),
+				CreatedAt:              r.CreatedAt_2.Time.UTC(),
+				PresignedURLExpiryDate: expiryDate,
+				PresignedURL:           presignedURL,
+			})
+		}
+
+		sort.Slice(vers, func(i, j int) bool {
+			// the latest flavor version will be the first entry in the slice
+			return vers[i].CreatedAt.After(vers[j].CreatedAt)
+		})
+
+		ret.Versions = vers
 		return nil
 	}); err != nil {
 		return resource.Flavor{}, err

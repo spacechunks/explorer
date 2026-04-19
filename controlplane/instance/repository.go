@@ -33,4 +33,5 @@ type Repository interface {
 	// ApplyStatusReports updates instances rows that are not in [instance.InstanceStateDeleted] state.
 	// all other instances will be removed from the table.
 	ApplyStatusReports(ctx context.Context, reports []resource.InstanceStatusReport) error
+	CountInstancesByFlavorVersionID(ctx context.Context, flavorVersionID string) (uint, error)
 }

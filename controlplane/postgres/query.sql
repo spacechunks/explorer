@@ -16,13 +16,13 @@ VALUES
     ($1, $2, $3, $4, $5, $6, $7);
 
 -- TODO: read multiple
--- name: GetChunkByIDIgnoreDeleted :many
+-- name: GetChunkByID :many
 SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.id = $1 AND c.deleted_at IS NULL;
+WHERE c.id = $1;
 
 -- name: UpdateChunk :exec
 UPDATE chunks
@@ -33,13 +33,12 @@ SET
     updated_at = now()
 WHERE id = $4;
 
--- name: ListChunksIgnoreDeleted :many
+-- name: ListChunks :many
 SELECT * FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-    LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.deleted_at IS NULL;
+    LEFT JOIN users u ON u.id = c.owner_id;
 
 
 -- name: ChunkOwnerByChunkID :one
@@ -59,6 +58,9 @@ WHERE thumbnail_hash IS NOT NULL;
 
 -- name: MarkChunkDeleted :exec
 UPDATE chunks SET deleted_at = now() WHERE id = $1;
+
+-- name: DeleteChunk :exec
+DELETE FROM chunks WHERE id = $1;
 
 /*
  * FLAVORS
@@ -129,19 +131,33 @@ SELECT u.* FROM users u
     JOIN users ON u.id = c.owner_id
 LIMIT 1;
 
--- name: ChunkOwnerByFlavorVersionIDIgnoreDeleted :one
+-- name: ChunkOwnerByFlavorVersionID :one
 SELECT u.* FROM users u
     JOIN flavor_versions fv ON fv.id = $1
-    JOIN flavors f ON f.id = fv.flavor_id AND f.deleted_at IS NULL
+    JOIN flavors f ON f.id = fv.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
 LIMIT 1;
 
--- name: DeleteFlavor :exec
+-- name: MarkFlavorDeleted :exec
 UPDATE flavors SET deleted_at = now() WHERE id = $1;
 
--- name: GetFlavorByIDIgnoreDeleted :one
-SELECT * FROM flavors WHERE id = $1 AND deleted_at IS NULL;
+-- name: AllDeletedFlavors :many
+SELECT id, chunk_id FROM flavors WHERE deleted_at IS NOT NULL;
+
+-- name: DeleteFlavor :exec
+DELETE FROM flavors WHERE id = $1;
+
+-- name: DeleteFlavorVersion :exec
+DELETE FROM flavor_versions WHERE id = $1;
+
+-- name: FlavorIDByFlavorVersionID :one
+SELECT flavor_id FROM flavor_versions WHERE id = $1;
+
+-- name: GetFlavorByID :many
+SELECT * FROM flavors f
+    LEFT JOIN flavor_versions fv ON fv.flavor_id = $1
+WHERE f.id = $1;
 
 /*
  * BLOB STORE
@@ -201,6 +217,9 @@ WHERE id = $3;
 -- name: BulkDeleteInstances :batchexec
 DELETE FROM instances WHERE id = $1;
 
+-- name: CountInstancesByFlavorID :one
+SELECT COUNT(*) FROM instances WHERE flavor_version_id = $1;
+
 /*
  * MINECRAFT VERSIONS
  */
@@ -223,4 +242,26 @@ INSERT INTO users
     (id, nickname, email, created_at, updated_at)
 VALUES
     ($1, $2, $3, $4, $5);
+
+/*
+ * ARCHIVE
+ */
+
+-- name: ArchiveChunk :exec
+INSERT INTO chunk_archive
+    (id, owner_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4);
+
+-- name: ArchiveFlavor :exec
+INSERT INTO flavor_archive
+    (id, chunk_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4);
+
+-- name: ArchiveFlavorVersion :exec
+INSERT INTO flavor_version_archive
+    (id, flavor_id, data, created_at)
+VALUES
+    ($1, $2, $3, $4);
 
