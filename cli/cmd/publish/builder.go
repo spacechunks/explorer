@@ -326,6 +326,8 @@ func (b builder) handleUpload(ctx context.Context, data *buildData) error {
 		return fmt.Errorf("error while creating upload url: %w", err)
 	}
 
+	req.ContentLength = int64(len(tarData))
+
 	progReader.OnProgress(func(progress uint) {
 		b.updates <- buildUpdate{
 			data:           *data,

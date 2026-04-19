@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/spacechunks/explorer/cli"
+	deletechunk "github.com/spacechunks/explorer/cli/cmd/delete"
 	"github.com/spacechunks/explorer/cli/cmd/inspect"
 	"github.com/spacechunks/explorer/cli/cmd/list"
 	"github.com/spacechunks/explorer/cli/cmd/publish"
@@ -45,6 +46,7 @@ func newChunkCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 		requireAPIToken(ctx, cliCtx, run.NewCommand),
 		requireAPIToken(ctx, cliCtx, list.NewCommand),
 		requireAPIToken(ctx, cliCtx, inspect.NewCommand),
+		requireAPIToken(ctx, cliCtx, deletechunk.NewCommand),
 	)
 	return c
 }

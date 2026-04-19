@@ -32,15 +32,10 @@ import (
 )
 
 var (
-	Reset          = "\033[0m"
-	Red            = "\033[31m"
-	Green          = "\033[32m"
-	Yellow         = "\033[33m"
-	Cyan           = "\033[36m"
-	addPrefix      = Green + "+" + " "
-	modPrefix      = Yellow + "~" + " "
-	rmPrefix       = Red + "-" + " "
-	conflictPrefix = Red + "x" + " "
+	addPrefix      = cli.ColorGreen + "+" + " "
+	modPrefix      = cli.ColorYellow + "~" + " "
+	rmPrefix       = cli.ColorRed + "-" + " "
+	conflictPrefix = cli.ColorRed + "x" + " "
 	indent1        = " "
 	indent2        = "  "
 	indent3        = "   "
@@ -113,6 +108,7 @@ type actionable struct {
 type plan struct {
 	addedFlavors    []localFlavor
 	changedFlavors  []changedFlavor
+	deletedFlavors  []deletedFlavor
 	actionables     []actionable
 	conflicts       []conflict
 	updateThumbnail bool
@@ -120,6 +116,22 @@ type plan struct {
 
 func newPlan(logger *slog.Logger, cfg publishConfig, supportedVersions []string, chunk *chunkv1alpha1.Chunk) plan {
 	p := plan{}
+
+	for _, remote := range chunk.Flavors {
+		var found bool
+		for _, local := range cfg.Chunk.Flavors {
+			if local.Name == remote.Name {
+				found = true
+			}
+		}
+		if !found {
+			p.deletedFlavors = append(p.deletedFlavors, deletedFlavor{
+				id:   remote.Id,
+				name: remote.Name,
+			})
+		}
+
+	}
 
 	for _, f := range cfg.Chunk.Flavors {
 		local := localFlavor{
@@ -281,7 +293,7 @@ func newPlan(logger *slog.Logger, cfg publishConfig, supportedVersions []string,
 			return p
 		}
 
-		if h != chunk.Thumbnail.Hash {
+		if chunk.Thumbnail != nil && h != chunk.Thumbnail.Hash {
 			p.updateThumbnail = true
 		}
 	}
@@ -316,7 +328,7 @@ func (p plan) print() {
 		fmt.Println("New flavors:")
 		for _, fl := range p.addedFlavors {
 			sec := cli.Section()
-			sec.AddRow(Green+indent1+fl.name+":", "")
+			sec.AddRow(cli.ColorGreen+indent1+fl.name+":", "")
 			sec.AddRow(indent2+addPrefix+"Version:", fl.version)
 			sec.AddRow(indent2+addPrefix+"Path:", fl.path)
 			sec.AddRow(indent2+addPrefix+"Files:", "")
@@ -328,10 +340,10 @@ func (p plan) print() {
 	}
 
 	if len(p.changedFlavors) > 0 {
-		fmt.Println(Reset + "\nModified flavors:")
+		fmt.Println(cli.ColorReset + "\nModified flavors:")
 		for _, fl := range p.changedFlavors {
 			sec := cli.Section()
-			sec.AddRow(Yellow+indent1+fl.onDisk.name+":", "")
+			sec.AddRow(cli.ColorYellow+indent1+fl.onDisk.name+":", "")
 			sec.AddRow(indent2+modPrefix+"Version:", fmt.Sprintf("%s -> %s", fl.prevVersion, fl.onDisk.version))
 			sec.AddRow(indent2+modPrefix+"Path:", fl.onDisk.path)
 			sec.AddRow(indent2+modPrefix+"Files:", "")
@@ -348,22 +360,31 @@ func (p plan) print() {
 		}
 	}
 
+	if len(p.deletedFlavors) > 0 {
+		fmt.Println(cli.ColorRed + "\nWARNING: THE FOLLOWING FLAVORS WILL BE DELETED:")
+		for _, fl := range p.deletedFlavors {
+			sec := cli.Section()
+			sec.AddRow(cli.ColorRed + indent1 + "=> " + fl.name)
+			sec.Print()
+		}
+	}
+
 	if len(p.actionables) > 0 {
-		fmt.Println(Reset + "\nActions to be performed for the following flavors: ")
+		fmt.Println(cli.ColorReset + "\nActions to be performed for the following flavors: ")
 		for _, a := range p.actionables {
 			sec := cli.Section()
 			if a.phase == buildPhaseUpload {
-				sec.AddRow(Cyan+indent1+a.flavor.name+" ", "=> Retry uploading files")
+				sec.AddRow(cli.ColorCyan+indent1+a.flavor.name+" ", "=> Retry uploading files")
 			}
 			if a.phase == buildPhaseTriggerBuild {
-				sec.AddRow(Cyan+indent1+a.flavor.name+" ", "=> Retry triggering build")
+				sec.AddRow(cli.ColorCyan+indent1+a.flavor.name+" ", "=> Retry triggering build")
 			}
 			sec.Print()
 		}
 	}
 
 	if len(p.conflicts) > 0 {
-		fmt.Println(Reset + "\nConflicts: ")
+		fmt.Println(cli.ColorReset + "\nConflicts: ")
 		for _, c := range p.conflicts {
 			fmt.Printf("%s%s%s:\n", indent1, conflictPrefix, c.Flavor().name)
 			c.Print()
@@ -379,10 +400,10 @@ func (p plan) print() {
 	}
 
 	if p.updateThumbnail {
-		fmt.Printf("%s%sThumbnail => Will be updated\n", indent1, Yellow)
+		fmt.Printf("%s%sThumbnail => Will be updated\n", indent1, cli.ColorYellow)
 	}
 
-	fmt.Println(Reset)
+	fmt.Println(cli.ColorReset)
 }
 
 //func test() {
