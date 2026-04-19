@@ -761,63 +761,6 @@ func (_c *MockChunkRepository_GetChunkByID_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// GetFlavorByIDIgnoreDeleted provides a mock function with given fields: ctx, id
-func (_m *MockChunkRepository) GetFlavorByIDIgnoreDeleted(ctx context.Context, id string) (resource.Flavor, error) {
-	ret := _m.Called(ctx, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetFlavorByIDIgnoreDeleted")
-	}
-
-	var r0 resource.Flavor
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (resource.Flavor, error)); ok {
-		return rf(ctx, id)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) resource.Flavor); ok {
-		r0 = rf(ctx, id)
-	} else {
-		r0 = ret.Get(0).(resource.Flavor)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockChunkRepository_GetFlavorByIDIgnoreDeleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFlavorByIDIgnoreDeleted'
-type MockChunkRepository_GetFlavorByIDIgnoreDeleted_Call struct {
-	*mock.Call
-}
-
-// GetFlavorByIDIgnoreDeleted is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id string
-func (_e *MockChunkRepository_Expecter) GetFlavorByIDIgnoreDeleted(ctx interface{}, id interface{}) *MockChunkRepository_GetFlavorByIDIgnoreDeleted_Call {
-	return &MockChunkRepository_GetFlavorByIDIgnoreDeleted_Call{Call: _e.mock.On("GetFlavorByIDIgnoreDeleted", ctx, id)}
-}
-
-func (_c *MockChunkRepository_GetFlavorByIDIgnoreDeleted_Call) Run(run func(ctx context.Context, id string)) *MockChunkRepository_GetFlavorByIDIgnoreDeleted_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockChunkRepository_GetFlavorByIDIgnoreDeleted_Call) Return(_a0 resource.Flavor, _a1 error) *MockChunkRepository_GetFlavorByIDIgnoreDeleted_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockChunkRepository_GetFlavorByIDIgnoreDeleted_Call) RunAndReturn(run func(context.Context, string) (resource.Flavor, error)) *MockChunkRepository_GetFlavorByIDIgnoreDeleted_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetMinecraftVersionByVersion provides a mock function with given fields: _a0, _a1
 func (_m *MockChunkRepository) GetMinecraftVersionByVersion(_a0 context.Context, _a1 string) (resource.MinecraftVersion, error) {
 	ret := _m.Called(_a0, _a1)
