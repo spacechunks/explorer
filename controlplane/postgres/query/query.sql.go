@@ -694,24 +694,70 @@ func (q *Queries) GetChunkByIDIgnoreDeleted(ctx context.Context, id string) ([]G
 	return items, nil
 }
 
-const getFlavorByIDIgnoreDeleted = `-- name: GetFlavorByIDIgnoreDeleted :one
-SELECT id, chunk_id, name, created_at, updated_at, deleted_at FROM flavors
-WHERE id = $1 AND deleted_at IS NULL
+const getFlavorByID = `-- name: GetFlavorByID :many
+SELECT f.id, chunk_id, name, f.created_at, updated_at, deleted_at, fv.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, fv.created_at, presigned_url_expiry_date, presigned_url, minecraft_version FROM flavors f
+    LEFT JOIN flavor_versions fv ON fv.flavor_id = $1
+WHERE f.id = $1
 `
 
-// JOIN flavor_versions fv ON fv.flavor_id = $1
-func (q *Queries) GetFlavorByIDIgnoreDeleted(ctx context.Context, id string) (Flavor, error) {
-	row := q.db.QueryRow(ctx, getFlavorByIDIgnoreDeleted, id)
-	var i Flavor
-	err := row.Scan(
-		&i.ID,
-		&i.ChunkID,
-		&i.Name,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeletedAt,
-	)
-	return i, err
+type GetFlavorByIDRow struct {
+	ID                     string
+	ChunkID                string
+	Name                   string
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	DeletedAt              pgtype.Timestamptz
+	ID_2                   *string
+	FlavorID               *string
+	Hash                   pgtype.Text
+	ChangeHash             pgtype.Text
+	BuildStatus            NullBuildStatus
+	Version                pgtype.Text
+	FilesUploaded          pgtype.Bool
+	PrevVersionID          *string
+	CreatedAt_2            pgtype.Timestamptz
+	PresignedUrlExpiryDate pgtype.Timestamptz
+	PresignedUrl           pgtype.Text
+	MinecraftVersion       pgtype.Text
+}
+
+func (q *Queries) GetFlavorByID(ctx context.Context, flavorID string) ([]GetFlavorByIDRow, error) {
+	rows, err := q.db.Query(ctx, getFlavorByID, flavorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFlavorByIDRow
+	for rows.Next() {
+		var i GetFlavorByIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ChunkID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.ID_2,
+			&i.FlavorID,
+			&i.Hash,
+			&i.ChangeHash,
+			&i.BuildStatus,
+			&i.Version,
+			&i.FilesUploaded,
+			&i.PrevVersionID,
+			&i.CreatedAt_2,
+			&i.PresignedUrlExpiryDate,
+			&i.PresignedUrl,
+			&i.MinecraftVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getInstance = `-- name: GetInstance :many

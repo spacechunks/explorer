@@ -250,48 +250,6 @@ func TestDeleteFlavor(t *testing.T) {
 	require.Equalf(t, 1, worked, "expected deleted at to be not null")
 }
 
-func TestGetFlavorByIDNotFoundWhenDeleted(t *testing.T) {
-	var (
-		ctx  = context.Background()
-		pg   = fixture.NewPostgres()
-		date = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-		c    = fixture.Chunk(func(tmp *resource.Chunk) {
-			tmp.Flavors[0].DeletedAt = &date
-		})
-	)
-
-	pg.Run(t, ctx)
-	pg.InsertMinecraftVersion(t)
-	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
-
-	expected := c.Flavors[0]
-
-	_, err := pg.DB.GetFlavorByID(ctx, expected.ID)
-	require.ErrorIs(t, err, apierrs.ErrNotFound)
-}
-
-func TestGetFlavorByID(t *testing.T) {
-	var (
-		ctx = context.Background()
-		pg  = fixture.NewPostgres()
-		c   = fixture.Chunk()
-	)
-
-	pg.Run(t, ctx)
-	pg.InsertMinecraftVersion(t)
-	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
-
-	expected := c.Flavors[0]
-	expected.Versions = nil // get by ID does not return the versions atm
-
-	actual, err := pg.DB.GetFlavorByID(ctx, expected.ID)
-	require.NoError(t, err)
-
-	if d := cmp.Diff(expected, actual); d != "" {
-		t.Errorf("mismatch (-want +got):\n%s", d)
-	}
-}
-
 func TestListChunksDoesNotReturnDeletedFlavors(t *testing.T) {
 	var (
 		ctx  = context.Background()
@@ -453,4 +411,57 @@ func TestFlavorIDByFlavorVersionByID(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, c.Flavors[0].ID, actual)
+}
+
+func TestFlavorByID(t *testing.T) {
+	tests := []struct {
+		name   string
+		flavor resource.Flavor
+	}{
+		{
+			name: "with versions and deleted_at timestamp",
+			flavor: fixture.Flavor(func(tmp *resource.Flavor) {
+				tmp.DeletedAt = new(time.Time)
+			}),
+		},
+		{
+			name: "without versions",
+			flavor: fixture.Flavor(func(tmp *resource.Flavor) {
+				tmp.DeletedAt = new(time.Time)
+				tmp.Versions = []resource.FlavorVersion{}
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				pg  = fixture.NewPostgres()
+				c   = fixture.Chunk(func(tmp *resource.Chunk) {
+					tmp.Flavors = []resource.Flavor{
+						tt.flavor,
+					}
+				})
+			)
+
+			pg.Run(t, ctx)
+			pg.InsertMinecraftVersion(t)
+			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+			expected := c.Flavors[0]
+			expected.DeletedAt = nil // we dont return it atm
+
+			for i := range expected.Versions {
+				expected.Versions[i].FileHashes = nil // is not returned currently
+			}
+
+			actual, err := pg.DB.FlavorByID(ctx, expected.ID)
+			require.NoError(t, err)
+
+			if d := cmp.Diff(expected, actual, test.IgnoreFields("Versions.CreatedAt")); d != "" {
+				t.Errorf("mismatch (-want +got):\n%s", d)
+			}
+		})
+	}
 }

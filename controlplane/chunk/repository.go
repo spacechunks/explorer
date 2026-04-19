@@ -54,11 +54,11 @@ type Repository interface {
 	UpdateThumbnail(ctx context.Context, chunkID string, imgHash string) error
 	AllChunkThumbnailHashes(ctx context.Context) (map[string]string, error)
 	DeleteFlavor(ctx context.Context, id string) error
-	GetFlavorByID(ctx context.Context, id string) (resource.Flavor, error)
 	MarkChunkAndFlavorsDeleted(ctx context.Context, id string) error
 	AllDeletedFlavors(ctx context.Context) (map[string]string, error)
 	FlavorIDByFlavorVersionID(ctx context.Context, id string) (string, error)
 	MarkFlavorDeleted(ctx context.Context, id string) error
+	FlavorByID(ctx context.Context, id string) (resource.Flavor, error)
 }
 
 type ArchiveRepository interface {
