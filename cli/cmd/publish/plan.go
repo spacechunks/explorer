@@ -130,7 +130,6 @@ func newPlan(logger *slog.Logger, cfg publishConfig, supportedVersions []string,
 				name: remote.Name,
 			})
 		}
-
 	}
 
 	for _, f := range cfg.Chunk.Flavors {

@@ -28,11 +28,11 @@ import (
 )
 
 var (
-	ColorReset          = "\033[0m"
-	ColorRed            = "\033[31m"
-	ColorGreen          = "\033[32m"
-	ColorYellow         = "\033[33m"
-	ColorCyan           = "\033[36m"
+	ColorReset  = "\033[0m"
+	ColorRed    = "\033[31m"
+	ColorGreen  = "\033[32m"
+	ColorYellow = "\033[33m"
+	ColorCyan   = "\033[36m"
 )
 
 func Find[T any](s []*T, filter func(i *T) bool) *T {
