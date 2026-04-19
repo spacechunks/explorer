@@ -51,4 +51,5 @@ type Config struct {
 	ResourcePackTextureDir        string
 	VelocitySecret                string
 	ChangeSetTarballMaxSizeBytes  uint64
+	ArchiveInterval               time.Duration
 }

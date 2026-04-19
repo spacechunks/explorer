@@ -32,6 +32,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/jackc/pgx/v5"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/blob"
@@ -1410,4 +1411,83 @@ func TestAPIDeleteChunk(t *testing.T) {
 		})
 		require.ErrorIsf(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err(), "run flavor version (%s)", f.Name)
 	}
+}
+
+func TestChunkFullyArchived(t *testing.T) {
+	var (
+		ctx = context.Background()
+		c   = fixture.Chunk()
+		cp  = fixture.NewControlPlane(t)
+	)
+
+	cp.Run(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.AddUserAPIKey(t, &ctx, c.Owner)
+
+	client := cp.ChunkClient(t)
+
+	_, err := client.DeleteChunk(ctx, &chunkv1alpha1.DeleteChunkRequest{
+		Id: c.ID,
+	})
+	require.NoError(t, err)
+
+	// archive job runs every second
+	time.Sleep(5 * time.Second)
+
+	var tmp int
+
+	chunkRow := cp.Postgres.Pool.QueryRow(ctx, `SELECT 1 FROM chunks WHERE id = $1`, c.ID)
+	require.ErrorIsf(t, chunkRow.Scan(&tmp), pgx.ErrNoRows, "chunk should be archived")
+
+	for _, f := range c.Flavors {
+		flavorRow := cp.Postgres.Pool.QueryRow(ctx, `SELECT 1 FROM flavors WHERE id = $1`, f.ID)
+		require.ErrorIsf(t, flavorRow.Scan(&tmp), pgx.ErrNoRows, "flavor should be archived (%s)", f.ID)
+
+		for _, v := range f.Versions {
+			versionRow := cp.Postgres.Pool.QueryRow(ctx, `SELECT 1 FROM flavor_versions WHERE id = $1`, v.ID)
+			require.ErrorIsf(t, versionRow.Scan(&tmp), pgx.ErrNoRows, "flavor version should be archived (%s)", v.ID)
+		}
+	}
+}
+
+func TestFlavorArchived(t *testing.T) {
+	var (
+		ctx = context.Background()
+		c   = fixture.Chunk()
+		cp  = fixture.NewControlPlane(t)
+	)
+
+	cp.Run(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.AddUserAPIKey(t, &ctx, c.Owner)
+
+	var (
+		client = cp.ChunkClient(t)
+		f      = c.Flavors[0]
+	)
+
+	_, err := client.DeleteFlavor(ctx, &chunkv1alpha1.DeleteFlavorRequest{
+		Id: f.ID,
+	})
+	require.NoError(t, err)
+
+	time.Sleep(5 * time.Second)
+
+	var tmp int
+
+	flavorRow := cp.Postgres.Pool.QueryRow(ctx, `SELECT 1 FROM flavors WHERE id = $1`, f.ID)
+	require.ErrorIsf(t, flavorRow.Scan(&tmp), pgx.ErrNoRows, "flavor should be archived (%s)", f.ID)
+
+	for _, v := range f.Versions {
+		versionRow := cp.Postgres.Pool.QueryRow(ctx, `SELECT 1 FROM flavor_versions WHERE id = $1`, v.ID)
+		require.ErrorIsf(t, versionRow.Scan(&tmp), pgx.ErrNoRows, "flavor version should be archived (%s)", v.ID)
+	}
+
+	chunkRow := cp.Postgres.Pool.QueryRow(ctx, `SELECT 1 FROM chunks WHERE id = $1`, c.ID)
+
+	err = chunkRow.Scan(&tmp)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, tmp, "chunk should not be archived")
+
 }

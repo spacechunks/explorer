@@ -69,6 +69,7 @@ func main() {
 		packTextureDir           = fs.String("resource-pack-texture-dir", "", "path inside the resource pack to the directory where the textures will live. e.g. assets/mynamespace/textures/item") //nolint:lll
 		velocitySecret           = fs.String("velocity-secret", "", "the velocity secret to set in the paper server configuration")                                                                 //nolint:lll
 		changeSetTarballMaxSize  = fs.Uint64("change-set-tarball-max-size", 1073741824, "the maximum allowed size in bytes of the change set tarball")                                              //nolint:lll
+		archiveInterval          = fs.Duration("archiveInterval", 3*time.Minute, "in what interval the deleted chunks and flavors should be archived")                                              //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
@@ -108,6 +109,7 @@ func main() {
 			ResourcePackTextureDir:        *packTextureDir,
 			VelocitySecret:                *velocitySecret,
 			ChangeSetTarballMaxSizeBytes:  *changeSetTarballMaxSize,
+			ArchiveInterval:               *archiveInterval,
 		}
 		ctx    = context.Background()
 		server = controlplane.NewServer(logger, cfg)

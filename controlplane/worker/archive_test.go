@@ -42,13 +42,13 @@ func TestArchiveFullChunk(t *testing.T) {
 
 		mockChunkRepo.
 			EXPECT().
-			GetFlavorByID(mocky.Anything, f.ID).
+			FlavorByID(mocky.Anything, f.ID).
 			Return(f, nil).
 			Once()
 
 		mockChunkRepo.
 			EXPECT().
-			GetFlavorByID(mocky.Anything, f.ID).
+			FlavorByID(mocky.Anything, f.ID).
 			Return(tmp, nil).
 			Once()
 
@@ -144,7 +144,7 @@ func TestDoNotArchiveFlavorVersionsCurrentlyBuilding(t *testing.T) {
 
 			mockChunkRepo.
 				EXPECT().
-				GetFlavorByID(mocky.Anything, f.ID).
+				FlavorByID(mocky.Anything, f.ID).
 				Return(f, nil)
 
 			mockInsRepo.
@@ -186,13 +186,13 @@ func TestArchiveWorkerDoesNotArchiveFlavorAndChunkWhenVersionsAndFlavorsRemain(t
 
 	mockChunkRepo.
 		EXPECT().
-		GetFlavorByID(mocky.Anything, f.ID).
+		FlavorByID(mocky.Anything, f.ID).
 		Return(f, nil).
 		Once()
 
 	mockChunkRepo.
 		EXPECT().
-		GetFlavorByID(mocky.Anything, f.ID).
+		FlavorByID(mocky.Anything, f.ID).
 		Return(f, nil).
 		Once()
 

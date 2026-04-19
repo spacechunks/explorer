@@ -87,7 +87,7 @@ func (w *ArchiveWorker) tryArchiveFlavor(
 	chunkID string,
 	flavorID string,
 ) error {
-	f, err := w.chunkRepo.GetFlavorByID(ctx, flavorID)
+	f, err := w.chunkRepo.FlavorByID(ctx, flavorID)
 	if err != nil {
 		return fmt.Errorf("get flavor: %w", err)
 	}
@@ -105,9 +105,9 @@ func (w *ArchiveWorker) tryArchiveFlavor(
 		}
 	}
 
-	updated, err := w.chunkRepo.GetFlavorByID(ctx, flavorID)
+	updated, err := w.chunkRepo.FlavorByID(ctx, flavorID)
 	if err != nil {
-		return fmt.Errorf("get flavor: %w", err)
+		return fmt.Errorf("get updated flavor: %w", err)
 	}
 
 	if len(updated.Versions) > 0 {
@@ -141,7 +141,8 @@ func (w *ArchiveWorker) tryArchiveFlavorVersion(
 
 	if version.BuildStatus != resource.FlavorVersionBuildStatusBuildCheckpointFailed &&
 		version.BuildStatus != resource.FlavorVersionBuildStatusBuildImageFailed &&
-		version.BuildStatus != resource.FlavorVersionBuildStatusCompleted {
+		version.BuildStatus != resource.FlavorVersionBuildStatusCompleted &&
+		version.BuildStatus != resource.FlavorVersionBuildStatusPending {
 		logger.InfoContext(
 			ctx,
 			"flavor version is still building. waiting for build to fail or finish",
