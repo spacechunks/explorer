@@ -20,6 +20,8 @@ package database
 
 import (
 	"context"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -309,6 +311,15 @@ func TestListChunks(t *testing.T) {
 
 	actual, err := pg.DB.ListChunks(ctx)
 	require.NoError(t, err)
+
+	// sort so we have a consistent ordering to avoid flaky tests
+	sort.Slice(actual, func(i, j int) bool {
+		return strings.Compare(actual[i].ID, actual[j].ID) < 0
+	})
+
+	sort.Slice(expected, func(i, j int) bool {
+		return strings.Compare(expected[i].ID, expected[j].ID) < 0
+	})
 
 	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)
