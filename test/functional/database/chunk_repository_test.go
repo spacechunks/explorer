@@ -373,13 +373,12 @@ func TestFlavorByID(t *testing.T) {
 		{
 			name: "with versions and deleted_at timestamp",
 			flavor: fixture.Flavor(func(tmp *resource.Flavor) {
-				tmp.DeletedAt = new(time.Time)
+				tmp.DeletedAt = new(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
 			}),
 		},
 		{
 			name: "without versions",
 			flavor: fixture.Flavor(func(tmp *resource.Flavor) {
-				tmp.DeletedAt = new(time.Time)
 				tmp.Versions = []resource.FlavorVersion{}
 			}),
 		},
@@ -402,7 +401,6 @@ func TestFlavorByID(t *testing.T) {
 			pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 			expected := c.Flavors[0]
-			expected.DeletedAt = nil // we dont return it atm
 
 			for i := range expected.Versions {
 				expected.Versions[i].FileHashes = nil // is not returned currently
