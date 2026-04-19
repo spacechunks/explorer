@@ -1489,5 +1489,4 @@ func TestFlavorArchived(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 1, tmp, "chunk should not be archived")
-
 }
