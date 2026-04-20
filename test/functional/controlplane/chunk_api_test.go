@@ -1226,6 +1226,32 @@ func TestAPIDeleteFlavor(t *testing.T) {
 	}
 }
 
+func TestOnlyOwnerCanDeleteFlavor(t *testing.T) {
+	var (
+		ctx   = context.Background()
+		cp    = fixture.NewControlPlane(t)
+		c     = fixture.Chunk()
+		u     = fixture.User()
+		other = fixture.User(func(tmp *resource.User) {
+			tmp.Email = "other@example.com"
+			tmp.Nickname = "other"
+		})
+	)
+
+	cp.Run(t)
+	client := cp.ChunkClient(t)
+
+	cp.Postgres.CreateUser(t, &u)
+	cp.Postgres.CreateUser(t, &other)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.AddUserAPIKey(t, &ctx, other)
+
+	_, err := client.DeleteFlavor(ctx, &chunkv1alpha1.DeleteFlavorRequest{
+		Id: c.Flavors[0].ID,
+	})
+	require.ErrorIs(t, err, apierrs.ErrPermissionDenied.GRPCStatus().Err())
+}
+
 func TestFlavorInteractionsDontWorkAfterDelete(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1411,6 +1437,32 @@ func TestAPIDeleteChunk(t *testing.T) {
 		})
 		require.ErrorIsf(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err(), "run flavor version (%s)", f.Name)
 	}
+}
+
+func TestOnlyOwnerCanDeleteChunk(t *testing.T) {
+	var (
+		ctx   = context.Background()
+		cp    = fixture.NewControlPlane(t)
+		c     = fixture.Chunk()
+		u     = fixture.User()
+		other = fixture.User(func(tmp *resource.User) {
+			tmp.Email = "other@example.com"
+			tmp.Nickname = "other"
+		})
+	)
+
+	cp.Run(t)
+	client := cp.ChunkClient(t)
+
+	cp.Postgres.CreateUser(t, &u)
+	cp.Postgres.CreateUser(t, &other)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	cp.AddUserAPIKey(t, &ctx, other)
+
+	_, err := client.DeleteChunk(ctx, &chunkv1alpha1.DeleteChunkRequest{
+		Id: c.ID,
+	})
+	require.ErrorIs(t, err, apierrs.ErrPermissionDenied.GRPCStatus().Err())
 }
 
 func TestChunkFullyArchived(t *testing.T) {
