@@ -67,7 +67,10 @@ func (m Monitor) Run(ctx context.Context) error {
 		return fmt.Errorf("dial: %w", err)
 	}
 
-	rpcConn := jsonrpc2.NewConn(ctx, websocket.NewObjectStream(wsConn), &m)
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	rpcConn := jsonrpc2.NewConn(runCtx, websocket.NewObjectStream(wsConn), &m)
 	defer rpcConn.Close()
 
 	listTicker := time.NewTicker(1 * time.Second)
@@ -77,6 +80,16 @@ func (m Monitor) Run(ctx context.Context) error {
 	defer checkTicker.Stop()
 
 	joined := atomic.Bool{}
+	lastSuccessfulPlayerFetch := atomic.Int64{}
+	lastSuccessfulPlayerFetch.Store(time.Now().UnixNano())
+	errCh := make(chan error, 1)
+
+	reportErr := func(err error) {
+		select {
+		case errCh <- err:
+		default:
+		}
+	}
 
 	workloadID := os.Getenv("PLATFORMD_WORKLOAD_ID")
 	if workloadID == "" {
@@ -86,14 +99,28 @@ func (m Monitor) Run(ctx context.Context) error {
 	logger := m.logger.With("workload_id", workloadID)
 
 	go func() {
-		for range listTicker.C {
+		for {
+			select {
+			case <-runCtx.Done():
+				return
+			case <-listTicker.C:
+			}
+
 			players := make([]player, 0)
 
-			if err := rpcConn.Call(ctx, "minecraft:players", nil, &players); err != nil {
-				logger.ErrorContext(ctx, "failed to call players", "err", err)
+			if err := rpcConn.Call(runCtx, "minecraft:players", nil, &players); err != nil {
+				logger.ErrorContext(runCtx, "failed to call players", "err", err)
+
+				lastSuccess := time.Unix(0, lastSuccessfulPlayerFetch.Load())
+				if time.Since(lastSuccess) >= m.conf.PlayerCountCheckInterval {
+					reportErr(fmt.Errorf("management api unreachable for %s: %w", m.conf.PlayerCountCheckInterval, err))
+					return
+				}
+
 				continue
 			}
 
+			lastSuccessfulPlayerFetch.Store(time.Now().UnixNano())
 			logger.Debug("got players", "player_count", len(players))
 
 			if len(players) > 0 {
@@ -103,10 +130,16 @@ func (m Monitor) Run(ctx context.Context) error {
 	}()
 
 	go func() {
-		for range checkTicker.C {
+		for {
+			select {
+			case <-runCtx.Done():
+				return
+			case <-checkTicker.C:
+			}
+
 			if joined.Load() {
 				joined.Store(false)
-				break
+				continue
 			}
 
 			logger.Info(
@@ -126,8 +159,13 @@ func (m Monitor) Run(ctx context.Context) error {
 		}
 	}()
 
-	<-ctx.Done()
-	return nil
+	select {
+	case <-ctx.Done():
+		return nil
+	case err := <-errCh:
+		cancel()
+		return err
+	}
 }
 
 // Handle is present, because jsonrpc2 crashes if we pass a nil handler to jsonrpc2.NewConn
