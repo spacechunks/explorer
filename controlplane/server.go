@@ -59,6 +59,9 @@ import (
 	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
+	"github.com/spacechunks/explorer/internal/instr"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -82,6 +85,19 @@ func NewServer(logger *slog.Logger, cfg Config) *Server {
 
 func (s *Server) Run(ctx context.Context) error {
 	serverconfig.SetVelocitySecret(s.cfg.VelocitySecret)
+
+	shutdown, err := instr.SetupOTel(ctx, "", "control-plane")
+	if err != nil {
+		return fmt.Errorf("setup otel: %w", err)
+	}
+
+	tracer := otel.Tracer("github.com/spacechunks/explorer/controlplane")
+
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			s.logger.Warn("error shutting down otel", "err", err)
+		}
+	}()
 
 	oidcProvider, err := oidc.NewProvider(ctx, s.cfg.OAuthIssuerURL)
 	if err != nil {
@@ -158,6 +174,7 @@ func (s *Server) Run(ctx context.Context) error {
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
 			grpc.ChainUnaryInterceptor(
+				traceInterceptor(tracer),
 				errorInterceptor(s.logger),
 				authInterceptor(s.logger, key, s.cfg.APITokenIssuer),
 			),
@@ -293,6 +310,14 @@ func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 			return nil, status.Error(codes.Internal, "internal service error occurred")
 		}
 		return resp, nil
+	}
+}
+
+func traceInterceptor(tracer trace.Tracer) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		spanctx, span := tracer.Start(ctx, info.FullMethod)
+		defer span.End()
+		return handler(spanctx, req)
 	}
 }
 

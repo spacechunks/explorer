@@ -70,6 +70,7 @@ func main() {
 		velocitySecret           = fs.String("velocity-secret", "", "the velocity secret to set in the paper server configuration")                                                                 //nolint:lll
 		changeSetTarballMaxSize  = fs.Uint64("change-set-tarball-max-size", 1073741824, "the maximum allowed size in bytes of the change set tarball")                                              //nolint:lll
 		archiveInterval          = fs.Duration("archive-interval", 3*time.Minute, "in what interval the deleted chunks and flavors should be archived")                                             //nolint:lll
+		otlpEndpoint             = fs.String("otlp-endpoint", "localhost:4317", "endpoint to deliver otel signals to")                                                                              //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
@@ -110,6 +111,7 @@ func main() {
 			VelocitySecret:                *velocitySecret,
 			ChangeSetTarballMaxSizeBytes:  *changeSetTarballMaxSize,
 			ArchiveInterval:               *archiveInterval,
+			OTLPEndpoint:                  *otlpEndpoint,
 		}
 		ctx    = context.Background()
 		server = controlplane.NewServer(logger, cfg)
