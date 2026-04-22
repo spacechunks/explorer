@@ -84,13 +84,6 @@ func (m Monitor) Run(ctx context.Context) error {
 	lastSuccessfulPlayerFetch.Store(time.Now().UnixNano())
 	errCh := make(chan error, 1)
 
-	reportErr := func(err error) {
-		select {
-		case errCh <- err:
-		default:
-		}
-	}
-
 	workloadID := os.Getenv("PLATFORMD_WORKLOAD_ID")
 	if workloadID == "" {
 		return fmt.Errorf("PLATFORMD_WORKLOAD_ID not set")
@@ -113,7 +106,7 @@ func (m Monitor) Run(ctx context.Context) error {
 
 				lastSuccess := time.Unix(0, lastSuccessfulPlayerFetch.Load())
 				if time.Since(lastSuccess) >= m.conf.PlayerCountCheckInterval {
-					reportErr(fmt.Errorf("management api unreachable for %s: %w", m.conf.PlayerCountCheckInterval, err))
+					errCh <- fmt.Errorf("failed to fetch player count for %v: %w", time.Since(lastSuccess), err)
 					return
 				}
 
