@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -175,8 +176,12 @@ func TestServerMonExitsWhenManagementAPIUnreachable(t *testing.T) {
 		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 		wlMock      = mock.NewMockV1alpha2WorkloadServiceClient(t)
 		closeConn   = make(chan struct{})
+		playerCount = atomic.Int32{}
 		fake        = fakeManagementAPI{
 			result: func() []player {
+				if playerCount.Load() > 0 {
+					return []player{{ID: "1", Name: "A"}}
+				}
 				return []player{}
 			},
 			closeConn: closeConn,
@@ -184,7 +189,7 @@ func TestServerMonExitsWhenManagementAPIUnreachable(t *testing.T) {
 		mon = servermon.New(
 			slog.New(slog.NewTextHandler(os.Stdout, nil)),
 			servermon.Config{
-				PlayerCountCheckInterval:      5 * time.Second,
+				PlayerCountCheckInterval:      2 * time.Second,
 				MCServerManagementAPIEndpoint: "ws://localhost:30751",
 			},
 			wlMock,
@@ -201,7 +206,10 @@ func TestServerMonExitsWhenManagementAPIUnreachable(t *testing.T) {
 		errCh <- mon.Run(ctx)
 	}()
 
-	time.Sleep(1 * time.Second)
+	playerCount.Store(1)
+	time.Sleep(2 * time.Second)
+	playerCount.Store(0)
+	time.Sleep(200 * time.Millisecond)
 	close(closeConn)
 
 	select {
