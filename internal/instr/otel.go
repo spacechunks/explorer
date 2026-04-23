@@ -12,11 +12,13 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func SetupOTel(
 	ctx context.Context,
 	serviceName string,
+	disable bool,
 ) (shutdown func(context.Context) error, reterr error) {
 	var shutdownFuncs []func(context.Context) error
 	shutdownFunc := func(ctx context.Context) error {
@@ -60,6 +62,10 @@ func SetupOTel(
 	)
 
 	otel.SetTracerProvider(tracerProvider)
+
+	if disable {
+		otel.SetTracerProvider(noop.NewTracerProvider())
+	}
 
 	// TODO: add metrics
 

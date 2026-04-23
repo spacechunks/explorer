@@ -88,7 +88,7 @@ func NewServer(logger *slog.Logger, cfg Config) *Server {
 func (s *Server) Run(ctx context.Context) error {
 	serverconfig.SetVelocitySecret(s.cfg.VelocitySecret)
 
-	shutdown, err := instr.SetupOTel(ctx, "control-plane")
+	shutdown, err := instr.SetupOTel(ctx, "control-plane", s.cfg.DisableTracing)
 	if err != nil {
 		return fmt.Errorf("setup otel: %w", err)
 	}
