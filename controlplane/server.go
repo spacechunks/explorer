@@ -67,6 +67,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/exaring/otelpgx"
 )
 
 type Server struct {
@@ -86,7 +88,7 @@ func NewServer(logger *slog.Logger, cfg Config) *Server {
 func (s *Server) Run(ctx context.Context) error {
 	serverconfig.SetVelocitySecret(s.cfg.VelocitySecret)
 
-	shutdown, err := instr.SetupOTel(ctx, "", "control-plane")
+	shutdown, err := instr.SetupOTel(ctx, "control-plane")
 	if err != nil {
 		return fmt.Errorf("setup otel: %w", err)
 	}
@@ -104,7 +106,14 @@ func (s *Server) Run(ctx context.Context) error {
 		return fmt.Errorf("oidc provider: %w", err)
 	}
 
-	pool, err := pgxpool.New(ctx, s.cfg.DBConnString)
+	pgxCfg, err := pgxpool.ParseConfig(s.cfg.DBConnString)
+	if err != nil {
+		return fmt.Errorf("parse pgx cfg: %w", err)
+	}
+
+	pgxCfg.ConnConfig.Tracer = otelpgx.NewTracer()
+
+	pool, err := pgxpool.NewWithConfig(ctx, pgxCfg)
 	if err != nil {
 		return fmt.Errorf("connect to database: %w", err)
 	}

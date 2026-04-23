@@ -52,5 +52,4 @@ type Config struct {
 	VelocitySecret                string
 	ChangeSetTarballMaxSizeBytes  uint64
 	ArchiveInterval               time.Duration
-	OTLPEndpoint                  string
 }

@@ -12,13 +12,10 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func SetupOTel(
 	ctx context.Context,
-	otlpEndpoint string,
 	serviceName string,
 ) (shutdown func(context.Context) error, reterr error) {
 	var shutdownFuncs []func(context.Context) error
@@ -51,12 +48,7 @@ func SetupOTel(
 
 	otel.SetTextMapPropagator(prop)
 
-	conn, err := grpc.NewClient(otlpEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, fmt.Errorf("grpc: %w", err)
-	}
-
-	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
+	traceExporter, err := otlptracegrpc.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("trace exporter: %w", err)
 	}
