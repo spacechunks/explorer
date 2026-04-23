@@ -21,7 +21,8 @@ import (
 )
 
 type fakeManagementAPI struct {
-	result func() []player
+	result    func() []player
+	closeConn chan struct{}
 }
 
 type player struct {
@@ -43,6 +44,13 @@ func (f fakeManagementAPI) serveWs(w http.ResponseWriter, r *http.Request) {
 		log.Printf("marshal: %v\n", err)
 		conn.Close()
 		return
+	}
+
+	if f.closeConn != nil {
+		go func() {
+			<-f.closeConn
+			conn.Close()
+		}()
 	}
 
 	for {
@@ -159,4 +167,47 @@ func TestServerMonKeepsWorkloadWhenPlayersArePresent(t *testing.T) {
 	wlMock.AssertNotCalled(t, "StopWorkload", mocky.Anything, &workloadv1alpha2.WorkloadStopRequest{
 		Id: wlID,
 	})
+}
+
+func TestServerMonExitsWhenManagementAPIUnreachable(t *testing.T) {
+	var (
+		wlID        = "blabla"
+		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		wlMock      = mock.NewMockV1alpha2WorkloadServiceClient(t)
+		closeConn   = make(chan struct{})
+		fake        = fakeManagementAPI{
+			result: func() []player {
+				return []player{}
+			},
+			closeConn: closeConn,
+		}
+		mon = servermon.New(
+			slog.New(slog.NewTextHandler(os.Stdout, nil)),
+			servermon.Config{
+				PlayerCountCheckInterval:      5 * time.Second,
+				MCServerManagementAPIEndpoint: "ws://localhost:30751",
+			},
+			wlMock,
+		)
+	)
+
+	_ = os.Setenv("PLATFORMD_WORKLOAD_ID", wlID)
+	defer cancel()
+
+	go fake.Run(t, 30751)
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- mon.Run(ctx)
+	}()
+
+	time.Sleep(1 * time.Second)
+	close(closeConn)
+
+	select {
+	case err := <-errCh:
+		require.Error(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Run did not exit after management API became unreachable")
+	}
 }
