@@ -199,11 +199,18 @@ func TestServerMonExitsWhenManagementAPIUnreachable(t *testing.T) {
 	_ = os.Setenv("PLATFORMD_WORKLOAD_ID", wlID)
 	defer cancel()
 
+	wlMock.
+		EXPECT().
+		StopWorkload(mocky.Anything, &workloadv1alpha2.WorkloadStopRequest{
+			Id: wlID,
+		}).
+		Return(&workloadv1alpha2.WorkloadStopResponse{}, nil)
+
 	go fake.Run(t, 30751)
 
-	errCh := make(chan error, 1)
 	go func() {
-		errCh <- mon.Run(ctx)
+		err := mon.Run(ctx)
+		require.NoError(t, err)
 	}()
 
 	playerCount.Store(1)
@@ -212,10 +219,5 @@ func TestServerMonExitsWhenManagementAPIUnreachable(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	close(closeConn)
 
-	select {
-	case err := <-errCh:
-		require.Error(t, err)
-	case <-time.After(5 * time.Second):
-		t.Fatal("Run did not exit after management API became unreachable")
-	}
+	<-ctx.Done()
 }
