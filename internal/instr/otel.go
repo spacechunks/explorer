@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -12,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
@@ -70,4 +72,22 @@ func SetupOTel(
 	// TODO: add metrics
 
 	return shutdownFunc, err
+}
+
+type OTelSlogHandler struct {
+	slog.Handler
+}
+
+func (h OTelSlogHandler) Handle(ctx context.Context, r slog.Record) error {
+	span := oteltrace.SpanFromContext(ctx)
+	if !span.SpanContext().IsValid() {
+		return h.Handler.Handle(ctx, r)
+	}
+
+	r.AddAttrs(
+		slog.String("trace_id", span.SpanContext().TraceID().String()),
+		slog.String("span_id", span.SpanContext().SpanID().String()),
+	)
+
+	return h.Handler.Handle(ctx, r)
 }

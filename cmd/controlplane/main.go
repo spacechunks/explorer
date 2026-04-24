@@ -33,11 +33,16 @@ import (
 	"github.com/peterbourgon/ff/v3"
 	"github.com/spacechunks/explorer/controlplane"
 	"github.com/spacechunks/explorer/controlplane/postgres/migrations"
+	"github.com/spacechunks/explorer/internal/instr"
 )
 
 func main() {
 	var (
-		logger                   = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		logger = slog.New(
+			&instr.OTelSlogHandler{
+				Handler: slog.NewJSONHandler(os.Stdout, nil),
+			},
+		)
 		fs                       = flag.NewFlagSet("controlplane", flag.ContinueOnError)
 		listenAddr               = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                                                   //nolint:lll
 		pgConnString             = fs.String("postgres-dsn", "", "connection string in the form of postgres://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]")                                    //nolint:lll
