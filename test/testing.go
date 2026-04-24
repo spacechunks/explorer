@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"maps"
 	"net"
+	"net/url"
 	"slices"
 	"testing"
 	"time"
@@ -96,4 +97,10 @@ func CreateResourcePackZip(t *testing.T, files map[string]string) (*bytes.Buffer
 	require.NoError(t, err)
 
 	return buf, fmt.Sprintf("%x", sha1.Sum(buf.Bytes()))
+}
+
+func MustParseURL(t *testing.T, s string) *url.URL {
+	u, err := url.Parse(s)
+	require.NoError(t, err)
+	return u
 }

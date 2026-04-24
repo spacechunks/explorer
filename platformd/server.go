@@ -51,7 +51,7 @@ func NewServer(logger *slog.Logger) *Server {
 func (s *Server) Run(ctx context.Context, cfg Config) error {
 	s.logger.Info("started with config", "config", cfg)
 
-	if err := os.MkdirAll(filepath.Dir(cfg.ManagementServerListenSock), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir(cfg.ManagementServerListenSock.Path), os.ModePerm); err != nil {
 		return fmt.Errorf("create dir: %w", err)
 	}
 
@@ -102,11 +102,11 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		wlSvc = workload.NewService(
 			s.logger,
 			workload.Config{
-				MCManagementAPIToken: cfg.WorkloadConfig.MCManagementAPIToken,
-				ServerMonImage:       cfg.WorkloadConfig.ServerMonImage,
-				PlatformdListenSock:  cfg.ManagementServerListenSock,
-				PlatformdSocketUID:   cfg.ManagementSocketUID,
-				PlatformdSocketGID:   cfg.ManagementSocketGID,
+				MCManagementAPIToken:   cfg.WorkloadConfig.MCManagementAPIToken,
+				ServerMonImage:         cfg.WorkloadConfig.ServerMonImage,
+				PlatformdListenSockURL: cfg.ManagementServerListenSock,
+				PlatformdSocketUID:     cfg.ManagementSocketUID,
+				PlatformdSocketGID:     cfg.ManagementSocketGID,
 			},
 			criSvc,
 			registryAuth,
@@ -231,14 +231,14 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 	wg.Add(1)
 
 	g.Go(func() error {
-		unixSock, err := net.Listen("unix", cfg.ManagementServerListenSock)
+		unixSock, err := net.Listen("unix", cfg.ManagementServerListenSock.Path)
 		if err != nil {
 			s.stopCh <- struct{}{}
 			return fmt.Errorf("failed to listen on unix socket: %v", err)
 		}
 
 		if err := os.Chown(
-			cfg.ManagementServerListenSock,
+			cfg.ManagementServerListenSock.Path,
 			int(cfg.ManagementSocketUID),
 			int(cfg.ManagementSocketGID),
 		); err != nil {
@@ -288,8 +288,8 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 					ContainerPath: "/etc/envoy/config.yaml",
 				},
 				{
-					HostPath:      cfg.ManagementServerListenSock,
-					ContainerPath: cfg.ManagementServerListenSock,
+					HostPath:      cfg.ManagementServerListenSock.Path,
+					ContainerPath: cfg.ManagementServerListenSock.Path,
 				},
 			},
 			Linux: &runtimev1.LinuxContainerConfig{

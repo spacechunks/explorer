@@ -1,11 +1,12 @@
 package platformd
 
 import (
+	"net/url"
 	"time"
 )
 
 type Config struct {
-	ManagementServerListenSock string
+	ManagementServerListenSock *url.URL
 	CRIListenSock              string
 	EnvoyImage                 string
 	CoreDNSImage               string
