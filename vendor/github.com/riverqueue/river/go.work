@@ -1,13 +1,15 @@
-go 1.23.0
+go 1.25.0
 
-toolchain go1.24.1
+toolchain go1.25.7
 
 use (
 	.
 	./cmd/river
 	./riverdriver
 	./riverdriver/riverdatabasesql
+	./riverdriver/riverdrivertest
 	./riverdriver/riverpgxv5
+	./riverdriver/riversqlite
 	./rivershared
 	./rivertype
 )

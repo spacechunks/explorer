@@ -3,10 +3,15 @@ package riversharedtest
 import (
 	"cmp"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
+	"path"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -97,6 +102,94 @@ func DBPoolClone(ctx context.Context, tb testing.TB) *pgxpool.Pool {
 	return dbPool
 }
 
+// Gets an SQLite test directory at project root so it's invariant of which
+// package tests are being run in.
+var sqliteTestDir = sync.OnceValue(func() string { //nolint:gochecknoglobals
+	var (
+		_, filename, _, _ = runtime.Caller(0)
+		rootDir           = path.Join(path.Dir(filename), "..", "..")
+	)
+	return path.Join(rootDir, "sqlite")
+})
+
+// DBPoolLibSQL gets a database pool appropriate for use with libSQL (a SQLite
+// fork) in testing.
+func DBPoolLibSQL(ctx context.Context, tb testing.TB, schema string) *sql.DB {
+	tb.Helper()
+
+	return dbPoolSQLite(ctx, tb, schema, "libsql")
+}
+
+// DBPoolSQLite gets a database pool appropriate for use with SQLite in testing.
+func DBPoolSQLite(ctx context.Context, tb testing.TB, schema string) *sql.DB {
+	tb.Helper()
+
+	return dbPoolSQLite(ctx, tb, schema, "sqlite")
+}
+
+func dbPoolSQLite(ctx context.Context, tb testing.TB, schema, driverName string) *sql.DB { //nolint:unparam
+	tb.Helper()
+
+	var databaseURLBuilder strings.Builder
+
+	databaseURLBuilder.WriteString("file:" + filepath.Join(sqliteTestDir(), schema+".sqlite3"))
+
+	// This innocuous line turns out to be quite important at the tail.
+	//
+	// When running the test suite via SQLite, most of the time everything goes
+	// well and we get no problems. But sometimes, especially when using `-race`
+	// or at higher iteration counts, SQLite will arbitrarily return the error
+	// "database is locked (5) (SQLITE_BUSY)". This is a death sentence because
+	// SQLite provides no tooling for figuring out _what_ is locking the
+	// database, so any further tests using TestSchema that try to reuse that
+	// schema will fail on the same error.
+	//
+	// I tried a number of techniques to fix this include doing a post-flight
+	// check on schema health before checking a schema back into the TestSchema
+	// pool, and while that also semed to the trick, a simpler alternative is to
+	// make sure that SQLite is doing its journaling via WAL:
+	//
+	// https://sqlite.org/pragma.html#pragma_journal_mode
+	// https://sqlite.org/wal.html
+	//
+	// There's a lot of potential reading to do on the subject of WAL, but the
+	// short answer is that it unlocks more concurrency, and it's faster anyway.
+	//
+	// My results in using WAL to decrease the prevalance of "database is
+	// locked" problems also seems to be mirrored by other peoples' findings:
+	//
+	// https://til.simonwillison.net/sqlite/enabling-wal-mode
+	//
+	// I write all this because this line is a little dangerous. Removing it
+	// will probably still allow a basic test run to pass so it might seem okay,
+	// but actually it opens the door to intermittency hell.
+	databaseURLBuilder.WriteString("?_pragma=journal_mode(WAL)")
+
+	dbPool, err := sql.Open(driverName, databaseURLBuilder.String())
+	require.NoError(tb, err)
+	tb.Cleanup(func() { require.NoError(tb, dbPool.Close()) })
+
+	// River does enough concurrent work that given multiple active SQLite
+	// connections, it'll immediately start erroring with "database is locked
+	// (5) (SQLITE_BUSY)" because SQLite can only handle one operation at a time
+	// and explicitly errors if another is in flight. To prevent this problem,
+	// we constrain the maximum pool size to 1 so it limits concurrent access
+	// for us.
+	//
+	// I've seen some broad recommendations that it might be better to
+	// always set maximum connections for a single SQLite database to 1
+	// anyway. See for example:
+	//
+	// https://news.ycombinator.com/item?id=30369095
+	//
+	// An alternative approach is to increase `PRAGMA busy_timeout`, but I've
+	// found that we still run into `SQLITE_BUSY` errors with that at higher
+	// iteration counts like `-run TestClientWithDriverRiverSQLite -count 100`.
+	dbPool.SetMaxOpenConns(1)
+
+	return dbPool
+}
+
 // Logger returns a logger suitable for use in tests.
 //
 // Defaults to informational verbosity. If env is set with `RIVER_DEBUG=true`,
@@ -111,8 +204,9 @@ func Logger(tb testing.TB) *slog.Logger {
 	return slogtest.NewLogger(tb, nil)
 }
 
-// Logger returns a logger suitable for use in tests which outputs only at warn
-// or above. Useful in tests where particularly noisy log output is expected.
+// LoggerWarn returns a logger suitable for use in tests which outputs only at
+// warn or above. Useful in tests where particularly noisy log output is
+// expected.
 func LoggerWarn(tb testutil.TestingTB) *slog.Logger {
 	tb.Helper()
 	return slogtest.NewLogger(tb, &slog.HandlerOptions{Level: slog.LevelWarn})
@@ -146,34 +240,34 @@ func TestDatabaseURL() string {
 //
 // It exists separately from rivertest.TimeStub to avoid a circular dependency.
 type TimeStub struct {
-	mu     sync.RWMutex
-	nowUTC *time.Time
+	mu  sync.RWMutex
+	now *time.Time
 }
 
-func (t *TimeStub) NowUTC() time.Time {
+func (t *TimeStub) Now() time.Time {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	if t.nowUTC == nil {
-		return time.Now().UTC()
+	if t.now == nil {
+		return time.Now()
 	}
 
-	return *t.nowUTC
+	return *t.now
 }
 
-func (t *TimeStub) NowUTCOrNil() *time.Time {
+func (t *TimeStub) NowOrNil() *time.Time {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	return t.nowUTC
+	return t.now
 }
 
-func (t *TimeStub) StubNowUTC(nowUTC time.Time) time.Time {
+func (t *TimeStub) StubNow(now time.Time) time.Time {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.nowUTC = &nowUTC
-	return nowUTC
+	t.now = &now
+	return now
 }
 
 // WaitOrTimeout tries to wait on the given channel for a value to come through,
@@ -253,6 +347,8 @@ var IgnoredKnownGoroutineLeaks = []goleak.Option{ //nolint:gochecknoglobals
 	// Similar to the above, may be sitting in a sleep when the program finishes
 	// and there's not much we can do about it.
 	goleak.IgnoreAnyFunction("github.com/jackc/pgx/v5/pgxpool.(*Pool).triggerHealthCheck.func1"),
+
+	goleak.IgnoreAnyFunction("database/sql.(*DB).connectionOpener"),
 }
 
 // WrapTestMain performs some common setup and teardown that should be shared
@@ -260,6 +356,9 @@ var IgnoredKnownGoroutineLeaks = []goleak.Option{ //nolint:gochecknoglobals
 // and checks for no goroutine leaks on teardown.
 func WrapTestMain(m *testing.M) {
 	status := m.Run()
+	if dbPool != nil {
+		dbPool.Close()
+	}
 
 	if status == 0 {
 		if err := goleak.Find(IgnoredKnownGoroutineLeaks...); err != nil {

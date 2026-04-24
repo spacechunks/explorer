@@ -3,21 +3,24 @@ package testutil
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"os"
 )
 
 // See docs on PanicTB.
-type panicTB struct {
-	SuppressOutput bool
-}
+type panicTB struct{}
 
 // PanicTB is an implementation for testing.TB that panics when an error is
 // logged or FailNow is called. This is useful to inject into test helpers in
 // example tests where no *testing.T is available.
 //
+// If env is set with `RIVER_DEBUG=true`, output is logged to os.Stderr (Stderr
+// instead of Stdout to not interfere with example test output).
+//
 // Doesn't fully implement testing.TB. Functions where it's used should take the
 // more streamlined TestingTB instead.
 func PanicTB() *panicTB {
-	return &panicTB{SuppressOutput: true}
+	return &panicTB{}
 }
 
 func (tb *panicTB) Errorf(format string, args ...any) {
@@ -31,15 +34,28 @@ func (tb *panicTB) FailNow() {
 func (tb *panicTB) Helper() {}
 
 func (tb *panicTB) Log(args ...any) {
-	if !tb.SuppressOutput {
-		fmt.Println(args...)
+	logOut := tb.maybeDebugOut()
+	if logOut != nil {
+		fmt.Fprintln(logOut, args...)
 	}
 }
 
 func (tb *panicTB) Logf(format string, args ...any) {
-	if !tb.SuppressOutput {
-		fmt.Printf(format+"\n", args...)
+	logOut := tb.maybeDebugOut()
+	if logOut != nil {
+		fmt.Fprintf(logOut, format+"\n", args...)
 	}
+}
+
+func (tb *panicTB) Name() string { return "panicTB" }
+
+func (tb *panicTB) maybeDebugOut() io.Writer {
+	if os.Getenv("RIVER_DEBUG") == "1" || os.Getenv("RIVER_DEBUG") == "true" {
+		// Send output to stderr so it doesn't interfere with example tests.
+		return os.Stderr
+	}
+
+	return nil
 }
 
 // MockT mocks TestingTB. It's used to let us verify our test helpers.
@@ -59,7 +75,7 @@ func NewMockT(tb TestingTB) *MockT {
 
 func (t *MockT) Errorf(format string, args ...any) {
 	// Errorf is equivalent to Log + Fail
-	t.logOutput.WriteString(fmt.Sprintf(format, args...))
+	fmt.Fprintf(&t.logOutput, format, args...)
 	t.logOutput.WriteString("\n")
 	t.Failed = true
 }
@@ -73,14 +89,14 @@ func (t *MockT) Helper() {}
 func (t *MockT) Log(args ...any) {
 	t.tb.Log(args...)
 
-	t.logOutput.WriteString(fmt.Sprint(args...))
+	fmt.Fprint(&t.logOutput, args...)
 	t.logOutput.WriteString("\n")
 }
 
 func (t *MockT) Logf(format string, args ...any) {
 	t.tb.Logf(format, args...)
 
-	t.logOutput.WriteString(fmt.Sprintf(format, args...))
+	fmt.Fprintf(&t.logOutput, format, args...)
 	t.logOutput.WriteString("\n")
 }
 
@@ -88,7 +104,9 @@ func (t *MockT) LogOutput() string {
 	return t.logOutput.String()
 }
 
-// TestingT is an interface wrapper around *testing.T that's implemented by all
+func (t *MockT) Name() string { return "MockT" }
+
+// TestingTB is an interface wrapper around *testing.T that's implemented by all
 // of *testing.T, *testing.F, and *testing.B.
 //
 // It's used internally to verify that River's test assertions are working as
@@ -99,4 +117,5 @@ type TestingTB interface {
 	Helper()
 	Log(args ...any)
 	Logf(format string, args ...any)
+	Name() string
 }

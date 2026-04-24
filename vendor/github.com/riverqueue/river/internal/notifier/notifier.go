@@ -1,11 +1,13 @@
 package notifier
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -78,9 +80,10 @@ type Notifier struct {
 	baseservice.BaseService
 	startstop.BaseStartStop
 
-	disableSleep      bool // for tests only; disable sleep on exponential backoff
 	listener          riverdriver.Listener
 	notificationBuf   chan *riverdriver.Notification
+	testDisableSleep  bool          // for tests only; disable sleep on exponential backoff
+	testPingInterval  time.Duration // for tests only; override the 5s ping interval
 	testSignals       notifierTestSignals
 	waitInterruptChan chan func()
 
@@ -133,11 +136,9 @@ func (n *Notifier) Start(ctx context.Context) error {
 
 		var wg sync.WaitGroup
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			n.deliverNotifications(ctx)
-		}()
+		})
 
 		for attempt := 0; ; attempt++ {
 			if err := n.listenAndWait(ctx); err != nil {
@@ -152,7 +153,7 @@ func (n *Notifier) Start(ctx context.Context) error {
 					slog.String("sleep_duration", sleepDuration.String()),
 				)
 				n.testSignals.BackoffError.Signal(err)
-				if !n.disableSleep {
+				if !n.testDisableSleep {
 					serviceutil.CancellableSleep(ctx, sleepDuration)
 				}
 			}
@@ -262,12 +263,38 @@ func (n *Notifier) listenerClose(ctx context.Context, skipLock bool) {
 
 	n.Logger.DebugContext(ctx, n.Name+": Listener closing")
 	if err := n.listener.Close(ctx); err != nil {
-		if !errors.Is(err, context.Canceled) {
+		if shouldIgnoreListenerError(err) {
 			n.Logger.ErrorContext(ctx, n.Name+": Error closing listener", "err", err)
 		}
 	}
 
 	n.isConnected = false
+}
+
+// shouldIgnoreListenerError returns true if the error is a certain type of
+// common error that we see when trying to close a listener.
+//
+// It's probably not strictly necessary to log errors on listener close, but it
+// seems not ideal to ignore them completely either. If this function were ever
+// to become to unwieldy though, we might want to go back to the drawing board.
+func shouldIgnoreListenerError(err error) bool {
+	if errors.Is(err, context.Canceled) {
+		return true
+	}
+
+	// In practice, this occurs a fair bit in some systems. See:
+	//
+	//     https://github.com/riverqueue/river/issues/256
+	//
+	// There's been an issue opened to make this a well-known error type, but
+	// it's not right now:
+	//
+	//     https://github.com/golang/go/issues/75600
+	if strings.Contains(err.Error(), "tls: failed to send closeNotify alert") {
+		return true
+	}
+
+	return false
 }
 
 const listenerTimeout = 10 * time.Second
@@ -347,6 +374,12 @@ func (n *Notifier) waitOnce(ctx context.Context) error {
 		n.waitCancel()
 	})
 
+	// Save a reference to the parent context before creating the inner
+	// cancellable context. The inner context is cancelled by drainErrChan to
+	// interrupt WaitForNotification, but we still need a live context for the
+	// Ping health check afterward.
+	pingCtx := ctx
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -384,7 +417,8 @@ func (n *Notifier) waitOnce(ctx context.Context) error {
 		return nil
 	}
 
-	needPingCtx, needPingCancel := context.WithTimeout(ctx, 5*time.Second)
+	pingInterval := cmp.Or(n.testPingInterval, 5*time.Second)
+	needPingCtx, needPingCancel := context.WithTimeout(ctx, pingInterval)
 	defer needPingCancel()
 
 	// * Wait for notifications
@@ -399,8 +433,15 @@ func (n *Notifier) waitOnce(ctx context.Context) error {
 		if err := drainErrChan(); err != nil {
 			return err
 		}
-		// Ping the conn to see if it's still alive
-		if err := n.listener.Ping(ctx); err != nil {
+		// Ping the conn to see if it's still alive. Use pingCtx (the parent
+		// context) because the inner ctx was cancelled by drainErrChan above
+		// to interrupt WaitForNotification.
+		//
+		// Note: Previously this used the (already cancelled) inner ctx, making
+		// the ping a no-op that always returned context.Canceled. With the fix,
+		// dead or flaky connections are now actively detected, which may trigger
+		// reconnections that were previously silently swallowed.
+		if err := n.listener.Ping(pingCtx); err != nil {
 			return err
 		}
 

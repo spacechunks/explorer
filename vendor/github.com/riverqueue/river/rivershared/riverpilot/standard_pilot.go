@@ -13,26 +13,48 @@ type StandardPilot struct {
 	seq atomic.Int64
 }
 
+func (p *StandardPilot) JobCleanerQueuesExcluded() []string { return nil }
+
 func (p *StandardPilot) JobGetAvailable(ctx context.Context, exec riverdriver.Executor, state ProducerState, params *riverdriver.JobGetAvailableParams) ([]*rivertype.JobRow, error) {
-	if params.Max <= 0 {
+	if params.MaxToLock <= 0 {
 		return nil, nil
 	}
 	return exec.JobGetAvailable(ctx, params)
 }
 
+func (p *StandardPilot) JobCancel(ctx context.Context, exec riverdriver.Executor, params *riverdriver.JobCancelParams) (*rivertype.JobRow, error) {
+	return exec.JobCancel(ctx, params)
+}
+
 func (p *StandardPilot) JobInsertMany(
 	ctx context.Context,
-	tx riverdriver.ExecutorTx,
+	exec riverdriver.Executor,
 	params *riverdriver.JobInsertFastManyParams,
 ) ([]*riverdriver.JobInsertFastResult, error) {
-	return tx.JobInsertFastMany(ctx, params)
+	return exec.JobInsertFastMany(ctx, params)
 }
 
-func (p *StandardPilot) JobSetStateIfRunningMany(ctx context.Context, tx riverdriver.ExecutorTx, params *riverdriver.JobSetStateIfRunningManyParams) ([]*rivertype.JobRow, error) {
-	return tx.JobSetStateIfRunningMany(ctx, params)
+func (p *StandardPilot) JobRetry(ctx context.Context, exec riverdriver.Executor, params *riverdriver.JobRetryParams) (*rivertype.JobRow, error) {
+	return exec.JobRetry(ctx, params)
 }
 
-func (p *StandardPilot) PilotInit(archetype *baseservice.Archetype) {
+func (p *StandardPilot) JobSetStateIfRunningMany(ctx context.Context, exec riverdriver.Executor, params *riverdriver.JobSetStateIfRunningManyParams) ([]*rivertype.JobRow, error) {
+	return exec.JobSetStateIfRunningMany(ctx, params)
+}
+
+func (p *StandardPilot) PeriodicJobKeepAliveAndReap(ctx context.Context, exec riverdriver.Executor, params *PeriodicJobKeepAliveAndReapParams) ([]*PeriodicJob, error) {
+	return nil, nil
+}
+
+func (p *StandardPilot) PeriodicJobGetAll(ctx context.Context, exec riverdriver.Executor, params *PeriodicJobGetAllParams) ([]*PeriodicJob, error) {
+	return nil, nil
+}
+
+func (p *StandardPilot) PeriodicJobUpsertMany(ctx context.Context, exec riverdriver.Executor, params *PeriodicJobUpsertManyParams) ([]*PeriodicJob, error) {
+	return nil, nil
+}
+
+func (p *StandardPilot) PilotInit(archetype *baseservice.Archetype, params *PilotInitParams) {
 	// No-op
 }
 

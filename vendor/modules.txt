@@ -495,8 +495,8 @@ github.com/jackc/pgpassfile
 # github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761
 ## explicit; go 1.14
 github.com/jackc/pgservicefile
-# github.com/jackc/pgx/v5 v5.7.4
-## explicit; go 1.21
+# github.com/jackc/pgx/v5 v5.9.2
+## explicit; go 1.25.0
 github.com/jackc/pgx/v5
 github.com/jackc/pgx/v5/internal/iobufpool
 github.com/jackc/pgx/v5/internal/pgio
@@ -720,8 +720,8 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/riverqueue/river v0.22.0
-## explicit; go 1.23.0
+# github.com/riverqueue/river v0.35.0
+## explicit; go 1.25.0
 github.com/riverqueue/river
 github.com/riverqueue/river/internal/dblist
 github.com/riverqueue/river/internal/dbunique
@@ -737,7 +737,6 @@ github.com/riverqueue/river/internal/notifier
 github.com/riverqueue/river/internal/notifylimiter
 github.com/riverqueue/river/internal/rivercommon
 github.com/riverqueue/river/internal/util/chanutil
-github.com/riverqueue/river/internal/util/dbutil
 github.com/riverqueue/river/internal/workunit
 github.com/riverqueue/river/rivermigrate
 github.com/riverqueue/river/rivertest
@@ -746,23 +745,28 @@ github.com/riverqueue/river/rivertest
 github.com/riverqueue/river/cmd/river
 github.com/riverqueue/river/cmd/river/riverbench
 github.com/riverqueue/river/cmd/river/rivercli
-# github.com/riverqueue/river/riverdriver v0.22.0
-## explicit; go 1.23.0
+# github.com/riverqueue/river/riverdriver v0.35.0
+## explicit; go 1.25.0
 github.com/riverqueue/river/riverdriver
-# github.com/riverqueue/river/riverdriver/riverpgxv5 v0.22.0
-## explicit; go 1.23.0
+# github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.0
+## explicit; go 1.25.0
 github.com/riverqueue/river/riverdriver/riverpgxv5
 github.com/riverqueue/river/riverdriver/riverpgxv5/internal/dbsqlc
-# github.com/riverqueue/river/rivershared v0.22.0
-## explicit; go 1.23.0
+# github.com/riverqueue/river/rivershared v0.35.0
+## explicit; go 1.25.0
 github.com/riverqueue/river/rivershared/baseservice
+github.com/riverqueue/river/rivershared/circuitbreaker
 github.com/riverqueue/river/rivershared/levenshtein
 github.com/riverqueue/river/rivershared/riverpilot
+github.com/riverqueue/river/rivershared/riversharedmaintenance
 github.com/riverqueue/river/rivershared/riversharedtest
 github.com/riverqueue/river/rivershared/slogtest
 github.com/riverqueue/river/rivershared/sqlctemplate
 github.com/riverqueue/river/rivershared/startstop
+github.com/riverqueue/river/rivershared/structtag
 github.com/riverqueue/river/rivershared/testsignal
+github.com/riverqueue/river/rivershared/uniquestates
+github.com/riverqueue/river/rivershared/util/dbutil
 github.com/riverqueue/river/rivershared/util/maputil
 github.com/riverqueue/river/rivershared/util/ptrutil
 github.com/riverqueue/river/rivershared/util/randutil
@@ -771,9 +775,12 @@ github.com/riverqueue/river/rivershared/util/sliceutil
 github.com/riverqueue/river/rivershared/util/testutil
 github.com/riverqueue/river/rivershared/util/timeutil
 github.com/riverqueue/river/rivershared/util/valutil
-# github.com/riverqueue/river/rivertype v0.22.0
-## explicit; go 1.23.0
+# github.com/riverqueue/river/rivertype v0.35.0
+## explicit; go 1.25.0
 github.com/riverqueue/river/rivertype
+# github.com/riverqueue/rivercontrib/otelriver v0.7.0
+## explicit; go 1.24.0
+github.com/riverqueue/rivercontrib/otelriver
 # github.com/rodaine/table v1.3.0
 ## explicit; go 1.14
 github.com/rodaine/table
@@ -866,7 +873,7 @@ github.com/testcontainers/testcontainers-go/wait
 # github.com/tidwall/gjson v1.18.0
 ## explicit; go 1.12
 github.com/tidwall/gjson
-# github.com/tidwall/match v1.1.1
+# github.com/tidwall/match v1.2.0
 ## explicit; go 1.15
 github.com/tidwall/match
 # github.com/tidwall/pretty v1.2.1
@@ -916,6 +923,10 @@ github.com/zeebo/xxh3
 ## explicit; go 1.24.0
 go.opentelemetry.io/auto/sdk
 go.opentelemetry.io/auto/sdk/internal/telemetry
+# go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0
+## explicit; go 1.25.0
+go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc
+go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/internal
 # go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.59.0
 ## explicit; go 1.22.0
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
@@ -938,8 +949,10 @@ go.opentelemetry.io/otel/semconv/v1.20.0
 go.opentelemetry.io/otel/semconv/v1.26.0
 go.opentelemetry.io/otel/semconv/v1.27.0
 go.opentelemetry.io/otel/semconv/v1.37.0
+go.opentelemetry.io/otel/semconv/v1.37.0/rpcconv
 go.opentelemetry.io/otel/semconv/v1.40.0
 go.opentelemetry.io/otel/semconv/v1.40.0/otelconv
+go.opentelemetry.io/otel/semconv/v1.40.0/rpcconv
 # go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0
 ## explicit; go 1.25.0
 go.opentelemetry.io/otel/exporters/otlp/otlptrace
@@ -987,7 +1000,7 @@ go.shabbyrobe.org/gocovmerge
 ## explicit; go 1.20
 go.uber.org/goleak
 go.uber.org/goleak/internal/stack
-# golang.org/x/crypto v0.49.0
+# golang.org/x/crypto v0.50.0
 ## explicit; go 1.25.0
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
@@ -1001,8 +1014,8 @@ golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 # golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
 ## explicit; go 1.23.0
 golang.org/x/exp/constraints
-# golang.org/x/mod v0.33.0
-## explicit; go 1.24.0
+# golang.org/x/mod v0.35.0
+## explicit; go 1.25.0
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module
 golang.org/x/mod/semver
@@ -1029,17 +1042,17 @@ golang.org/x/oauth2/internal
 ## explicit; go 1.25.0
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.42.0
+# golang.org/x/sys v0.43.0
 ## explicit; go 1.25.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.41.0
+# golang.org/x/term v0.42.0
 ## explicit; go 1.25.0
 golang.org/x/term
-# golang.org/x/text v0.35.0
+# golang.org/x/text v0.36.0
 ## explicit; go 1.25.0
 golang.org/x/text/cases
 golang.org/x/text/internal
@@ -1057,8 +1070,8 @@ golang.org/x/text/width
 # golang.org/x/time v0.10.0
 ## explicit; go 1.18
 golang.org/x/time/rate
-# golang.org/x/tools v0.42.0
-## explicit; go 1.24.0
+# golang.org/x/tools v0.43.0
+## explicit; go 1.25.0
 golang.org/x/tools/cover
 golang.org/x/tools/go/ast/astutil
 golang.org/x/tools/go/ast/edge
@@ -1090,7 +1103,7 @@ google.golang.org/genproto/googleapis/api
 google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/api/expr/v1alpha1
 google.golang.org/genproto/googleapis/api/httpbody
-# google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d
 ## explicit; go 1.25.0
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status

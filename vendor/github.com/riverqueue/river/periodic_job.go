@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/riverqueue/river/internal/maintenance"
+	"github.com/riverqueue/river/rivershared/baseservice"
 	"github.com/riverqueue/river/rivershared/util/sliceutil"
 	"github.com/riverqueue/river/rivertype"
 )
@@ -33,6 +34,11 @@ type PeriodicJob struct {
 
 // PeriodicJobOpts are options for a periodic job.
 type PeriodicJobOpts struct {
+	// ID is an optional identifier for the job. Identifiers must be unique
+	// between all periodic jobs and adding a periodic job will error if they're
+	// not.
+	ID string
+
 	// RunOnStart can be used to indicate that a periodic job should insert an
 	// initial job as a new scheduler is started. This can be used as a hedge
 	// for jobs with longer scheduled durations that may not get to expiry
@@ -103,18 +109,18 @@ func (s *periodicIntervalSchedule) Next(t time.Time) time.Time {
 // made accessible through Client, where new periodic jobs can be configured,
 // and old ones removed.
 type PeriodicJobBundle struct {
-	clientConfig        *Config
+	mapper              *periodicJobInternalMapper
 	periodicJobEnqueuer *maintenance.PeriodicJobEnqueuer
 }
 
 func newPeriodicJobBundle(config *Config, periodicJobEnqueuer *maintenance.PeriodicJobEnqueuer) *PeriodicJobBundle {
 	return &PeriodicJobBundle{
-		clientConfig:        config,
+		mapper:              &periodicJobInternalMapper{archetype: &periodicJobEnqueuer.Archetype, config: config},
 		periodicJobEnqueuer: periodicJobEnqueuer,
 	}
 }
 
-// Adds a new periodic job to the client. The job is queued immediately if
+// Add adds a new periodic job to the client. The job is queued immediately if
 // RunOnStart is enabled, and then scheduled normally.
 //
 // Returns a periodic job handle which can be used to subsequently remove the
@@ -125,7 +131,17 @@ func newPeriodicJobBundle(config *Config, periodicJobEnqueuer *maintenance.Perio
 // new periodic job is fully enabled or disabled, it should be added or removed
 // from _every_ active River client across all processes.
 func (b *PeriodicJobBundle) Add(periodicJob *PeriodicJob) rivertype.PeriodicJobHandle {
-	return b.periodicJobEnqueuer.Add(b.toInternal(periodicJob))
+	handle, err := b.periodicJobEnqueuer.AddSafely(b.mapper.toInternal(periodicJob))
+	if err != nil {
+		panic(err)
+	}
+	return handle
+}
+
+// AddSafely is the same as Add, but it returns an error in the case of a
+// validation problem or duplicate ID instead of panicking.
+func (b *PeriodicJobBundle) AddSafely(periodicJob *PeriodicJob) (rivertype.PeriodicJobHandle, error) {
+	return b.periodicJobEnqueuer.AddSafely(b.mapper.toInternal(periodicJob))
 }
 
 // AddMany adds many new periodic jobs to the client. The jobs are queued
@@ -139,7 +155,17 @@ func (b *PeriodicJobBundle) Add(periodicJob *PeriodicJob) rivertype.PeriodicJobH
 // new periodic job is fully enabled or disabled, it should be added or removed
 // from _every_ active River client across all processes.
 func (b *PeriodicJobBundle) AddMany(periodicJobs []*PeriodicJob) []rivertype.PeriodicJobHandle {
-	return b.periodicJobEnqueuer.AddMany(sliceutil.Map(periodicJobs, b.toInternal))
+	handles, err := b.periodicJobEnqueuer.AddManySafely(sliceutil.Map(periodicJobs, b.mapper.toInternal))
+	if err != nil {
+		panic(err)
+	}
+	return handles
+}
+
+// AddManySafely is the same as AddMany, but it returns an error in the case of
+// a validation problem or duplicate ID instead of panicking.
+func (b *PeriodicJobBundle) AddManySafely(periodicJobs []*PeriodicJob) ([]rivertype.PeriodicJobHandle, error) {
+	return b.periodicJobEnqueuer.AddManySafely(sliceutil.Map(periodicJobs, b.mapper.toInternal))
 }
 
 // Clear clears all periodic jobs, cancelling all scheduled runs.
@@ -165,6 +191,21 @@ func (b *PeriodicJobBundle) Remove(periodicJobHandle rivertype.PeriodicJobHandle
 	b.periodicJobEnqueuer.Remove(periodicJobHandle)
 }
 
+// RemoveByID removes a periodic job by ID, cancelling all scheduled runs.
+//
+// Adding or removing periodic jobs has no effect unless this client is elected
+// leader because only the leader enqueues periodic jobs. To make sure that a
+// new periodic job is fully enabled or disabled, it should be added or removed
+// from _every_ active River client across all processes.
+//
+// Has no effect if no jobs with the given ID is configured.
+//
+// Returns true if a job with the given ID existed (and was removed), and false
+// otherwise.
+func (b *PeriodicJobBundle) RemoveByID(id string) bool {
+	return b.periodicJobEnqueuer.RemoveByID(id)
+}
+
 // RemoveMany removes many periodic jobs, cancelling all scheduled runs.
 //
 // Requires the use of the periodic job handles that were returned when the jobs
@@ -178,25 +219,44 @@ func (b *PeriodicJobBundle) RemoveMany(periodicJobHandles []rivertype.PeriodicJo
 	b.periodicJobEnqueuer.RemoveMany(periodicJobHandles)
 }
 
+// RemoveManyByID removes many periodic jobs by ID, cancelling all scheduled
+// runs.
+//
+// Adding or removing periodic jobs has no effect unless this client is elected
+// leader because only the leader enqueues periodic jobs. To make sure that a
+// new periodic job is fully enabled or disabled, it should be added or removed
+// from _every_ active River client across all processes.
+//
+// Has no effect if no jobs with the given IDs are configured.
+func (b *PeriodicJobBundle) RemoveManyByID(ids []string) {
+	b.periodicJobEnqueuer.RemoveManyByID(ids)
+}
+
 // An empty set of periodic job opts used as a default when none are specified.
 var periodicJobEmptyOpts PeriodicJobOpts //nolint:gochecknoglobals
+
+type periodicJobInternalMapper struct {
+	archetype *baseservice.Archetype
+	config    *Config
+}
 
 // There are two separate periodic job structs so that the top-level River
 // package can expose one while still containing most periodic job logic in a
 // subpackage. This function converts a top-level periodic job struct (used for
 // configuration) to an internal one.
-func (b *PeriodicJobBundle) toInternal(periodicJob *PeriodicJob) *maintenance.PeriodicJob {
+func (m *periodicJobInternalMapper) toInternal(periodicJob *PeriodicJob) *maintenance.PeriodicJob {
 	opts := &periodicJobEmptyOpts
 	if periodicJob.opts != nil {
 		opts = periodicJob.opts
 	}
 	return &maintenance.PeriodicJob{
+		ID: opts.ID,
 		ConstructorFunc: func() (*rivertype.JobInsertParams, error) {
 			args, options := periodicJob.constructorFunc()
 			if args == nil {
 				return nil, maintenance.ErrNoJobToInsert
 			}
-			return insertParamsFromConfigArgsAndOptions(&b.periodicJobEnqueuer.Archetype, b.clientConfig, args, options)
+			return insertParamsFromConfigArgsAndOptions(m.archetype, m.config, args, options)
 		},
 		RunOnStart:   opts.RunOnStart,
 		ScheduleFunc: periodicJob.scheduleFunc.Next,

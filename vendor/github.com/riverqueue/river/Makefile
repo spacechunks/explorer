@@ -28,6 +28,7 @@ generate/migrations: ## Sync changes of pgxv5 migrations to database/sql
 generate/sqlc: ## Generate sqlc
 	cd riverdriver/riverdatabasesql/internal/dbsqlc && sqlc generate
 	cd riverdriver/riverpgxv5/internal/dbsqlc && sqlc generate
+	cd riverdriver/riversqlite/internal/dbsqlc && sqlc generate
 
 # Looks at comments using ## on targets and uses them to produce a help output.
 .PHONY: help
@@ -39,6 +40,8 @@ help: ## Print this message
 # built-in way to run for all workspace submodules. Add a new submodule to the
 # workspace with `go work use ./driver/new`.
 submodules := $(shell go list -f '{{.Dir}}' -m)
+
+ITERATIONS ?= 100
 
 # Definitions of following tasks look ugly, but they're done this way because to
 # produce the best/most comprehensible output by far (e.g. compared to a shell
@@ -63,6 +66,13 @@ define test-race-target
     test/race:: ; cd $1 && go test ./... -race -timeout 2m
 endef
 $(foreach mod,$(submodules),$(eval $(call test-race-target,$(mod))))
+
+.PHONY: bench
+bench:: ## Run benchmarks in each submodule (ITERATIONS=100)
+define bench-target
+    bench:: ; cd $1 && go test -bench=. -benchtime=$(ITERATIONS)x -run=a^ ./...
+endef
+$(foreach mod,$(submodules),$(eval $(call bench-target,$(mod))))
 
 .PHONY: tidy
 tidy:: ## Run `go mod tidy` for all submodules
@@ -92,3 +102,4 @@ verify/migrations: ## Verify synced migrations
 verify/sqlc: ## Verify generated sqlc
 	cd riverdriver/riverdatabasesql/internal/dbsqlc && sqlc diff
 	cd riverdriver/riverpgxv5/internal/dbsqlc && sqlc diff
+	cd riverdriver/riversqlite/internal/dbsqlc && sqlc diff

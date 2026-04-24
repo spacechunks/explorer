@@ -109,7 +109,24 @@ func (s *BaseStartStop) StartInit(ctx context.Context) (context.Context, bool, f
 	defer s.mu.Unlock()
 
 	if s.isRunning {
-		return ctx, false, nil, nil
+		// If stopped has already been closed (e.g. a previous Start failed and
+		// called stopped()), reset state so the service can start again.
+		//
+		// Notably, for this branch to be taken, Stop will not have been called.
+		// If it was, isRunning will have been set to false via finalizeStop.
+		if s.stopped != nil {
+			select {
+			case <-s.stopped:
+				s.isRunning = false
+				s.started = nil
+				s.stopped = nil
+			default:
+			}
+		}
+
+		if s.isRunning {
+			return ctx, false, nil, nil
+		}
 	}
 
 	s.isRunning = true
@@ -231,8 +248,8 @@ func (s *BaseStartStop) Stopped() <-chan struct{} {
 	return s.stopped
 }
 
-// StoppedWithoutLock returns a channel that can be waited on for the service to
-// be stopped.
+// StoppedUnsafe returns a channel that can be waited on for the service to be
+// stopped.
 //
 // Unlike Stopped, this returns the struct's internal channel directly without
 // preallocation and without taking a lock on the mutex (making it safe to call
@@ -243,6 +260,7 @@ func (s *BaseStartStop) StoppedUnsafe() <-chan struct{} { return s.stopped }
 
 type startStopFunc struct {
 	BaseStartStop
+
 	startFunc func(ctx context.Context, shouldStart bool, started, stopped func()) error
 }
 

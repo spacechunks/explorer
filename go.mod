@@ -28,16 +28,17 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hetznercloud/hcloud-go/v2 v2.16.0
-	github.com/jackc/pgx/v5 v5.7.4
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/johannesboyne/gofakes3 v0.0.0-20250825084532-6555d310c473
 	github.com/lestrrat-go/jwx/v3 v3.0.12
 	github.com/magiconair/properties v1.8.10
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
-	github.com/riverqueue/river v0.22.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.22.0
-	github.com/riverqueue/river/rivertype v0.22.0
+	github.com/riverqueue/river v0.35.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.0
+	github.com/riverqueue/river/rivertype v0.35.0
+	github.com/riverqueue/rivercontrib/otelriver v0.7.0
 	github.com/rodaine/table v1.3.0
 	github.com/sourcegraph/jsonrpc2 v0.2.1
 	github.com/spf13/cobra v1.9.1
@@ -47,13 +48,14 @@ require (
 	github.com/vishvananda/netlink v1.3.0
 	github.com/vishvananda/netns v0.0.5
 	github.com/zeebo/xxh3 v1.0.2
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
-	golang.org/x/crypto v0.49.0
+	golang.org/x/crypto v0.50.0
 	golang.org/x/oauth2 v0.35.0
-	golang.org/x/sys v0.42.0
+	golang.org/x/sys v0.43.0
 	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
 	k8s.io/client-go v0.31.0
@@ -161,8 +163,8 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/riverqueue/river/cmd/river v0.22.0 // indirect
-	github.com/riverqueue/river/riverdriver v0.22.0 // indirect
-	github.com/riverqueue/river/rivershared v0.22.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.35.0 // indirect
+	github.com/riverqueue/river/rivershared v0.35.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
 	github.com/ryszard/goskiplist v0.0.0-20150312221310-2dfbae5fcf46 // indirect
 	github.com/safchain/ethtool v0.3.0 // indirect
@@ -177,7 +179,7 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
-	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
@@ -194,15 +196,15 @@ require (
 	go.shabbyrobe.org/gocovmerge v0.0.0-20230507111327-fa4f82cfbf4d // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa // indirect
-	golang.org/x/mod v0.33.0 // indirect
+	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/term v0.41.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/term v0.42.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
-	golang.org/x/tools v0.42.0 // indirect
+	golang.org/x/tools v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

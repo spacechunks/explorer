@@ -2,11 +2,9 @@ package rivertest
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/internal/execution"
@@ -15,7 +13,6 @@ import (
 	"github.com/riverqueue/river/internal/jobexecutor"
 	"github.com/riverqueue/river/internal/maintenance"
 	"github.com/riverqueue/river/internal/middlewarelookup"
-	"github.com/riverqueue/river/internal/workunit"
 	"github.com/riverqueue/river/riverdriver"
 	"github.com/riverqueue/river/rivershared/baseservice"
 	"github.com/riverqueue/river/rivershared/riversharedtest"
@@ -139,6 +136,9 @@ func (w *Worker[T, TTx]) workJob(ctx context.Context, tb testing.TB, tx TTx, job
 	exec := w.client.Driver().UnwrapExecutor(tx)
 	subscribeCh := make(chan []jobcompleter.CompleterJobUpdated, 1)
 	archetype := riversharedtest.BaseServiceArchetype(tb)
+	if w.config.Logger != nil {
+		archetype.Logger = w.config.Logger
+	}
 	if withStub, ok := timeGen.(baseservice.TimeGeneratorWithStub); ok {
 		archetype.Time = withStub
 	} else {
@@ -157,11 +157,11 @@ func (w *Worker[T, TTx]) workJob(ctx context.Context, tb testing.TB, tx TTx, job
 		}
 	}
 
-	updatedJobRow, err := exec.JobUpdate(ctx, &riverdriver.JobUpdateParams{
+	updatedJobRow, err := exec.JobUpdateFull(ctx, &riverdriver.JobUpdateFullParams{
 		ID:                  job.ID,
 		Attempt:             job.Attempt + 1,
 		AttemptDoUpdate:     true,
-		AttemptedAt:         ptrutil.Ptr(timeGen.NowUTC()),
+		AttemptedAt:         ptrutil.Ptr(timeGen.Now()),
 		AttemptedAtDoUpdate: true,
 		AttemptedBy:         append(job.AttemptedBy, w.config.ID),
 		AttemptedByDoUpdate: true,
@@ -203,13 +203,21 @@ func (w *Worker[T, TTx]) workJob(ctx context.Context, tb testing.TB, tx TTx, job
 				return nil
 			},
 		},
-		InformProducerDoneFunc: func(job *rivertype.JobRow) { close(executionDone) },
 		HookLookupGlobal:       hooklookup.NewHookLookup(w.config.Hooks),
 		HookLookupByJob:        hooklookup.NewJobHookLookup(),
 		JobRow:                 job,
 		MiddlewareLookupGlobal: middlewarelookup.NewMiddlewareLookup(w.config.Middleware),
-		SchedulerInterval:      maintenance.JobSchedulerIntervalDefault,
-		WorkUnit:               workUnit,
+		ProducerCallbacks: struct {
+			JobDone func(jobRow *rivertype.JobRow)
+			Stuck   func()
+			Unstuck func()
+		}{
+			JobDone: func(job *rivertype.JobRow) { close(executionDone) },
+			Stuck:   func() {},
+			Unstuck: func() {},
+		},
+		SchedulerInterval: maintenance.JobSchedulerIntervalDefault,
+		WorkUnit:          workUnit,
 	})
 
 	executor.Execute(jobCtx)
@@ -243,20 +251,24 @@ func completerResultToWorkResult(tb testing.TB, completerResult jobcompleter.Com
 	tb.Helper()
 
 	var kind river.EventKind
-	switch completerResult.Job.State {
-	case rivertype.JobStateCancelled:
-		kind = river.EventKindJobCancelled
-	case rivertype.JobStateCompleted:
-		kind = river.EventKindJobCompleted
-	case rivertype.JobStateScheduled:
+	if completerResult.Snoozed {
 		kind = river.EventKindJobSnoozed
-	case rivertype.JobStateAvailable, rivertype.JobStateDiscarded, rivertype.JobStateRetryable, rivertype.JobStateRunning:
-		kind = river.EventKindJobFailed
-	case rivertype.JobStatePending:
-		panic("test worker internal error: completion subscriber unexpectedly received job in pending state, river bug")
-	default:
-		// linter exhaustive rule prevents this from being reached
-		panic("test worker internal error: unreachable state to distribute, river bug")
+	} else {
+		switch completerResult.Job.State {
+		case rivertype.JobStateCancelled:
+			kind = river.EventKindJobCancelled
+		case rivertype.JobStateCompleted:
+			kind = river.EventKindJobCompleted
+		case rivertype.JobStateScheduled:
+			kind = river.EventKindJobSnoozed
+		case rivertype.JobStateAvailable, rivertype.JobStateDiscarded, rivertype.JobStateRetryable, rivertype.JobStateRunning:
+			kind = river.EventKindJobFailed
+		case rivertype.JobStatePending:
+			panic("test worker internal error: completion subscriber unexpectedly received job in pending state, river bug")
+		default:
+			// linter exhaustive rule prevents this from being reached
+			panic("test worker internal error: unreachable state to distribute, river bug")
+		}
 	}
 
 	return &WorkResult{
@@ -290,42 +302,4 @@ func (h *errorHandlerWrapper) HandleError(ctx context.Context, job *rivertype.Jo
 
 func (h *errorHandlerWrapper) HandlePanic(ctx context.Context, job *rivertype.JobRow, panicVal any, trace string) *jobexecutor.ErrorHandlerResult {
 	return h.HandlePanicFunc(ctx, job, panicVal, trace)
-}
-
-// TODO: move work_unit_wrapper.go so I don't need to copy paste it here:
-
-// workUnitFactoryWrapper wraps a Worker to implement workUnitFactory.
-type workUnitFactoryWrapper[T river.JobArgs] struct {
-	worker river.Worker[T]
-}
-
-func (w *workUnitFactoryWrapper[T]) MakeUnit(jobRow *rivertype.JobRow) workunit.WorkUnit {
-	return &wrapperWorkUnit[T]{jobRow: jobRow, worker: w.worker}
-}
-
-// wrapperWorkUnit implements workUnit for a job and Worker.
-type wrapperWorkUnit[T river.JobArgs] struct {
-	job    *river.Job[T] // not set until after UnmarshalJob is invoked
-	jobRow *rivertype.JobRow
-	worker river.Worker[T]
-}
-
-func (w *wrapperWorkUnit[T]) HookLookup(lookup *hooklookup.JobHookLookup) hooklookup.HookLookupInterface {
-	var job T
-	return lookup.ByJobArgs(job)
-}
-
-func (w *wrapperWorkUnit[T]) Middleware() []rivertype.WorkerMiddleware {
-	return w.worker.Middleware(w.jobRow)
-}
-func (w *wrapperWorkUnit[T]) NextRetry() time.Time           { return w.worker.NextRetry(w.job) }
-func (w *wrapperWorkUnit[T]) Timeout() time.Duration         { return w.worker.Timeout(w.job) }
-func (w *wrapperWorkUnit[T]) Work(ctx context.Context) error { return w.worker.Work(ctx, w.job) }
-
-func (w *wrapperWorkUnit[T]) UnmarshalJob() error {
-	w.job = &river.Job[T]{
-		JobRow: w.jobRow,
-	}
-
-	return json.Unmarshal(w.jobRow.EncodedArgs, &w.job.Args)
 }

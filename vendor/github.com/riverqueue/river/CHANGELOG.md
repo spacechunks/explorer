@@ -7,6 +7,236 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-04-18
+
+### Changed
+
+- Ignore errors like `tls: failed to send closeNotify alert (but connection was closed anyway)` when closing listeners. [PR #1216](https://github.com/riverqueue/river/pull/1216).
+
+### Fixed
+
+- Fixed leader election to track explicit database-issued leadership terms, reducing handoff flakiness and same-client reacquisition edge cases while making reelection and resign target the current leadership lease instead of a stale one. [PR #1213](https://github.com/riverqueue/river/pull/1213).
+
+## [0.34.0] - 2026-04-08
+
+### Added
+
+- Added `Config.ReindexerIndexNames` and `ReindexerIndexNamesDefault()` so the reindexer's target indexes can be customized from the public API. [PR #1194](https://github.com/riverqueue/river/pull/1194).
+
+### Fixed
+
+- Upon a client gaining leadership, its queue maintainer is given more than one opportunity to start. [PR #1184](https://github.com/riverqueue/river/pull/1184).
+
+## [0.33.0] - 2026-04-03
+
+### Changed
+
+- Jobs erroring or panicking no longer logs at the error/warn level because this is not indicative of a problem inside of River itself. These log statements have been demoted to info. [PR #1190](https://github.com/riverqueue/river/pull/1190).
+
+### Fixed
+
+- Fix in `Client.Start` where previously it was possible for a River client that only partially started before erroring to not try to start on subsequent `Start` invocations. [PR #1187](https://github.com/riverqueue/river/pull/1187).
+
+## [0.32.0] - 2026-03-23
+
+### Added
+
+- `riverlog.Middleware` now supports `MiddlewareConfig.MaxTotalBytes` (default 8 MB) to cap total persisted `river:log` history per job. When the cap is exceeded, oldest log entries are dropped first while retaining the newest entry. Values over 64 MB are clamped to 64 MB. [PR #1157](https://github.com/riverqueue/river/pull/1157).
+
+### Changed
+
+- Improved `riverlog` performance and reduced memory amplification when appending to large persisted `river:log` histories. [PR #1157](https://github.com/riverqueue/river/pull/1157).
+- Reduced snooze-path memory amplification by setting `snoozes` in metadata updates before marshaling, avoiding an extra full-payload JSON rewrite. [PR #1159](https://github.com/riverqueue/river/pull/1159).
+- Schema names are now quoted in SQL operations, enabling the use of spaces and other odd characters. [PR #1175](https://github.com/riverqueue/river/pull/1175).
+
+### Fixed
+
+- `riverpgxv5` now adapts JSON parameters for `simple protocol` / `exec` query modes so `[]byte` JSON payloads are not encoded as `bytea` in pgx text-mode execution paths. This fixes invalid JSON syntax errors when running through protocol-constrained setups like PgBouncer transaction pooling while preserving normal behavior for explicit `bytea` parameters. Fixes [#1153](https://github.com/riverqueue/river/issues/1153). [PR #1155](https://github.com/riverqueue/river/pull/1155).
+
+## [0.31.0] - 2026-02-21
+
+### Added
+
+- Added root River CLI flag `--statement-timeout` so Postgres session statement timeout can be set explicitly for commands like migrations. Explicit flag values take priority over database URL query params, and query params still take priority over built-in defaults. [PR #1142](https://github.com/riverqueue/river/pull/1142).
+
+### Fixed
+
+- Fix connection leak in `Listener.Connect` in case where `afterConnectExec` failed. Thanks Johan Kjölhede ([@GiGurra](https://github.com/GiGurra))! [PR #1147](https://github.com/riverqueue/river/pull/1147).
+- Fix missing `ticker.Stop` in producer's `pollForSettingChanges` ([@GiGurra](https://github.com/GiGurra)). [PR #1148](https://github.com/riverqueue/river/pull/1148).
+- Fix accidental use of cancelled context for `Notifier.Ping` ([@GiGurra](https://github.com/GiGurra)). [PR #1149](https://github.com/riverqueue/river/pull/1149).
+- Add jitter to fetch poll loop to prevent producer stampeding ([@GiGurra](https://github.com/GiGurra)). [PR #1150](https://github.com/riverqueue/river/pull/1150).
+
+### Changed
+
+- Upgrade supported Go versions to 1.25 and 1.26, and update CI accordingly. [PR #1144](https://github.com/riverqueue/river/pull/1144).
+
+### Fixed
+
+- `JobCountByQueueAndState` now returns consistent results across drivers, including requested queues with zero jobs, and deduplicates repeated queue names in input. This resolves an issue with the sqlite driver in River UI reported in [riverqueue/riverui#496](https://github.com/riverqueue/riverui#496). [PR #1140](https://github.com/riverqueue/river/pull/1140).
+
+## [0.30.2] - 2026-01-26
+
+### Fixed
+
+- Fix bug in worker-level stuck job detection. [PR #1133](https://github.com/riverqueue/river/pull/1133).
+
+## [0.30.1] - 2026-01-19
+
+### Fixed
+
+- Stuck job detection now accounts for worker-level timeouts as well as client-level timeouts. [PR #1125](https://github.com/riverqueue/river/pull/1125).
+
+## [0.30.0] - 2026-01-11
+
+### Fixed
+
+- Fix possible nil pointer panic when using nil `opts` in `Migrator.MigrateTx`. [PR #1117](https://github.com/riverqueue/river/pull/1117).
+
+## [0.29.0] - 2025-12-22
+
+### Added
+
+- Added `HookPeriodicJobsStart` that can be used to run custom logic when a periodic job enqueuer starts up on a new leader. [PR #1084](https://github.com/riverqueue/river/pull/1084).
+- Added `Client.Notify().RequestResign` and `Client.Notify().RequestResignTx` functions allowing any client to request that the current leader resign. [PR #1085](https://github.com/riverqueue/river/pull/1085).
+- Basic stuck detection after a job's exceeded its timeout and still not returned after the executor's initiated context cancellation and waited a short margin for the cancellation to take effect. [PR #1097](https://github.com/riverqueue/river/pull/1097).
+- Added `Client.JobUpdate` which can be used to persist job output partway through a running work function instead of having to wait until the job is completed. [PR #1098](https://github.com/riverqueue/river/pull/1098).
+
+### Changed
+
+- Add a little more error flavor for when encountering a deadline exceeded error on leadership election suggesting that the user may want to try increasing their database pool size. [PR #1101](https://github.com/riverqueue/river/pull/1101).
+- When migrating without an outer transaction, insert/delete version rows immediately after executing migration SQL so that in case a later migration fails, the migrator knows where to restart from. [PR #1106](https://github.com/riverqueue/river/pull/1106).
+
+## [0.28.0] - 2025-11-23
+
+### Added
+
+- Added `riverlog.LoggerSafely` which provides a non-panic variant of `riverlog.Logger` for use when code may or may not have a context logger available. [PR #1093](https://github.com/riverqueue/river/pull/1093).
+
+## [0.27.0] - 2025-11-14
+
+### Added
+
+- Periodic jobs with IDs may now be removed by ID using the new `PeriodicJobBundle.RemoveByID` and `PeriodicJobBundle.RemoveManyByID`. [PR #1071](https://github.com/riverqueue/river/pull/1071).
+
+### Changed
+
+- Decrease `serviceutil.MaxAttemptsBeforeResetDefault` from 10 to 7, lowering the effective limit on most internal exponential backoffs from ~512 seconds to 64 seconds. Further lowered the leader elector's keep leadership backoff interval to cap out at 4 seconds since leadership without a successful heartbeat will be lost soon after that anyway. [PR #1079](https://github.com/riverqueue/river/pull/1079).
+
+### Fixed
+
+- Fix snoozed events emitted from `rivertest.Worker` when snooze duration is zero seconds. [PR #1057](https://github.com/riverqueue/river/pull/1057).
+- Rollbacks now use an uncancelled context so as to not leave transactions in an ambiguous state if a transaction in them fails due to context cancellation. [PR #1062](https://github.com/riverqueue/river/pull/1062).
+- Removing periodic jobs with IDs assigned also remove them from ID map. [PR #1070](https://github.com/riverqueue/river/pull/1070).
+- Clear periodic jobs also fully clears all those assigned with an ID. [PR #1083](https://github.com/riverqueue/river/pull/1083).
+- `river:"unique"` annotations on substructs within `JobArgs` structs are now factored into uniqueness `ByArgs` calculations. [PR #1076](https://github.com/riverqueue/river/pull/1076).
+- Stop subservices and embedded `baseservice.Service` on error in the event of a periodic job enqueuer start error. [PR #1081](https://github.com/riverqueue/river/pull/1081).
+
+## [0.26.0] - 2025-10-07
+
+⚠️ Internal APIs used for communication between River and River Pro have changed. If using River Pro, make sure to update River and River Pro to latest at the same time to get compatible versions. River v0.26.0 is compatible with River Pro v0.19.0.
+
+### Added
+
+- The job rescuer now sets `river:rescue_count` with an integer count of how many times the job has been rescued by the `JobRescuer` maintenance process when it's considered stuck. [PR #1047](https://github.com/riverqueue/river/pull/1047).
+
+### Changed
+
+- Errors returned from job workers are now logged in full using a `slog.Any` attribute. Previously, only their error text was logged. [PR #1051](https://github.com/riverqueue/river/pull/1051).
+
+### Fixed
+
+- Set `updated_at` when invoking pilot `PeriodicJobUpsert`. [PR #1045](https://github.com/riverqueue/river/pull/1045).
+
+## [0.25.0] - 2025-09-14
+
+⚠️ Internal APIs used for communication between River and River Pro have changed. If using River Pro, make sure to update River and River Pro to latest at the same time to get compatible versions. River v0.25.0 is compatible with River Pro v0.18.0.
+
+### Changed
+
+- Set minimum Go version to Go 1.24. [PR #1032](https://github.com/riverqueue/river/pull/1032).
+- **Breaking change:** `Client.JobDeleteMany` now requires the use of `JobDeleteManyParams.UnsafeAll` to delete all jobs without a filter applied. This is a safety feature to make it more difficult to accidentally delete all non-running jobs. This is a minor breaking change, but on a fairly new feature that's not likely to be used on purpose by very many people yet. [PR #1033](https://github.com/riverqueue/river/pull/1033).
+
+### Fixed
+
+- Don't double log fetch errors. [PR #1025](https://github.com/riverqueue/river/pull/1025).
+- When snoozing a job with zero duration so that it's retried immediately, subscription events no longer appear incorrectly with a kind of `rivertype.EventKindJobFailed`. Instead they're assigned `rivertype.EventKindJobSnoozed` just like they would have with a non-zero snooze duration. [PR #1037](https://github.com/riverqueue/river/pull/1037).
+
+## [0.24.0] - 2025-08-16
+
+⚠️ Version 0.24.0 has a breaking change in `HookWorkEnd.WorkEnd` in that a new `JobRow` parameter has been added to the function's signature. Any intergration defining a custom `HookWorkEnd` hook should update its implementation so the hook continues to be called correctly.
+
+⚠️ Internal APIs used for communication between River and River Pro have changed. If using River Pro, make sure to update River and River Pro to latest at the same time to get compatible versions. River v0.24.0 is compatible with River Pro v0.16.0.
+
+### Added
+
+- The project now tests against [libSQL](https://github.com/tursodatabase/libsql), a popular SQLite fork. It's used through the same `riversqlite` driver that SQLite uses. [PR #957](https://github.com/riverqueue/river/pull/957)
+- Added `JobDeleteMany` operations that remove many jobs in a single operation according to input criteria. [PR #962](https://github.com/riverqueue/river/pull/962)
+- Added `Client.Schema()` method to return a client's configured schema. [PR #983](https://github.com/riverqueue/river/pull/983).
+- Integrated riverui queries into the driver system to pave the way for multi-driver UI support. [PR #983](https://github.com/riverqueue/river/pull/983).
+- Added `QueueConfig` level `FetchCooldown` and `FetchPollInterval` settings to enable queue-specific job fetch intervals. For example, a queue of high-priority jobs could be checked more often to improve responsiveness, while one with slow or time-insensitive tasks could be checked infrequently to reduce database load. [PR #994](https://github.com/riverqueue/river/pull/994).
+
+### Changed
+
+- Remove unecessary transactions where a single database operation will do. This reduces the number of subtransactions created which can be an operational benefit it many cases. [PR #950](https://github.com/riverqueue/river/pull/950)
+- Bring all driver tests into separate package so they don't leak dependencies. This removes dependencies from the top level `river` package that most River installations won't need, thereby reducing the transitive dependency load of most River installations. [PR #955](https://github.com/riverqueue/river/pull/955).
+- The reindexer maintenance service now reindexes all `river_job` indexes, including its primary key. This is expected to help in situations where the jobs table has in the past expanded to a very large size (which makes most indexes larger), is now a much more modest size, but has left the indexes in their expanded state. [PR #963](https://github.com/riverqueue/river/pull/963).
+- The River CLI now accepts a `--target-version` of 0 with `river migrate-down` to run all down migrations and remove all River tables (previously, -1 was used for this; -1 still works, but now 0 also works). [PR #966](https://github.com/riverqueue/river/pull/966).
+- **Breaking change:** The `HookWorkEnd` interface's `WorkEnd` function now receives a `JobRow` parameter in addition to the `error` it received before. Having a `JobRow` to work with is fairly crucial to most functionality that a hook would implement, and its previous omission was entirely an error. [PR #970](https://github.com/riverqueue/river/pull/970).
+- Add maximum bound to each job's `attempted_by` array so that in degenerate cases where a job is run many, many times (say it's snoozed hundreds of times), it doesn't grow to unlimited bounds. [PR #974](https://github.com/riverqueue/river/pull/974).
+- A logger passed in via `river.Config` now overrides the default test-based logger when using `rivertest.NewWorker`. [PR #980](https://github.com/riverqueue/river/pull/980).
+- Cleaner retention periods (`CancelledJobRetentionPeriod`, `CompletedJobRetentionPeriod`, `DiscardedJobRetentionPeriod`) can be configured to -1 to disable them so that the corresponding type of job is retained indefinitely. [PR #990](https://github.com/riverqueue/river/pull/990).
+- Jobs inserted from periodic jobs with IDs now have metadata `river:periodic_job_id` set so they can be traced back to the periodic job that inserted them. [PR #992](https://github.com/riverqueue/river/pull/992).
+- The unused function `WorkerDefaults.Hooks` has been removed. This is technically a breaking change, but this function was a vestigal refactoring artifact that was never used by anything, so in practice it shouldn't be breaking. [PR #997](https://github.com/riverqueue/river/pull/997).
+- Periodic job records are upserted immediately through a pilot when a client is started rather than the first time their associated job would run. This doesn't mean they're run immediately (they'll only run if `RunOnStart` is enabled), but rather just tracked immediately. [PR #998](https://github.com/riverqueue/river/pull/998).
+- The job scheduler still schedules jobs in batches of up to 10,000, but when it encounters a series of consecutive timeouts it assumes that the database is in a degraded state and switches to doing work in a smaller batch size of 1,000 jobs. [PR #1013](https://github.com/riverqueue/river/pull/1013).
+- Other maintenance services including the job cleaner, job rescuer, and queue cleaner also prefer a batch size of 10,000, but will fall back to smaller batches of 1,000 on consecutive database timeouts. [PR #1016](https://github.com/riverqueue/river/pull/1016).
+
+### Fixed
+
+- Cleanly error on invalid schema names in `Config.Schema`. [PR #952](https://github.com/riverqueue/river/pull/952).
+- Jobs rescued by `JobRescuer` no longer have their trace set to "TODO". This becomes an empty string instead. [PR #1010](https://github.com/riverqueue/river/pull/1010).
+
+## [0.23.1] - 2025-06-04
+
+This includes a minor CLI bugfix for riverpro and no other changes, see the v0.23.0 notes for major changes.
+
+### Fixed
+
+- Fixed a riverpro CLI integration point broken in v0.23.0. [PR #945](https://github.com/riverqueue/river/pull/945)
+
+## [0.23.0] - 2025-06-04
+
+⚠️ Internal APIs used for communication between River and River Pro have changed. If using River Pro, make sure to update River and River Pro to latest at the same time to get compatible versions. River v0.23.0 is compatible with River Pro v0.15.0.
+
+**Terminal UI:** @almottier wrote a very cool [terminal UI for River](https://github.com/almottier/rivertui) featuring real-time job monitoring with automatic refresh, job filtering, a job details view providing detailed information (plus look up by ID in the UI or by command line argument), and job actions like retry and cancellation. And as good as all that might sound, go take a look because it's even better in person.
+
+### Added
+
+- Preliminary River driver for SQLite (`riverdriver/riversqlite`). This driver seems to produce good results as judged by the test suite, but so far has minimal real world vetting. Try it and let us know how it works out. [PR #870](https://github.com/riverqueue/river/pull/870).
+- CLI `river migrate-get` now takes a `--schema` option to inject a custom schema into dumped migrations and schema comments are hidden if `--schema` option isn't provided. [PR #903](https://github.com/riverqueue/river/pull/903).
+- Added `riverlog.NewMiddlewareCustomContext` that makes the use of `riverlog` job-persisted logging possible with non-slog loggers. [PR #919](https://github.com/riverqueue/river/pull/919).
+- Added `RequireInsertedOpts.Schema`, allowing an explicit schema to be set when asserting on job inserts with `rivertest`. [PR #926](https://github.com/riverqueue/river/pull/926).
+- When using a driver that doesn't support listen/notify, producers within same process are notified immediately of new job inserts and queue changes (e.g. pause/resume) without having to poll when non-transactional variants are used (i.e. `Insert` instead of `InsertTx`). [PR #928](https://github.com/riverqueue/river/pull/928).
+- Added `JobListParams.Where`, which provides an escape hatch for job listing that runs arbitrary SQL with named parameters. [PR #933](https://github.com/riverqueue/river/pull/933).
+
+### Changed
+
+- Optimized the job completer's query `JobSetStateIfRunningMany`, resulting in an approximately 15% reduction in its duration when completing 2000 jobs, and around a 15-20% increase in `riverbench` throughput. [PR #904](https://github.com/riverqueue/river/pull/904).
+- `TimeStub` has been removed from the `rivertest` package. Its original inclusion was entirely accidentally and it should be considered entirely an internal API. [PR #912](https://github.com/riverqueue/river/pull/912).
+- When storing job-persisted logging with `riverlog`, if a work run's logging was completely empty, no metadata value is stored at all (previously, an empty value was stored). [PR #919](https://github.com/riverqueue/river/pull/919).
+- Changed the internal integration APIs for River Pro. River Pro users must upgrade both libraries as part of this update. [PR #929](https://github.com/riverqueue/river/pull/929).
+
+### Fixed
+
+- Resuming an already unpaused queue is now fully an no-op, and won't touch the row's `updated_at` like it (unintentionally) did before. [PR #870](https://github.com/riverqueue/river/pull/870).
+- Suppress an error log line from the producer that may occur on normal shutdown when operating in poll-only mode. [PR #896](https://github.com/riverqueue/river/pull/896).
+- Added missing help documentation for CLI command `river migrate-list`. [PR #903](https://github.com/riverqueue/river/pull/903).
+- Correct handling an explicit schema in the reindexer maintenance service. [PR #916](https://github.com/riverqueue/river/pull/916).
+- Return specific explanatory error when attempting to use `JobListParams.Metadata` with `JobListTx` on SQLite. [PR #924](https://github.com/riverqueue/river/pull/924).
+- The reindexer now skips work if artifacts from a failed reindex are present under the assumption that if they are, a new reindex build is likely to fail again. Context cancel timeout is increased from 15 seconds to 1 minute, allowing more time for reindexes to finish. Timeout becomes configurable with `Config.ReindexerTimeout`. [PR #935](https://github.com/riverqueue/river/pull/935).
+- Accessing `Client.PeriodicJobs()` on an insert-only client now panics with a more helpful explanatory error message rather than an unhelpful nil pointer panic. [PR #938](https://github.com/riverqueue/river/pull/938).
+- Return an error when adding a new queue at runtime via the `QueueBundle` if that queue was already added. [PR #929](https://github.com/riverqueue/river/pull/929).
+
 ## [0.22.0] - 2025-05-10
 
 ### Added

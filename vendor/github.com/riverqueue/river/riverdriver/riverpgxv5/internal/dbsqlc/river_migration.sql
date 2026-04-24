@@ -1,7 +1,7 @@
 CREATE TABLE river_migration(
-    line TEXT NOT NULL,
+    line text NOT NULL,
     version bigint NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT NOW(),
+    created_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT line_length CHECK (char_length(line) > 0 AND char_length(line) < 128),
     CONSTRAINT version_gte_1 CHECK (version >= 1),
     PRIMARY KEY (line, version)
@@ -67,16 +67,3 @@ SELECT
 RETURNING
     created_at,
     version;
-
--- name: ColumnExists :one
-SELECT EXISTS (
-    SELECT column_name
-    FROM information_schema.columns 
-    WHERE table_name = @table_name::text
-        AND table_schema = /* TEMPLATE_BEGIN: schema */ CURRENT_SCHEMA /* TEMPLATE_END */
-        AND column_name = @column_name::text
-);
-
--- name: TableExists :one
-SELECT CASE WHEN to_regclass(@schema_and_table) IS NULL THEN false
-            ELSE true END;

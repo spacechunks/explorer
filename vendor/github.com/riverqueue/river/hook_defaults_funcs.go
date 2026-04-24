@@ -23,8 +23,18 @@ func (f HookInsertBeginFunc) InsertBegin(ctx context.Context, params *rivertype.
 
 func (f HookInsertBeginFunc) IsHook() bool { return true }
 
+// HookPeriodicJobsStartFunc is a convenience helper for implementing
+// rivertype.HookPeriodicJobsStart using a simple function instead of a struct.
+type HookPeriodicJobsStartFunc func(ctx context.Context, params *rivertype.HookPeriodicJobsStartParams) error
+
+func (f HookPeriodicJobsStartFunc) IsHook() bool { return true }
+
+func (f HookPeriodicJobsStartFunc) Start(ctx context.Context, params *rivertype.HookPeriodicJobsStartParams) error {
+	return f(ctx, params)
+}
+
 // HookWorkBeginFunc is a convenience helper for implementing
-// rivertype.HookworkBegin using a simple function instead of a struct.
+// rivertype.HookWorkBegin using a simple function instead of a struct.
 type HookWorkBeginFunc func(ctx context.Context, job *rivertype.JobRow) error
 
 func (f HookWorkBeginFunc) WorkBegin(ctx context.Context, job *rivertype.JobRow) error {
@@ -34,11 +44,11 @@ func (f HookWorkBeginFunc) WorkBegin(ctx context.Context, job *rivertype.JobRow)
 func (f HookWorkBeginFunc) IsHook() bool { return true }
 
 // HookWorkEndFunc is a convenience helper for implementing
-// rivertype.HookworkEnd using a simple function instead of a struct.
-type HookWorkEndFunc func(ctx context.Context, err error) error
+// rivertype.HookWorkEnd using a simple function instead of a struct.
+type HookWorkEndFunc func(ctx context.Context, job *rivertype.JobRow, err error) error
 
-func (f HookWorkEndFunc) WorkEnd(ctx context.Context, err error) error {
-	return f(ctx, err)
+func (f HookWorkEndFunc) WorkEnd(ctx context.Context, job *rivertype.JobRow, err error) error {
+	return f(ctx, job, err)
 }
 
 func (f HookWorkEndFunc) IsHook() bool { return true }

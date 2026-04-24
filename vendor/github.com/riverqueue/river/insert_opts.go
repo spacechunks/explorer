@@ -51,7 +51,8 @@ type InsertOpts struct {
 
 	// Queue is the name of the job queue in which to insert the job.
 	//
-	// Defaults to QueueDefault.
+	// Defaults to the job kind's default queue if set via
+	// `JobArgsWithInsertOpts`, or QueueDefault if not.
 	Queue string
 
 	// ScheduledAt is a time in future at which to schedule the job (i.e. in
@@ -113,7 +114,7 @@ type UniqueOpts struct {
 	//
 	// 	type MyJobArgs struct {
 	// 		CustomerID string `json:"customer_id" river:"unique"`
-	// 		TraceID string `json:"trace_id"
+	// 		TraceID    string `json:"trace_id"
 	// 	}
 	//
 	// In this example, only the encoded `customer_id` key will be included in the
@@ -121,6 +122,40 @@ type UniqueOpts struct {
 	//
 	// All keys are sorted alphabetically before hashing to ensure consistent
 	// results.
+	//
+	// River recurses into embedded structs and fields with struct values and
+	// looks for `river:"unique"` annotations on them as well:
+	//
+	// 	type MyJobArgs struct {
+	// 		Customer *Customer `json:"customer"`
+	// 		TraceID  string    `json:"trace_id"
+	// 	}
+	//
+	// 	type Customer struct {
+	// 		ID string `json:"id" river:"unique"`
+	// 	}
+	//
+	// In this example, the `id` value inside a `customer` subboject is used in
+	// the uniqueness check. It'd be the same story if Customer was embedded on
+	// MyJobArgs instead:
+	//
+	// 	type MyJobArgs struct {
+	// 		Customer
+	// 		TraceID string `json:"trace_id"
+	// 	}
+	//
+	// If the struct field itself has a `river:"unique"` annotation, but none on
+	// any fields in the substruct, then the entire JSON encoded value of the
+	// struct is used as a unique value:
+	//
+	// 	type MyJobArgs struct {
+	// 		Customer *Customer `json:"customer" river:"unique"`
+	// 		TraceID  string    `json:"trace_id"
+	// 	}
+	//
+	// 	type Customer struct {
+	// 		ID string `json:"id"`
+	// 	}
 	ByArgs bool
 
 	// ByPeriod defines uniqueness within a given period. On an insert time is
@@ -162,10 +197,18 @@ type UniqueOpts struct {
 	// or `discarded`), though only `retryable` may be safely _removed_ from the
 	// list.
 	//
-	// Warning: Removing any states from the default list (other than `retryable`)
-	// forces a fallback to a slower insertion path that takes an advisory lock
-	// and performs a look up before insertion. This path is deprecated and should
-	// be avoided if possible.
+	// The following states must be included in ByState if set:
+	//
+	//   - rivertype.JobStateAvailable
+	//   - rivertype.JobStatePending
+	//   - rivertype.JobStateRunning
+	//   - rivertype.JobStateScheduled
+	//
+	// These states being required is an implementation detail, but not
+	// requiring them would put River in a difficult position when moving jobs
+	// between common parts of the state machine and finding a unique conflict
+	// already there. Resolving this isn't completely intractable, but'll
+	// require some in-depth thinking and designing around every possible edge.
 	ByState []rivertype.JobState
 
 	// ExcludeKind indicates that the job kind should not be included in the
@@ -189,6 +232,15 @@ func (o *UniqueOpts) isEmpty() bool {
 
 var jobStateAll = rivertype.JobStates() //nolint:gochecknoglobals
 
+// Required unique states. Requiring states like this isn't necessary
+// fundamental for correctness, but doing so avoids some gnarly problems that
+// don't have a clear error action otherwise. For example, if `available` was
+// omittable and a producer tried to transition an `available` job to `running`
+// but found another unique contender already there, we'd have to figure out
+// what to do about the job that can't be scheduled. We can't send feedback to
+// the caller at this point, so probably the best we could do is leave it in
+// this untransitionable state until the `running` job finished, which isn't
+// particularly satisfactory.
 var requiredV3states = []rivertype.JobState{ //nolint:gochecknoglobals
 	rivertype.JobStateAvailable,
 	rivertype.JobStatePending,

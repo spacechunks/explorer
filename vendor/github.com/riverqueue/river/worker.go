@@ -74,8 +74,6 @@ type Worker[T JobArgs] interface {
 // struct to make it fulfill the Worker interface with default values.
 type WorkerDefaults[T JobArgs] struct{}
 
-func (w WorkerDefaults[T]) Hooks(*rivertype.JobRow) []rivertype.Hook { return nil }
-
 func (w WorkerDefaults[T]) Middleware(*rivertype.JobRow) []rivertype.WorkerMiddleware { return nil }
 
 // NextRetry returns an empty time.Time{} to avoid setting any job or
@@ -103,6 +101,17 @@ func (w WorkerDefaults[T]) Timeout(*Job[T]) time.Duration { return 0 }
 // avoid panics, use AddWorkerSafely instead.
 func AddWorker[T JobArgs](workers *Workers, worker Worker[T]) {
 	if err := AddWorkerSafely(workers, worker); err != nil {
+		panic(err)
+	}
+}
+
+// AddWorkerArgs is the same as AddWorker except that it lets args be passed
+// explicitly rather than being instantiated implicitly. We don't know of any
+// use for this function beyond exercising some args-related edge cases in tests
+// are difficult/impossible to exercise otherwise, and its use should be
+// considered internal only.
+func AddWorkerArgs[T JobArgs](workers *Workers, jobArgs T, worker Worker[T]) {
+	if err := workers.add(jobArgs, &workUnitFactoryWrapper[T]{worker: worker}); err != nil {
 		panic(err)
 	}
 }
@@ -181,6 +190,7 @@ func (w Workers) add(jobArgs JobArgs, workUnitFactory workunit.WorkUnitFactory) 
 // workFunc implements JobArgs and is used to wrap a function given to WorkFunc.
 type workFunc[T JobArgs] struct {
 	WorkerDefaults[T]
+
 	kind string
 	f    func(context.Context, *Job[T]) error
 }

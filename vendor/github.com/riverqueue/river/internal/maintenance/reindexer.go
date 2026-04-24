@@ -9,6 +9,7 @@ import (
 
 	"github.com/riverqueue/river/riverdriver"
 	"github.com/riverqueue/river/rivershared/baseservice"
+	"github.com/riverqueue/river/rivershared/riversharedmaintenance"
 	"github.com/riverqueue/river/rivershared/startstop"
 	"github.com/riverqueue/river/rivershared/testsignal"
 	"github.com/riverqueue/river/rivershared/util/testutil"
@@ -16,12 +17,19 @@ import (
 
 const (
 	ReindexerIntervalDefault = 24 * time.Hour
-	ReindexerTimeoutDefault  = 15 * time.Second
+
+	// ReindexerTimeoutDefault is the default timeout of the reindexer.
+	//
+	// We've had user reports of builds taking 45 seconds on large tables, so
+	// set a timeout of that plus a little margin. Use of `CONCURRENTLY` should
+	// prevent index operations that run a little long from impacting work from
+	// an operational standpoint.
+	//
+	// https://github.com/riverqueue/river/issues/909#issuecomment-2909949466
+	ReindexerTimeoutDefault = 1 * time.Minute
 )
 
-var defaultIndexNames = []string{"river_job_args_index", "river_job_metadata_index"} //nolint:gochecknoglobals
-
-// Test-only properties.
+// ReindexerTestSignals are internal signals used exclusively in tests.
 type ReindexerTestSignals struct {
 	Reindexed testsignal.TestSignal[struct{}] // notifies when a run finishes executing reindexes for all indexes
 }
@@ -31,7 +39,8 @@ func (ts *ReindexerTestSignals) Init(tb testutil.TestingTB) {
 }
 
 type ReindexerConfig struct {
-	// IndexNames is a list of indexes to reindex on each run.
+	// IndexNames is the exact list of indexes to reindex on each run. It must
+	// be non-nil. An empty slice disables reindex work.
 	IndexNames []string
 
 	// ScheduleFunc returns the next scheduled run time for the reindexer given the
@@ -42,15 +51,19 @@ type ReindexerConfig struct {
 	// Postgres to default to `search_path`.
 	Schema string
 
-	// Timeout is the amount of time to wait for a single reindex query to return.
+	// Timeout is the amount of time to wait for a single reindex query to run
+	// before cancelling it via context.
 	Timeout time.Duration
 }
 
 func (c *ReindexerConfig) mustValidate() *ReindexerConfig {
+	if c.IndexNames == nil {
+		panic("ReindexerConfig.IndexNames must be set")
+	}
 	if c.ScheduleFunc == nil {
 		panic("ReindexerConfig.ScheduleFunc must be set")
 	}
-	if c.Timeout <= 0 {
+	if c.Timeout < -1 {
 		panic("ReindexerConfig.Timeout must be above zero")
 	}
 
@@ -60,22 +73,24 @@ func (c *ReindexerConfig) mustValidate() *ReindexerConfig {
 // Reindexer periodically executes a REINDEX command on the important job
 // indexes to rebuild them and fix bloat issues.
 type Reindexer struct {
-	queueMaintainerServiceBase
+	riversharedmaintenance.QueueMaintainerServiceBase
 	startstop.BaseStartStop
 
 	// exported for test purposes
 	Config      *ReindexerConfig
 	TestSignals ReindexerTestSignals
 
-	batchSize int64 // configurable for test purposes
-	exec      riverdriver.Executor
+	exec                     riverdriver.Executor // driver executor
+	skipReindexArtifactCheck bool                 // lets the reindex artifact check be skipped for test purposes
 }
 
 func NewReindexer(archetype *baseservice.Archetype, config *ReindexerConfig, exec riverdriver.Executor) *Reindexer {
-	indexNames := defaultIndexNames
-	if config.IndexNames != nil {
-		indexNames = config.IndexNames
+	if config.IndexNames == nil {
+		panic("ReindexerConfig.IndexNames must be set")
 	}
+
+	indexNames := make([]string, len(config.IndexNames))
+	copy(indexNames, config.IndexNames)
 
 	scheduleFunc := config.ScheduleFunc
 	if scheduleFunc == nil {
@@ -90,8 +105,7 @@ func NewReindexer(archetype *baseservice.Archetype, config *ReindexerConfig, exe
 			Timeout:      cmp.Or(config.Timeout, ReindexerTimeoutDefault),
 		}).mustValidate(),
 
-		batchSize: BatchSizeDefault,
-		exec:      exec,
+		exec: exec,
 	})
 }
 
@@ -107,20 +121,36 @@ func (s *Reindexer) Start(ctx context.Context) error {
 		started()
 		defer stopped() // this defer should come first so it's last out
 
-		s.Logger.DebugContext(ctx, s.Name+logPrefixRunLoopStarted)
-		defer s.Logger.DebugContext(ctx, s.Name+logPrefixRunLoopStopped)
+		s.Logger.DebugContext(ctx, s.Name+riversharedmaintenance.LogPrefixRunLoopStarted)
+		defer s.Logger.DebugContext(ctx, s.Name+riversharedmaintenance.LogPrefixRunLoopStopped)
 
 		nextRunAt := s.Config.ScheduleFunc(time.Now().UTC())
 
 		s.Logger.DebugContext(ctx, s.Name+": Scheduling first run", slog.Time("next_run_at", nextRunAt))
 
 		timerUntilNextRun := time.NewTimer(time.Until(nextRunAt))
+		scheduleNextRun := func() {
+			// Advance from the previous scheduled time, not "now", so retries
+			// stay aligned with the configured cadence and don't immediately
+			// refire after a timer that has already elapsed.
+			nextRunAt = s.Config.ScheduleFunc(nextRunAt)
+			timerUntilNextRun.Reset(time.Until(nextRunAt))
+		}
 
 		for {
 			select {
 			case <-timerUntilNextRun.C:
-				for _, indexName := range s.Config.IndexNames {
-					if err := s.reindexOne(ctx, indexName); err != nil {
+				reindexableIndexNames, err := s.reindexableIndexNames(ctx)
+				if err != nil {
+					if !errors.Is(err, context.Canceled) {
+						s.Logger.ErrorContext(ctx, s.Name+": Error listing reindexable indexes", slog.String("error", err.Error()))
+					}
+					scheduleNextRun()
+					continue
+				}
+
+				for _, indexName := range reindexableIndexNames {
+					if _, err := s.reindexOne(ctx, indexName); err != nil {
 						if !errors.Is(err, context.Canceled) {
 							s.Logger.ErrorContext(ctx, s.Name+": Error reindexing", slog.String("error", err.Error()), slog.String("index_name", indexName))
 						}
@@ -133,15 +163,11 @@ func (s *Reindexer) Start(ctx context.Context) error {
 				// On each run, we calculate the new schedule based on the
 				// previous run's start time. This ensures that we don't
 				// accidentally skip a run as time elapses during the run.
-				nextRunAt = s.Config.ScheduleFunc(nextRunAt)
+				scheduleNextRun()
 
 				// TODO: maybe we should log differently if some of these fail?
-				s.Logger.DebugContext(ctx, s.Name+logPrefixRanSuccessfully,
-					slog.Time("next_run_at", nextRunAt), slog.Int("num_reindexes_initiated", len(s.Config.IndexNames)))
-
-				// Reset the timer after the insert loop has finished so it's
-				// paused during work. Makes its firing more deterministic.
-				timerUntilNextRun.Reset(time.Until(nextRunAt))
+				s.Logger.DebugContext(ctx, s.Name+riversharedmaintenance.LogPrefixRanSuccessfully,
+					slog.Time("next_run_at", nextRunAt), slog.Int("num_reindexes_initiated", len(reindexableIndexNames)))
 
 			case <-ctx.Done():
 				// Clean up timer resources. We know it has _not_ received from
@@ -158,22 +184,104 @@ func (s *Reindexer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (s *Reindexer) reindexOne(ctx context.Context, indexName string) error {
-	ctx, cancel := context.WithTimeout(ctx, s.Config.Timeout)
-	defer cancel()
-
-	var maybeSchema string
-	if s.Config.Schema != "" {
-		maybeSchema = "." + s.Config.Schema
+func (s *Reindexer) reindexableIndexNames(ctx context.Context) ([]string, error) {
+	indexesExist, err := s.exec.IndexesExist(ctx, &riverdriver.IndexesExistParams{
+		IndexNames: s.Config.IndexNames,
+		Schema:     s.Config.Schema,
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	_, err := s.exec.Exec(ctx, "REINDEX INDEX CONCURRENTLY "+maybeSchema+indexName)
-	if err != nil {
-		return err
+	indexNames := make([]string, 0, len(s.Config.IndexNames))
+	missingIndexNames := make([]string, 0)
+	for _, indexName := range s.Config.IndexNames {
+		if indexesExist[indexName] {
+			indexNames = append(indexNames, indexName)
+			continue
+		}
+
+		missingIndexNames = append(missingIndexNames, indexName)
+	}
+
+	if len(missingIndexNames) > 0 {
+		s.Logger.WarnContext(ctx, s.Name+": Configured reindex indexes do not exist; run migrations or update ReindexerIndexNames",
+			slog.Any("index_names", missingIndexNames))
+	}
+
+	return indexNames, nil
+}
+
+func (s *Reindexer) reindexOne(ctx context.Context, indexName string) (bool, error) {
+	var cancel func()
+	if s.Config.Timeout > -1 {
+		ctx, cancel = context.WithTimeout(ctx, s.Config.Timeout)
+		defer cancel()
+	}
+
+	// Make sure that no `CONCURRENTLY` artifacts from a previous reindexing run
+	// exist before trying to reindex. When using `CONCURRENTLY`, Postgres
+	// creates a new index suffixed with `_ccnew` before swapping it in as the
+	// new index. The existing index is renamed `_ccold` before being dropped
+	// concurrently.
+	//
+	// If one of these artifacts exists, it probably means that a previous
+	// reindex attempt timed out, and attempting to reindex again is likely
+	// slated for the same fate. We opt to log a warning and no op instead of
+	// trying to clean up the artifacts of a previously failed run for the same
+	// reason: even with the artifacts removed, if a previous reindex failed
+	// then a new one is likely to as well, so cleaning up would result in a
+	// forever loop of failed index builds that'd put unnecessary pressure on
+	// the underlying database.
+	//
+	// https://www.postgresql.org/docs/current/sql-reindex.html#SQL-REINDEX-CONCURRENTLY
+	if !s.skipReindexArtifactCheck {
+		for _, reindexArtifactName := range []string{indexName + "_ccnew", indexName + "_ccold"} {
+			reindexArtifactExists, err := s.exec.IndexExists(ctx, &riverdriver.IndexExistsParams{Index: reindexArtifactName, Schema: s.Config.Schema})
+			if err != nil {
+				return false, err
+			}
+			if reindexArtifactExists {
+				s.Logger.WarnContext(ctx, s.Name+": Found reindex artifact likely resulting from previous partially completed reindex attempt; skipping reindex",
+					slog.String("artifact_name", reindexArtifactName), slog.String("index_name", indexName), slog.Duration("timeout", s.Config.Timeout))
+				return false, nil
+			}
+		}
+	}
+
+	if err := s.exec.IndexReindex(ctx, &riverdriver.IndexReindexParams{Index: indexName, Schema: s.Config.Schema}); err != nil {
+		// This should be quite rare because the reindexer has a slow run
+		// period, but it's possible for the reindexer to be stopped while it's
+		// trying to rebuild an index, and doing so would normally put in the
+		// reindexer into permanent purgatory because the cancellation would
+		// leave a concurrent index artifact which would cause the reindexer to
+		// skip work on future runs.
+		//
+		// So here, in the case of a cancellation due to stop, take a little
+		// extra time to drop any artifacts that may result from the cancelled
+		// build. This will slow shutdown somewhat, but should still be
+		// reasonably fast since we're only dropping indexes rather than
+		// building them.
+		if errors.Is(context.Cause(ctx), startstop.ErrStop) {
+			ctx := context.WithoutCancel(ctx)
+
+			ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
+			defer cancel()
+
+			s.Logger.InfoContext(ctx, s.Name+": Signaled to stop during index build; attempting to clean up concurrent artifacts")
+
+			for _, reindexArtifactName := range []string{indexName + "_ccnew", indexName + "_ccold"} {
+				if err := s.exec.IndexDropIfExists(ctx, &riverdriver.IndexDropIfExistsParams{Index: reindexArtifactName, Schema: s.Config.Schema}); err != nil {
+					s.Logger.ErrorContext(ctx, s.Name+": Error dropping reindex artifact", slog.String("artifact_name", reindexArtifactName), slog.String("error", err.Error()))
+				}
+			}
+		}
+
+		return false, err
 	}
 
 	s.Logger.InfoContext(ctx, s.Name+": Initiated reindex", slog.String("index_name", indexName))
-	return nil
+	return true, nil
 }
 
 // DefaultReindexerSchedule is a default schedule for the reindexer job which
