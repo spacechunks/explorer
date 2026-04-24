@@ -60,8 +60,6 @@ import (
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/instr"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -69,6 +67,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/exaring/otelpgx"
+	"github.com/riverqueue/rivercontrib/otelriver"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 type Server struct {
@@ -92,8 +92,6 @@ func (s *Server) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("setup otel: %w", err)
 	}
-
-	tracer := otel.Tracer("github.com/spacechunks/explorer/controlplane")
 
 	defer func() {
 		if err := shutdown(ctx); err != nil {
@@ -182,8 +180,8 @@ func (s *Server) Run(ctx context.Context) error {
 	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
+			grpc.StatsHandler(otelgrpc.NewServerHandler()),
 			grpc.ChainUnaryInterceptor(
-				traceInterceptor(tracer),
 				errorInterceptor(s.logger),
 				authInterceptor(s.logger, key, s.cfg.APITokenIssuer),
 			),
@@ -322,14 +320,6 @@ func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 	}
 }
 
-func traceInterceptor(tracer trace.Tracer) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		spanctx, span := tracer.Start(ctx, info.FullMethod)
-		defer span.End()
-		return handler(spanctx, req)
-	}
-}
-
 type fixedRetryPolicy struct {
 	delay time.Duration
 }
@@ -422,6 +412,11 @@ func CreateRiverClient(
 		MaxAttempts: 5, // TODO: configurable
 		RetryPolicy: &fixedRetryPolicy{
 			delay: time.Second * 5, // TODO: configurable
+		},
+		Middleware: []rivertype.Middleware{
+			otelriver.NewMiddleware(&otelriver.MiddlewareConfig{
+				EnableWorkSpanJobKindSuffix: true,
+			}),
 		},
 	})
 	if err != nil {

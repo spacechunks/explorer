@@ -30,6 +30,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/controlplane/resource"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type CreateCheckpointWorkerConfig struct {
@@ -69,6 +70,11 @@ func NewCheckpointWorker(
 }
 
 func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[job.CreateCheckpoint]) (ret error) {
+	span := trace.SpanFromContext(ctx)
+	span.AddLink(trace.Link{
+		SpanContext: riverJob.Args.SpanContext.OTel(),
+	})
+
 	w.logger.Debug("started checkpointing")
 	defer func() {
 		if ret == nil {

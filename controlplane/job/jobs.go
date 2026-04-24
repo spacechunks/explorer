@@ -21,6 +21,7 @@ package job
 import (
 	"github.com/google/uuid"
 	"github.com/spacechunks/explorer/controlplane/errors"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -29,10 +30,28 @@ var (
 	ErrInvalidOCIRegistry     = errors.New("invalid registry")
 )
 
+type SpanContext struct {
+	TraceID string `json:"traceId"`
+	SpanID  string `json:"spanId"`
+}
+
+func (c SpanContext) OTel() trace.SpanContext {
+	// we ignore the error here, because if deserializing
+	// fails we don't need to fail in any way (as of now)
+	tID, _ := trace.TraceIDFromHex(c.TraceID)
+	sID, _ := trace.SpanIDFromHex(c.SpanID)
+
+	return trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: tID,
+		SpanID:  sID,
+	})
+}
+
 type CreateImage struct {
-	FlavorVersionID string `json:"flavorVersionId"`
-	BaseImage       string `json:"baseImage"`
-	OCIRegistry     string `json:"registry"`
+	FlavorVersionID string      `json:"flavorVersionId"`
+	BaseImage       string      `json:"baseImage"`
+	OCIRegistry     string      `json:"registry"`
+	SpanContext     SpanContext `json:"spanContext,omitempty"`
 }
 
 func (CreateImage) Kind() string {
@@ -56,8 +75,9 @@ func (c CreateImage) Validate() error {
 }
 
 type CreateCheckpoint struct {
-	FlavorVersionID string `json:"flavorVersionId"`
-	BaseImageURL    string `json:"baseImageUrl"`
+	FlavorVersionID string      `json:"flavorVersionId"`
+	BaseImageURL    string      `json:"baseImageUrl"`
+	SpanContext     SpanContext `json:"spanContext,omitempty"`
 }
 
 func (c CreateCheckpoint) Validate() error {
