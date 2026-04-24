@@ -61,11 +61,11 @@ func TestRunWorkload(t *testing.T) {
 				MemoryLimitBytes: 100000,
 			},
 			cfg: workload.Config{
-				MCManagementAPIToken: "some-token",
-				ServerMonImage:       "server-mon",
-				PlatformdListenSock:  "/var/run/platform.sock",
-				PlatformdSocketUID:   1337,
-				PlatformdSocketGID:   1337,
+				MCManagementAPIToken:   "some-token",
+				ServerMonImage:         "server-mon",
+				PlatformdListenSockURL: test.MustParseURL(t, "unix:///var/run/platform.sock"),
+				PlatformdSocketUID:     1337,
+				PlatformdSocketGID:     1337,
 			},
 			attempt: 1,
 			prep: func(criService *mock.MockCriService, cfg workload.Config, w workload.Workload, attempt uint) {
@@ -125,8 +125,8 @@ func TestRunWorkload(t *testing.T) {
 							LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, "servermon"),
 							Mounts: []*runtimev1.Mount{
 								{
-									HostPath:      cfg.PlatformdListenSock,
-									ContainerPath: cfg.PlatformdListenSock,
+									HostPath:      cfg.PlatformdListenSockURL.Path,
+									ContainerPath: cfg.PlatformdListenSockURL.Path,
 								},
 							},
 							Linux: &runtimev1.LinuxContainerConfig{
@@ -150,7 +150,7 @@ func TestRunWorkload(t *testing.T) {
 								},
 								{
 									Key:   "SERVERMON_PLATFORMD_LISTEN_SOCK",
-									Value: cfg.PlatformdListenSock,
+									Value: cfg.PlatformdListenSockURL.String(),
 								},
 							},
 						},

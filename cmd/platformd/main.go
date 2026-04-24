@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"log/slog"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -21,7 +22,7 @@ func main() {
 	var (
 		logger                       = slog.New(slog.NewTextHandler(os.Stdout, nil))
 		fs                           = flag.NewFlagSet("platformd", flag.ContinueOnError)
-		proxyServiceListenSock       = fs.String("management-server-listen-sock", "/run/platformd/platformd.sock", "path to the unix domain socket to listen on") //nolint:lll
+		mgmtListenSock               = fs.String("management-server-listen-sock", "/run/platformd/platformd.sock", "path to the unix domain socket to listen on") //nolint:lll
 		mgmtSockUID                  = fs.Uint64("management-server-listen-sock-uid", 9012, "unix domain socket uid")
 		mgmtSockGID                  = fs.Uint64("management-server-listen-sock-gid", 9012, "unix domain socket gid")
 		criListenSock                = fs.String("cri-listen-sock", "/var/run/crio/crio.sock", "path to the unix domain socket the CRI is listening on")                           //nolint:lll
@@ -61,9 +62,14 @@ func main() {
 		die(logger, "failed to parse config", err)
 	}
 
+	mgmtSockURL, err := url.Parse(*mgmtListenSock)
+	if err != nil {
+		die(logger, "failed to parse management-server-listen-sock", err)
+	}
+
 	var (
 		cfg = platformd.Config{
-			ManagementServerListenSock: *proxyServiceListenSock,
+			ManagementServerListenSock: mgmtSockURL,
 			CRIListenSock:              *criListenSock,
 			EnvoyImage:                 *envoyImage,
 			CoreDNSImage:               *coreDNSImage,

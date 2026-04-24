@@ -145,8 +145,8 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 			LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, "servermon"),
 			Mounts: []*runtimev1.Mount{
 				{
-					HostPath:      s.cfg.PlatformdListenSock,
-					ContainerPath: s.cfg.PlatformdListenSock,
+					HostPath:      s.cfg.PlatformdListenSockURL.Path,
+					ContainerPath: s.cfg.PlatformdListenSockURL.Path,
 				},
 			},
 			Linux: &runtimev1.LinuxContainerConfig{
@@ -170,7 +170,7 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 				},
 				{
 					Key:   "SERVERMON_PLATFORMD_LISTEN_SOCK",
-					Value: s.cfg.PlatformdListenSock,
+					Value: s.cfg.PlatformdListenSockURL.String(),
 				},
 			},
 		},
