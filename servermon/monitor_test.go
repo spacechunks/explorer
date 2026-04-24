@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -21,7 +22,8 @@ import (
 )
 
 type fakeManagementAPI struct {
-	result func() []player
+	result    func() []player
+	closeConn chan struct{}
 }
 
 type player struct {
@@ -43,6 +45,13 @@ func (f fakeManagementAPI) serveWs(w http.ResponseWriter, r *http.Request) {
 		log.Printf("marshal: %v\n", err)
 		conn.Close()
 		return
+	}
+
+	if f.closeConn != nil {
+		go func() {
+			<-f.closeConn
+			conn.Close()
+		}()
 	}
 
 	for {
@@ -159,4 +168,56 @@ func TestServerMonKeepsWorkloadWhenPlayersArePresent(t *testing.T) {
 	wlMock.AssertNotCalled(t, "StopWorkload", mocky.Anything, &workloadv1alpha2.WorkloadStopRequest{
 		Id: wlID,
 	})
+}
+
+func TestServerMonExitsWhenManagementAPIUnreachable(t *testing.T) {
+	var (
+		wlID        = "blabla"
+		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		wlMock      = mock.NewMockV1alpha2WorkloadServiceClient(t)
+		closeConn   = make(chan struct{})
+		playerCount = atomic.Int32{}
+		fake        = fakeManagementAPI{
+			result: func() []player {
+				if playerCount.Load() > 0 {
+					return []player{{ID: "1", Name: "A"}}
+				}
+				return []player{}
+			},
+			closeConn: closeConn,
+		}
+		mon = servermon.New(
+			slog.New(slog.NewTextHandler(os.Stdout, nil)),
+			servermon.Config{
+				PlayerCountCheckInterval:      2 * time.Second,
+				MCServerManagementAPIEndpoint: "ws://localhost:30751",
+			},
+			wlMock,
+		)
+	)
+
+	_ = os.Setenv("PLATFORMD_WORKLOAD_ID", wlID)
+	defer cancel()
+
+	wlMock.
+		EXPECT().
+		StopWorkload(mocky.Anything, &workloadv1alpha2.WorkloadStopRequest{
+			Id: wlID,
+		}).
+		Return(&workloadv1alpha2.WorkloadStopResponse{}, nil)
+
+	go fake.Run(t, 30751)
+
+	go func() {
+		err := mon.Run(ctx)
+		require.NoError(t, err)
+	}()
+
+	playerCount.Store(1)
+	time.Sleep(2 * time.Second)
+	playerCount.Store(0)
+	time.Sleep(200 * time.Millisecond)
+	close(closeConn)
+
+	<-ctx.Done()
 }

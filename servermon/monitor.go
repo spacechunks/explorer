@@ -106,7 +106,7 @@ func (m Monitor) Run(ctx context.Context) error {
 		for range checkTicker.C {
 			if joined.Load() {
 				joined.Store(false)
-				break
+				continue
 			}
 
 			logger.Info(
