@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"strings"
 
@@ -94,16 +95,27 @@ func (s *svc) RunFlavorVersion(
 		return resource.Instance{}, fmt.Errorf("chunk by id: %w", err)
 	}
 
-	versions := make(map[string]resource.FlavorVersion)
+	var (
+		flavor  *resource.Flavor
+		version *resource.FlavorVersion
+	)
 
 	for _, f := range c.Flavors {
-		for _, v := range f.Versions {
-			versions[v.ID] = v
+		idx := slices.IndexFunc(f.Versions, func(v resource.FlavorVersion) bool {
+			return v.ID == flavorVersionID
+		})
+		if idx == -1 {
+			continue
 		}
+		flavor = &f
+		version = &f.Versions[idx]
 	}
 
-	ver, ok := versions[flavorVersionID]
-	if !ok {
+	if version == nil {
+		return resource.Instance{}, apierrs.ErrFlavorVersionNotFound
+	}
+
+	if flavor != nil && flavor.DeletedAt != nil {
 		return resource.Instance{}, apierrs.ErrFlavorVersionNotFound
 	}
 
@@ -115,7 +127,7 @@ func (s *svc) RunFlavorVersion(
 	ins, err := s.insRepo.CreateInstance(ctx, resource.Instance{
 		ID:            instanceID.String(),
 		Chunk:         c,
-		FlavorVersion: ver,
+		FlavorVersion: *version,
 		State:         resource.InstanceStatePending,
 		Owner: resource.User{
 			ID: ownerID,

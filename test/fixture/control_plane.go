@@ -173,6 +173,7 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 				ResourcePackTextureDir:        "assets/spc/textures/item/test",
 				ChangeSetTarballMaxSizeBytes:  MaxChangeSetTarballSize,
 				ArchiveInterval:               5 * time.Second,
+				DisableTracing:                true,
 			})
 	)
 

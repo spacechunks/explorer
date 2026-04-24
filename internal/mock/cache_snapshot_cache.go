@@ -6,7 +6,7 @@ import (
 	context "context"
 
 	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
-	stream "github.com/envoyproxy/go-control-plane/pkg/server/stream/v3"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -57,7 +57,7 @@ func (_c *MockCacheSnapshotCache_ClearSnapshot_Call) RunAndReturn(run func(strin
 }
 
 // CreateDeltaWatch provides a mock function with given fields: _a0, _a1, _a2
-func (_m *MockCacheSnapshotCache) CreateDeltaWatch(_a0 *cache.DeltaRequest, _a1 stream.StreamState, _a2 chan cache.DeltaResponse) func() {
+func (_m *MockCacheSnapshotCache) CreateDeltaWatch(_a0 *cache.DeltaRequest, _a1 cache.Subscription, _a2 chan cache.DeltaResponse) (func(), error) {
 	ret := _m.Called(_a0, _a1, _a2)
 
 	if len(ret) == 0 {
@@ -65,7 +65,11 @@ func (_m *MockCacheSnapshotCache) CreateDeltaWatch(_a0 *cache.DeltaRequest, _a1 
 	}
 
 	var r0 func()
-	if rf, ok := ret.Get(0).(func(*cache.DeltaRequest, stream.StreamState, chan cache.DeltaResponse) func()); ok {
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*cache.DeltaRequest, cache.Subscription, chan cache.DeltaResponse) (func(), error)); ok {
+		return rf(_a0, _a1, _a2)
+	}
+	if rf, ok := ret.Get(0).(func(*cache.DeltaRequest, cache.Subscription, chan cache.DeltaResponse) func()); ok {
 		r0 = rf(_a0, _a1, _a2)
 	} else {
 		if ret.Get(0) != nil {
@@ -73,7 +77,13 @@ func (_m *MockCacheSnapshotCache) CreateDeltaWatch(_a0 *cache.DeltaRequest, _a1 
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(*cache.DeltaRequest, cache.Subscription, chan cache.DeltaResponse) error); ok {
+		r1 = rf(_a0, _a1, _a2)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockCacheSnapshotCache_CreateDeltaWatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateDeltaWatch'
@@ -83,31 +93,31 @@ type MockCacheSnapshotCache_CreateDeltaWatch_Call struct {
 
 // CreateDeltaWatch is a helper method to define mock.On call
 //   - _a0 *cache.DeltaRequest
-//   - _a1 stream.StreamState
+//   - _a1 cache.Subscription
 //   - _a2 chan cache.DeltaResponse
 func (_e *MockCacheSnapshotCache_Expecter) CreateDeltaWatch(_a0 interface{}, _a1 interface{}, _a2 interface{}) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
 	return &MockCacheSnapshotCache_CreateDeltaWatch_Call{Call: _e.mock.On("CreateDeltaWatch", _a0, _a1, _a2)}
 }
 
-func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) Run(run func(_a0 *cache.DeltaRequest, _a1 stream.StreamState, _a2 chan cache.DeltaResponse)) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
+func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) Run(run func(_a0 *cache.DeltaRequest, _a1 cache.Subscription, _a2 chan cache.DeltaResponse)) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*cache.DeltaRequest), args[1].(stream.StreamState), args[2].(chan cache.DeltaResponse))
+		run(args[0].(*cache.DeltaRequest), args[1].(cache.Subscription), args[2].(chan cache.DeltaResponse))
 	})
 	return _c
 }
 
-func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) Return(cancel func()) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
-	_c.Call.Return(cancel)
+func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) Return(cancel func(), err error) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
+	_c.Call.Return(cancel, err)
 	return _c
 }
 
-func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) RunAndReturn(run func(*cache.DeltaRequest, stream.StreamState, chan cache.DeltaResponse) func()) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
+func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) RunAndReturn(run func(*cache.DeltaRequest, cache.Subscription, chan cache.DeltaResponse) (func(), error)) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // CreateWatch provides a mock function with given fields: _a0, _a1, _a2
-func (_m *MockCacheSnapshotCache) CreateWatch(_a0 *cache.Request, _a1 stream.StreamState, _a2 chan cache.Response) func() {
+func (_m *MockCacheSnapshotCache) CreateWatch(_a0 *cache.Request, _a1 cache.Subscription, _a2 chan cache.Response) (func(), error) {
 	ret := _m.Called(_a0, _a1, _a2)
 
 	if len(ret) == 0 {
@@ -115,7 +125,11 @@ func (_m *MockCacheSnapshotCache) CreateWatch(_a0 *cache.Request, _a1 stream.Str
 	}
 
 	var r0 func()
-	if rf, ok := ret.Get(0).(func(*cache.Request, stream.StreamState, chan cache.Response) func()); ok {
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*cache.Request, cache.Subscription, chan cache.Response) (func(), error)); ok {
+		return rf(_a0, _a1, _a2)
+	}
+	if rf, ok := ret.Get(0).(func(*cache.Request, cache.Subscription, chan cache.Response) func()); ok {
 		r0 = rf(_a0, _a1, _a2)
 	} else {
 		if ret.Get(0) != nil {
@@ -123,7 +137,13 @@ func (_m *MockCacheSnapshotCache) CreateWatch(_a0 *cache.Request, _a1 stream.Str
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(*cache.Request, cache.Subscription, chan cache.Response) error); ok {
+		r1 = rf(_a0, _a1, _a2)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockCacheSnapshotCache_CreateWatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateWatch'
@@ -133,25 +153,25 @@ type MockCacheSnapshotCache_CreateWatch_Call struct {
 
 // CreateWatch is a helper method to define mock.On call
 //   - _a0 *cache.Request
-//   - _a1 stream.StreamState
+//   - _a1 cache.Subscription
 //   - _a2 chan cache.Response
 func (_e *MockCacheSnapshotCache_Expecter) CreateWatch(_a0 interface{}, _a1 interface{}, _a2 interface{}) *MockCacheSnapshotCache_CreateWatch_Call {
 	return &MockCacheSnapshotCache_CreateWatch_Call{Call: _e.mock.On("CreateWatch", _a0, _a1, _a2)}
 }
 
-func (_c *MockCacheSnapshotCache_CreateWatch_Call) Run(run func(_a0 *cache.Request, _a1 stream.StreamState, _a2 chan cache.Response)) *MockCacheSnapshotCache_CreateWatch_Call {
+func (_c *MockCacheSnapshotCache_CreateWatch_Call) Run(run func(_a0 *cache.Request, _a1 cache.Subscription, _a2 chan cache.Response)) *MockCacheSnapshotCache_CreateWatch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*cache.Request), args[1].(stream.StreamState), args[2].(chan cache.Response))
+		run(args[0].(*cache.Request), args[1].(cache.Subscription), args[2].(chan cache.Response))
 	})
 	return _c
 }
 
-func (_c *MockCacheSnapshotCache_CreateWatch_Call) Return(cancel func()) *MockCacheSnapshotCache_CreateWatch_Call {
-	_c.Call.Return(cancel)
+func (_c *MockCacheSnapshotCache_CreateWatch_Call) Return(cancel func(), err error) *MockCacheSnapshotCache_CreateWatch_Call {
+	_c.Call.Return(cancel, err)
 	return _c
 }
 
-func (_c *MockCacheSnapshotCache_CreateWatch_Call) RunAndReturn(run func(*cache.Request, stream.StreamState, chan cache.Response) func()) *MockCacheSnapshotCache_CreateWatch_Call {
+func (_c *MockCacheSnapshotCache_CreateWatch_Call) RunAndReturn(run func(*cache.Request, cache.Subscription, chan cache.Response) (func(), error)) *MockCacheSnapshotCache_CreateWatch_Call {
 	_c.Call.Return(run)
 	return _c
 }

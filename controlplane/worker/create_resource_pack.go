@@ -78,7 +78,6 @@ func NewCreateResourcePackWorker(
 
 func (w *CreateResourcePackWorker) Work(ctx context.Context, riverJob *river.Job[job.CreateResourcePack]) error {
 	// FIXME: at some point we only want to upload the pack if it has actually changed.
-
 	workingDir := fmt.Sprintf("%s/%d", w.cfg.WorkingDir, riverJob.ID)
 
 	if err := os.MkdirAll(workingDir, os.ModePerm); err != nil {

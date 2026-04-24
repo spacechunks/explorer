@@ -36,6 +36,7 @@ import (
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/tarhelper"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type CreateImageWorkerConfig struct {
@@ -71,6 +72,11 @@ func NewCreateImageWorker(
 }
 
 func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.CreateImage]) (ret error) {
+	span := trace.SpanFromContext(ctx)
+	span.AddLink(trace.Link{
+		SpanContext: riverJob.Args.SpanContext.OTel(),
+	})
+
 	defer func() {
 		if ret == nil {
 			return
@@ -187,6 +193,7 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		job.CreateCheckpoint{
 			FlavorVersionID: riverJob.Args.FlavorVersionID,
 			BaseImageURL:    ref,
+			SpanContext:     riverJob.Args.SpanContext,
 		}); err != nil {
 		return fmt.Errorf("insert create checkpoint job: %w", err)
 	}

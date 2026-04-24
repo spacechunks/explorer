@@ -5,8 +5,10 @@ package mock
 import (
 	context "context"
 
-	mock "github.com/stretchr/testify/mock"
 	grpc "google.golang.org/grpc"
+
+	mock "github.com/stretchr/testify/mock"
+
 	v1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 

@@ -59,11 +59,16 @@ import (
 	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
+	"github.com/spacechunks/explorer/internal/instr"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/exaring/otelpgx"
+	"github.com/riverqueue/rivercontrib/otelriver"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 )
 
 type Server struct {
@@ -83,12 +88,30 @@ func NewServer(logger *slog.Logger, cfg Config) *Server {
 func (s *Server) Run(ctx context.Context) error {
 	serverconfig.SetVelocitySecret(s.cfg.VelocitySecret)
 
+	shutdown, err := instr.SetupOTel(ctx, "control-plane", s.cfg.DisableTracing)
+	if err != nil {
+		return fmt.Errorf("setup otel: %w", err)
+	}
+
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			s.logger.Warn("error shutting down otel", "err", err)
+		}
+	}()
+
 	oidcProvider, err := oidc.NewProvider(ctx, s.cfg.OAuthIssuerURL)
 	if err != nil {
 		return fmt.Errorf("oidc provider: %w", err)
 	}
 
-	pool, err := pgxpool.New(ctx, s.cfg.DBConnString)
+	pgxCfg, err := pgxpool.ParseConfig(s.cfg.DBConnString)
+	if err != nil {
+		return fmt.Errorf("parse pgx cfg: %w", err)
+	}
+
+	pgxCfg.ConnConfig.Tracer = otelpgx.NewTracer()
+
+	pool, err := pgxpool.NewWithConfig(ctx, pgxCfg)
 	if err != nil {
 		return fmt.Errorf("connect to database: %w", err)
 	}
@@ -157,6 +180,7 @@ func (s *Server) Run(ctx context.Context) error {
 	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
+			grpc.StatsHandler(otelgrpc.NewServerHandler()),
 			grpc.ChainUnaryInterceptor(
 				errorInterceptor(s.logger),
 				authInterceptor(s.logger, key, s.cfg.APITokenIssuer),
@@ -388,6 +412,11 @@ func CreateRiverClient(
 		MaxAttempts: 5, // TODO: configurable
 		RetryPolicy: &fixedRetryPolicy{
 			delay: time.Second * 5, // TODO: configurable
+		},
+		Middleware: []rivertype.Middleware{
+			otelriver.NewMiddleware(&otelriver.MiddlewareConfig{
+				EnableWorkSpanJobKindSuffix: true,
+			}),
 		},
 	})
 	if err != nil {

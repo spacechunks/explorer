@@ -33,11 +33,16 @@ import (
 	"github.com/peterbourgon/ff/v3"
 	"github.com/spacechunks/explorer/controlplane"
 	"github.com/spacechunks/explorer/controlplane/postgres/migrations"
+	"github.com/spacechunks/explorer/internal/instr"
 )
 
 func main() {
 	var (
-		logger                   = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		logger = slog.New(
+			&instr.OTelSlogHandler{
+				Handler: slog.NewJSONHandler(os.Stdout, nil),
+			},
+		)
 		fs                       = flag.NewFlagSet("controlplane", flag.ContinueOnError)
 		listenAddr               = fs.String("listen-address", ":9012", "address and port the control plane server listens on")                                                                                   //nolint:lll
 		pgConnString             = fs.String("postgres-dsn", "", "connection string in the form of postgres://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]")                                    //nolint:lll
@@ -70,11 +75,16 @@ func main() {
 		velocitySecret           = fs.String("velocity-secret", "", "the velocity secret to set in the paper server configuration")                                                                 //nolint:lll
 		changeSetTarballMaxSize  = fs.Uint64("change-set-tarball-max-size", 1073741824, "the maximum allowed size in bytes of the change set tarball")                                              //nolint:lll
 		archiveInterval          = fs.Duration("archive-interval", 3*time.Minute, "in what interval the deleted chunks and flavors should be archived")                                             //nolint:lll
+		disableTracing           = fs.Bool("disable-tracing", false, "disable open telemetry tracing")                                                                                              //nolint:lll
 	)
 	if err := ff.Parse(fs, os.Args[1:],
 		ff.WithEnvVarPrefix("CONTROLPLANE"),
 	); err != nil {
 		die(logger, "failed to parse config", err)
+	}
+
+	if s := os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"); s == "" {
+		die(logger, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT has to be set", nil)
 	}
 
 	var (
@@ -110,6 +120,7 @@ func main() {
 			VelocitySecret:                *velocitySecret,
 			ChangeSetTarballMaxSizeBytes:  *changeSetTarballMaxSize,
 			ArchiveInterval:               *archiveInterval,
+			DisableTracing:                *disableTracing,
 		}
 		ctx    = context.Background()
 		server = controlplane.NewServer(logger, cfg)
