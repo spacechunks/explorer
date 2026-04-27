@@ -60,6 +60,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/instr"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -184,6 +185,7 @@ func (s *Server) Run(ctx context.Context) error {
 			grpc.ChainUnaryInterceptor(
 				errorInterceptor(s.logger),
 				authInterceptor(s.logger, key, s.cfg.APITokenIssuer),
+				traceParentInterceptor(s.logger),
 			),
 		)
 
@@ -317,6 +319,28 @@ func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 			return nil, status.Error(codes.Internal, "internal service error occurred")
 		}
 		return resp, nil
+	}
+}
+
+func traceParentInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		spanCtx := trace.SpanFromContext(ctx).SpanContext()
+		if !spanCtx.IsValid() {
+			return handler(ctx, req)
+		}
+
+		var (
+			traceID    = spanCtx.TraceID().String()
+			spanID     = spanCtx.SpanID().String()
+			traceFlags = spanCtx.TraceFlags()
+			header     = metadata.Pairs("traceparent", fmt.Sprintf("00-%s-%s-%02x", traceID, spanID, traceFlags))
+		)
+
+		if err := grpc.SetHeader(ctx, header); err != nil {
+			logger.Error("failed to set trace header", "err", err)
+		}
+
+		return handler(ctx, req)
 	}
 }
 
