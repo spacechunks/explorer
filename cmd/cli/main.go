@@ -38,6 +38,7 @@ import (
 	"github.com/spacechunks/explorer/cli/state"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
 )
 
 func main() {
@@ -51,9 +52,12 @@ func main() {
 		log.Fatalf("Config error: %v", err)
 	}
 
-	conn, err := grpc.NewClient(cfg.ControlPlaneEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
-		InsecureSkipVerify: true,
-	})))
+	conn, err := grpc.NewClient(cfg.ControlPlaneEndpoint,
+		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			InsecureSkipVerify: true,
+		})),
+		grpc.WithUnaryInterceptor(traceparentInterceptor(logger)),
+	)
 	if err != nil {
 		die("Failed to create gRPC client", err)
 	}
@@ -123,4 +127,21 @@ func newLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: level,
 	}))
+}
+
+func traceparentInterceptor(logger *slog.Logger) grpc.UnaryClientInterceptor {
+	return func(
+		ctx context.Context,
+		method string,
+		req, reply any,
+		cc *grpc.ClientConn,
+		invoker grpc.UnaryInvoker,
+		opts ...grpc.CallOption,
+	) error {
+		var header metadata.MD
+		opts = append(opts, grpc.Header(&header))
+		err := invoker(ctx, method, req, reply, cc, opts...)
+		logger.Debug("calling "+method, "traceparent", header.Get("traceparent"))
+		return err
+	}
 }
