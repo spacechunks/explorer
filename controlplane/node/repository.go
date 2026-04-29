@@ -28,8 +28,11 @@ type Node struct {
 	Name                  string
 	Addr                  netip.Addr
 	CheckpointAPIEndpoint netip.AddrPort
+	Slots                 int
+	AvailableSlots        int
 }
 
 type Repository interface {
 	RandomNode(ctx context.Context) (Node, error)
+	BestNode(ctx context.Context) (Node, error)
 }

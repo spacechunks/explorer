@@ -84,10 +84,9 @@ func (s *svc) RunFlavorVersion(
 	flavorVersionID string,
 	ownerID string,
 ) (resource.Instance, error) {
-	// TODO: at some point implement a more sophisticated node scheduling logic
-	n, err := s.nodeRepo.RandomNode(ctx)
+	n, err := s.nodeRepo.BestNode(ctx)
 	if err != nil {
-		return resource.Instance{}, fmt.Errorf("random node: %w", err)
+		return resource.Instance{}, fmt.Errorf("best node: %w", err)
 	}
 
 	c, err := s.chunkService.GetChunk(ctx, chunkID)

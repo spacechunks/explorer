@@ -191,7 +191,7 @@ func (p *Postgres) CreateChunk(t *testing.T, c *resource.Chunk, opts CreateOptio
 	}
 
 	q := `
-INSERT INTO chunks 
+INSERT INTO chunks
 	(id, name, description, tags, created_at, updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, deleted_at)
 VALUES
     ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -314,8 +314,8 @@ func (p *Postgres) CreateUser(t *testing.T, u *resource.User) {
 
 func (p *Postgres) InsertNode(t *testing.T) {
 	ctx := context.Background()
-	q := `INSERT INTO nodes (id, name, address, checkpoint_api_endpoint) VALUES ($1, $2, $3, $4)`
-	_, err := p.Pool.Exec(ctx, q, Node().ID, Node().Name, Node().Addr, Node().CheckpointAPIEndpoint)
+	q := `INSERT INTO nodes (id, name, address, checkpoint_api_endpoint, slots) VALUES ($1, $2, $3, $4, $5)`
+	_, err := p.Pool.Exec(ctx, q, Node().ID, Node().Name, Node().Addr, Node().CheckpointAPIEndpoint, Node().Slots)
 	require.NoError(t, err)
 }
 

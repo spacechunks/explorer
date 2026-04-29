@@ -22,6 +22,62 @@ func (_m *MockNodeRepository) EXPECT() *MockNodeRepository_Expecter {
 	return &MockNodeRepository_Expecter{mock: &_m.Mock}
 }
 
+// BestNode provides a mock function with given fields: ctx
+func (_m *MockNodeRepository) BestNode(ctx context.Context) (node.Node, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BestNode")
+	}
+
+	var r0 node.Node
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (node.Node, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) node.Node); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(node.Node)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockNodeRepository_BestNode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BestNode'
+type MockNodeRepository_BestNode_Call struct {
+	*mock.Call
+}
+
+// BestNode is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockNodeRepository_Expecter) BestNode(ctx interface{}) *MockNodeRepository_BestNode_Call {
+	return &MockNodeRepository_BestNode_Call{Call: _e.mock.On("BestNode", ctx)}
+}
+
+func (_c *MockNodeRepository_BestNode_Call) Run(run func(ctx context.Context)) *MockNodeRepository_BestNode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockNodeRepository_BestNode_Call) Return(_a0 node.Node, _a1 error) *MockNodeRepository_BestNode_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockNodeRepository_BestNode_Call) RunAndReturn(run func(context.Context) (node.Node, error)) *MockNodeRepository_BestNode_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RandomNode provides a mock function with given fields: ctx
 func (_m *MockNodeRepository) RandomNode(ctx context.Context) (node.Node, error) {
 	ret := _m.Called(ctx)

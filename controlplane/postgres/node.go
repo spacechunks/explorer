@@ -54,3 +54,39 @@ func (db *DB) RandomNode(ctx context.Context) (node.Node, error) {
 
 	return ret, nil
 }
+
+func (db *DB) BestNode(ctx context.Context) (node.Node, error) {
+	var ret node.Node
+
+	if err := db.do(ctx, func(q *query.Queries) error {
+		n, err := q.BestNode(ctx)
+		if err != nil {
+			return fmt.Errorf("random node: %w", err)
+		}
+
+		addrPort, err := netip.ParseAddrPort(n.CheckpointApiEndpoint)
+		if err != nil {
+			return fmt.Errorf("invalid address port: %w", err)
+		}
+
+		available := n.Slots - int(n.InstanceCount)
+		if available < 0 {
+			available = 0
+		}
+
+		ret = node.Node{
+			ID:                    n.ID,
+			Name:                  n.Name,
+			Addr:                  n.Address,
+			CheckpointAPIEndpoint: addrPort,
+			Slots:                 n.Slots,
+			AvailableSlots:        available,
+		}
+
+		return nil
+	}); err != nil {
+		return ret, err
+	}
+
+	return ret, nil
+}
