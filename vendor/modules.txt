@@ -182,8 +182,8 @@ github.com/cilium/ebpf/internal/sysenc
 github.com/cilium/ebpf/internal/tracefs
 github.com/cilium/ebpf/internal/unix
 github.com/cilium/ebpf/link
-# github.com/cncf/xds/go v0.0.0-20251210132809-ee656c7534f5
-## explicit; go 1.24
+# github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2
+## explicit; go 1.24.6
 github.com/cncf/xds/go/udpa/annotations
 github.com/cncf/xds/go/xds/annotations/v3
 github.com/cncf/xds/go/xds/core/v3
