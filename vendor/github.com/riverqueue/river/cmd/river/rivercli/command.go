@@ -1,7 +1,9 @@
 package rivercli
 
 import (
+	"cmp"
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,34 +13,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "modernc.org/sqlite"
 
-	"github.com/riverqueue/river/cmd/river/riverbench"
-	"github.com/riverqueue/river/rivermigrate"
 	"github.com/riverqueue/river/rivershared/util/ptrutil"
 )
-
-const (
-	uriScheme      = "postgresql://"
-	uriSchemeAlias = "postgres://"
-)
-
-// BenchmarkerInterface is an interface to a Benchmarker. Its reason for
-// existence is to wrap a benchmarker to strip it of its generic parameter,
-// letting us pass it around without having to know the transaction type.
-type BenchmarkerInterface interface {
-	Run(ctx context.Context, duration time.Duration, numTotalJobs int) error
-}
-
-// MigratorInterface is an interface to a Migrator. Its reason for existence is
-// to wrap a migrator to strip it of its generic parameter, letting us pass it
-// around without having to know the transaction type.
-type MigratorInterface interface {
-	AllVersions() []rivermigrate.Migration
-	ExistingVersions(ctx context.Context) ([]rivermigrate.Migration, error)
-	GetVersion(version int) (rivermigrate.Migration, error)
-	Migrate(ctx context.Context, direction rivermigrate.Direction, opts *rivermigrate.MigrateOpts) (*rivermigrate.MigrateResult, error)
-	Validate(ctx context.Context) (*rivermigrate.ValidateResult, error)
-}
 
 // Command is an interface to a River CLI subcommand. Commands generally only
 // implement a Run function, and get the rest of the implementation by embedding
@@ -56,9 +34,6 @@ type CommandBase struct {
 	Logger         *slog.Logger
 	Out            io.Writer
 	Schema         string
-
-	GetBenchmarker func() BenchmarkerInterface
-	GetMigrator    func(config *rivermigrate.Config) (MigratorInterface, error)
 }
 
 func (b *CommandBase) GetCommandBase() *CommandBase     { return b }
@@ -72,11 +47,12 @@ type CommandOpts interface {
 
 // RunCommandBundle is a bundle of utilities for RunCommand.
 type RunCommandBundle struct {
-	DatabaseURL    *string
-	DriverProcurer DriverProcurer
-	Logger         *slog.Logger
-	OutStd         io.Writer
-	Schema         string
+	DatabaseURL      *string
+	DriverProcurer   DriverProcurer
+	Logger           *slog.Logger
+	OutStd           io.Writer
+	Schema           string
+	StatementTimeout *time.Duration
 }
 
 // RunCommand bootstraps and runs a River CLI subcommand.
@@ -86,54 +62,60 @@ func RunCommand[TOpts CommandOpts](ctx context.Context, bundle *RunCommandBundle
 			return false, err
 		}
 
-		commandBase := &CommandBase{
-			DriverProcurer: bundle.DriverProcurer,
+		var (
+			databaseURL        *string
+			protocol           string
+			urlWithoutProtocol string
+		)
+		if pgEnvConfigured() {
+			databaseURL = ptrutil.Ptr("")
+			protocol = "postgres"
+		} else if bundle.DatabaseURL != nil {
+			databaseURL = bundle.DatabaseURL
+			var ok bool
+			protocol, urlWithoutProtocol, ok = strings.Cut(*databaseURL, "://")
+			if !ok {
+				return false, fmt.Errorf("expected database URL (`%s`) to be formatted like `postgres://...`", *bundle.DatabaseURL)
+			}
+		}
+
+		driverProcurer := bundle.DriverProcurer
+		if databaseURL != nil {
+			switch protocol {
+			case "postgres", "postgresql":
+				dbPool, err := openPgxV5DBPool(ctx, *databaseURL, bundle.StatementTimeout)
+				if err != nil {
+					return false, err
+				}
+				defer dbPool.Close()
+
+				driverProcurerPgxV5, isPgxV5Procurer := driverProcurer.(DriverProcurerPgxV5)
+				if driverProcurer != nil && isPgxV5Procurer {
+					driverProcurerPgxV5.InitPgxV5(dbPool)
+				} else {
+					driverProcurer = &pgxV5DriverProcurer{dbPool: dbPool}
+				}
+
+			case "sqlite":
+				dbPool, err := openSQLitePool(protocol, urlWithoutProtocol)
+				if err != nil {
+					return false, err
+				}
+				defer dbPool.Close()
+
+				driverProcurer = &sqliteDriverProcurer{dbPool: dbPool}
+
+			default:
+				return false, fmt.Errorf("unsupported database URL (`%s`); try one with a `postgres://`, `postgresql://`, or `sqlite://` scheme/prefix", *bundle.DatabaseURL)
+			}
+		}
+
+		command.SetCommandBase(&CommandBase{
+			DriverProcurer: driverProcurer,
 			Logger:         bundle.Logger,
 			Out:            bundle.OutStd,
 			Schema:         bundle.Schema,
-		}
-
-		var databaseURL *string
-
-		switch {
-		case pgEnvConfigured():
-			databaseURL = ptrutil.Ptr("")
-
-		case bundle.DatabaseURL != nil:
-			if !strings.HasPrefix(*bundle.DatabaseURL, uriScheme) &&
-				!strings.HasPrefix(*bundle.DatabaseURL, uriSchemeAlias) {
-				return false, fmt.Errorf(
-					"unsupported database URL (`%s`); try one with a `%s` or `%s` scheme/prefix",
-					*bundle.DatabaseURL,
-					uriSchemeAlias,
-					uriScheme,
-				)
-			}
-
-			databaseURL = bundle.DatabaseURL
-		}
-
-		if databaseURL == nil {
-			commandBase.GetBenchmarker = func() BenchmarkerInterface { panic("neither PG* env nor databaseURL was not set") }
-			commandBase.GetMigrator = func(config *rivermigrate.Config) (MigratorInterface, error) {
-				panic("neither PG* env nor databaseURL was not set")
-			}
-		} else {
-			dbPool, err := openPgxV5DBPool(ctx, *databaseURL)
-			if err != nil {
-				return false, err
-			}
-			defer dbPool.Close()
-
-			driver := bundle.DriverProcurer.ProcurePgxV5(dbPool)
-
-			commandBase.GetBenchmarker = func() BenchmarkerInterface {
-				return riverbench.NewBenchmarker(driver, commandBase.Logger, commandBase.Schema)
-			}
-			commandBase.GetMigrator = func(config *rivermigrate.Config) (MigratorInterface, error) { return rivermigrate.New(driver, config) }
-		}
-
-		command.SetCommandBase(commandBase)
+		})
 
 		return command.Run(ctx, opts)
 	}
@@ -148,7 +130,7 @@ func RunCommand[TOpts CommandOpts](ctx context.Context, bundle *RunCommandBundle
 	return nil
 }
 
-func openPgxV5DBPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
+func openPgxV5DBPool(ctx context.Context, databaseURL string, statementTimeout *time.Duration) (*pgxpool.Pool, error) {
 	const (
 		defaultIdleInTransactionSessionTimeout = 11 * time.Second // should be greater than statement timeout because statements count towards idle-in-transaction
 		defaultStatementTimeout                = 10 * time.Second
@@ -169,14 +151,41 @@ func openPgxV5DBPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, er
 		runtimeParams[name] = val
 	}
 
-	setParamIfUnset(pgxConfig.ConnConfig.RuntimeParams, "application_name", "river CLI")
-	setParamIfUnset(pgxConfig.ConnConfig.RuntimeParams, "idle_in_transaction_session_timeout", strconv.Itoa(int(defaultIdleInTransactionSessionTimeout.Milliseconds())))
-	setParamIfUnset(pgxConfig.ConnConfig.RuntimeParams, "statement_timeout", strconv.Itoa(int(defaultStatementTimeout.Milliseconds())))
+	runtimeParams := pgxConfig.ConnConfig.RuntimeParams
+	if runtimeParams == nil {
+		runtimeParams = make(map[string]string)
+		pgxConfig.ConnConfig.RuntimeParams = runtimeParams
+	}
+
+	var statementTimeoutMilliseconds string
+	if statementTimeout != nil {
+		statementTimeoutMilliseconds = strconv.Itoa(int(statementTimeout.Milliseconds()))
+	}
+
+	setParamIfUnset(runtimeParams, "application_name", "river CLI")
+	setParamIfUnset(runtimeParams, "idle_in_transaction_session_timeout", strconv.Itoa(int(defaultIdleInTransactionSessionTimeout.Milliseconds())))
+	runtimeParams["statement_timeout"] = cmp.Or(
+		statementTimeoutMilliseconds,
+		runtimeParams["statement_timeout"],
+		strconv.Itoa(int(defaultStatementTimeout.Milliseconds())),
+	)
 
 	dbPool, err := pgxpool.NewWithConfig(ctx, pgxConfig)
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to database: %w", err)
+		return nil, fmt.Errorf("error connecting to Postgres database: %w", err)
 	}
+
+	return dbPool, nil
+}
+
+func openSQLitePool(protocol, urlWithoutProtocol string) (*sql.DB, error) {
+	dbPool, err := sql.Open(protocol, urlWithoutProtocol)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to SQLite database: %w", err)
+	}
+
+	// See notes on this in `riversharedtest.DBPoolSQLite`.
+	dbPool.SetMaxOpenConns(1)
 
 	return dbPool, nil
 }
