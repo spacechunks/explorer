@@ -650,7 +650,7 @@ func (_c *MockCriService_ExecSync_Call) RunAndReturn(run func(context.Context, *
 }
 
 // GetContainerEvents provides a mock function with given fields: ctx, in, opts
-func (_m *MockCriService) GetContainerEvents(ctx context.Context, in *v1.GetEventsRequest, opts ...grpc.CallOption) (v1.RuntimeService_GetContainerEventsClient, error) {
+func (_m *MockCriService) GetContainerEvents(ctx context.Context, in *v1.GetEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[v1.ContainerEventResponse], error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -664,16 +664,16 @@ func (_m *MockCriService) GetContainerEvents(ctx context.Context, in *v1.GetEven
 		panic("no return value specified for GetContainerEvents")
 	}
 
-	var r0 v1.RuntimeService_GetContainerEventsClient
+	var r0 grpc.ServerStreamingClient[v1.ContainerEventResponse]
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.GetEventsRequest, ...grpc.CallOption) (v1.RuntimeService_GetContainerEventsClient, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.GetEventsRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.ContainerEventResponse], error)); ok {
 		return rf(ctx, in, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v1.GetEventsRequest, ...grpc.CallOption) v1.RuntimeService_GetContainerEventsClient); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.GetEventsRequest, ...grpc.CallOption) grpc.ServerStreamingClient[v1.ContainerEventResponse]); ok {
 		r0 = rf(ctx, in, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1.RuntimeService_GetContainerEventsClient)
+			r0 = ret.Get(0).(grpc.ServerStreamingClient[v1.ContainerEventResponse])
 		}
 	}
 
@@ -713,12 +713,12 @@ func (_c *MockCriService_GetContainerEvents_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockCriService_GetContainerEvents_Call) Return(_a0 v1.RuntimeService_GetContainerEventsClient, _a1 error) *MockCriService_GetContainerEvents_Call {
+func (_c *MockCriService_GetContainerEvents_Call) Return(_a0 grpc.ServerStreamingClient[v1.ContainerEventResponse], _a1 error) *MockCriService_GetContainerEvents_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockCriService_GetContainerEvents_Call) RunAndReturn(run func(context.Context, *v1.GetEventsRequest, ...grpc.CallOption) (v1.RuntimeService_GetContainerEventsClient, error)) *MockCriService_GetContainerEvents_Call {
+func (_c *MockCriService_GetContainerEvents_Call) RunAndReturn(run func(context.Context, *v1.GetEventsRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.ContainerEventResponse], error)) *MockCriService_GetContainerEvents_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2112,6 +2112,376 @@ func (_c *MockCriService_StopPodSandbox_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// StreamContainerStats provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) StreamContainerStats(ctx context.Context, in *v1.StreamContainerStatsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamContainerStatsResponse], error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StreamContainerStats")
+	}
+
+	var r0 grpc.ServerStreamingClient[v1.StreamContainerStatsResponse]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StreamContainerStatsRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamContainerStatsResponse], error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StreamContainerStatsRequest, ...grpc.CallOption) grpc.ServerStreamingClient[v1.StreamContainerStatsResponse]); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(grpc.ServerStreamingClient[v1.StreamContainerStatsResponse])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.StreamContainerStatsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_StreamContainerStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StreamContainerStats'
+type MockCriService_StreamContainerStats_Call struct {
+	*mock.Call
+}
+
+// StreamContainerStats is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.StreamContainerStatsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) StreamContainerStats(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_StreamContainerStats_Call {
+	return &MockCriService_StreamContainerStats_Call{Call: _e.mock.On("StreamContainerStats",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_StreamContainerStats_Call) Run(run func(ctx context.Context, in *v1.StreamContainerStatsRequest, opts ...grpc.CallOption)) *MockCriService_StreamContainerStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.StreamContainerStatsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_StreamContainerStats_Call) Return(_a0 grpc.ServerStreamingClient[v1.StreamContainerStatsResponse], _a1 error) *MockCriService_StreamContainerStats_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_StreamContainerStats_Call) RunAndReturn(run func(context.Context, *v1.StreamContainerStatsRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamContainerStatsResponse], error)) *MockCriService_StreamContainerStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StreamContainers provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) StreamContainers(ctx context.Context, in *v1.StreamContainersRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamContainersResponse], error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StreamContainers")
+	}
+
+	var r0 grpc.ServerStreamingClient[v1.StreamContainersResponse]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StreamContainersRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamContainersResponse], error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StreamContainersRequest, ...grpc.CallOption) grpc.ServerStreamingClient[v1.StreamContainersResponse]); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(grpc.ServerStreamingClient[v1.StreamContainersResponse])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.StreamContainersRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_StreamContainers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StreamContainers'
+type MockCriService_StreamContainers_Call struct {
+	*mock.Call
+}
+
+// StreamContainers is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.StreamContainersRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) StreamContainers(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_StreamContainers_Call {
+	return &MockCriService_StreamContainers_Call{Call: _e.mock.On("StreamContainers",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_StreamContainers_Call) Run(run func(ctx context.Context, in *v1.StreamContainersRequest, opts ...grpc.CallOption)) *MockCriService_StreamContainers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.StreamContainersRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_StreamContainers_Call) Return(_a0 grpc.ServerStreamingClient[v1.StreamContainersResponse], _a1 error) *MockCriService_StreamContainers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_StreamContainers_Call) RunAndReturn(run func(context.Context, *v1.StreamContainersRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamContainersResponse], error)) *MockCriService_StreamContainers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StreamPodSandboxMetrics provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) StreamPodSandboxMetrics(ctx context.Context, in *v1.StreamPodSandboxMetricsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamPodSandboxMetricsResponse], error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StreamPodSandboxMetrics")
+	}
+
+	var r0 grpc.ServerStreamingClient[v1.StreamPodSandboxMetricsResponse]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StreamPodSandboxMetricsRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamPodSandboxMetricsResponse], error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StreamPodSandboxMetricsRequest, ...grpc.CallOption) grpc.ServerStreamingClient[v1.StreamPodSandboxMetricsResponse]); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(grpc.ServerStreamingClient[v1.StreamPodSandboxMetricsResponse])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.StreamPodSandboxMetricsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_StreamPodSandboxMetrics_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StreamPodSandboxMetrics'
+type MockCriService_StreamPodSandboxMetrics_Call struct {
+	*mock.Call
+}
+
+// StreamPodSandboxMetrics is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.StreamPodSandboxMetricsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) StreamPodSandboxMetrics(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_StreamPodSandboxMetrics_Call {
+	return &MockCriService_StreamPodSandboxMetrics_Call{Call: _e.mock.On("StreamPodSandboxMetrics",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_StreamPodSandboxMetrics_Call) Run(run func(ctx context.Context, in *v1.StreamPodSandboxMetricsRequest, opts ...grpc.CallOption)) *MockCriService_StreamPodSandboxMetrics_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.StreamPodSandboxMetricsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_StreamPodSandboxMetrics_Call) Return(_a0 grpc.ServerStreamingClient[v1.StreamPodSandboxMetricsResponse], _a1 error) *MockCriService_StreamPodSandboxMetrics_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_StreamPodSandboxMetrics_Call) RunAndReturn(run func(context.Context, *v1.StreamPodSandboxMetricsRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamPodSandboxMetricsResponse], error)) *MockCriService_StreamPodSandboxMetrics_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StreamPodSandboxStats provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) StreamPodSandboxStats(ctx context.Context, in *v1.StreamPodSandboxStatsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamPodSandboxStatsResponse], error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StreamPodSandboxStats")
+	}
+
+	var r0 grpc.ServerStreamingClient[v1.StreamPodSandboxStatsResponse]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StreamPodSandboxStatsRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamPodSandboxStatsResponse], error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StreamPodSandboxStatsRequest, ...grpc.CallOption) grpc.ServerStreamingClient[v1.StreamPodSandboxStatsResponse]); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(grpc.ServerStreamingClient[v1.StreamPodSandboxStatsResponse])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.StreamPodSandboxStatsRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_StreamPodSandboxStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StreamPodSandboxStats'
+type MockCriService_StreamPodSandboxStats_Call struct {
+	*mock.Call
+}
+
+// StreamPodSandboxStats is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.StreamPodSandboxStatsRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) StreamPodSandboxStats(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_StreamPodSandboxStats_Call {
+	return &MockCriService_StreamPodSandboxStats_Call{Call: _e.mock.On("StreamPodSandboxStats",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_StreamPodSandboxStats_Call) Run(run func(ctx context.Context, in *v1.StreamPodSandboxStatsRequest, opts ...grpc.CallOption)) *MockCriService_StreamPodSandboxStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.StreamPodSandboxStatsRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_StreamPodSandboxStats_Call) Return(_a0 grpc.ServerStreamingClient[v1.StreamPodSandboxStatsResponse], _a1 error) *MockCriService_StreamPodSandboxStats_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_StreamPodSandboxStats_Call) RunAndReturn(run func(context.Context, *v1.StreamPodSandboxStatsRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamPodSandboxStatsResponse], error)) *MockCriService_StreamPodSandboxStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StreamPodSandboxes provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) StreamPodSandboxes(ctx context.Context, in *v1.StreamPodSandboxesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamPodSandboxesResponse], error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StreamPodSandboxes")
+	}
+
+	var r0 grpc.ServerStreamingClient[v1.StreamPodSandboxesResponse]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StreamPodSandboxesRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamPodSandboxesResponse], error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.StreamPodSandboxesRequest, ...grpc.CallOption) grpc.ServerStreamingClient[v1.StreamPodSandboxesResponse]); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(grpc.ServerStreamingClient[v1.StreamPodSandboxesResponse])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.StreamPodSandboxesRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_StreamPodSandboxes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StreamPodSandboxes'
+type MockCriService_StreamPodSandboxes_Call struct {
+	*mock.Call
+}
+
+// StreamPodSandboxes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.StreamPodSandboxesRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) StreamPodSandboxes(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_StreamPodSandboxes_Call {
+	return &MockCriService_StreamPodSandboxes_Call{Call: _e.mock.On("StreamPodSandboxes",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_StreamPodSandboxes_Call) Run(run func(ctx context.Context, in *v1.StreamPodSandboxesRequest, opts ...grpc.CallOption)) *MockCriService_StreamPodSandboxes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.StreamPodSandboxesRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_StreamPodSandboxes_Call) Return(_a0 grpc.ServerStreamingClient[v1.StreamPodSandboxesResponse], _a1 error) *MockCriService_StreamPodSandboxes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_StreamPodSandboxes_Call) RunAndReturn(run func(context.Context, *v1.StreamPodSandboxesRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[v1.StreamPodSandboxesResponse], error)) *MockCriService_StreamPodSandboxes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateContainerResources provides a mock function with given fields: ctx, in, opts
 func (_m *MockCriService) UpdateContainerResources(ctx context.Context, in *v1.UpdateContainerResourcesRequest, opts ...grpc.CallOption) (*v1.UpdateContainerResourcesResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -2182,6 +2552,80 @@ func (_c *MockCriService_UpdateContainerResources_Call) Return(_a0 *v1.UpdateCon
 }
 
 func (_c *MockCriService_UpdateContainerResources_Call) RunAndReturn(run func(context.Context, *v1.UpdateContainerResourcesRequest, ...grpc.CallOption) (*v1.UpdateContainerResourcesResponse, error)) *MockCriService_UpdateContainerResources_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdatePodSandboxResources provides a mock function with given fields: ctx, in, opts
+func (_m *MockCriService) UpdatePodSandboxResources(ctx context.Context, in *v1.UpdatePodSandboxResourcesRequest, opts ...grpc.CallOption) (*v1.UpdatePodSandboxResourcesResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdatePodSandboxResources")
+	}
+
+	var r0 *v1.UpdatePodSandboxResourcesResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.UpdatePodSandboxResourcesRequest, ...grpc.CallOption) (*v1.UpdatePodSandboxResourcesResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1.UpdatePodSandboxResourcesRequest, ...grpc.CallOption) *v1.UpdatePodSandboxResourcesResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1.UpdatePodSandboxResourcesResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1.UpdatePodSandboxResourcesRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_UpdatePodSandboxResources_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdatePodSandboxResources'
+type MockCriService_UpdatePodSandboxResources_Call struct {
+	*mock.Call
+}
+
+// UpdatePodSandboxResources is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1.UpdatePodSandboxResourcesRequest
+//   - opts ...grpc.CallOption
+func (_e *MockCriService_Expecter) UpdatePodSandboxResources(ctx interface{}, in interface{}, opts ...interface{}) *MockCriService_UpdatePodSandboxResources_Call {
+	return &MockCriService_UpdatePodSandboxResources_Call{Call: _e.mock.On("UpdatePodSandboxResources",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockCriService_UpdatePodSandboxResources_Call) Run(run func(ctx context.Context, in *v1.UpdatePodSandboxResourcesRequest, opts ...grpc.CallOption)) *MockCriService_UpdatePodSandboxResources_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1.UpdatePodSandboxResourcesRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockCriService_UpdatePodSandboxResources_Call) Return(_a0 *v1.UpdatePodSandboxResourcesResponse, _a1 error) *MockCriService_UpdatePodSandboxResources_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_UpdatePodSandboxResources_Call) RunAndReturn(run func(context.Context, *v1.UpdatePodSandboxResourcesRequest, ...grpc.CallOption) (*v1.UpdatePodSandboxResourcesResponse, error)) *MockCriService_UpdatePodSandboxResources_Call {
 	_c.Call.Return(run)
 	return _c
 }
