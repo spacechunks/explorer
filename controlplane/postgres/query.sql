@@ -5,6 +5,14 @@
 -- name: RandomNode :one
 SELECT * FROM nodes ORDER BY random() LIMIT 1;
 
+-- name: BestNode :one
+SELECT n.*, COUNT(i.id) AS instance_count FROM nodes n
+LEFT JOIN instances i ON i.node_id = n.id
+WHERE n.slots > (SELECT COUNT(*) FROM instances WHERE node_id = n.id)
+GROUP BY n.id
+ORDER BY instance_count ASC, random() ASC
+LIMIT 1;
+
 /*
  * CHUNKS
  */
@@ -264,4 +272,3 @@ INSERT INTO flavor_version_archive
     (id, flavor_id, data, created_at)
 VALUES
     ($1, $2, $3, $4);
-
