@@ -1,5 +1,5 @@
 [Match]
-OriginalName=ft*
+OriginalName=*
 
 [Link]
 MACAddressPolicy=none

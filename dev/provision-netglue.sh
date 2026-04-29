@@ -45,9 +45,9 @@ mkdir -p /etc/cni/net.d/
 cp /root/10-netglue.conflist /etc/cni/net.d/10-netglue.conflist
 
 # crio
-MAJOR_VERSION=1.30
-curl -fsSL https://pkgs.k8s.io/addons:/cri-o:/stable:/v$MAJOR_VERSION/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
-echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://pkgs.k8s.io/addons:/cri-o:/stable:/v$MAJOR_VERSION/deb/ /" | tee /etc/apt/sources.list.d/cri-o.list
+MAJOR_VERSION=1.35
+curl -fsSL https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v$MAJOR_VERSION/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/$MAJOR_VERSION/deb/ /" | tee /etc/apt/sources.list.d/cri-o.list
 apt-get update
 apt-get install -y cri-o
 systemctl start crio.service
@@ -55,7 +55,7 @@ sysctl -w net.ipv4.ip_forward=1
 sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf # persist after reboot
 
 # crictl
-VERSION=v1.30.1 # check latest version in /releases page
+VERSION=v1.35.0 # check latest version in /releases page
 ARCH=arm64
 wget https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-$ARCH.tar.gz
 sudo tar zxvf crictl-$VERSION-linux-$ARCH.tar.gz -C /usr/local/bin

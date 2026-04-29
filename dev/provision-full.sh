@@ -73,15 +73,13 @@ cp platformd/crio.conf /etc/crio/crio.conf.d/99-nodedev.conf
 cp /etc/crio/policy.json /etc/containers/policy.json
 
 # criu
-wget https://github.com/checkpoint-restore/criu/archive/refs/tags/v4.0.tar.gz
-tar -xzvf v4.0.tar.gz
+wget https://github.com/checkpoint-restore/criu/archive/refs/tags/v4.2.tar.gz
+tar -xzvf v4.2.tar.gz
 export DEBIAN_FRONTEND=noninteractive
-apt install -y build-essential asciidoctor libprotobuf-dev
-apt install -y libprotobuf-c-dev protobuf-c-compiler protobuf-compiler
-apt install -y python3-protobuf pkg-config libbsd-dev
-apt install -y iproute2 libnftables-dev libgnutls28-dev
-apt install -y libnl-3-dev libnet-dev libcap-dev
-cd criu-4.0
+apt install -y libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler python3-protobuf libnl-3-dev libcap-dev uuid-dev \
+  libnl-3-dev libnet-dev libcap-dev iproute2 libnftables-dev libgnutls28-dev python3-protobuf pkg-config libbsd-dev \
+  libprotobuf-c-dev protobuf-c-compiler protobuf-compiler build-essential asciidoctor libprotobuf-dev
+cd criu-4.2
 make install
 cd -
 
