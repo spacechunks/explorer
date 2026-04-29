@@ -1,3 +1,5 @@
+//go:build !windows
+
 package link
 
 import (
@@ -11,13 +13,35 @@ const NetfilterIPDefrag NetfilterAttachFlags = 0 // Enable IP packet defragmenta
 
 type NetfilterAttachFlags uint32
 
+type NetfilterInetHook = sys.NetfilterInetHook
+
+const (
+	NetfilterInetPreRouting  = sys.NF_INET_PRE_ROUTING
+	NetfilterInetLocalIn     = sys.NF_INET_LOCAL_IN
+	NetfilterInetForward     = sys.NF_INET_FORWARD
+	NetfilterInetLocalOut    = sys.NF_INET_LOCAL_OUT
+	NetfilterInetPostRouting = sys.NF_INET_POST_ROUTING
+)
+
+type NetfilterProtocolFamily = sys.NetfilterProtocolFamily
+
+const (
+	NetfilterProtoUnspec = sys.NFPROTO_UNSPEC
+	NetfilterProtoInet   = sys.NFPROTO_INET // Inet applies to both IPv4 and IPv6
+	NetfilterProtoIPv4   = sys.NFPROTO_IPV4
+	NetfilterProtoARP    = sys.NFPROTO_ARP
+	NetfilterProtoNetdev = sys.NFPROTO_NETDEV
+	NetfilterProtoBridge = sys.NFPROTO_BRIDGE
+	NetfilterProtoIPv6   = sys.NFPROTO_IPV6
+)
+
 type NetfilterOptions struct {
 	// Program must be a netfilter BPF program.
 	Program *ebpf.Program
 	// The protocol family.
-	ProtocolFamily uint32
-	// The number of the hook you are interested in.
-	HookNumber uint32
+	ProtocolFamily NetfilterProtocolFamily
+	// The netfilter hook to attach to.
+	Hook NetfilterInetHook
 	// Priority within hook
 	Priority int32
 	// Extra link flags
@@ -49,8 +73,8 @@ func AttachNetfilter(opts NetfilterOptions) (Link, error) {
 		ProgFd:         uint32(opts.Program.FD()),
 		AttachType:     sys.BPF_NETFILTER,
 		Flags:          opts.Flags,
-		Pf:             uint32(opts.ProtocolFamily),
-		Hooknum:        uint32(opts.HookNumber),
+		Pf:             opts.ProtocolFamily,
+		Hooknum:        opts.Hook,
 		Priority:       opts.Priority,
 		NetfilterFlags: uint32(opts.NetfilterFlags),
 	}
@@ -63,8 +87,28 @@ func AttachNetfilter(opts NetfilterOptions) (Link, error) {
 	return &netfilterLink{RawLink{fd, ""}}, nil
 }
 
-func (*netfilterLink) Update(new *ebpf.Program) error {
+func (*netfilterLink) Update(_ *ebpf.Program) error {
 	return fmt.Errorf("netfilter update: %w", ErrNotSupported)
+}
+
+func (nf *netfilterLink) Info() (*Info, error) {
+	var info sys.NetfilterLinkInfo
+	if err := sys.ObjInfo(nf.fd, &info); err != nil {
+		return nil, fmt.Errorf("netfilter link info: %s", err)
+	}
+	extra := &NetfilterInfo{
+		ProtocolFamily: info.Pf,
+		Hook:           info.Hooknum,
+		Priority:       info.Priority,
+		Flags:          info.Flags,
+	}
+
+	return &Info{
+		info.Type,
+		info.Id,
+		ebpf.ProgramID(info.ProgId),
+		extra,
+	}, nil
 }
 
 var _ Link = (*netfilterLink)(nil)
