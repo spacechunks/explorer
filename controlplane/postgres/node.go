@@ -69,7 +69,7 @@ func (db *DB) BestNode(ctx context.Context) (node.Node, error) {
 			return fmt.Errorf("invalid address port: %w", err)
 		}
 
-		available := n.Slots - int(n.InstanceCount)
+		available := int(n.Slots) - int(n.InstanceCount)
 		if available < 0 {
 			available = 0
 		}
@@ -79,7 +79,7 @@ func (db *DB) BestNode(ctx context.Context) (node.Node, error) {
 			Name:                  n.Name,
 			Addr:                  n.Address,
 			CheckpointAPIEndpoint: addrPort,
-			Slots:                 n.Slots,
+			Slots:                 int(n.Slots),
 			AvailableSlots:        available,
 		}
 
