@@ -18,7 +18,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.16.0
 	github.com/docker/docker v28.5.1+incompatible
 	github.com/envoyproxy/go-control-plane v0.14.0
-	github.com/envoyproxy/go-control-plane/envoy v1.36.0
+	github.com/envoyproxy/go-control-plane/envoy v1.37.0
 	github.com/exaring/otelpgx v0.10.0
 	github.com/goccy/go-yaml v1.18.0
 	github.com/gogo/protobuf v1.3.2
