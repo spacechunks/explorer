@@ -91,3 +91,9 @@ func (h OTelSlogHandler) Handle(ctx context.Context, r slog.Record) error {
 
 	return h.Handler.Handle(ctx, r)
 }
+
+func (h OTelSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &OTelSlogHandler{
+		Handler: h.Handler.WithAttrs(attrs),
+	}
+}
