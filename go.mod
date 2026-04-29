@@ -12,7 +12,7 @@ require (
 	github.com/aws/smithy-go v1.23.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cilium/ebpf v0.15.0
-	github.com/cncf/xds/go v0.0.0-20251210132809-ee656c7534f5
+	github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2
 	github.com/containernetworking/cni v1.2.0
 	github.com/containernetworking/plugins v1.5.0
 	github.com/coreos/go-oidc/v3 v3.16.0
