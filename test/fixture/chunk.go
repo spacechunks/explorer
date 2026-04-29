@@ -193,5 +193,6 @@ func Node() node.Node {
 		Name:                  "test-node",
 		Addr:                  netip.MustParseAddr("198.51.100.1"),
 		CheckpointAPIEndpoint: netip.MustParseAddrPort(CheckpointAPIAddr),
+		Slots:                 10,
 	}
 }

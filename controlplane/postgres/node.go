@@ -61,7 +61,7 @@ func (db *DB) BestNode(ctx context.Context) (node.Node, error) {
 	if err := db.do(ctx, func(q *query.Queries) error {
 		n, err := q.BestNode(ctx)
 		if err != nil {
-			return fmt.Errorf("random node: %w", err)
+			return fmt.Errorf("best node: %w", err)
 		}
 
 		addrPort, err := netip.ParseAddrPort(n.CheckpointApiEndpoint)
