@@ -248,6 +248,7 @@ type Node struct {
 	Address               netip.Addr
 	CheckpointApiEndpoint string
 	CreatedAt             time.Time
+	Slots                 int32
 }
 
 type RiverClient struct {

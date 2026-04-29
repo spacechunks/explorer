@@ -1,5 +1,5 @@
 -- Dumped from database version 17.2 (Debian 17.2-1.pgdg120+1)
--- Dumped by pg_dump version 17.9
+-- Dumped by pg_dump version 18.3 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -230,7 +230,8 @@ CREATE TABLE public.nodes (
     name text NOT NULL,
     address inet NOT NULL,
     checkpoint_api_endpoint text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    slots integer DEFAULT 1 NOT NULL
 );
 
 

@@ -177,7 +177,7 @@ func (q *Queries) ArchiveFlavorVersion(ctx context.Context, arg ArchiveFlavorVer
 }
 
 const bestNode = `-- name: BestNode :one
-SELECT n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, COUNT(i.id) AS instance_count FROM nodes n
+SELECT n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots, COUNT(i.id) AS instance_count FROM nodes n
 LEFT JOIN instances i ON i.node_id = n.id
 WHERE n.slots > (SELECT COUNT(*) FROM instances WHERE node_id = n.id)
 GROUP BY n.id
@@ -191,6 +191,7 @@ type BestNodeRow struct {
 	Address               netip.Addr
 	CheckpointApiEndpoint string
 	CreatedAt             time.Time
+	Slots                 int32
 	InstanceCount         int64
 }
 
@@ -203,6 +204,7 @@ func (q *Queries) BestNode(ctx context.Context) (BestNodeRow, error) {
 		&i.Address,
 		&i.CheckpointApiEndpoint,
 		&i.CreatedAt,
+		&i.Slots,
 		&i.InstanceCount,
 	)
 	return i, err
@@ -793,7 +795,7 @@ func (q *Queries) GetFlavorByID(ctx context.Context, flavorID string) ([]GetFlav
 }
 
 const getInstance = `-- name: GetInstance :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, slots, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
@@ -845,6 +847,7 @@ type GetInstanceRow struct {
 	Address                netip.Addr
 	CheckpointApiEndpoint  string
 	CreatedAt_5            time.Time
+	Slots                  int32
 	ID_6                   string
 	Nickname               string
 	Email                  string
@@ -904,6 +907,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.Address,
 			&i.CheckpointApiEndpoint,
 			&i.CreatedAt_5,
+			&i.Slots,
 			&i.ID_6,
 			&i.Nickname,
 			&i.Email,
@@ -921,7 +925,7 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 }
 
 const getInstancesByNodeID = `-- name: GetInstancesByNodeID :many
-SELECT i.id, chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
+SELECT i.id, chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, slots, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
@@ -966,6 +970,7 @@ type GetInstancesByNodeIDRow struct {
 	Address                netip.Addr
 	CheckpointApiEndpoint  string
 	CreatedAt_4            time.Time
+	Slots                  int32
 	ID_5                   string
 	Nickname               string
 	Email                  string
@@ -1019,6 +1024,7 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 			&i.Address,
 			&i.CheckpointApiEndpoint,
 			&i.CreatedAt_4,
+			&i.Slots,
 			&i.ID_5,
 			&i.Nickname,
 			&i.Email,
@@ -1178,7 +1184,7 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 }
 
 const listInstances = `-- name: ListInstances :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
+SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, slots, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
@@ -1229,6 +1235,7 @@ type ListInstancesRow struct {
 	Address                netip.Addr
 	CheckpointApiEndpoint  string
 	CreatedAt_5            time.Time
+	Slots                  int32
 	ID_6                   string
 	Nickname               string
 	Email                  string
@@ -1288,6 +1295,7 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 			&i.Address,
 			&i.CheckpointApiEndpoint,
 			&i.CreatedAt_5,
+			&i.Slots,
 			&i.ID_6,
 			&i.Nickname,
 			&i.Email,
@@ -1336,7 +1344,7 @@ const randomNode = `-- name: RandomNode :one
  * NODES
  */
 
-SELECT id, name, address, checkpoint_api_endpoint, created_at FROM nodes ORDER BY random() LIMIT 1
+SELECT id, name, address, checkpoint_api_endpoint, created_at, slots FROM nodes ORDER BY random() LIMIT 1
 `
 
 func (q *Queries) RandomNode(ctx context.Context) (Node, error) {
@@ -1348,6 +1356,7 @@ func (q *Queries) RandomNode(ctx context.Context) (Node, error) {
 		&i.Address,
 		&i.CheckpointApiEndpoint,
 		&i.CreatedAt,
+		&i.Slots,
 	)
 	return i, err
 }
