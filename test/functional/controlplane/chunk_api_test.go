@@ -1200,7 +1200,7 @@ func TestAPIDeleteFlavor(t *testing.T) {
 
 	expected := c
 	expected.Flavors = []resource.Flavor{
-		c.Flavors[0],
+		c.Flavors[1],
 	}
 
 	_, err := client.DeleteFlavor(ctx, &chunkv1alpha1.DeleteFlavorRequest{

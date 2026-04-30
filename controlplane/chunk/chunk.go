@@ -65,6 +65,16 @@ func (s *svc) GetChunk(ctx context.Context, id string) (resource.Chunk, error) {
 		return resource.Chunk{}, apierrs.ErrChunkNotFound
 	}
 
+	flavors := make([]resource.Flavor, 0)
+	for _, f := range c.Flavors {
+		if f.DeletedAt != nil {
+			continue
+		}
+		flavors = append(flavors, f)
+	}
+
+	c.Flavors = flavors
+
 	return c, nil
 }
 
