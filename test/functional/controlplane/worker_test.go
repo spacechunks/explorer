@@ -203,6 +203,13 @@ func TestResourcePackWorkerRunsSuccessfully(t *testing.T) {
 	cp.Postgres.CreateChunk(t, &c1, fixture.CreateOptionsAll)
 	cp.Postgres.CreateChunk(t, &c2, fixture.CreateOptionsAll)
 
+	// wait a second here, so the resource pack worker actually picked up
+	// all the chunks. if we don't wait we could run into the problem that
+	// no chunk has been processed, because the cp.Run() will cause the job
+	// to directly start. sometimes CreateChunk is fast enough and the chunks
+	// are already in the database, sometimes not.
+	time.Sleep(1 * time.Second)
+
 	_, expectedHash := test.CreateResourcePackZip(t, map[string]string{
 		// items
 		"assets/spc/items/test/_template.json":              itemTemplate,

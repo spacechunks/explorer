@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/riverqueue/river"
@@ -199,6 +200,9 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, riverJob *river.Job
 	defer pack.Close()
 
 	zw := zip.NewWriter(pack)
+	defer zw.Close()
+
+	paths := make([]string, 0)
 
 	// do not use zw.AddFS and walk manually, because AddFS will add filesystem info like
 	// date, permissions etc. which will cause the sha1 hash to change even tough he files
@@ -206,15 +210,22 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, riverJob *river.Job
 	// correctness and systems down the line also benefit if the hash only changes if the pack
 	// has been actually modified.
 	if err := filepath.Walk(outDirPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
 		if info.IsDir() {
 			return nil
 		}
 
-		relPath, err := filepath.Rel(outDirPath, path)
+		paths = append(paths, path)
+
+		return err
+	}); err != nil {
+		return fmt.Errorf("walk dir: %w", err)
+	}
+
+	slices.Sort(paths)
+
+	for _, p := range paths {
+		fmt.Println(p)
+		relPath, err := filepath.Rel(outDirPath, p)
 		if err != nil {
 			return err
 		}
@@ -227,16 +238,15 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, riverJob *river.Job
 			return err
 		}
 
-		file, err := os.Open(path)
+		file, err := os.Open(p)
 		if err != nil {
 			return err
 		}
 		defer file.Close()
 
-		_, err = io.Copy(w, file)
-		return err
-	}); err != nil {
-		return fmt.Errorf("walk dir: %w", err)
+		if _, err := io.Copy(w, file); err != nil {
+			return fmt.Errorf("copy file: %w", err)
+		}
 	}
 
 	if err := zw.Close(); err != nil {
