@@ -28,16 +28,17 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 )
 
-func TestBestNode_SelectsAndExhaustsSlots(t *testing.T) {
-	ctx := context.Background()
-	pg := fixture.NewPostgres()
+func TestBestNodeSelectsAndExhaustsSlots(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
 
 	pg.Run(t, ctx)
 	pg.InsertNode(t)
@@ -63,7 +64,7 @@ func TestBestNode_SelectsAndExhaustsSlots(t *testing.T) {
 	}
 
 	_, err = pg.DB.BestNode(ctx)
-	require.ErrorIs(t, err, postgres.ErrNotFound)
+	require.ErrorIs(t, err, apierrs.ErrNoSlotsAvailable)
 }
 
 func TestCreateInstance(t *testing.T) {

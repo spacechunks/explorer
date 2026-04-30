@@ -25,6 +25,7 @@ import (
 	"net/netip"
 
 	"github.com/jackc/pgx/v5"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
@@ -65,7 +66,7 @@ func (db *DB) BestNode(ctx context.Context) (node.Node, error) {
 		n, err := q.BestNode(ctx)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return ErrNotFound
+				return apierrs.ErrNoSlotsAvailable
 			}
 			return fmt.Errorf("best node: %w", err)
 		}

@@ -1502,10 +1502,12 @@ func TestChunkFullyArchived(t *testing.T) {
 	}
 }
 
-func TestRunFlavorVersion_NoSlotsAvailable(t *testing.T) {
-	ctx := context.Background()
-	cp := fixture.NewControlPlane(t)
-	c := fixture.Chunk()
+func TestRunFlavorVersionNoSlotsAvailable(t *testing.T) {
+	var (
+		ctx = context.Background()
+		cp  = fixture.NewControlPlane(t)
+		c   = fixture.Chunk()
+	)
 
 	cp.Run(t)
 

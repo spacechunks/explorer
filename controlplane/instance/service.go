@@ -20,7 +20,6 @@ package instance
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -31,7 +30,6 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/node"
-	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
@@ -88,14 +86,7 @@ func (s *svc) RunFlavorVersion(
 ) (resource.Instance, error) {
 	n, err := s.nodeRepo.BestNode(ctx)
 	if err != nil {
-		if errors.Is(err, postgres.ErrNotFound) {
-			return resource.Instance{}, apierrs.ErrNoSlotsAvailable
-		}
-
-		n, err = s.nodeRepo.RandomNode(ctx)
-		if err != nil {
-			return resource.Instance{}, fmt.Errorf("choose node: %w", err)
-		}
+		return resource.Instance{}, fmt.Errorf("best node: %w", err)
 	}
 
 	c, err := s.chunkService.GetChunk(ctx, chunkID)
