@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -23,11 +24,18 @@ const (
 	LogKeyPath          = "path"
 	LogKeyQualifiedName = "qualified-name"
 	LogKeyPackageName   = "package-name"
-	_defaultSemVer      = "v0.0.0-dev"
+
+	defaultSemVer = "v0.0.0-dev"
 )
 
-// SemVer is the version of mockery at build time.
-var SemVer = ""
+var (
+	SemVer                      = ""
+	DisableDeprecationWarnings  bool
+	DisabledDeprecationWarnings []string
+	seenWarnings                []string
+	deferredCalls               []func()
+)
+
 var ErrPkgNotExist = errors.New("package does not exist")
 
 func GetSemverInfo() string {
@@ -38,7 +46,13 @@ func GetSemverInfo() string {
 	if ok && version.Main.Version != "(devel)" && version.Main.Version != "" {
 		return version.Main.Version
 	}
-	return _defaultSemVer
+	return defaultSemVer
+}
+
+func LogDeprecationWarnings() {
+	for _, warn := range deferredCalls {
+		warn()
+	}
 }
 
 func getMinorSemver(semver string) string {
@@ -83,6 +97,53 @@ func GetLogger(levelStr string) (zerolog.Logger, error) {
 		With().
 		Str("version", GetSemverInfo()).
 		Logger()
-
 	return log, nil
+}
+
+func Warn(ctx context.Context, prefix string, message string, fields map[string]any) {
+	log := zerolog.Ctx(ctx)
+	event := log.Warn()
+	if fields != nil {
+		event = event.Fields(fields)
+	}
+	event.Msgf("%s: %s", prefix, message)
+}
+
+func Info(ctx context.Context, prefix string, message string, fields map[string]any) {
+	log := zerolog.Ctx(ctx)
+	event := log.Info()
+	if fields != nil {
+		event = event.Fields(fields)
+	}
+	event.Msgf("%s: %s", prefix, message)
+}
+
+func WarnDeprecated(name, message string, fields map[string]any) {
+	log, _ := GetLogger("warn")
+	ctx := log.WithContext(context.Background())
+	if DisableDeprecationWarnings {
+		return
+	}
+	for _, disabledWarning := range DisabledDeprecationWarnings {
+		if disabledWarning == name {
+			return
+		}
+	}
+	for _, seenWarning := range seenWarnings {
+		if seenWarning == name {
+			return
+		}
+	}
+	seenWarnings = append(seenWarnings, name)
+	if fields == nil {
+		fields = map[string]any{}
+	}
+	fields["deprecation-name"] = name
+	if _, ok := fields["url"]; !ok {
+		fields["url"] = DocsURL(fmt.Sprintf("/deprecations/#%s", name))
+	}
+
+	deferredCalls = append(deferredCalls, func() {
+		Warn(ctx, "DEPRECATION", message, fields)
+	})
 }
