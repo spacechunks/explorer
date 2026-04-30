@@ -29,7 +29,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hetznercloud/hcloud-go/v2 v2.16.0
 	github.com/jackc/pgx/v5 v5.9.2
-	github.com/johannesboyne/gofakes3 v0.0.0-20250825084532-6555d310c473
+	github.com/johannesboyne/gofakes3 v0.0.0-20260208201424-4c385a1f6a73
 	github.com/lestrrat-go/jwx/v3 v3.0.12
 	github.com/magiconair/properties v1.8.10
 	github.com/peterbourgon/ff/v3 v3.4.0
