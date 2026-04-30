@@ -26,11 +26,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
-	"github.com/spacechunks/explorer/internal/ptr"
 )
 
 type S3Store interface {
@@ -129,7 +128,7 @@ func (s S3ObjectStore) WriteTo(ctx context.Context, key string, w io.Writer) err
 // PutBlob uploads all the given objects to S3. Note that the objects
 // underlying io.ReadSeekCloser will be closed after it has been uploaded.
 func (s S3ObjectStore) PutBlob(ctx context.Context, keyPrefix string, objects []Object) error {
-	uploader := manager.NewUploader(s.client)
+	mgr := transfermanager.New(s.client)
 
 	for _, obj := range objects {
 		h, err := obj.Hash()
@@ -146,9 +145,9 @@ func (s S3ObjectStore) PutBlob(ctx context.Context, keyPrefix string, objects []
 			continue
 		}
 
-		if _, err := uploader.Upload(ctx, &s3.PutObjectInput{
+		if _, err := mgr.UploadObject(ctx, &transfermanager.UploadObjectInput{
 			Bucket: &s.bucket,
-			Key:    ptr.Pointer(keyPrefix + "/" + h),
+			Key:    new(keyPrefix + "/" + h),
 			Body:   obj.Data,
 		}); err != nil {
 			return fmt.Errorf("upload: %w", err)
