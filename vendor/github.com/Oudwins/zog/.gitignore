@@ -1,0 +1,6 @@
+playground
+.idea
+.vscode
+.direnv
+*.cov
+*.out
