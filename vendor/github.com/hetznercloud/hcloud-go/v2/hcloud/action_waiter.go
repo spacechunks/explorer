@@ -39,30 +39,28 @@ func (c *ActionClient) WaitForFunc(ctx context.Context, handleUpdate func(update
 	}
 
 	retries := 0
-	for {
-		if len(running) == 0 {
-			break
-		}
+	for len(running) != 0 {
 
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return fmt.Errorf("%w: remaining running actions: %v", ctx.Err(), slices.Collect(maps.Keys(running)))
 		case <-time.After(c.action.client.pollBackoffFunc(retries)):
 			retries++
 		}
 
-		opts := ActionListOpts{
-			Sort: []string{"status", "id"},
-			ID:   make([]int64, 0, len(running)),
-		}
-		for actionID := range running {
-			opts.ID = append(opts.ID, actionID)
-		}
-		slices.Sort(opts.ID)
+		updates := make([]*Action, 0, len(running))
+		for runningIDsChunk := range slices.Chunk(slices.Sorted(maps.Keys(running)), 25) {
+			opts := ActionListOpts{
+				Sort: []string{"status", "id"},
+				ID:   runningIDsChunk,
+			}
 
-		updates, err := c.AllWithOpts(ctx, opts)
-		if err != nil {
-			return err
+			updatesChunk, err := c.AllWithOpts(ctx, opts)
+			if err != nil {
+				return err
+			}
+
+			updates = append(updates, updatesChunk...)
 		}
 
 		if len(updates) != len(running) {
