@@ -1519,7 +1519,8 @@ func TestRunFlavorVersion_NoSlotsAvailable(t *testing.T) {
 		ins.Chunk = c
 		ins.FlavorVersion = c.Flavors[0].Versions[0]
 		ins.Owner = c.Owner
-		cp.Postgres.CreateInstance(t, fixture.Node().ID, &ins)
+		_, err := cp.Postgres.DB.CreateInstance(ctx, ins, fixture.Node().ID)
+		require.NoError(t, err)
 	}
 
 	cp.AddUserAPIKey(t, &ctx, c.Owner)
