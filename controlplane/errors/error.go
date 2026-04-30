@@ -83,6 +83,7 @@ var (
 	ErrInvalidInstanceID = New(codes.InvalidArgument, "invalid instance id")
 	ErrInstanceNotFound  = New(codes.NotFound, "instance not found")
 	ErrNodeKeyMissing    = New(codes.InvalidArgument, "node key is missing")
+	ErrNoSlotsAvailable  = New(codes.ResourceExhausted, "no slots available on any node")
 )
 
 type Error struct {

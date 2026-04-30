@@ -20,8 +20,12 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/netip"
+
+	"github.com/jackc/pgx/v5"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
@@ -45,6 +49,45 @@ func (db *DB) RandomNode(ctx context.Context) (node.Node, error) {
 			Name:                  n.Name,
 			Addr:                  n.Address,
 			CheckpointAPIEndpoint: addrPort,
+		}
+
+		return nil
+	}); err != nil {
+		return ret, err
+	}
+
+	return ret, nil
+}
+
+func (db *DB) BestNode(ctx context.Context) (node.Node, error) {
+	var ret node.Node
+
+	if err := db.do(ctx, func(q *query.Queries) error {
+		n, err := q.BestNode(ctx)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return apierrs.ErrNoSlotsAvailable
+			}
+			return fmt.Errorf("best node: %w", err)
+		}
+
+		addrPort, err := netip.ParseAddrPort(n.CheckpointApiEndpoint)
+		if err != nil {
+			return fmt.Errorf("invalid address port: %w", err)
+		}
+
+		available := int(n.Slots) - int(n.InstanceCount)
+		if available < 0 {
+			available = 0
+		}
+
+		ret = node.Node{
+			ID:                    n.ID,
+			Name:                  n.Name,
+			Addr:                  n.Address,
+			CheckpointAPIEndpoint: addrPort,
+			Slots:                 int(n.Slots),
+			AvailableSlots:        available,
 		}
 
 		return nil

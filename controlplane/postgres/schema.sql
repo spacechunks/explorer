@@ -1,5 +1,5 @@
 -- Dumped from database version 17.2 (Debian 17.2-1.pgdg120+1)
--- Dumped by pg_dump version 17.9
+-- Dumped by pg_dump version 18.3 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -230,7 +230,8 @@ CREATE TABLE public.nodes (
     name text NOT NULL,
     address inet NOT NULL,
     checkpoint_api_endpoint text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    slots integer DEFAULT 1 NOT NULL
 );
 
 
@@ -715,4 +716,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260407181558'),
     ('20260410102614'),
     ('20260415141037'),
-    ('20260417174036');
+    ('20260417174036'),
+    ('20260429200153');

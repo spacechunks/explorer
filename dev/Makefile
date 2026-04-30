@@ -8,7 +8,7 @@ cli:
 .PHONY: cp
 cp:
 	go build -o controlplane/controlplane ../cmd/controlplane/main.go
-	(sleep 3 && PGPASSWORD=ouiwef98245z837 psql -h localhost --username=spc -d explorer -c "INSERT INTO nodes (id, name, address, checkpoint_api_endpoint) VALUES ('0195c2f6-f40c-72df-a0f1-e468f1be77b1', 'local', '127.0.0.1', '127.0.0.1:3011')") &
+	(sleep 3 && PGPASSWORD=ouiwef98245z837 psql -h localhost --username=spc -d explorer -c "INSERT INTO nodes (id, name, address, checkpoint_api_endpoint, slots) VALUES ('0195c2f6-f40c-72df-a0f1-e468f1be77b1', 'local', '127.0.0.1', '127.0.0.1:3011', 10)") &
 	CONTROLPLANE_POSTGRES_DSN=postgres://spc:ouiwef98245z837@localhost:5432/explorer?sslmode=disable \
 	CONTROLPLANE_LISTEN_ADDRESS=127.0.0.1:9012 \
 	CONTROLPLANE_GRPC_MAX_MESSAGE_SIZE=1000000000 \

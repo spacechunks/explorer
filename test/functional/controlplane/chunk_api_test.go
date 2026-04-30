@@ -1502,6 +1502,40 @@ func TestChunkFullyArchived(t *testing.T) {
 	}
 }
 
+func TestRunFlavorVersionNoSlotsAvailable(t *testing.T) {
+	var (
+		ctx = context.Background()
+		cp  = fixture.NewControlPlane(t)
+		c   = fixture.Chunk()
+	)
+
+	cp.Run(t)
+
+	cp.Postgres.InsertNode(t)
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	slots := fixture.Node().Slots
+	for i := 0; i < slots; i++ {
+		ins := fixture.Instance()
+		ins.ID = test.NewUUIDv7(t)
+		ins.Chunk = c
+		ins.FlavorVersion = c.Flavors[0].Versions[0]
+		ins.Owner = c.Owner
+		_, err := cp.Postgres.DB.CreateInstance(ctx, ins, fixture.Node().ID)
+		require.NoError(t, err)
+	}
+
+	cp.AddUserAPIKey(t, &ctx, c.Owner)
+	insClient := cp.InstanceClient(t)
+
+	_, err := insClient.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
+		ChunkId:         c.ID,
+		FlavorVersionId: c.Flavors[0].Versions[0].ID,
+	})
+
+	require.ErrorIs(t, err, apierrs.ErrNoSlotsAvailable.GRPCStatus().Err())
+}
+
 func TestFlavorArchived(t *testing.T) {
 	var (
 		ctx = context.Background()
