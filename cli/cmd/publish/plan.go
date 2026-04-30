@@ -28,6 +28,7 @@ import (
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
+	"github.com/spacechunks/explorer/cli/config"
 	"github.com/spacechunks/explorer/internal/file"
 )
 
@@ -114,7 +115,7 @@ type plan struct {
 	updateThumbnail bool
 }
 
-func newPlan(logger *slog.Logger, cfg publishConfig, supportedVersions []string, chunk *chunkv1alpha1.Chunk) plan {
+func newPlan(logger *slog.Logger, cfg config.Config, supportedVersions []string, chunk *chunkv1alpha1.Chunk) plan {
 	p := plan{}
 
 	for _, remote := range chunk.Flavors {

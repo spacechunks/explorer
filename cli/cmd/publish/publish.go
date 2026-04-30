@@ -31,32 +31,12 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/goccy/go-yaml"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
+	"github.com/spacechunks/explorer/cli/config"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spf13/cobra"
 )
-
-type publishConfig struct {
-	Version string      `json:"version"`
-	Chunk   chunkConfig `json:"chunk"`
-}
-
-type chunkConfig struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Thumbnail   string         `json:"thumbnail"`
-	Tags        []string       `json:"tags"`
-	Flavors     []flavorConfig `json:"flavors"`
-}
-
-type flavorConfig struct {
-	Name             string `json:"name"`
-	Version          string `json:"version"`
-	MinecraftVersion string `json:"minecraftVersion"`
-	Path             string `json:"path"`
-}
 
 type changedFlavor struct {
 	onDisk        localFlavor
@@ -165,9 +145,23 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 			path = ".chunk.yaml"
 		}
 
-		cfg, err := readConfigWithResolvedPaths(path)
+		cfg, err := config.ReadWithResolvedPaths(path)
 		if err != nil {
 			return fmt.Errorf("read config: %w", err)
+		}
+
+		if issues := config.Validate(cfg); issues != nil {
+			fmt.Printf("%sFailed to validate config file:\n", cli.ColorRed)
+			sec := cli.Section()
+			for path, errs := range issues {
+				sec.AddRow(
+					fmt.Sprintf("%s- %s:", cli.ColorRed, path),
+					fmt.Sprintf(strings.Join(errs, ",")),
+				)
+			}
+			sec.Print()
+			os.Exit(1)
+			return nil
 		}
 
 		// TODO: get chunk by name
@@ -440,51 +434,4 @@ func localFileHashes(logger *slog.Logger, flavorPath string) (string, []file.Has
 	}
 
 	return file.HashTreeRootString(tree), fileHashes, nil
-}
-
-func readConfigWithResolvedPaths(configPath string) (publishConfig, error) {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return publishConfig{}, fmt.Errorf("read config file: %w", err)
-	}
-
-	var cfg publishConfig
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return publishConfig{}, fmt.Errorf("parse config file: %w", err)
-	}
-
-	if cfg.Chunk.Thumbnail != "" {
-		resolvedThmb, err := resolvePath(configPath, cfg.Chunk.Thumbnail)
-		if err != nil {
-			return publishConfig{}, fmt.Errorf("resolve thumbnail configPath: %w", err)
-		}
-		cfg.Chunk.Thumbnail = resolvedThmb
-	}
-
-	// resolve to absolute paths, because publish could be called from
-	// anywhere in the filesystem and flavor paths _could_ be relative
-	// to the directory where the .chunk.yaml lives.
-	for idx, f := range cfg.Chunk.Flavors {
-		resolved, err := resolvePath(configPath, f.Path)
-		if err != nil {
-			return publishConfig{}, fmt.Errorf("resolve configPath: %w", err)
-		}
-
-		cfg.Chunk.Flavors[idx].Path = resolved
-	}
-
-	return cfg, nil
-}
-
-func resolvePath(configPath string, elemPath string) (string, error) {
-	if filepath.IsAbs(elemPath) {
-		return elemPath, nil
-	}
-
-	abs, err := filepath.Abs(configPath)
-	if err != nil {
-		return "", fmt.Errorf("abs: %w", err)
-	}
-
-	return filepath.Join(filepath.Dir(abs), elemPath), nil
 }
