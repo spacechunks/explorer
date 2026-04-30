@@ -795,8 +795,8 @@ github.com/riverqueue/river/rivertype
 # github.com/riverqueue/rivercontrib/otelriver v0.7.0
 ## explicit; go 1.24.0
 github.com/riverqueue/rivercontrib/otelriver
-# github.com/rodaine/table v1.3.0
-## explicit; go 1.14
+# github.com/rodaine/table v1.3.1
+## explicit; go 1.21
 github.com/rodaine/table
 # github.com/rs/zerolog v1.29.0
 ## explicit; go 1.15
