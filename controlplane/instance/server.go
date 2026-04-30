@@ -21,6 +21,8 @@ package instance
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/contextkey"
@@ -32,6 +34,8 @@ type Server struct {
 	instancev1alpha1.UnimplementedInstanceServiceServer
 	service Service
 }
+
+const maxPageSize = 100
 
 func NewServer(service Service) *Server {
 	return &Server{
@@ -58,20 +62,47 @@ func (s *Server) GetInstance(
 
 func (s *Server) ListInstances(
 	ctx context.Context,
-	_ *instancev1alpha1.ListInstancesRequest,
+	req *instancev1alpha1.ListInstancesRequest,
 ) (*instancev1alpha1.ListInstancesResponse, error) {
+	if req.GetPageSize() > maxPageSize {
+		return nil, apierrs.ErrInvalidPageSize
+	}
+
 	instances, err := s.service.ListInstances(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	transport := make([]*instancev1alpha1.Instance, 0, len(instances))
-	for _, ins := range instances {
+	sort.Slice(instances, func(i, j int) bool {
+		return instances[i].ID < instances[j].ID
+	})
+
+	start, err := decodePageToken(req.GetPageToken(), len(instances))
+	if err != nil {
+		return nil, apierrs.ErrInvalidPageToken
+	}
+
+	end := len(instances)
+	if req.GetPageSize() > 0 {
+		targetEnd := start + int(req.GetPageSize())
+		if targetEnd < end {
+			end = targetEnd
+		}
+	}
+
+	transport := make([]*instancev1alpha1.Instance, 0, end-start)
+	for _, ins := range instances[start:end] {
 		transport = append(transport, ToTransport(ins))
 	}
 
+	nextPageToken := ""
+	if end < len(instances) {
+		nextPageToken = strconv.Itoa(end)
+	}
+
 	return &instancev1alpha1.ListInstancesResponse{
-		Instances: transport,
+		Instances:     transport,
+		NextPageToken: nextPageToken,
 	}, nil
 }
 
@@ -127,6 +158,23 @@ func (s *Server) ReceiveInstanceStatusReports(
 	}
 
 	return &instancev1alpha1.ReceiveInstanceStatusReportsResponse{}, nil
+}
+
+func decodePageToken(pageToken string, max int) (int, error) {
+	if pageToken == "" {
+		return 0, nil
+	}
+
+	offset, err := strconv.Atoi(pageToken)
+	if err != nil {
+		return 0, err
+	}
+
+	if offset < 0 || offset > max {
+		return 0, fmt.Errorf("page token out of range")
+	}
+
+	return offset, nil
 }
 
 // TODO: tests

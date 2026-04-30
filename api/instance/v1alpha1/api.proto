@@ -60,10 +60,13 @@ message ListInstancesRequest {
   // at the moment just return all instances
   // later add filter for things like a specific
   // chunk, state etc.
+  uint32 page_size = 1;
+  string page_token = 2;
 }
 
 message ListInstancesResponse {
   repeated Instance instances = 1;
+  string next_page_token = 2;
 }
 
 message RunFlavorVersionRequest {

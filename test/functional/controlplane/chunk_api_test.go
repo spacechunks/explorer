@@ -275,6 +275,30 @@ func TestListChunks(t *testing.T) {
 	); d != "" {
 		t.Fatalf("diff (-want +got):\n%s", d)
 	}
+
+	firstPage, err := client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{PageSize: 1})
+	require.NoError(t, err)
+	require.Len(t, firstPage.GetChunks(), 1)
+	require.NotEmpty(t, firstPage.GetNextPageToken())
+
+	secondPage, err := client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{
+		PageSize:  1,
+		PageToken: firstPage.GetNextPageToken(),
+	})
+	require.NoError(t, err)
+	require.Len(t, secondPage.GetChunks(), 1)
+	require.Empty(t, secondPage.GetNextPageToken())
+
+	ids := []string{expected[0].GetId(), expected[1].GetId()}
+	sort.Strings(ids)
+	require.Equal(t, ids[0], firstPage.GetChunks()[0].GetId())
+	require.Equal(t, ids[1], secondPage.GetChunks()[0].GetId())
+
+	_, err = client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{
+		PageSize:  1,
+		PageToken: "invalid",
+	})
+	require.ErrorIs(t, err, apierrs.ErrInvalidPageToken.GRPCStatus().Err())
 }
 
 func TestUpdateChunk(t *testing.T) {

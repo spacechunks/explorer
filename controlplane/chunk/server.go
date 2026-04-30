@@ -21,12 +21,16 @@ package chunk
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
 
 	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
+
+const maxPageSize = 100
 
 type Server struct {
 	chunkv1alpha1.UnimplementedChunkServiceServer
@@ -117,21 +121,65 @@ func (s *Server) UpdateChunk(
 
 func (s *Server) ListChunks(
 	ctx context.Context,
-	_ *chunkv1alpha1.ListChunksRequest,
+	req *chunkv1alpha1.ListChunksRequest,
 ) (*chunkv1alpha1.ListChunksResponse, error) {
+	if req.GetPageSize() > maxPageSize {
+		return nil, apierrs.ErrInvalidPageSize
+	}
+
 	ret, err := s.service.ListChunks(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	transport := make([]*chunkv1alpha1.Chunk, 0, len(ret))
-	for _, c := range ret {
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].ID < ret[j].ID
+	})
+
+	start, err := decodePageToken(req.GetPageToken(), len(ret))
+	if err != nil {
+		return nil, apierrs.ErrInvalidPageToken
+	}
+
+	end := len(ret)
+	if req.GetPageSize() > 0 {
+		targetEnd := start + int(req.GetPageSize())
+		if targetEnd < end {
+			end = targetEnd
+		}
+	}
+
+	transport := make([]*chunkv1alpha1.Chunk, 0, end-start)
+	for _, c := range ret[start:end] {
 		transport = append(transport, ChunkToTransport(c))
 	}
 
+	nextPageToken := ""
+	if end < len(ret) {
+		nextPageToken = strconv.Itoa(end)
+	}
+
 	return &chunkv1alpha1.ListChunksResponse{
-		Chunks: transport,
+		Chunks:        transport,
+		NextPageToken: nextPageToken,
 	}, nil
+}
+
+func decodePageToken(pageToken string, max int) (int, error) {
+	if pageToken == "" {
+		return 0, nil
+	}
+
+	offset, err := strconv.Atoi(pageToken)
+	if err != nil {
+		return 0, err
+	}
+
+	if offset < 0 || offset > max {
+		return 0, fmt.Errorf("page token out of range")
+	}
+
+	return offset, nil
 }
 
 func (s *Server) CreateFlavor(

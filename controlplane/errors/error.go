@@ -29,8 +29,10 @@ import (
  */
 
 var (
-	ErrNotFound      = New(codes.NotFound, "resource does not exist")
-	ErrAlreadyExists = New(codes.AlreadyExists, "resource already exists")
+	ErrNotFound         = New(codes.NotFound, "resource does not exist")
+	ErrAlreadyExists    = New(codes.AlreadyExists, "resource already exists")
+	ErrInvalidPageSize  = New(codes.InvalidArgument, "page size is invalid")
+	ErrInvalidPageToken = New(codes.InvalidArgument, "page token is invalid")
 )
 
 /*
