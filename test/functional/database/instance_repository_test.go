@@ -28,11 +28,43 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 )
+
+func TestBestNode_SelectsAndExhaustsSlots(t *testing.T) {
+	ctx := context.Background()
+	pg := fixture.NewPostgres()
+
+	pg.Run(t, ctx)
+	pg.InsertNode(t)
+	pg.InsertMinecraftVersion(t)
+
+	c := fixture.Chunk()
+	c.Flavors = []resource.Flavor{c.Flavors[0]}
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	n, err := pg.DB.BestNode(ctx)
+	require.NoError(t, err)
+	require.Equal(t, fixture.Node().ID, n.ID)
+
+	slots := fixture.Node().Slots
+	for i := 0; i < slots; i++ {
+		ins := fixture.Instance()
+		ins.ID = test.NewUUIDv7(t)
+		ins.Chunk = c
+		ins.FlavorVersion = c.Flavors[0].Versions[0]
+		ins.Owner = c.Owner
+		_, err := pg.DB.CreateInstance(ctx, ins, fixture.Node().ID)
+		require.NoError(t, err)
+	}
+
+	_, err = pg.DB.BestNode(ctx)
+	require.ErrorIs(t, err, postgres.ErrNotFound)
+}
 
 func TestCreateInstance(t *testing.T) {
 	// TODO:

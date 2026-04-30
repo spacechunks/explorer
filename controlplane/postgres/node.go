@@ -20,8 +20,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/netip"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
@@ -61,6 +64,9 @@ func (db *DB) BestNode(ctx context.Context) (node.Node, error) {
 	if err := db.do(ctx, func(q *query.Queries) error {
 		n, err := q.BestNode(ctx)
 		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrNotFound
+			}
 			return fmt.Errorf("best node: %w", err)
 		}
 
