@@ -22,15 +22,13 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 
 	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/pagination"
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
-
-const maxPageSize = 100
 
 type Server struct {
 	chunkv1alpha1.UnimplementedChunkServiceServer
@@ -123,7 +121,7 @@ func (s *Server) ListChunks(
 	ctx context.Context,
 	req *chunkv1alpha1.ListChunksRequest,
 ) (*chunkv1alpha1.ListChunksResponse, error) {
-	if req.GetPageSize() > maxPageSize {
+	if req.GetPageSize() > pagination.MaxPageSize {
 		return nil, apierrs.ErrInvalidPageSize
 	}
 
@@ -136,7 +134,7 @@ func (s *Server) ListChunks(
 		return ret[i].ID < ret[j].ID
 	})
 
-	start, err := decodePageToken(req.GetPageToken(), len(ret))
+	start, err := pagination.DecodePageToken(req.GetPageToken(), len(ret))
 	if err != nil {
 		return nil, apierrs.ErrInvalidPageToken
 	}
@@ -154,32 +152,12 @@ func (s *Server) ListChunks(
 		transport = append(transport, ChunkToTransport(c))
 	}
 
-	nextPageToken := ""
-	if end < len(ret) {
-		nextPageToken = strconv.Itoa(end)
-	}
+	nextPageToken := pagination.EncodePageToken(end, len(ret))
 
 	return &chunkv1alpha1.ListChunksResponse{
 		Chunks:        transport,
 		NextPageToken: nextPageToken,
 	}, nil
-}
-
-func decodePageToken(pageToken string, max int) (int, error) {
-	if pageToken == "" {
-		return 0, nil
-	}
-
-	offset, err := strconv.Atoi(pageToken)
-	if err != nil {
-		return 0, err
-	}
-
-	if offset < 0 || offset > max {
-		return 0, fmt.Errorf("page token out of range")
-	}
-
-	return offset, nil
 }
 
 func (s *Server) CreateFlavor(

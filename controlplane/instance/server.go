@@ -22,11 +22,11 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/pagination"
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
@@ -34,8 +34,6 @@ type Server struct {
 	instancev1alpha1.UnimplementedInstanceServiceServer
 	service Service
 }
-
-const maxPageSize = 100
 
 func NewServer(service Service) *Server {
 	return &Server{
@@ -64,7 +62,7 @@ func (s *Server) ListInstances(
 	ctx context.Context,
 	req *instancev1alpha1.ListInstancesRequest,
 ) (*instancev1alpha1.ListInstancesResponse, error) {
-	if req.GetPageSize() > maxPageSize {
+	if req.GetPageSize() > pagination.MaxPageSize {
 		return nil, apierrs.ErrInvalidPageSize
 	}
 
@@ -77,7 +75,7 @@ func (s *Server) ListInstances(
 		return instances[i].ID < instances[j].ID
 	})
 
-	start, err := decodePageToken(req.GetPageToken(), len(instances))
+	start, err := pagination.DecodePageToken(req.GetPageToken(), len(instances))
 	if err != nil {
 		return nil, apierrs.ErrInvalidPageToken
 	}
@@ -95,10 +93,7 @@ func (s *Server) ListInstances(
 		transport = append(transport, ToTransport(ins))
 	}
 
-	nextPageToken := ""
-	if end < len(instances) {
-		nextPageToken = strconv.Itoa(end)
-	}
+	nextPageToken := pagination.EncodePageToken(end, len(instances))
 
 	return &instancev1alpha1.ListInstancesResponse{
 		Instances:     transport,
@@ -159,22 +154,3 @@ func (s *Server) ReceiveInstanceStatusReports(
 
 	return &instancev1alpha1.ReceiveInstanceStatusReportsResponse{}, nil
 }
-
-func decodePageToken(pageToken string, max int) (int, error) {
-	if pageToken == "" {
-		return 0, nil
-	}
-
-	offset, err := strconv.Atoi(pageToken)
-	if err != nil {
-		return 0, err
-	}
-
-	if offset < 0 || offset > max {
-		return 0, fmt.Errorf("page token out of range")
-	}
-
-	return offset, nil
-}
-
-// TODO: tests
