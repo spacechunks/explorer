@@ -10,14 +10,18 @@ import (
 type IActionClient interface {
 	// GetByID retrieves an action by its ID. If the action does not exist, nil is returned.
 	GetByID(ctx context.Context, id int64) (*Action, *Response, error)
-	// List returns a list of actions for a specific page.
+	// List returns a paginated list of actions.
 	//
 	// Please note that filters specified in opts are not taken into account
 	// when their value corresponds to their zero value or when they are empty.
 	List(ctx context.Context, opts ActionListOpts) ([]*Action, *Response, error)
 	// All returns all actions.
+	//
+	// Deprecated: It is required to pass in a list of IDs since 30 January 2025. Please use [ActionClient.AllWithOpts] instead.
 	All(ctx context.Context) ([]*Action, error)
 	// AllWithOpts returns all actions for the given options.
+	//
+	// It is required to set [ActionListOpts.ID]. Any other fields set in the opts are ignored.
 	AllWithOpts(ctx context.Context, opts ActionListOpts) ([]*Action, error)
 	// WatchOverallProgress watches several actions' progress until they complete
 	// with success or error. This watching happens in a goroutine and updates are

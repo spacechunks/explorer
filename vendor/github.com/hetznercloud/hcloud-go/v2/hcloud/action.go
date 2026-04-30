@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/hetznercloud/hcloud-go/v2/hcloud/exp/ctxutil"
 	"github.com/hetznercloud/hcloud-go/v2/hcloud/schema"
 )
 
@@ -64,19 +65,26 @@ func (e ActionError) Action() *Action {
 }
 
 func (e ActionError) Error() string {
-	action := e.Action()
-	if action != nil {
+	if e.action != nil {
 		// For easier debugging, the error string contains the Action ID.
-		return fmt.Sprintf("%s (%s, %d)", e.Message, e.Code, action.ID)
+		return fmt.Sprintf("%s (%s, %d)", e.Message, e.Code, e.action.ID)
 	}
 	return fmt.Sprintf("%s (%s)", e.Message, e.Code)
 }
 
 func (a *Action) Error() error {
-	if a.ErrorCode != "" && a.ErrorMessage != "" {
+	if a.Status == ActionStatusError || a.ErrorCode != "" {
+		code := a.ErrorCode
+		if code == "" {
+			code = "<unknown>"
+		}
+		message := a.ErrorMessage
+		if message == "" {
+			message = "Unknown error"
+		}
 		return ActionError{
-			Code:    a.ErrorCode,
-			Message: a.ErrorMessage,
+			Code:    code,
+			Message: message,
 			action:  a,
 		}
 	}
@@ -85,7 +93,7 @@ func (a *Action) Error() error {
 
 // ActionClient is a client for the actions API.
 type ActionClient struct {
-	action *ResourceActionClient
+	action *ResourceActionClient[noopResource]
 }
 
 // GetByID retrieves an action by its ID. If the action does not exist, nil is returned.
@@ -115,7 +123,7 @@ func (l ActionListOpts) values() url.Values {
 	return vals
 }
 
-// List returns a list of actions for a specific page.
+// List returns a paginated list of actions.
 //
 // Please note that filters specified in opts are not taken into account
 // when their value corresponds to their zero value or when they are empty.
@@ -124,22 +132,30 @@ func (c *ActionClient) List(ctx context.Context, opts ActionListOpts) ([]*Action
 }
 
 // All returns all actions.
+//
+// Deprecated: It is required to pass in a list of IDs since 30 January 2025. Please use [ActionClient.AllWithOpts] instead.
 func (c *ActionClient) All(ctx context.Context) ([]*Action, error) {
-	return c.action.All(ctx, ActionListOpts{ListOpts: ListOpts{PerPage: 50}})
+	return c.action.All(ctx, ActionListOpts{})
 }
 
 // AllWithOpts returns all actions for the given options.
+//
+// It is required to set [ActionListOpts.ID]. Any other fields set in the opts are ignored.
 func (c *ActionClient) AllWithOpts(ctx context.Context, opts ActionListOpts) ([]*Action, error) {
+	if opts.ListOpts.PerPage == 0 {
+		// Do not send unused per page param
+		opts.ListOpts.PerPage = -1
+	}
 	return c.action.All(ctx, opts)
 }
 
 // ResourceActionClient is a client for the actions API exposed by the resource.
-type ResourceActionClient struct {
+type ResourceActionClient[R actionSupporter] struct {
 	resource string
 	client   *Client
 }
 
-func (c *ResourceActionClient) getBaseURL() string {
+func (c *ResourceActionClient[R]) getBaseURL() string {
 	if c.resource == "" {
 		return ""
 	}
@@ -148,66 +164,88 @@ func (c *ResourceActionClient) getBaseURL() string {
 }
 
 // GetByID retrieves an action by its ID. If the action does not exist, nil is returned.
-func (c *ResourceActionClient) GetByID(ctx context.Context, id int64) (*Action, *Response, error) {
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("%s/actions/%d", c.getBaseURL(), id), nil)
-	if err != nil {
-		return nil, nil, err
-	}
+func (c *ResourceActionClient[R]) GetByID(ctx context.Context, id int64) (*Action, *Response, error) {
+	opPath := c.getBaseURL() + "/actions/%d"
+	ctx = ctxutil.SetOpPath(ctx, opPath)
 
-	var body schema.ActionGetResponse
-	resp, err := c.client.Do(req, &body)
+	reqPath := fmt.Sprintf(opPath, id)
+
+	respBody, resp, err := getRequest[schema.ActionGetResponse](ctx, c.client, reqPath)
 	if err != nil {
 		if IsError(err, ErrorCodeNotFound) {
 			return nil, resp, nil
 		}
-		return nil, nil, err
+		return nil, resp, err
 	}
-	return ActionFromSchema(body.Action), resp, nil
+	return ActionFromSchema(respBody.Action), resp, nil
 }
 
-// List returns a list of actions for a specific page.
+// List returns a paginated list of actions.
 //
 // Please note that filters specified in opts are not taken into account
 // when their value corresponds to their zero value or when they are empty.
-func (c *ResourceActionClient) List(ctx context.Context, opts ActionListOpts) ([]*Action, *Response, error) {
-	req, err := c.client.NewRequest(
-		ctx,
-		"GET",
-		fmt.Sprintf("%s/actions?%s", c.getBaseURL(), opts.values().Encode()),
-		nil,
-	)
+func (c *ResourceActionClient[R]) List(ctx context.Context, opts ActionListOpts) ([]*Action, *Response, error) {
+	opPath := c.getBaseURL() + "/actions?%s"
+	ctx = ctxutil.SetOpPath(ctx, opPath)
+
+	reqPath := fmt.Sprintf(opPath, opts.values().Encode())
+
+	respBody, resp, err := getRequest[schema.ActionListResponse](ctx, c.client, reqPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, resp, err
 	}
 
-	var body schema.ActionListResponse
-	resp, err := c.client.Do(req, &body)
-	if err != nil {
-		return nil, nil, err
-	}
-	actions := make([]*Action, 0, len(body.Actions))
-	for _, i := range body.Actions {
-		actions = append(actions, ActionFromSchema(i))
-	}
-	return actions, resp, nil
+	return allFromSchemaFunc(respBody.Actions, ActionFromSchema), resp, nil
 }
 
 // All returns all actions for the given options.
-func (c *ResourceActionClient) All(ctx context.Context, opts ActionListOpts) ([]*Action, error) {
-	allActions := []*Action{}
-
-	err := c.client.all(func(page int) (*Response, error) {
+func (c *ResourceActionClient[R]) All(ctx context.Context, opts ActionListOpts) ([]*Action, error) {
+	if opts.ListOpts.PerPage == 0 {
+		opts.ListOpts.PerPage = 50
+	}
+	return iterPages(func(page int) ([]*Action, *Response, error) {
 		opts.Page = page
-		actions, resp, err := c.List(ctx, opts)
-		if err != nil {
-			return resp, err
-		}
-		allActions = append(allActions, actions...)
-		return resp, nil
+		return c.List(ctx, opts)
 	})
+}
+
+type actionSupporter interface {
+	pathID() (string, error)
+}
+
+// noopResource is used by the [ActionClient] to satisfy its underlying
+// [ResourceActionClient] generic type.
+type noopResource struct{}
+
+func (noopResource) pathID() (string, error) { return "", nil }
+
+// ListFor returns a paginated list of actions for the given Resource.
+//
+// Please note that filters specified in opts are not taken into account
+// when their value corresponds to their zero value or when they are empty.
+func (c *ResourceActionClient[R]) ListFor(ctx context.Context, resource R, opts ActionListOpts) ([]*Action, *Response, error) {
+	opPath := c.getBaseURL() + "/%s/actions?%s"
+	ctx = ctxutil.SetOpPath(ctx, opPath)
+
+	id, err := resource.pathID()
 	if err != nil {
-		return nil, err
+		return nil, nil, invalidArgument("resource", resource, err)
 	}
 
-	return allActions, nil
+	reqPath := fmt.Sprintf(opPath, id, opts.values().Encode())
+
+	respBody, resp, err := getRequest[schema.ActionListResponse](ctx, c.client, reqPath)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return allFromSchemaFunc(respBody.Actions, ActionFromSchema), resp, nil
+}
+
+// AllFor returns all actions for the given Resource.
+func (c *ResourceActionClient[R]) AllFor(ctx context.Context, resource R, opts ActionListOpts) ([]*Action, error) {
+	return iterPages(func(page int) ([]*Action, *Response, error) {
+		opts.Page = page
+		return c.ListFor(ctx, resource, opts)
+	})
 }
