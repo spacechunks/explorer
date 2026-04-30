@@ -7,7 +7,7 @@ COPY .. .
 RUN mkdir bin
 RUN go build -o bin ./cmd/conncheck ./cmd/controlplane ./cmd/servermon
 
-FROM alpine:3.21
+FROM alpine:3.23
 RUN apk add --no-cache ca-certificates
 WORKDIR /bin
 COPY --from=builder /build/bin/conncheck conncheck
