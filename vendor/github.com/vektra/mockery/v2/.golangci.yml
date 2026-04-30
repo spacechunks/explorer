@@ -6,12 +6,11 @@ linters:
   # https://golangci-lint.run/usage/linters/#enabled-by-default
   enable:
     - errcheck
+    - gofumpt
     - gosimple
     - govet
     - ineffassign
     - staticcheck
-    - typecheck
-    - contextcheck
     - durationcheck
     - copyloopvar
     - gocheckcompilerdirectives
@@ -21,8 +20,26 @@ linters:
     - prealloc
     - predeclared
     - reassign
+    - revive
+    - testifylint
 linters-settings:
+  revive:
+    enable-all-rules: false
+    rules:
+      - name: 'var-naming'
   staticcheck:
     checks:
     - all
     - '-SA1024'
+  testifylint:
+    disable-all: true
+    enable:
+      - compares
+      - empty
+      - expected-actual
+      - len
+issues:
+  exclude-rules:
+    - linters:
+        - revive
+      text: "var-naming: don't use an underscore in package name"

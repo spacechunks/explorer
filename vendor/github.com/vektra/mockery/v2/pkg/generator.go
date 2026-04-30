@@ -55,15 +55,17 @@ type GeneratorConfig struct {
 	DisableVersionString bool
 	Exported             bool
 	InPackage            bool
+	Issue845Fix          bool
 	KeepTree             bool
 	Note                 string
 	MockBuildTags        string
-	PackageName          string
+	Outpkg               string
 	PackageNamePrefix    string
 	StructName           string
 	UnrollVariadic       bool
 	WithExpecter         bool
 	ReplaceType          []string
+	ResolveTypeAlias     bool
 }
 
 // Generator is responsible for generating the string containing
@@ -84,12 +86,14 @@ type Generator struct {
 
 // NewGenerator builds a Generator.
 func NewGenerator(ctx context.Context, c GeneratorConfig, iface *Interface, pkg string) *Generator {
-	if pkg == "" {
+	if c.Issue845Fix {
+		pkg = c.Outpkg
+	} else if pkg == "" {
 		pkg = DetermineOutputPackageName(
 			iface.FileName,
 			iface.Pkg.Name(),
 			c.PackageNamePrefix,
-			c.PackageName,
+			c.Outpkg,
 			c.KeepTree,
 			c.InPackage,
 		)
@@ -418,8 +422,20 @@ func (g *Generator) generateImports(ctx context.Context) {
 // GeneratePrologue generates the prologue of the mock.
 func (g *Generator) GeneratePrologue(ctx context.Context, pkg string) {
 	g.populateImports(ctx)
-	if g.config.InPackage {
-		g.printf("package %s\n\n", g.iface.Pkg.Name())
+
+	if !g.config.Issue845Fix {
+		logging.WarnDeprecated(
+			"issue-845-fix",
+			"issue-845-fix must be set to True to remove this warning. Visit the link for more details.",
+			map[string]any{
+				"url": logging.DocsURL("/deprecations/#issue-845-fix"),
+			},
+		)
+		if g.config.InPackage {
+			g.printf("package %s\n\n", g.iface.Pkg.Name())
+		} else {
+			g.printf("package %v\n\n", pkg)
+		}
 	} else {
 		g.printf("package %v\n\n", pkg)
 	}
@@ -502,7 +518,8 @@ type namer interface {
 func (g *Generator) renderNamedType(ctx context.Context, t interface {
 	Obj() *types.TypeName
 	TypeArgs() *types.TypeList
-}) string {
+},
+) string {
 	name := g.getPackageScopedType(ctx, t.Obj())
 	if t.TypeArgs() == nil || t.TypeArgs().Len() == 0 {
 		return name
@@ -516,10 +533,16 @@ func (g *Generator) renderNamedType(ctx context.Context, t interface {
 }
 
 func (g *Generator) renderType(ctx context.Context, typ types.Type) string {
+	log := zerolog.Ctx(ctx)
 	switch t := typ.(type) {
 	case *types.Named:
 		return g.renderNamedType(ctx, t)
 	case *types.Alias:
+		log.Debug().Msg("found type alias")
+		if g.config.ResolveTypeAlias {
+			return g.renderType(ctx, t.Rhs())
+		}
+		log.Debug().Msg("not resolving type alias to underlying type")
 		return g.renderNamedType(ctx, t)
 	case *types.TypeParam:
 		if t.Constraint() != nil {
@@ -664,7 +687,7 @@ func isNillable(typ types.Type) bool {
 	switch t := typ.(type) {
 	case *types.Pointer, *types.Array, *types.Map, *types.Interface, *types.Signature, *types.Chan, *types.Slice:
 		return true
-	case *types.Named, *types.Alias:
+	case *types.Named, *types.Alias, *types.TypeParam:
 		return isNillable(t.Underlying())
 	}
 	return false
@@ -825,7 +848,11 @@ func (g *Generator) generateMethod(ctx context.Context, method *Method) {
 	}
 
 	g.printTemplate(data, `
+{{- if gt (len .Params.Names) 0}}
 // {{.FunctionName}} provides a mock function with given fields: {{join .Params.Names ", "}}
+{{- else}}
+// {{.FunctionName}} provides a mock function with no fields
+{{- end}}
 func (_m *{{.MockName}}{{.InstantiatedTypeString}}) {{.FunctionName}}({{join .Params.Params ", "}}) {{if (gt (len .Returns.Types) 1)}}({{end}}{{join .Returns.Types ", "}}{{if (gt (len .Returns.Types) 1)}}){{end}} {
 {{- .Preamble -}}
 {{- if not .Returns.Types}}
@@ -979,7 +1006,11 @@ func (_c *{{.CallStruct}}{{ .InstantiatedTypeString }}) Return({{range .Returns.
 }
 
 func (_c *{{.CallStruct}}{{ .InstantiatedTypeString }}) RunAndReturn(run func({{range .Params.Types}}{{.}},{{end}})({{range .Returns.Types}}{{.}},{{end}})) *{{.CallStruct}}{{ .InstantiatedTypeString }} {
+{{- if not .Returns.Types}}
+	_c.Run(run)
+{{- else}}
 	_c.Call.Return(run)
+{{- end}}
 	return _c
 }
 `)

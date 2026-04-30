@@ -7,3 +7,5 @@ ve
 coverage.txt
 site/
 .task/
+tools/tools
+*.lua
