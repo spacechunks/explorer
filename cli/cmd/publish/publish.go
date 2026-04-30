@@ -156,7 +156,7 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 			for path, errs := range issues {
 				sec.AddRow(
 					fmt.Sprintf("%s- %s:", cli.ColorRed, path),
-					fmt.Sprintf(strings.Join(errs, ",")),
+					strings.Join(errs, ","),
 				)
 			}
 			sec.Print()
