@@ -15,6 +15,15 @@ github.com/Microsoft/go-winio/internal/fs
 github.com/Microsoft/go-winio/internal/socket
 github.com/Microsoft/go-winio/internal/stringbuffer
 github.com/Microsoft/go-winio/pkg/guid
+# github.com/Oudwins/zog v0.22.2
+## explicit; go 1.21.0
+github.com/Oudwins/zog
+github.com/Oudwins/zog/conf
+github.com/Oudwins/zog/i18n/en
+github.com/Oudwins/zog/pkgs/internals
+github.com/Oudwins/zog/pkgs/internals/is
+github.com/Oudwins/zog/pkgs/zss/core
+github.com/Oudwins/zog/zconst
 # github.com/amacneil/dbmate/v2 v2.26.0
 ## explicit; go 1.23.0
 github.com/amacneil/dbmate/v2/pkg/dbmate
@@ -36,7 +45,6 @@ github.com/aws/aws-sdk-go-v2/aws/signer/v4
 github.com/aws/aws-sdk-go-v2/aws/transport/http
 github.com/aws/aws-sdk-go-v2/internal/auth
 github.com/aws/aws-sdk-go-v2/internal/auth/smithy
-github.com/aws/aws-sdk-go-v2/internal/awsutil
 github.com/aws/aws-sdk-go-v2/internal/context
 github.com/aws/aws-sdk-go-v2/internal/endpoints
 github.com/aws/aws-sdk-go-v2/internal/endpoints/awsrulesfn
@@ -71,7 +79,6 @@ github.com/aws/aws-sdk-go-v2/feature/ec2/imds
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
 # github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.22.17
 ## explicit; go 1.24
-github.com/aws/aws-sdk-go-v2/feature/s3/manager
 # github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.19
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager
@@ -1035,6 +1042,9 @@ golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
+# golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
+## explicit; go 1.23.0
+golang.org/x/exp/constraints
 # golang.org/x/mod v0.35.0
 ## explicit; go 1.25.0
 golang.org/x/mod/internal/lazyregexp
