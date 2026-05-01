@@ -32,6 +32,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/johannesboyne/gofakes3 v0.0.0-20260208201424-4c385a1f6a73
 	github.com/lestrrat-go/jwx/v3 v3.1.0
+	github.com/lestrrat-go/jwx/v4 v4.0.1
 	github.com/magiconair/properties v1.8.10
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -129,7 +130,7 @@ require (
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
-	github.com/lestrrat-go/dsig v1.2.1 // indirect
+	github.com/lestrrat-go/dsig v1.3.0 // indirect
 	github.com/lestrrat-go/dsig-secp256k1 v1.0.0 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc/v3 v3.0.5 // indirect
