@@ -556,7 +556,7 @@ github.com/klauspost/cpuid/v2
 # github.com/lestrrat-go/blackmagic v1.0.4
 ## explicit; go 1.23
 github.com/lestrrat-go/blackmagic
-# github.com/lestrrat-go/dsig v1.2.1
+# github.com/lestrrat-go/dsig v1.3.0
 ## explicit; go 1.23.0
 github.com/lestrrat-go/dsig
 github.com/lestrrat-go/dsig/internal/ecutil
@@ -602,6 +602,8 @@ github.com/lestrrat-go/jwx/v3/jwt
 github.com/lestrrat-go/jwx/v3/jwt/internal/errors
 github.com/lestrrat-go/jwx/v3/jwt/internal/types
 github.com/lestrrat-go/jwx/v3/transform
+# github.com/lestrrat-go/jwx/v4 v4.0.1
+## explicit; go 1.26.0
 # github.com/lestrrat-go/option v1.0.1
 ## explicit; go 1.16
 # github.com/lestrrat-go/option/v2 v2.0.0
