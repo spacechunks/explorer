@@ -23,9 +23,10 @@ import (
 	"strconv"
 )
 
+const DefaultPageSize = 10
 const MaxPageSize = 100
 
-func DecodePageToken(pageToken string, max int) (int, error) {
+func DecodePageToken(pageToken string) (int, error) {
 	if pageToken == "" {
 		return 0, nil
 	}
@@ -35,16 +36,21 @@ func DecodePageToken(pageToken string, max int) (int, error) {
 		return 0, err
 	}
 
-	if offset < 0 || offset > max {
+	if offset < 0 {
 		return 0, fmt.Errorf("page token out of range")
 	}
 
 	return offset, nil
 }
 
-func EncodePageToken(offset, total int) string {
-	if offset >= total {
-		return ""
-	}
+func EncodePageToken(offset int) string {
 	return strconv.Itoa(offset)
+}
+
+func ResolvePageSize(pageSize uint32) int {
+	if pageSize == 0 {
+		return DefaultPageSize
+	}
+
+	return int(pageSize)
 }

@@ -155,11 +155,16 @@ func TestDBListInstances(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	actual, err := pg.DB.ListInstances(ctx)
+	sort.Slice(expected, func(i, j int) bool {
+		return strings.Compare(expected[i].ID, expected[j].ID) < 0
+	})
+
+	actual, err := pg.DB.ListInstances(ctx, 1, 1)
 	require.NoError(t, err)
+	require.Len(t, actual, 1)
 
 	if d := cmp.Diff(
-		expected,
+		expected[1:2],
 		actual,
 		test.IgnoreFields(test.IgnoredInstanceFields...),
 		cmpopts.EquateComparable(netip.Addr{}),

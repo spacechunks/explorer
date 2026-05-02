@@ -301,9 +301,9 @@ func (_c *MockInstanceRepository_GetInstancesByNodeID_Call) RunAndReturn(run fun
 	return _c
 }
 
-// ListInstances provides a mock function with given fields: ctx
-func (_m *MockInstanceRepository) ListInstances(ctx context.Context) ([]resource.Instance, error) {
-	ret := _m.Called(ctx)
+// ListInstances provides a mock function with given fields: ctx, pageSize, offset
+func (_m *MockInstanceRepository) ListInstances(ctx context.Context, pageSize int, offset int) ([]resource.Instance, error) {
+	ret := _m.Called(ctx, pageSize, offset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListInstances")
@@ -311,19 +311,19 @@ func (_m *MockInstanceRepository) ListInstances(ctx context.Context) ([]resource
 
 	var r0 []resource.Instance
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]resource.Instance, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) ([]resource.Instance, error)); ok {
+		return rf(ctx, pageSize, offset)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []resource.Instance); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) []resource.Instance); ok {
+		r0 = rf(ctx, pageSize, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]resource.Instance)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = rf(ctx, pageSize, offset)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -338,13 +338,15 @@ type MockInstanceRepository_ListInstances_Call struct {
 
 // ListInstances is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockInstanceRepository_Expecter) ListInstances(ctx interface{}) *MockInstanceRepository_ListInstances_Call {
-	return &MockInstanceRepository_ListInstances_Call{Call: _e.mock.On("ListInstances", ctx)}
+//   - pageSize int
+//   - offset int
+func (_e *MockInstanceRepository_Expecter) ListInstances(ctx interface{}, pageSize interface{}, offset interface{}) *MockInstanceRepository_ListInstances_Call {
+	return &MockInstanceRepository_ListInstances_Call{Call: _e.mock.On("ListInstances", ctx, pageSize, offset)}
 }
 
-func (_c *MockInstanceRepository_ListInstances_Call) Run(run func(ctx context.Context)) *MockInstanceRepository_ListInstances_Call {
+func (_c *MockInstanceRepository_ListInstances_Call) Run(run func(ctx context.Context, pageSize int, offset int)) *MockInstanceRepository_ListInstances_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(int), args[2].(int))
 	})
 	return _c
 }
@@ -354,7 +356,7 @@ func (_c *MockInstanceRepository_ListInstances_Call) Return(_a0 []resource.Insta
 	return _c
 }
 
-func (_c *MockInstanceRepository_ListInstances_Call) RunAndReturn(run func(context.Context) ([]resource.Instance, error)) *MockInstanceRepository_ListInstances_Call {
+func (_c *MockInstanceRepository_ListInstances_Call) RunAndReturn(run func(context.Context, int, int) ([]resource.Instance, error)) *MockInstanceRepository_ListInstances_Call {
 	_c.Call.Return(run)
 	return _c
 }

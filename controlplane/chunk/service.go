@@ -33,7 +33,7 @@ type Service interface {
 	CreateChunk(ctx context.Context, chunk resource.Chunk) (resource.Chunk, error)
 	GetChunk(ctx context.Context, id string) (resource.Chunk, error)
 	UpdateChunk(ctx context.Context, new resource.Chunk) (resource.Chunk, error)
-	ListChunks(ctx context.Context) ([]resource.Chunk, error)
+	ListChunks(ctx context.Context, pageSize int, offset int) ([]resource.Chunk, error)
 	CreateFlavor(ctx context.Context, chunkID string, flavor resource.Flavor) (resource.Flavor, error)
 	CreateFlavorVersion(
 		ctx context.Context,

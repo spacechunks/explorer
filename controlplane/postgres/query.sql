@@ -49,14 +49,20 @@ SELECT * FROM chunks c
     LEFT JOIN users u ON u.id = c.owner_id;
 
 -- name: ListChunksWithPagination :many
-SELECT * FROM chunks c
+WITH paged_chunks AS (
+    SELECT id FROM chunks
+    WHERE deleted_at IS NULL
+    ORDER BY id
+    LIMIT $1 OFFSET $2
+)
+SELECT c.*, f.*, v.*, vf.*, u.* FROM chunks c
+    JOIN paged_chunks pc ON pc.id = c.id
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.deleted_at IS NULL
 ORDER BY c.id
-LIMIT $1 OFFSET $2;
+;
 
 
 -- name: ChunkOwnerByChunkID :one
@@ -209,14 +215,20 @@ SELECT * FROM instances i
     JOIN users u ON u.id = i.owner_id;
 
 -- name: ListInstancesWithPagination :many
-SELECT * FROM instances i
+WITH paged_instances AS (
+    SELECT id FROM instances
+    ORDER BY id
+    LIMIT $1 OFFSET $2
+)
+SELECT i.*, v.*, c.*, f.*, n.*, u.* FROM instances i
+    JOIN paged_instances pi ON pi.id = i.id
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
     JOIN users u ON u.id = i.owner_id
 ORDER BY i.id
-LIMIT $1 OFFSET $2;
+;
 
 -- name: GetInstance :many
 SELECT * FROM instances i

@@ -211,33 +211,24 @@ func TestListChunks(t *testing.T) {
 	cp.Run(t)
 	client := cp.ChunkClient(t)
 
-	chunks := []resource.Chunk{
-		fixture.Chunk(func(c *resource.Chunk) {
+	chunks := make([]resource.Chunk, 0, 13)
+	for idx := range 12 {
+		chunks = append(chunks, fixture.Chunk(func(c *resource.Chunk) {
 			c.ID = test.NewUUIDv7(t)
 			c.Owner = u
 			c.Flavors = []resource.Flavor{
 				fixture.Flavor(func(f *resource.Flavor) {
 					f.ID = test.NewUUIDv7(t)
-					f.Name = "ddddawq31423452"
+					f.Name = fmt.Sprintf("flavor-%d", idx)
 				}),
 			}
-		}),
-		fixture.Chunk(func(c *resource.Chunk) {
-			c.ID = test.NewUUIDv7(t)
-			c.Owner = u
-			c.Flavors = []resource.Flavor{
-				fixture.Flavor(func(f *resource.Flavor) {
-					f.ID = test.NewUUIDv7(t)
-					f.Name = "dawdawdawd"
-				}),
-			}
-		}),
-		fixture.Chunk(func(c *resource.Chunk) { // this one should not appear
-			c.ID = test.NewUUIDv7(t)
-			c.Owner = u
-			c.DeletedAt = new(time.Now())
-		}),
+		}))
 	}
+	chunks = append(chunks, fixture.Chunk(func(c *resource.Chunk) { // this one should not appear
+		c.ID = test.NewUUIDv7(t)
+		c.Owner = u
+		c.DeletedAt = new(time.Now())
+	}))
 
 	for i := range chunks {
 		cp.Postgres.CreateChunk(t, &chunks[i], fixture.CreateOptionsAll)
@@ -247,6 +238,8 @@ func TestListChunks(t *testing.T) {
 
 	resp, err := client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{})
 	require.NoError(t, err)
+	require.Len(t, resp.GetChunks(), 10)
+	require.NotEmpty(t, resp.GetNextPageToken())
 
 	expected := make([]*chunkv1alpha1.Chunk, 0)
 	for _, c := range chunks {
@@ -265,7 +258,7 @@ func TestListChunks(t *testing.T) {
 	})
 
 	if d := cmp.Diff(
-		expected,
+		expected[:10],
 		resp.GetChunks(),
 		protocmp.Transform(),
 		test.IgnoredProtoChunkFields,
@@ -276,29 +269,33 @@ func TestListChunks(t *testing.T) {
 		t.Fatalf("diff (-want +got):\n%s", d)
 	}
 
-	firstPage, err := client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{PageSize: 1})
-	require.NoError(t, err)
-	require.Len(t, firstPage.GetChunks(), 1)
-	require.NotEmpty(t, firstPage.GetNextPageToken())
-
 	secondPage, err := client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{
-		PageSize:  1,
-		PageToken: firstPage.GetNextPageToken(),
+		PageToken: resp.GetNextPageToken(),
 	})
 	require.NoError(t, err)
-	require.Len(t, secondPage.GetChunks(), 1)
+	require.Len(t, secondPage.GetChunks(), 2)
 	require.Empty(t, secondPage.GetNextPageToken())
 
-	ids := []string{expected[0].GetId(), expected[1].GetId()}
-	sort.Strings(ids)
-	require.Equal(t, ids[0], firstPage.GetChunks()[0].GetId())
-	require.Equal(t, ids[1], secondPage.GetChunks()[0].GetId())
-
 	_, err = client.ListChunks(ctx, &chunkv1alpha1.ListChunksRequest{
-		PageSize:  1,
 		PageToken: "invalid",
 	})
 	require.ErrorIs(t, err, apierrs.ErrInvalidPageToken.GRPCStatus().Err())
+
+	sort.Slice(secondPage.GetChunks(), func(i, j int) bool {
+		return strings.Compare(secondPage.GetChunks()[i].GetId(), secondPage.GetChunks()[j].GetId()) < 0
+	})
+
+	if d := cmp.Diff(
+		expected[10:],
+		secondPage.GetChunks(),
+		protocmp.Transform(),
+		test.IgnoredProtoChunkFields,
+		test.IgnoredProtoFlavorFields,
+		test.IgnoredProtoFlavorVersionFields,
+		test.IgnoredProtoUserFields,
+	); d != "" {
+		t.Fatalf("second page diff (-want +got):\n%s", d)
+	}
 }
 
 func TestUpdateChunk(t *testing.T) {

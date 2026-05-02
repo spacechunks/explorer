@@ -1184,14 +1184,19 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 }
 
 const listChunksWithPagination = `-- name: ListChunksWithPagination :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
+WITH paged_chunks AS (
+    SELECT id FROM chunks
+    WHERE deleted_at IS NULL
+    ORDER BY id
+    LIMIT $1 OFFSET $2
+)
+SELECT c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, v.flavor_id, v.hash, v.change_hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, vf.flavor_version_id, vf.file_hash, vf.file_path, vf.created_at, u.id, u.nickname, u.email, u.created_at, u.updated_at FROM chunks c
+    JOIN paged_chunks pc ON pc.id = c.id
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-WHERE c.deleted_at IS NULL
 ORDER BY c.id
-LIMIT $1 OFFSET $2
 `
 
 type ListChunksWithPaginationParams struct {
@@ -1427,14 +1432,19 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 }
 
 const listInstancesWithPagination = `-- name: ListInstancesWithPagination :many
-SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, slots, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
+WITH paged_instances AS (
+    SELECT id FROM instances
+    ORDER BY id
+    LIMIT $1 OFFSET $2
+)
+SELECT i.id, i.chunk_id, i.flavor_version_id, i.node_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, v.id, v.flavor_id, v.hash, v.change_hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots, u.id, u.nickname, u.email, u.created_at, u.updated_at FROM instances i
+    JOIN paged_instances pi ON pi.id = i.id
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
     JOIN nodes n ON i.node_id = n.id
     JOIN users u ON u.id = i.owner_id
 ORDER BY i.id
-LIMIT $1 OFFSET $2
 `
 
 type ListInstancesWithPaginationParams struct {

@@ -21,7 +21,6 @@ package chunk
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
@@ -125,34 +124,27 @@ func (s *Server) ListChunks(
 		return nil, apierrs.ErrInvalidPageSize
 	}
 
-	ret, err := s.service.ListChunks(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].ID < ret[j].ID
-	})
-
-	start, err := pagination.DecodePageToken(req.GetPageToken(), len(ret))
+	pageSize := pagination.ResolvePageSize(req.GetPageSize())
+	offset, err := pagination.DecodePageToken(req.GetPageToken())
 	if err != nil {
 		return nil, apierrs.ErrInvalidPageToken
 	}
 
-	end := len(ret)
-	if req.GetPageSize() > 0 {
-		targetEnd := start + int(req.GetPageSize())
-		if targetEnd < end {
-			end = targetEnd
-		}
+	ret, err := s.service.ListChunks(ctx, pageSize+1, offset)
+	if err != nil {
+		return nil, err
 	}
 
-	transport := make([]*chunkv1alpha1.Chunk, 0, end-start)
-	for _, c := range ret[start:end] {
+	nextPageToken := ""
+	if len(ret) > pageSize {
+		ret = ret[:pageSize]
+		nextPageToken = pagination.EncodePageToken(offset + pageSize)
+	}
+
+	transport := make([]*chunkv1alpha1.Chunk, 0, len(ret))
+	for _, c := range ret {
 		transport = append(transport, ChunkToTransport(c))
 	}
-
-	nextPageToken := pagination.EncodePageToken(end, len(ret))
 
 	return &chunkv1alpha1.ListChunksResponse{
 		Chunks:        transport,

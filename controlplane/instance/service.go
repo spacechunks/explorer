@@ -35,7 +35,7 @@ import (
 
 type Service interface {
 	GetInstance(ctx context.Context, id string) (resource.Instance, error)
-	ListInstances(ctx context.Context) ([]resource.Instance, error)
+	ListInstances(ctx context.Context, pageSize int, offset int) ([]resource.Instance, error)
 	RunFlavorVersion(
 		ctx context.Context,
 		chunkID string,
@@ -70,8 +70,8 @@ func (s *svc) GetInstance(ctx context.Context, id string) (resource.Instance, er
 	return ins, nil
 }
 
-func (s *svc) ListInstances(ctx context.Context) ([]resource.Instance, error) {
-	l, err := s.insRepo.ListInstances(ctx)
+func (s *svc) ListInstances(ctx context.Context, pageSize int, offset int) ([]resource.Instance, error) {
+	l, err := s.insRepo.ListInstances(ctx, pageSize, offset)
 	if err != nil {
 		return nil, err
 	}

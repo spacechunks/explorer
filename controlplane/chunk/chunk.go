@@ -116,22 +116,8 @@ func (s *svc) UpdateChunk(ctx context.Context, new resource.Chunk) (resource.Chu
 	return ret, nil
 }
 
-func (s *svc) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
-	var ret []resource.Chunk
-
-	l, err := s.repo.ListChunks(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, c := range l {
-		if c.DeletedAt != nil {
-			continue
-		}
-		ret = append(ret, c)
-	}
-
-	return ret, nil
+func (s *svc) ListChunks(ctx context.Context, pageSize int, offset int) ([]resource.Chunk, error) {
+	return s.repo.ListChunks(ctx, pageSize, offset)
 }
 
 func (s *svc) GetSupportedMinecraftVersions(ctx context.Context) ([]string, error) {

@@ -21,7 +21,6 @@ package instance
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/contextkey"
@@ -66,34 +65,27 @@ func (s *Server) ListInstances(
 		return nil, apierrs.ErrInvalidPageSize
 	}
 
-	instances, err := s.service.ListInstances(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Slice(instances, func(i, j int) bool {
-		return instances[i].ID < instances[j].ID
-	})
-
-	start, err := pagination.DecodePageToken(req.GetPageToken(), len(instances))
+	pageSize := pagination.ResolvePageSize(req.GetPageSize())
+	offset, err := pagination.DecodePageToken(req.GetPageToken())
 	if err != nil {
 		return nil, apierrs.ErrInvalidPageToken
 	}
 
-	end := len(instances)
-	if req.GetPageSize() > 0 {
-		targetEnd := start + int(req.GetPageSize())
-		if targetEnd < end {
-			end = targetEnd
-		}
+	instances, err := s.service.ListInstances(ctx, pageSize+1, offset)
+	if err != nil {
+		return nil, err
 	}
 
-	transport := make([]*instancev1alpha1.Instance, 0, end-start)
-	for _, ins := range instances[start:end] {
+	nextPageToken := ""
+	if len(instances) > pageSize {
+		instances = instances[:pageSize]
+		nextPageToken = pagination.EncodePageToken(offset + pageSize)
+	}
+
+	transport := make([]*instancev1alpha1.Instance, 0, len(instances))
+	for _, ins := range instances {
 		transport = append(transport, ToTransport(ins))
 	}
-
-	nextPageToken := pagination.EncodePageToken(end, len(instances))
 
 	return &instancev1alpha1.ListInstancesResponse{
 		Instances:     transport,
