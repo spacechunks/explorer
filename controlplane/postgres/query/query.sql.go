@@ -1187,8 +1187,9 @@ const listChunksWithPagination = `-- name: ListChunksWithPagination :many
 WITH paged_chunks AS (
     SELECT id FROM chunks
     WHERE deleted_at IS NULL
+      AND ($1::uuid IS NULL OR id > $1::uuid)
     ORDER BY id
-    LIMIT $1 OFFSET $2
+    LIMIT $2
 )
 SELECT c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, v.flavor_id, v.hash, v.change_hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, vf.flavor_version_id, vf.file_hash, vf.file_path, vf.created_at, u.id, u.nickname, u.email, u.created_at, u.updated_at FROM chunks c
     JOIN paged_chunks pc ON pc.id = c.id
@@ -1200,8 +1201,8 @@ ORDER BY c.id
 `
 
 type ListChunksWithPaginationParams struct {
-	Limit  int32
-	Offset int32
+	AfterID *string
+	Limit   int32
 }
 
 type ListChunksWithPaginationRow struct {
@@ -1245,7 +1246,7 @@ type ListChunksWithPaginationRow struct {
 }
 
 func (q *Queries) ListChunksWithPagination(ctx context.Context, arg ListChunksWithPaginationParams) ([]ListChunksWithPaginationRow, error) {
-	rows, err := q.db.Query(ctx, listChunksWithPagination, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listChunksWithPagination, arg.AfterID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -1434,8 +1435,9 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 const listInstancesWithPagination = `-- name: ListInstancesWithPagination :many
 WITH paged_instances AS (
     SELECT id FROM instances
+    WHERE $1::uuid IS NULL OR id > $1::uuid
     ORDER BY id
-    LIMIT $1 OFFSET $2
+    LIMIT $2
 )
 SELECT i.id, i.chunk_id, i.flavor_version_id, i.node_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, v.id, v.flavor_id, v.hash, v.change_hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots, u.id, u.nickname, u.email, u.created_at, u.updated_at FROM instances i
     JOIN paged_instances pi ON pi.id = i.id
@@ -1448,8 +1450,8 @@ ORDER BY i.id
 `
 
 type ListInstancesWithPaginationParams struct {
-	Limit  int32
-	Offset int32
+	AfterID *string
+	Limit   int32
 }
 
 type ListInstancesWithPaginationRow struct {
@@ -1504,7 +1506,7 @@ type ListInstancesWithPaginationRow struct {
 }
 
 func (q *Queries) ListInstancesWithPagination(ctx context.Context, arg ListInstancesWithPaginationParams) ([]ListInstancesWithPaginationRow, error) {
-	rows, err := q.db.Query(ctx, listInstancesWithPagination, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listInstancesWithPagination, arg.AfterID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

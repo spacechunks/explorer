@@ -240,6 +240,7 @@ func TestListChunks(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resp.GetChunks(), 10)
 	require.NotEmpty(t, resp.GetNextPageToken())
+	require.Equal(t, resp.GetChunks()[9].GetId(), resp.GetNextPageToken())
 
 	expected := make([]*chunkv1alpha1.Chunk, 0)
 	for _, c := range chunks {

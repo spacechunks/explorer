@@ -125,12 +125,12 @@ func (s *Server) ListChunks(
 	}
 
 	pageSize := pagination.ResolvePageSize(req.GetPageSize())
-	offset, err := pagination.DecodePageToken(req.GetPageToken())
+	afterID, err := pagination.DecodePageToken(req.GetPageToken())
 	if err != nil {
 		return nil, apierrs.ErrInvalidPageToken
 	}
 
-	ret, err := s.service.ListChunks(ctx, pageSize+1, offset)
+	ret, err := s.service.ListChunks(ctx, pageSize+1, afterID)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (s *Server) ListChunks(
 	nextPageToken := ""
 	if len(ret) > pageSize {
 		ret = ret[:pageSize]
-		nextPageToken = pagination.EncodePageToken(offset + pageSize)
+		nextPageToken = pagination.EncodePageToken(ret[len(ret)-1].ID)
 	}
 
 	transport := make([]*chunkv1alpha1.Chunk, 0, len(ret))

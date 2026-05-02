@@ -156,6 +156,7 @@ func TestAPIListInstances(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resp.GetInstances(), 10)
 	require.NotEmpty(t, resp.GetNextPageToken())
+	require.Equal(t, resp.GetInstances()[9].GetId(), resp.GetNextPageToken())
 
 	if d := cmp.Diff(
 		expected[:10],

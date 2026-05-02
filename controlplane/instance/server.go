@@ -66,12 +66,12 @@ func (s *Server) ListInstances(
 	}
 
 	pageSize := pagination.ResolvePageSize(req.GetPageSize())
-	offset, err := pagination.DecodePageToken(req.GetPageToken())
+	afterID, err := pagination.DecodePageToken(req.GetPageToken())
 	if err != nil {
 		return nil, apierrs.ErrInvalidPageToken
 	}
 
-	instances, err := s.service.ListInstances(ctx, pageSize+1, offset)
+	instances, err := s.service.ListInstances(ctx, pageSize+1, afterID)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (s *Server) ListInstances(
 	nextPageToken := ""
 	if len(instances) > pageSize {
 		instances = instances[:pageSize]
-		nextPageToken = pagination.EncodePageToken(offset + pageSize)
+		nextPageToken = pagination.EncodePageToken(instances[len(instances)-1].ID)
 	}
 
 	transport := make([]*instancev1alpha1.Instance, 0, len(instances))

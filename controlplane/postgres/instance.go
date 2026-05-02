@@ -62,12 +62,12 @@ func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID 
 	return ret, nil
 }
 
-func (db *DB) ListInstances(ctx context.Context, pageSize int, offset int) ([]resource.Instance, error) {
+func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) ([]resource.Instance, error) {
 	var ret []resource.Instance
 	if err := db.do(ctx, func(q *query.Queries) error {
 		rows, err := q.ListInstancesWithPagination(ctx, query.ListInstancesWithPaginationParams{
-			Limit:  int32(pageSize),
-			Offset: int32(offset),
+			Limit:   int32(pageSize),
+			AfterID: afterID,
 		})
 		if err != nil {
 			return err

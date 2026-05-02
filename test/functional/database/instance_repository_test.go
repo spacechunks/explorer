@@ -159,7 +159,7 @@ func TestDBListInstances(t *testing.T) {
 		return strings.Compare(expected[i].ID, expected[j].ID) < 0
 	})
 
-	actual, err := pg.DB.ListInstances(ctx, 1, 1)
+	actual, err := pg.DB.ListInstances(ctx, 1, &expected[0].ID)
 	require.NoError(t, err)
 	require.Len(t, actual, 1)
 

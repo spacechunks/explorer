@@ -52,8 +52,9 @@ SELECT * FROM chunks c
 WITH paged_chunks AS (
     SELECT id FROM chunks
     WHERE deleted_at IS NULL
+      AND (sqlc.narg('after_id')::uuid IS NULL OR id > sqlc.narg('after_id')::uuid)
     ORDER BY id
-    LIMIT $1 OFFSET $2
+    LIMIT sqlc.arg('limit')
 )
 SELECT c.*, f.*, v.*, vf.*, u.* FROM chunks c
     JOIN paged_chunks pc ON pc.id = c.id
@@ -217,8 +218,9 @@ SELECT * FROM instances i
 -- name: ListInstancesWithPagination :many
 WITH paged_instances AS (
     SELECT id FROM instances
+    WHERE sqlc.narg('after_id')::uuid IS NULL OR id > sqlc.narg('after_id')::uuid
     ORDER BY id
-    LIMIT $1 OFFSET $2
+    LIMIT sqlc.arg('limit')
 )
 SELECT i.*, v.*, c.*, f.*, n.*, u.* FROM instances i
     JOIN paged_instances pi ON pi.id = i.id

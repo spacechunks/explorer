@@ -20,31 +20,32 @@ package pagination
 
 import (
 	"fmt"
-	"strconv"
+
+	"github.com/google/uuid"
 )
 
 const DefaultPageSize = 10
 const MaxPageSize = 100
 
-func DecodePageToken(pageToken string) (int, error) {
+func DecodePageToken(pageToken string) (*string, error) {
 	if pageToken == "" {
-		return 0, nil
+		return nil, nil
 	}
 
-	offset, err := strconv.Atoi(pageToken)
+	tokenUUID, err := uuid.Parse(pageToken)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	if offset < 0 {
-		return 0, fmt.Errorf("page token out of range")
+	if tokenUUID.Version() != 7 {
+		return nil, fmt.Errorf("page token must be a uuidv7")
 	}
 
-	return offset, nil
+	return &pageToken, nil
 }
 
-func EncodePageToken(offset int) string {
-	return strconv.Itoa(offset)
+func EncodePageToken(lastID string) string {
+	return lastID
 }
 
 func ResolvePageSize(pageSize uint32) int {
