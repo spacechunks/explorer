@@ -260,9 +260,6 @@ github.com/cpuguy83/dockercfg
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1
-## explicit; go 1.17
-github.com/decred/dcrd/dcrec/secp256k1/v4
 # github.com/distribution/reference v0.6.0
 ## explicit; go 1.20
 github.com/distribution/reference
@@ -273,8 +270,6 @@ github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials
 github.com/docker/cli/cli/config/memorystore
 github.com/docker/cli/cli/config/types
-# github.com/docker/distribution v2.8.3+incompatible
-## explicit
 # github.com/docker/docker v28.5.2+incompatible
 ## explicit
 github.com/docker/docker/api
@@ -411,17 +406,6 @@ github.com/go-ole/go-ole/oleutil
 ## explicit; go 1.18
 github.com/go-viper/mapstructure/v2
 github.com/go-viper/mapstructure/v2/internal/errors
-# github.com/goccy/go-json v0.10.6
-## explicit; go 1.19
-github.com/goccy/go-json
-github.com/goccy/go-json/internal/decoder
-github.com/goccy/go-json/internal/encoder
-github.com/goccy/go-json/internal/encoder/vm
-github.com/goccy/go-json/internal/encoder/vm_color
-github.com/goccy/go-json/internal/encoder/vm_color_indent
-github.com/goccy/go-json/internal/encoder/vm_indent
-github.com/goccy/go-json/internal/errors
-github.com/goccy/go-json/internal/runtime
 # github.com/goccy/go-yaml v1.19.2
 ## explicit; go 1.21.0
 github.com/goccy/go-yaml
@@ -488,8 +472,6 @@ github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/hashicorp/hcl v1.0.0
-## explicit
 # github.com/hetznercloud/hcloud-go/v2 v2.39.0
 ## explicit; go 1.25.0
 github.com/hetznercloud/hcloud-go/v2/hcloud
@@ -553,62 +535,39 @@ github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/klauspost/cpuid/v2 v2.3.0
 ## explicit; go 1.22
 github.com/klauspost/cpuid/v2
-# github.com/lestrrat-go/blackmagic v1.0.4
-## explicit; go 1.23
-github.com/lestrrat-go/blackmagic
 # github.com/lestrrat-go/dsig v1.3.0
 ## explicit; go 1.23.0
 github.com/lestrrat-go/dsig
 github.com/lestrrat-go/dsig/internal/ecutil
-# github.com/lestrrat-go/dsig-secp256k1 v1.0.0
-## explicit; go 1.23.0
-github.com/lestrrat-go/dsig-secp256k1
-# github.com/lestrrat-go/httpcc v1.0.1
-## explicit; go 1.16
-github.com/lestrrat-go/httpcc
-# github.com/lestrrat-go/httprc/v3 v3.0.5
-## explicit; go 1.23.0
-github.com/lestrrat-go/httprc/v3
-github.com/lestrrat-go/httprc/v3/errsink
-github.com/lestrrat-go/httprc/v3/proxysink
-github.com/lestrrat-go/httprc/v3/tracesink
-# github.com/lestrrat-go/jwx/v3 v3.1.0
-## explicit; go 1.25.0
-github.com/lestrrat-go/jwx/v3
-github.com/lestrrat-go/jwx/v3/cert
-github.com/lestrrat-go/jwx/v3/internal/base64
-github.com/lestrrat-go/jwx/v3/internal/ecutil
-github.com/lestrrat-go/jwx/v3/internal/json
-github.com/lestrrat-go/jwx/v3/internal/keyconv
-github.com/lestrrat-go/jwx/v3/internal/pool
-github.com/lestrrat-go/jwx/v3/internal/tokens
-github.com/lestrrat-go/jwx/v3/jwa
-github.com/lestrrat-go/jwx/v3/jwe
-github.com/lestrrat-go/jwx/v3/jwe/internal/aescbc
-github.com/lestrrat-go/jwx/v3/jwe/internal/cipher
-github.com/lestrrat-go/jwx/v3/jwe/internal/concatkdf
-github.com/lestrrat-go/jwx/v3/jwe/internal/content_crypt
-github.com/lestrrat-go/jwx/v3/jwe/internal/keygen
-github.com/lestrrat-go/jwx/v3/jwe/jwebb
-github.com/lestrrat-go/jwx/v3/jwk
-github.com/lestrrat-go/jwx/v3/jwk/ecdsa
-github.com/lestrrat-go/jwx/v3/jwk/internal/registry
-github.com/lestrrat-go/jwx/v3/jwk/jwkbb
-github.com/lestrrat-go/jwx/v3/jws
-github.com/lestrrat-go/jwx/v3/jws/internal/keytype
-github.com/lestrrat-go/jwx/v3/jws/jwsbb
-github.com/lestrrat-go/jwx/v3/jws/legacy
-github.com/lestrrat-go/jwx/v3/jwt
-github.com/lestrrat-go/jwx/v3/jwt/internal/errors
-github.com/lestrrat-go/jwx/v3/jwt/internal/types
-github.com/lestrrat-go/jwx/v3/transform
 # github.com/lestrrat-go/jwx/v4 v4.0.1
 ## explicit; go 1.26.0
-# github.com/lestrrat-go/option v1.0.1
-## explicit; go 1.16
-# github.com/lestrrat-go/option/v2 v2.0.0
+github.com/lestrrat-go/jwx/v4
+github.com/lestrrat-go/jwx/v4/cert
+github.com/lestrrat-go/jwx/v4/internal/base64
+github.com/lestrrat-go/jwx/v4/internal/ecutil
+github.com/lestrrat-go/jwx/v4/internal/json
+github.com/lestrrat-go/jwx/v4/internal/keyconv
+github.com/lestrrat-go/jwx/v4/internal/pool
+github.com/lestrrat-go/jwx/v4/internal/tokens
+github.com/lestrrat-go/jwx/v4/jwa
+github.com/lestrrat-go/jwx/v4/jwe
+github.com/lestrrat-go/jwx/v4/jwe/internal/aescbc
+github.com/lestrrat-go/jwx/v4/jwe/internal/cipher
+github.com/lestrrat-go/jwx/v4/jwe/internal/concatkdf
+github.com/lestrrat-go/jwx/v4/jwe/internal/content_crypt
+github.com/lestrrat-go/jwx/v4/jwe/internal/keygen
+github.com/lestrrat-go/jwx/v4/jwe/jwebb
+github.com/lestrrat-go/jwx/v4/jwk
+github.com/lestrrat-go/jwx/v4/jwk/ecdsa
+github.com/lestrrat-go/jwx/v4/jwk/internal/registry
+github.com/lestrrat-go/jwx/v4/jwk/jwkbb
+github.com/lestrrat-go/jwx/v4/jws
+github.com/lestrrat-go/jwx/v4/jws/jwsbb
+github.com/lestrrat-go/jwx/v4/jwt
+github.com/lestrrat-go/jwx/v4/jwt/internal/types
+# github.com/lestrrat-go/option/v3 v3.0.0-alpha1
 ## explicit; go 1.23
-github.com/lestrrat-go/option/v2
+github.com/lestrrat-go/option/v3
 # github.com/lib/pq v1.12.3
 ## explicit; go 1.21
 github.com/lib/pq
@@ -833,15 +792,6 @@ github.com/safchain/ethtool
 ## explicit; go 1.23.0
 github.com/sagikazarmark/locafero
 github.com/sagikazarmark/locafero/internal/queue
-# github.com/segmentio/asm v1.2.1
-## explicit; go 1.18
-github.com/segmentio/asm/base64
-github.com/segmentio/asm/cpu
-github.com/segmentio/asm/cpu/arm
-github.com/segmentio/asm/cpu/arm64
-github.com/segmentio/asm/cpu/cpuid
-github.com/segmentio/asm/cpu/x86
-github.com/segmentio/asm/internal/unsafebytes
 # github.com/shirou/gopsutil/v4 v4.25.6
 ## explicit; go 1.23
 github.com/shirou/gopsutil/v4/common
@@ -869,8 +819,6 @@ github.com/spf13/cast/internal
 # github.com/spf13/cobra v1.10.2
 ## explicit; go 1.15
 github.com/spf13/cobra
-# github.com/spf13/jwalterweatherman v1.1.0
-## explicit
 # github.com/spf13/pflag v1.0.10
 ## explicit; go 1.12
 github.com/spf13/pflag
@@ -1259,10 +1207,6 @@ google.golang.org/protobuf/types/known/wrapperspb
 # gopkg.in/inf.v0 v0.9.1
 ## explicit
 gopkg.in/inf.v0
-# gopkg.in/ini.v1 v1.67.0
-## explicit
-# gopkg.in/yaml.v2 v2.4.0
-## explicit; go 1.15
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3

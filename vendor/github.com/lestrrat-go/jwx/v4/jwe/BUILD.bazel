@@ -1,0 +1,73 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "jwe",
+    srcs = [
+        "accessors.go",
+        "compress.go",
+        "decrypt.go",
+        "encrypt.go",
+        "errors.go",
+        "headers.go",
+        "headers_gen.go",
+        "interface.go",
+        "io_gen.go",
+        "jwe.go",
+        "key_provider.go",
+        "message.go",
+        "options.go",
+        "options_gen.go",
+    ],
+    importpath = "github.com/lestrrat-go/jwx/v4/jwe",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//cert",
+        "//internal/base64",
+        "//internal/json",
+        "//internal/keyconv",
+        "//internal/pool",
+        "//internal/tokens",
+        "//jwa",
+        "//jwe/internal/aescbc",
+        "//jwe/internal/content_crypt",
+        "//jwe/internal/keygen",
+        "//jwe/jwebb",
+        "//jwk",
+        "@com_github_lestrrat_go_option_v3//:option",
+    ],
+)
+
+go_test(
+    name = "jwe_test",
+    srcs = [
+        "bench_encrypt_test.go",
+        "fuzz_test.go",
+        "gh402_test.go",
+        "headers_nil_test.go",
+        "headers_test.go",
+        "hpke_test.go",
+        "jwe_aad_internal_test.go",
+        "jwe_crit_test.go",
+        "jwe_test.go",
+        "message_test.go",
+        "options_gen_test.go",
+        "recipient_headers_test.go",
+        "speed_test.go",
+    ],
+    embed = [":jwe"],
+    deps = [
+        "//cert",
+        "//internal/json",
+        "//internal/jwxtest",
+        "//internal/tokens",
+        "//jwa",
+        "//jwk",
+        "@com_github_stretchr_testify//require",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":jwe",
+    visibility = ["//visibility:public"],
+)
