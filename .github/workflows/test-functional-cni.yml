@@ -17,6 +17,3 @@ jobs:
           sudo systemctl restart systemd-networkd
           sleep 2 # keep this here, because we need to wait a lil
       - run: make functests-cni
-        env:
-          # required by github.com/lestrrat-go/jwx/v4
-          GOEXPERIMENT: jsonv2
