@@ -32,8 +32,8 @@ import (
 
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/docker/docker/api/types/container"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/moby/moby/api/types/container"
 	"github.com/spacechunks/explorer/controlplane"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
