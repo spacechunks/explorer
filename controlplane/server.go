@@ -289,7 +289,8 @@ func authInterceptor(logger *slog.Logger, signingKey *ecdsa.PrivateKey, issuer s
 		}
 
 		var userID string
-		if err := tok.Get("user_id", &userID); err != nil {
+		userID, err = jwt.Get[string](tok, "user_id")
+		if err != nil {
 			logger.Error("failed to get user id", "err", err)
 			return nil, cperrs.ErrInvalidToken
 		}
