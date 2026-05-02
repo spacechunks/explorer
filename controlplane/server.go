@@ -55,7 +55,6 @@ import (
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/controlplane/postgres"
-	"github.com/spacechunks/explorer/controlplane/serverconfig"
 	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
@@ -87,8 +86,6 @@ func NewServer(logger *slog.Logger, cfg Config) *Server {
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	serverconfig.SetVelocitySecret(s.cfg.VelocitySecret)
-
 	shutdown, err := instr.SetupOTel(ctx, "control-plane", s.cfg.DisableTracing)
 	if err != nil {
 		return fmt.Errorf("setup otel: %w", err)

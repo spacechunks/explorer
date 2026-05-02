@@ -16,10 +16,10 @@ func TestSanatizeConfigs(t *testing.T) {
 	paperGlobal := `
 proxies:
   bungee-cord:
-    online-mode: true
+    online-mode: false
   proxy-protocol: true
   velocity:
-    enabled: false
+    enabled: false 
     online-mode: false
     secret: "blalala"
 `
@@ -49,17 +49,15 @@ use-native-transport=true
 	err = root.WriteFile("server.properties", []byte(properties), os.ModePerm)
 	require.NoError(t, err)
 
-	serverconfig.SetVelocitySecret("secret2")
-
 	err = serverconfig.SanitizeConfigs(root)
 	require.NoError(t, err)
 
 	expectedPaperGlobal := `proxies:
   proxy-protocol: false
-  velocity:
-    enabled: true
+  bungee-cord:
     online-mode: true
-    secret: secret2
+  velocity:
+    enabled: false
 `
 
 	expectedProperties := `log-ips = false
@@ -94,18 +92,16 @@ func TestSanatizeConfigWritesDefaultConfigs(t *testing.T) {
 	root, err := os.OpenRoot(t.TempDir())
 	require.NoError(t, err)
 
-	serverconfig.SetVelocitySecret("secret1")
-
 	err = serverconfig.SanitizeConfigs(root)
 	require.NoError(t, err)
 
 	expectedPaperGlobal := `
 proxies:
   proxy-protocol: false
-  velocity:
-    enabled: true
+  bungee-cord:
     online-mode: true
-    secret: secret1
+  velocity:
+    enabled: false
 `
 
 	expectedProperties := `
