@@ -11,9 +11,9 @@ import (
 func TestPaperConfigAdjustments(t *testing.T) {
 	input := `
 proxies:
+  proxy-protocol: true
   bungee-cord:
     online-mode: false
-  proxy-protocol: true
   velocity:
     enabled: true
 `
