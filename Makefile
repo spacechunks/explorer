@@ -76,8 +76,9 @@ dev:
 
 .PHONY: unittests
 unittests: $(TEST_IMG)
-	$(RUN) go test $$(go list ./... | grep -v github.com/spacechunks/explorer/test/e2e \
-                                    | grep -v github.com/spacechunks/explorer/test/functional) $(ARGS)
+	# GOEXPERIMENT=jsonv2 required by github.com/lestrrat-go/jwx/v4
+	$(RUN) GOEXPERIMENT=jsonv2 go test $$(go list ./... | grep -v github.com/spacechunks/explorer/test/e2e \
+                                    					| grep -v github.com/spacechunks/explorer/test/functional) $(ARGS)
 
 .PHONY: e2etests
 e2etests:
@@ -120,7 +121,8 @@ functests-platformd:
 
 .PHONY: functests-shared
 functests-shared: $(TEST_IMG)
-	$(RUN) $(SUDO) go test -v ./test/functional/shared
+	# GOEXPERIMENT=jsonv2 required by github.com/lestrrat-go/jwx/v4
+	$(RUN) $(SUDO) GOEXPERIMENT=jsonv2 go test -v ./test/functional/shared
 
 $(TEST_IMG):
 	@docker build -t test-img -f $(IMG_TESTDATA_DIR)/Dockerfile $(IMG_TESTDATA_DIR)
