@@ -10,9 +10,9 @@ import (
 func defaultPaperGlobalStr() string {
 	return `
 proxies:
+  proxy-protocol: false
   bungee-cord:
     online-mode: true
-  proxy-protocol: false
   velocity:
     enabled: false
 `
