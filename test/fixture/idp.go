@@ -24,10 +24,12 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"testing"
 
 	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -83,8 +85,17 @@ func (i *IDP) Run(t *testing.T) {
 				"serve",
 				"/etc/dex/dex.conf",
 			},
-			ExposedPorts: []string{"3081:3081/tcp"},
+			ExposedPorts: []string{"3081"},
 			HostConfigModifier: func(cfg *container.HostConfig) {
+				p, _ := network.PortFrom(3081, network.TCP)
+				cfg.PortBindings = network.PortMap{
+					p: []network.PortBinding{
+						{
+							HostPort: "3081",
+							HostIP:   netip.MustParseAddr("0.0.0.0"),
+						},
+					},
+				}
 				cfg.AutoRemove = true
 			},
 			WaitingFor: wait.ForExposedPort(),
