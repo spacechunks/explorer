@@ -37,8 +37,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lestrrat-go/jwx/v3/jwa"
-	"github.com/lestrrat-go/jwx/v3/jwt"
+	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertype"
@@ -289,7 +289,8 @@ func authInterceptor(logger *slog.Logger, signingKey *ecdsa.PrivateKey, issuer s
 		}
 
 		var userID string
-		if err := tok.Get("user_id", &userID); err != nil {
+		userID, err = jwt.Get[string](tok, "user_id")
+		if err != nil {
 			logger.Error("failed to get user id", "err", err)
 			return nil, cperrs.ErrInvalidToken
 		}

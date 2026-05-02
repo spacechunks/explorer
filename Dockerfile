@@ -5,7 +5,8 @@ COPY go.mod go.sum ./
 COPY vendor .
 COPY .. .
 RUN mkdir bin
-RUN go build -mod vendor -o bin ./cmd/controlplane
+# GOEXPERIMENT=jsonv2 required by github.com/lestrrat-go/jwx/v4
+RUN GOEXPERIMENT=jsonv2 go build -mod vendor -o bin ./cmd/controlplane
 
 FROM alpine:3.23
 RUN apk add --no-cache ca-certificates

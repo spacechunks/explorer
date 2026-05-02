@@ -76,8 +76,9 @@ dev:
 
 .PHONY: unittests
 unittests: $(TEST_IMG)
-	$(RUN) go test $$(go list ./... | grep -v github.com/spacechunks/explorer/test/e2e \
-                                    | grep -v github.com/spacechunks/explorer/test/functional) $(ARGS)
+	# GOEXPERIMENT=jsonv2 required by github.com/lestrrat-go/jwx/v4
+	$(RUN) GOEXPERIMENT=jsonv2 go test $$(go list ./... | grep -v github.com/spacechunks/explorer/test/e2e \
+                                    					| grep -v github.com/spacechunks/explorer/test/functional) $(ARGS)
 
 .PHONY: e2etests
 e2etests:
@@ -86,10 +87,12 @@ e2etests:
 
 .PHONY: functests-controlplane
 functests-controlplane: $(TEST_IMG)
+	# GOEXPERIMENT=jsonv2 required by github.com/lestrrat-go/jwx/v4
 	$(RUN) $(SUDO) FUNCTESTS_POSTGRES_IMAGE=postgres:17 \
 				   FUNCTESTS_POSTGRES_USER=spc \
 				   FUNCTESTS_POSTGRES_PASS=test123 \
 				   FUNCTESTS_POSTGRES_DB=explorer \
+				   GOEXPERIMENT=jsonv2 \
 				   go test -v ./test/functional/controlplane $(ARGS)
 
 .PHONY: functests-cni
@@ -98,23 +101,28 @@ functests-cni: $(CNI_PLUGINS)
 
 .PHONY: functests-database
 functests-database:
+	# GOEXPERIMENT=jsonv2 required by github.com/lestrrat-go/jwx/v4
 	$(RUN) $(SUDO) FUNCTESTS_POSTGRES_IMAGE=postgres:17 \
 				   FUNCTESTS_POSTGRES_USER=spc \
 				   FUNCTESTS_POSTGRES_PASS=test123 \
 				   FUNCTESTS_POSTGRES_DB=explorer \
+				   GOEXPERIMENT=jsonv2 \
 				   go test -v ./test/functional/database $(ARGS)
 
 .PHONY: functests-platformd
 functests-platformd:
+	# GOEXPERIMENT=jsonv2 required by github.com/lestrrat-go/jwx/v4
 	$(RUN) $(SUDO) FUNCTESTS_ENVOY_IMAGE=docker.io/envoyproxy/envoy:v1.31.4 \
                    FUNCTESTS_ENVOY_CONFIG=../../../dev/platformd/envoy-xds.yaml \
                    FUNCTESTS_PLATFORMD_UID=9012 \
                    FUNCTESTS_PLATFORMD_GID=9012 \
+                   GOEXPERIMENT=jsonv2 \
 				   go test -v ./test/functional/platformd $(ARGS)
 
 .PHONY: functests-shared
 functests-shared: $(TEST_IMG)
-	$(RUN) $(SUDO) go test -v ./test/functional/shared
+	# GOEXPERIMENT=jsonv2 required by github.com/lestrrat-go/jwx/v4
+	$(RUN) $(SUDO) GOEXPERIMENT=jsonv2 go test -v ./test/functional/shared
 
 $(TEST_IMG):
 	@docker build -t test-img -f $(IMG_TESTDATA_DIR)/Dockerfile $(IMG_TESTDATA_DIR)
