@@ -104,6 +104,11 @@ proxies:
     enabled: false
 `
 
+	expectedSpigot := `
+settings:
+  bungeecord: true
+`
+
 	expectedProperties := `
 server-ip = 0.0.0.0
 server-port = 25565
@@ -124,11 +129,18 @@ use-native-transport = true
 	actualProperties, err := root.ReadFile("server.properties")
 	require.NoError(t, err)
 
+	actualSpigot, err := root.ReadFile("spigot.yml")
+	require.NoError(t, err)
+
 	if d := cmp.Diff(expectedPaperGlobal, string(actualPaperGlobal)); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)
 	}
 
 	if d := cmp.Diff(expectedProperties, string(actualProperties)); d != "" {
+		t.Fatalf("mismatch (-want +got):\n%s", d)
+	}
+
+	if d := cmp.Diff(expectedSpigot, string(actualSpigot)); d != "" {
 		t.Fatalf("mismatch (-want +got):\n%s", d)
 	}
 }
