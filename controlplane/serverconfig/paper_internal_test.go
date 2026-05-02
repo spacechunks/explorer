@@ -9,29 +9,26 @@ import (
 )
 
 func TestPaperConfigAdjustments(t *testing.T) {
-	SetVelocitySecret("secret")
-
 	input := `
 proxies:
-  bungee-cord:
-    online-mode: true
   proxy-protocol: true
-  velocity:
-    enabled: false
+  bungee-cord:
     online-mode: false
-    secret: "blalala"
+  velocity:
+    enabled: true
 `
 	expectedCfg := paperGlobal{
 		Proxies: proxiesConfig{
 			ProxyProtocol: false,
-			Velocity: struct {
-				Enabled    bool   `json:"enabled"`
-				OnlineMode bool   `json:"online-mode"`
-				Secret     string `json:"secret"`
+			BungeeCord: struct {
+				OnlineMode bool `json:"online-mode"`
 			}{
-				Enabled:    true,
 				OnlineMode: true,
-				Secret:     "secret",
+			},
+			Velocity: struct {
+				Enabled bool `json:"enabled"`
+			}{
+				Enabled: false,
 			},
 		},
 	}

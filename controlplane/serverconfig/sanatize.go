@@ -16,6 +16,7 @@ func init() {
 	sanatizers = map[string]sanatize{
 		"server.properties":       sanatizeServerProperties,
 		"config/paper-global.yml": sanatizePaperGlobal,
+		"spigot.yml":              sanatizeSpigot,
 	}
 }
 
@@ -66,7 +67,7 @@ func SanitizeConfigs(root *os.Root) error {
 		return fmt.Errorf("walk: %w", err)
 	}
 
-	for _, p := range []string{"config/paper-global.yml", "server.properties"} {
+	for _, p := range []string{"config/paper-global.yml", "server.properties", "spigot.yml"} {
 		if _, found := walked[p]; found {
 			continue
 		}
@@ -86,6 +87,8 @@ func writeDefaultConfig(root *os.Root, path string) error {
 		def = defaultPaperGlobalStr()
 	case "server.properties":
 		def = defaultServerPropertiesStr
+	case "spigot.yml":
+		def = defaultSpigotStr()
 	}
 
 	if def == "" {

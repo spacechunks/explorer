@@ -7,21 +7,15 @@ import (
 	"github.com/spacechunks/explorer/controlplane/blob"
 )
 
-var secret = ""
-
-func SetVelocitySecret(s string) {
-	secret = s
-}
-
 func defaultPaperGlobalStr() string {
-	return fmt.Sprintf(`
+	return `
 proxies:
   proxy-protocol: false
-  velocity:
-    enabled: true
+  bungee-cord:
     online-mode: true
-    secret: %s
-`, secret)
+  velocity:
+    enabled: false
+`
 }
 
 type paperGlobal struct {
@@ -30,11 +24,12 @@ type paperGlobal struct {
 
 type proxiesConfig struct {
 	ProxyProtocol bool `json:"proxy-protocol"`
-	Velocity      struct {
-		Enabled    bool   `json:"enabled"`
-		OnlineMode bool   `json:"online-mode"`
-		Secret     string `json:"secret"`
-	}
+	BungeeCord    struct {
+		OnlineMode bool `json:"online-mode"`
+	} `json:"bungee-cord"`
+	Velocity struct {
+		Enabled bool `json:"enabled"`
+	} `json:"velocity"`
 }
 
 func sanatizePaperGlobal(data []byte) ([]byte, error) {
@@ -44,9 +39,8 @@ func sanatizePaperGlobal(data []byte) ([]byte, error) {
 	}
 
 	global.Proxies.ProxyProtocol = false
-	global.Proxies.Velocity.Enabled = true
-	global.Proxies.Velocity.OnlineMode = true
-	global.Proxies.Velocity.Secret = secret
+	global.Proxies.Velocity.Enabled = false
+	global.Proxies.BungeeCord.OnlineMode = true
 
 	ret, err := yaml.Marshal(global)
 	if err != nil {

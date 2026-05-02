@@ -49,7 +49,6 @@ type Config struct {
 	ResourcePackModelDir          string
 	ResourcePackItemDir           string
 	ResourcePackTextureDir        string
-	VelocitySecret                string
 	ChangeSetTarballMaxSizeBytes  uint64
 	ArchiveInterval               time.Duration
 	DisableTracing                bool
