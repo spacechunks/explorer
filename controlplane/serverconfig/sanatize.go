@@ -16,6 +16,7 @@ func init() {
 	sanatizers = map[string]sanatize{
 		"server.properties":       sanatizeServerProperties,
 		"config/paper-global.yml": sanatizePaperGlobal,
+		"spigot.yml":              sanatizeSpigot,
 	}
 }
 
