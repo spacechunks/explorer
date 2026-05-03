@@ -200,10 +200,13 @@ message UpdateChunkResponse {
 }
 
 message ListChunksRequest {
+  uint32 page_size = 1;
+  string page_token = 2;
 }
 
 message ListChunksResponse {
   repeated Chunk chunks = 1;
+  string next_page_token = 2;
 }
 
 message CreateFlavorRequest {
@@ -277,4 +280,3 @@ message DeleteChunkRequest {
 
 message DeleteChunkResponse {
 }
-

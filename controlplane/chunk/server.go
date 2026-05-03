@@ -25,6 +25,7 @@ import (
 	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/pagination"
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
@@ -117,11 +118,27 @@ func (s *Server) UpdateChunk(
 
 func (s *Server) ListChunks(
 	ctx context.Context,
-	_ *chunkv1alpha1.ListChunksRequest,
+	req *chunkv1alpha1.ListChunksRequest,
 ) (*chunkv1alpha1.ListChunksResponse, error) {
-	ret, err := s.service.ListChunks(ctx)
+	if req.GetPageSize() > pagination.MaxPageSize {
+		return nil, apierrs.ErrInvalidPageSize
+	}
+
+	pageSize := pagination.ResolvePageSize(req.GetPageSize())
+	afterID, err := pagination.DecodePageToken(req.GetPageToken())
+	if err != nil {
+		return nil, apierrs.ErrInvalidPageToken
+	}
+
+	ret, err := s.service.ListChunks(ctx, pageSize+1, afterID)
 	if err != nil {
 		return nil, err
+	}
+
+	nextPageToken := ""
+	if len(ret) > pageSize {
+		ret = ret[:pageSize]
+		nextPageToken = pagination.EncodePageToken(ret[len(ret)-1].ID)
 	}
 
 	transport := make([]*chunkv1alpha1.Chunk, 0, len(ret))
@@ -130,7 +147,8 @@ func (s *Server) ListChunks(
 	}
 
 	return &chunkv1alpha1.ListChunksResponse{
-		Chunks: transport,
+		Chunks:        transport,
+		NextPageToken: nextPageToken,
 	}, nil
 }
 

@@ -117,15 +117,19 @@ func (db *DB) UpdateChunk(ctx context.Context, c resource.Chunk) (resource.Chunk
 	return ret, nil
 }
 
-func (db *DB) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
+func (db *DB) ListChunks(ctx context.Context, pageSize int, afterID *string) ([]resource.Chunk, error) {
 	ret := make([]resource.Chunk, 0)
 	if err := db.do(ctx, func(q *query.Queries) error {
-		rows, err := q.ListChunks(ctx)
+		rows, err := q.ListChunksWithPaginationIgnoreDeleted(ctx, query.ListChunksWithPaginationIgnoreDeletedParams{
+			Limit:   int32(pageSize),
+			AfterID: afterID,
+		})
 		if err != nil {
 			return err
 		}
 
 		m := make(map[string][]chunkRelationsRow)
+		order := make([]string, 0)
 		for _, r := range rows {
 			rel := chunkRelationsRow{
 				ChunkID:        r.ID,
@@ -192,11 +196,14 @@ func (db *DB) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
 			rel.ChunkDeletedAt = chunkDeletedAt
 			rel.FlavorDeletedAt = flavorDeletedAt
 
+			if _, ok := m[r.ID]; !ok {
+				order = append(order, r.ID)
+			}
 			m[r.ID] = append(m[r.ID], rel)
 		}
 
-		for _, rows := range m {
-			ret = append(ret, collectChunks(rows))
+		for _, id := range order {
+			ret = append(ret, collectChunks(m[id]))
 		}
 
 		return nil

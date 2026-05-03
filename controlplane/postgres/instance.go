@@ -62,22 +62,30 @@ func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID 
 	return ret, nil
 }
 
-func (db *DB) ListInstances(ctx context.Context) ([]resource.Instance, error) {
+func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) ([]resource.Instance, error) {
 	var ret []resource.Instance
 	if err := db.do(ctx, func(q *query.Queries) error {
-		rows, err := q.ListInstances(ctx)
+		rows, err := q.ListInstancesWithPagination(ctx, query.ListInstancesWithPaginationParams{
+			Limit:   int32(pageSize),
+			AfterID: afterID,
+		})
 		if err != nil {
 			return err
 		}
 
-		m := make(map[string][]query.ListInstancesRow)
+		m := make(map[string][]query.ListInstancesWithPaginationRow)
+		order := make([]string, 0)
 		for _, r := range rows {
+			if _, ok := m[r.ID]; !ok {
+				order = append(order, r.ID)
+			}
 			m[r.ID] = append(m[r.ID], r)
 		}
 
 		ret = make([]resource.Instance, 0, len(m))
 
-		for _, v := range m {
+		for _, id := range order {
+			v := m[id]
 			// we retrieve multiple rows when we call GetInstance
 			// chunk data and instance data will stay the same, what
 			// will change is the flavor data. there will be one row

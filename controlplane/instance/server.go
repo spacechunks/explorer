@@ -25,6 +25,7 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/pagination"
 	"github.com/spacechunks/explorer/controlplane/resource"
 )
 
@@ -58,11 +59,27 @@ func (s *Server) GetInstance(
 
 func (s *Server) ListInstances(
 	ctx context.Context,
-	_ *instancev1alpha1.ListInstancesRequest,
+	req *instancev1alpha1.ListInstancesRequest,
 ) (*instancev1alpha1.ListInstancesResponse, error) {
-	instances, err := s.service.ListInstances(ctx)
+	if req.GetPageSize() > pagination.MaxPageSize {
+		return nil, apierrs.ErrInvalidPageSize
+	}
+
+	pageSize := pagination.ResolvePageSize(req.GetPageSize())
+	afterID, err := pagination.DecodePageToken(req.GetPageToken())
+	if err != nil {
+		return nil, apierrs.ErrInvalidPageToken
+	}
+
+	instances, err := s.service.ListInstances(ctx, pageSize+1, afterID)
 	if err != nil {
 		return nil, err
+	}
+
+	nextPageToken := ""
+	if len(instances) > pageSize {
+		instances = instances[:pageSize]
+		nextPageToken = pagination.EncodePageToken(instances[len(instances)-1].ID)
 	}
 
 	transport := make([]*instancev1alpha1.Instance, 0, len(instances))
@@ -71,7 +88,8 @@ func (s *Server) ListInstances(
 	}
 
 	return &instancev1alpha1.ListInstancesResponse{
-		Instances: transport,
+		Instances:     transport,
+		NextPageToken: nextPageToken,
 	}, nil
 }
 
@@ -128,5 +146,3 @@ func (s *Server) ReceiveInstanceStatusReports(
 
 	return &instancev1alpha1.ReceiveInstanceStatusReportsResponse{}, nil
 }
-
-// TODO: tests

@@ -297,6 +297,9 @@ func TestListChunks(t *testing.T) {
 		c2 = fixture.Chunk(func(tmp *resource.Chunk) {
 			tmp.ID = test.NewUUIDv7(t)
 		})
+		c3 = fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.ID = test.NewUUIDv7(t)
+		})
 	)
 
 	pg.Run(t, ctx)
@@ -304,24 +307,26 @@ func TestListChunks(t *testing.T) {
 
 	pg.CreateChunk(t, &c1, fixture.CreateOptionsAll)
 	pg.CreateChunk(t, &c2, fixture.CreateOptionsAll)
+	pg.CreateChunk(t, &c3, fixture.CreateOptionsAll)
 
 	expected := []resource.Chunk{
-		c2, c1,
+		c2, c3,
 	}
 
-	actual, err := pg.DB.ListChunks(ctx)
+	sort.Slice(expected, func(i, j int) bool {
+		return strings.Compare(expected[i].ID, expected[j].ID) < 0
+	})
+
+	actual, err := pg.DB.ListChunks(ctx, 1, &expected[0].ID)
 	require.NoError(t, err)
+	require.Len(t, actual, 1)
 
 	// sort so we have a consistent ordering to avoid flaky tests
 	sort.Slice(actual, func(i, j int) bool {
 		return strings.Compare(actual[i].ID, actual[j].ID) < 0
 	})
 
-	sort.Slice(expected, func(i, j int) bool {
-		return strings.Compare(expected[i].ID, expected[j].ID) < 0
-	})
-
-	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
+	if d := cmp.Diff(expected[1:2], actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
 }

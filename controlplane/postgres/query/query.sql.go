@@ -1183,6 +1183,126 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 	return items, nil
 }
 
+const listChunksWithPaginationIgnoreDeleted = `-- name: ListChunksWithPaginationIgnoreDeleted :many
+WITH paged_chunks AS (
+    SELECT id FROM chunks
+    WHERE deleted_at IS NULL
+      AND ($1::uuid IS NULL OR id > $1::uuid)
+    ORDER BY id
+    LIMIT $2
+)
+SELECT c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, v.flavor_id, v.hash, v.change_hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, vf.flavor_version_id, vf.file_hash, vf.file_path, vf.created_at, u.id, u.nickname, u.email, u.created_at, u.updated_at FROM chunks c
+    JOIN paged_chunks pc ON pc.id = c.id
+    LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
+    LEFT JOIN flavor_versions v ON v.flavor_id = f.id
+    LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
+    LEFT JOIN users u ON u.id = c.owner_id
+ORDER BY c.id
+`
+
+type ListChunksWithPaginationIgnoreDeletedParams struct {
+	AfterID *string
+	Limit   int32
+}
+
+type ListChunksWithPaginationIgnoreDeletedRow struct {
+	ID                     string
+	Name                   string
+	Description            string
+	Tags                   []string
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	OwnerID                string
+	ThumbnailHash          pgtype.Text
+	ThumbnailUpdatedAt     time.Time
+	DeletedAt              pgtype.Timestamptz
+	ID_2                   *string
+	ChunkID                *string
+	Name_2                 pgtype.Text
+	CreatedAt_2            pgtype.Timestamptz
+	UpdatedAt_2            pgtype.Timestamptz
+	DeletedAt_2            pgtype.Timestamptz
+	ID_3                   *string
+	FlavorID               *string
+	Hash                   pgtype.Text
+	ChangeHash             pgtype.Text
+	BuildStatus            NullBuildStatus
+	Version                pgtype.Text
+	FilesUploaded          pgtype.Bool
+	PrevVersionID          *string
+	CreatedAt_3            pgtype.Timestamptz
+	PresignedUrlExpiryDate pgtype.Timestamptz
+	PresignedUrl           pgtype.Text
+	MinecraftVersion       pgtype.Text
+	FlavorVersionID        *string
+	FileHash               pgtype.Text
+	FilePath               pgtype.Text
+	CreatedAt_4            pgtype.Timestamptz
+	ID_4                   *string
+	Nickname               pgtype.Text
+	Email                  pgtype.Text
+	CreatedAt_5            pgtype.Timestamptz
+	UpdatedAt_3            pgtype.Timestamptz
+}
+
+func (q *Queries) ListChunksWithPaginationIgnoreDeleted(ctx context.Context, arg ListChunksWithPaginationIgnoreDeletedParams) ([]ListChunksWithPaginationIgnoreDeletedRow, error) {
+	rows, err := q.db.Query(ctx, listChunksWithPaginationIgnoreDeleted, arg.AfterID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListChunksWithPaginationIgnoreDeletedRow
+	for rows.Next() {
+		var i ListChunksWithPaginationIgnoreDeletedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Tags,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OwnerID,
+			&i.ThumbnailHash,
+			&i.ThumbnailUpdatedAt,
+			&i.DeletedAt,
+			&i.ID_2,
+			&i.ChunkID,
+			&i.Name_2,
+			&i.CreatedAt_2,
+			&i.UpdatedAt_2,
+			&i.DeletedAt_2,
+			&i.ID_3,
+			&i.FlavorID,
+			&i.Hash,
+			&i.ChangeHash,
+			&i.BuildStatus,
+			&i.Version,
+			&i.FilesUploaded,
+			&i.PrevVersionID,
+			&i.CreatedAt_3,
+			&i.PresignedUrlExpiryDate,
+			&i.PresignedUrl,
+			&i.MinecraftVersion,
+			&i.FlavorVersionID,
+			&i.FileHash,
+			&i.FilePath,
+			&i.CreatedAt_4,
+			&i.ID_4,
+			&i.Nickname,
+			&i.Email,
+			&i.CreatedAt_5,
+			&i.UpdatedAt_3,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listInstances = `-- name: ListInstances :many
 SELECT i.id, i.chunk_id, flavor_version_id, node_id, port, state, i.created_at, i.updated_at, i.owner_id, v.id, flavor_id, hash, change_hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, c.id, c.name, description, tags, c.created_at, c.updated_at, c.owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, address, checkpoint_api_endpoint, n.created_at, slots, u.id, nickname, email, u.created_at, u.updated_at FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
@@ -1252,6 +1372,148 @@ func (q *Queries) ListInstances(ctx context.Context) ([]ListInstancesRow, error)
 	var items []ListInstancesRow
 	for rows.Next() {
 		var i ListInstancesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ChunkID,
+			&i.FlavorVersionID,
+			&i.NodeID,
+			&i.Port,
+			&i.State,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OwnerID,
+			&i.ID_2,
+			&i.FlavorID,
+			&i.Hash,
+			&i.ChangeHash,
+			&i.BuildStatus,
+			&i.Version,
+			&i.FilesUploaded,
+			&i.PrevVersionID,
+			&i.CreatedAt_2,
+			&i.PresignedUrlExpiryDate,
+			&i.PresignedUrl,
+			&i.MinecraftVersion,
+			&i.ID_3,
+			&i.Name,
+			&i.Description,
+			&i.Tags,
+			&i.CreatedAt_3,
+			&i.UpdatedAt_2,
+			&i.OwnerID_2,
+			&i.ThumbnailHash,
+			&i.ThumbnailUpdatedAt,
+			&i.DeletedAt,
+			&i.ID_4,
+			&i.ChunkID_2,
+			&i.Name_2,
+			&i.CreatedAt_4,
+			&i.UpdatedAt_3,
+			&i.DeletedAt_2,
+			&i.ID_5,
+			&i.Name_3,
+			&i.Address,
+			&i.CheckpointApiEndpoint,
+			&i.CreatedAt_5,
+			&i.Slots,
+			&i.ID_6,
+			&i.Nickname,
+			&i.Email,
+			&i.CreatedAt_6,
+			&i.UpdatedAt_4,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listInstancesWithPagination = `-- name: ListInstancesWithPagination :many
+WITH paged_instances AS (
+    SELECT id FROM instances
+    WHERE $1::uuid IS NULL OR id > $1::uuid
+    ORDER BY id
+    LIMIT $2
+)
+SELECT i.id, i.chunk_id, i.flavor_version_id, i.node_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, v.id, v.flavor_id, v.hash, v.change_hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots, u.id, u.nickname, u.email, u.created_at, u.updated_at FROM instances i
+    JOIN paged_instances pi ON pi.id = i.id
+    JOIN flavor_versions v ON i.flavor_version_id = v.id
+    JOIN chunks c ON i.chunk_id = c.id
+    JOIN flavors f ON f.chunk_id = c.id
+    JOIN nodes n ON i.node_id = n.id
+    JOIN users u ON u.id = i.owner_id
+ORDER BY i.id
+`
+
+type ListInstancesWithPaginationParams struct {
+	AfterID *string
+	Limit   int32
+}
+
+type ListInstancesWithPaginationRow struct {
+	ID                     string
+	ChunkID                string
+	FlavorVersionID        string
+	NodeID                 string
+	Port                   *int32
+	State                  InstanceState
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	OwnerID                string
+	ID_2                   string
+	FlavorID               string
+	Hash                   string
+	ChangeHash             string
+	BuildStatus            BuildStatus
+	Version                string
+	FilesUploaded          bool
+	PrevVersionID          *string
+	CreatedAt_2            time.Time
+	PresignedUrlExpiryDate pgtype.Timestamptz
+	PresignedUrl           pgtype.Text
+	MinecraftVersion       string
+	ID_3                   string
+	Name                   string
+	Description            string
+	Tags                   []string
+	CreatedAt_3            time.Time
+	UpdatedAt_2            time.Time
+	OwnerID_2              string
+	ThumbnailHash          pgtype.Text
+	ThumbnailUpdatedAt     time.Time
+	DeletedAt              pgtype.Timestamptz
+	ID_4                   string
+	ChunkID_2              string
+	Name_2                 string
+	CreatedAt_4            time.Time
+	UpdatedAt_3            time.Time
+	DeletedAt_2            pgtype.Timestamptz
+	ID_5                   string
+	Name_3                 string
+	Address                netip.Addr
+	CheckpointApiEndpoint  string
+	CreatedAt_5            time.Time
+	Slots                  int32
+	ID_6                   string
+	Nickname               string
+	Email                  string
+	CreatedAt_6            time.Time
+	UpdatedAt_4            time.Time
+}
+
+func (q *Queries) ListInstancesWithPagination(ctx context.Context, arg ListInstancesWithPaginationParams) ([]ListInstancesWithPaginationRow, error) {
+	rows, err := q.db.Query(ctx, listInstancesWithPagination, arg.AfterID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListInstancesWithPaginationRow
+	for rows.Next() {
+		var i ListInstancesWithPaginationRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ChunkID,

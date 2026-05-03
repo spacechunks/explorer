@@ -7,6 +7,8 @@ import (
 
 	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 
+	discoveryv3 "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v3"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -52,12 +54,12 @@ func (_c *MockCacheSnapshotCache_ClearSnapshot_Call) Return() *MockCacheSnapshot
 }
 
 func (_c *MockCacheSnapshotCache_ClearSnapshot_Call) RunAndReturn(run func(string)) *MockCacheSnapshotCache_ClearSnapshot_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
 // CreateDeltaWatch provides a mock function with given fields: _a0, _a1, _a2
-func (_m *MockCacheSnapshotCache) CreateDeltaWatch(_a0 *cache.DeltaRequest, _a1 cache.Subscription, _a2 chan cache.DeltaResponse) (func(), error) {
+func (_m *MockCacheSnapshotCache) CreateDeltaWatch(_a0 *discoveryv3.DeltaDiscoveryRequest, _a1 cache.Subscription, _a2 chan cache.DeltaResponse) (func(), error) {
 	ret := _m.Called(_a0, _a1, _a2)
 
 	if len(ret) == 0 {
@@ -66,10 +68,10 @@ func (_m *MockCacheSnapshotCache) CreateDeltaWatch(_a0 *cache.DeltaRequest, _a1 
 
 	var r0 func()
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*cache.DeltaRequest, cache.Subscription, chan cache.DeltaResponse) (func(), error)); ok {
+	if rf, ok := ret.Get(0).(func(*discoveryv3.DeltaDiscoveryRequest, cache.Subscription, chan cache.DeltaResponse) (func(), error)); ok {
 		return rf(_a0, _a1, _a2)
 	}
-	if rf, ok := ret.Get(0).(func(*cache.DeltaRequest, cache.Subscription, chan cache.DeltaResponse) func()); ok {
+	if rf, ok := ret.Get(0).(func(*discoveryv3.DeltaDiscoveryRequest, cache.Subscription, chan cache.DeltaResponse) func()); ok {
 		r0 = rf(_a0, _a1, _a2)
 	} else {
 		if ret.Get(0) != nil {
@@ -77,7 +79,7 @@ func (_m *MockCacheSnapshotCache) CreateDeltaWatch(_a0 *cache.DeltaRequest, _a1 
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*cache.DeltaRequest, cache.Subscription, chan cache.DeltaResponse) error); ok {
+	if rf, ok := ret.Get(1).(func(*discoveryv3.DeltaDiscoveryRequest, cache.Subscription, chan cache.DeltaResponse) error); ok {
 		r1 = rf(_a0, _a1, _a2)
 	} else {
 		r1 = ret.Error(1)
@@ -92,16 +94,16 @@ type MockCacheSnapshotCache_CreateDeltaWatch_Call struct {
 }
 
 // CreateDeltaWatch is a helper method to define mock.On call
-//   - _a0 *cache.DeltaRequest
+//   - _a0 *discoveryv3.DeltaDiscoveryRequest
 //   - _a1 cache.Subscription
 //   - _a2 chan cache.DeltaResponse
 func (_e *MockCacheSnapshotCache_Expecter) CreateDeltaWatch(_a0 interface{}, _a1 interface{}, _a2 interface{}) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
 	return &MockCacheSnapshotCache_CreateDeltaWatch_Call{Call: _e.mock.On("CreateDeltaWatch", _a0, _a1, _a2)}
 }
 
-func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) Run(run func(_a0 *cache.DeltaRequest, _a1 cache.Subscription, _a2 chan cache.DeltaResponse)) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
+func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) Run(run func(_a0 *discoveryv3.DeltaDiscoveryRequest, _a1 cache.Subscription, _a2 chan cache.DeltaResponse)) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*cache.DeltaRequest), args[1].(cache.Subscription), args[2].(chan cache.DeltaResponse))
+		run(args[0].(*discoveryv3.DeltaDiscoveryRequest), args[1].(cache.Subscription), args[2].(chan cache.DeltaResponse))
 	})
 	return _c
 }
@@ -111,13 +113,13 @@ func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) Return(cancel func(), er
 	return _c
 }
 
-func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) RunAndReturn(run func(*cache.DeltaRequest, cache.Subscription, chan cache.DeltaResponse) (func(), error)) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
+func (_c *MockCacheSnapshotCache_CreateDeltaWatch_Call) RunAndReturn(run func(*discoveryv3.DeltaDiscoveryRequest, cache.Subscription, chan cache.DeltaResponse) (func(), error)) *MockCacheSnapshotCache_CreateDeltaWatch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // CreateWatch provides a mock function with given fields: _a0, _a1, _a2
-func (_m *MockCacheSnapshotCache) CreateWatch(_a0 *cache.Request, _a1 cache.Subscription, _a2 chan cache.Response) (func(), error) {
+func (_m *MockCacheSnapshotCache) CreateWatch(_a0 *discoveryv3.DiscoveryRequest, _a1 cache.Subscription, _a2 chan cache.Response) (func(), error) {
 	ret := _m.Called(_a0, _a1, _a2)
 
 	if len(ret) == 0 {
@@ -126,10 +128,10 @@ func (_m *MockCacheSnapshotCache) CreateWatch(_a0 *cache.Request, _a1 cache.Subs
 
 	var r0 func()
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*cache.Request, cache.Subscription, chan cache.Response) (func(), error)); ok {
+	if rf, ok := ret.Get(0).(func(*discoveryv3.DiscoveryRequest, cache.Subscription, chan cache.Response) (func(), error)); ok {
 		return rf(_a0, _a1, _a2)
 	}
-	if rf, ok := ret.Get(0).(func(*cache.Request, cache.Subscription, chan cache.Response) func()); ok {
+	if rf, ok := ret.Get(0).(func(*discoveryv3.DiscoveryRequest, cache.Subscription, chan cache.Response) func()); ok {
 		r0 = rf(_a0, _a1, _a2)
 	} else {
 		if ret.Get(0) != nil {
@@ -137,7 +139,7 @@ func (_m *MockCacheSnapshotCache) CreateWatch(_a0 *cache.Request, _a1 cache.Subs
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*cache.Request, cache.Subscription, chan cache.Response) error); ok {
+	if rf, ok := ret.Get(1).(func(*discoveryv3.DiscoveryRequest, cache.Subscription, chan cache.Response) error); ok {
 		r1 = rf(_a0, _a1, _a2)
 	} else {
 		r1 = ret.Error(1)
@@ -152,16 +154,16 @@ type MockCacheSnapshotCache_CreateWatch_Call struct {
 }
 
 // CreateWatch is a helper method to define mock.On call
-//   - _a0 *cache.Request
+//   - _a0 *discoveryv3.DiscoveryRequest
 //   - _a1 cache.Subscription
 //   - _a2 chan cache.Response
 func (_e *MockCacheSnapshotCache_Expecter) CreateWatch(_a0 interface{}, _a1 interface{}, _a2 interface{}) *MockCacheSnapshotCache_CreateWatch_Call {
 	return &MockCacheSnapshotCache_CreateWatch_Call{Call: _e.mock.On("CreateWatch", _a0, _a1, _a2)}
 }
 
-func (_c *MockCacheSnapshotCache_CreateWatch_Call) Run(run func(_a0 *cache.Request, _a1 cache.Subscription, _a2 chan cache.Response)) *MockCacheSnapshotCache_CreateWatch_Call {
+func (_c *MockCacheSnapshotCache_CreateWatch_Call) Run(run func(_a0 *discoveryv3.DiscoveryRequest, _a1 cache.Subscription, _a2 chan cache.Response)) *MockCacheSnapshotCache_CreateWatch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*cache.Request), args[1].(cache.Subscription), args[2].(chan cache.Response))
+		run(args[0].(*discoveryv3.DiscoveryRequest), args[1].(cache.Subscription), args[2].(chan cache.Response))
 	})
 	return _c
 }
@@ -171,13 +173,13 @@ func (_c *MockCacheSnapshotCache_CreateWatch_Call) Return(cancel func(), err err
 	return _c
 }
 
-func (_c *MockCacheSnapshotCache_CreateWatch_Call) RunAndReturn(run func(*cache.Request, cache.Subscription, chan cache.Response) (func(), error)) *MockCacheSnapshotCache_CreateWatch_Call {
+func (_c *MockCacheSnapshotCache_CreateWatch_Call) RunAndReturn(run func(*discoveryv3.DiscoveryRequest, cache.Subscription, chan cache.Response) (func(), error)) *MockCacheSnapshotCache_CreateWatch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Fetch provides a mock function with given fields: _a0, _a1
-func (_m *MockCacheSnapshotCache) Fetch(_a0 context.Context, _a1 *cache.Request) (cache.Response, error) {
+func (_m *MockCacheSnapshotCache) Fetch(_a0 context.Context, _a1 *discoveryv3.DiscoveryRequest) (cache.Response, error) {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
@@ -186,10 +188,10 @@ func (_m *MockCacheSnapshotCache) Fetch(_a0 context.Context, _a1 *cache.Request)
 
 	var r0 cache.Response
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *cache.Request) (cache.Response, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *discoveryv3.DiscoveryRequest) (cache.Response, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *cache.Request) cache.Response); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *discoveryv3.DiscoveryRequest) cache.Response); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
@@ -197,7 +199,7 @@ func (_m *MockCacheSnapshotCache) Fetch(_a0 context.Context, _a1 *cache.Request)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *cache.Request) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *discoveryv3.DiscoveryRequest) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -213,14 +215,14 @@ type MockCacheSnapshotCache_Fetch_Call struct {
 
 // Fetch is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *cache.Request
+//   - _a1 *discoveryv3.DiscoveryRequest
 func (_e *MockCacheSnapshotCache_Expecter) Fetch(_a0 interface{}, _a1 interface{}) *MockCacheSnapshotCache_Fetch_Call {
 	return &MockCacheSnapshotCache_Fetch_Call{Call: _e.mock.On("Fetch", _a0, _a1)}
 }
 
-func (_c *MockCacheSnapshotCache_Fetch_Call) Run(run func(_a0 context.Context, _a1 *cache.Request)) *MockCacheSnapshotCache_Fetch_Call {
+func (_c *MockCacheSnapshotCache_Fetch_Call) Run(run func(_a0 context.Context, _a1 *discoveryv3.DiscoveryRequest)) *MockCacheSnapshotCache_Fetch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*cache.Request))
+		run(args[0].(context.Context), args[1].(*discoveryv3.DiscoveryRequest))
 	})
 	return _c
 }
@@ -230,7 +232,7 @@ func (_c *MockCacheSnapshotCache_Fetch_Call) Return(_a0 cache.Response, _a1 erro
 	return _c
 }
 
-func (_c *MockCacheSnapshotCache_Fetch_Call) RunAndReturn(run func(context.Context, *cache.Request) (cache.Response, error)) *MockCacheSnapshotCache_Fetch_Call {
+func (_c *MockCacheSnapshotCache_Fetch_Call) RunAndReturn(run func(context.Context, *discoveryv3.DiscoveryRequest) (cache.Response, error)) *MockCacheSnapshotCache_Fetch_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -341,7 +343,7 @@ func (_c *MockCacheSnapshotCache_GetStatusInfo_Call) RunAndReturn(run func(strin
 	return _c
 }
 
-// GetStatusKeys provides a mock function with given fields:
+// GetStatusKeys provides a mock function with no fields
 func (_m *MockCacheSnapshotCache) GetStatusKeys() []string {
 	ret := _m.Called()
 

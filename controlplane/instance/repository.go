@@ -26,7 +26,7 @@ import (
 
 type Repository interface {
 	CreateInstance(ctx context.Context, instance resource.Instance, nodeID string) (resource.Instance, error)
-	ListInstances(ctx context.Context) ([]resource.Instance, error)
+	ListInstances(ctx context.Context, pageSize int, afterID *string) ([]resource.Instance, error)
 	GetInstanceByID(ctx context.Context, id string) (resource.Instance, error)
 	GetInstancesByNodeID(ctx context.Context, id string) ([]resource.Instance, error)
 

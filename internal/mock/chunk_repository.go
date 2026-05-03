@@ -876,9 +876,9 @@ func (_c *MockChunkRepository_LatestFlavorVersion_Call) RunAndReturn(run func(co
 	return _c
 }
 
-// ListChunks provides a mock function with given fields: ctx
-func (_m *MockChunkRepository) ListChunks(ctx context.Context) ([]resource.Chunk, error) {
-	ret := _m.Called(ctx)
+// ListChunks provides a mock function with given fields: ctx, pageSize, afterID
+func (_m *MockChunkRepository) ListChunks(ctx context.Context, pageSize int, afterID *string) ([]resource.Chunk, error) {
+	ret := _m.Called(ctx, pageSize, afterID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListChunks")
@@ -886,19 +886,19 @@ func (_m *MockChunkRepository) ListChunks(ctx context.Context) ([]resource.Chunk
 
 	var r0 []resource.Chunk
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]resource.Chunk, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, int, *string) ([]resource.Chunk, error)); ok {
+		return rf(ctx, pageSize, afterID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []resource.Chunk); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, int, *string) []resource.Chunk); ok {
+		r0 = rf(ctx, pageSize, afterID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]resource.Chunk)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, int, *string) error); ok {
+		r1 = rf(ctx, pageSize, afterID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -913,13 +913,15 @@ type MockChunkRepository_ListChunks_Call struct {
 
 // ListChunks is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockChunkRepository_Expecter) ListChunks(ctx interface{}) *MockChunkRepository_ListChunks_Call {
-	return &MockChunkRepository_ListChunks_Call{Call: _e.mock.On("ListChunks", ctx)}
+//   - pageSize int
+//   - afterID *string
+func (_e *MockChunkRepository_Expecter) ListChunks(ctx interface{}, pageSize interface{}, afterID interface{}) *MockChunkRepository_ListChunks_Call {
+	return &MockChunkRepository_ListChunks_Call{Call: _e.mock.On("ListChunks", ctx, pageSize, afterID)}
 }
 
-func (_c *MockChunkRepository_ListChunks_Call) Run(run func(ctx context.Context)) *MockChunkRepository_ListChunks_Call {
+func (_c *MockChunkRepository_ListChunks_Call) Run(run func(ctx context.Context, pageSize int, afterID *string)) *MockChunkRepository_ListChunks_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(int), args[2].(*string))
 	})
 	return _c
 }
@@ -929,7 +931,7 @@ func (_c *MockChunkRepository_ListChunks_Call) Return(_a0 []resource.Chunk, _a1 
 	return _c
 }
 
-func (_c *MockChunkRepository_ListChunks_Call) RunAndReturn(run func(context.Context) ([]resource.Chunk, error)) *MockChunkRepository_ListChunks_Call {
+func (_c *MockChunkRepository_ListChunks_Call) RunAndReturn(run func(context.Context, int, *string) ([]resource.Chunk, error)) *MockChunkRepository_ListChunks_Call {
 	_c.Call.Return(run)
 	return _c
 }

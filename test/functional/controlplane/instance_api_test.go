@@ -118,35 +118,22 @@ func TestAPIListInstances(t *testing.T) {
 
 	cp.Postgres.InsertNode(t)
 
-	ins := []resource.Instance{
-		fixture.Instance(func(i *resource.Instance) {
+	ins := make([]resource.Instance, 0, 12)
+	for idx := range 12 {
+		ins = append(ins, fixture.Instance(func(i *resource.Instance) {
 			i.ID = test.NewUUIDv7(t)
 			i.Chunk = fixture.Chunk(func(c *resource.Chunk) {
 				c.ID = test.NewUUIDv7(t)
 				c.Flavors = []resource.Flavor{
 					fixture.Flavor(func(f *resource.Flavor) {
-						f.Name = "f1"
+						f.Name = fmt.Sprintf("f%d", idx)
 					}),
 				}
 			})
 			i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
 			i.Port = nil                     // port will not be saved when creating
 			i.FlavorVersion.FileHashes = nil // not returned atm
-		}),
-		fixture.Instance(func(i *resource.Instance) {
-			i.ID = test.NewUUIDv7(t)
-			i.Chunk = fixture.Chunk(func(c *resource.Chunk) {
-				c.ID = test.NewUUIDv7(t)
-				c.Flavors = []resource.Flavor{
-					fixture.Flavor(func(f *resource.Flavor) {
-						f.Name = "f2"
-					}),
-				}
-			})
-			i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
-			i.Port = nil                     // port will not be saved when creating
-			i.FlavorVersion.FileHashes = nil // not returned atm
-		}),
+		}))
 	}
 
 	for idx := range ins {
@@ -161,19 +148,18 @@ func TestAPIListInstances(t *testing.T) {
 		expected = append(expected, instance.ToTransport(i))
 	}
 
-	resp, err := client.ListInstances(ctx, &instancev1alpha1.ListInstancesRequest{})
-	require.NoError(t, err)
-
 	sort.Slice(expected, func(i, j int) bool {
 		return strings.Compare(expected[i].GetId(), expected[j].GetId()) < 0
 	})
 
-	sort.Slice(resp.GetInstances(), func(i, j int) bool {
-		return strings.Compare(resp.GetInstances()[i].GetId(), resp.GetInstances()[j].GetId()) < 0
-	})
+	resp, err := client.ListInstances(ctx, &instancev1alpha1.ListInstancesRequest{})
+	require.NoError(t, err)
+	require.Len(t, resp.GetInstances(), 10)
+	require.NotEmpty(t, resp.GetNextPageToken())
+	require.Equal(t, resp.GetInstances()[9].GetId(), resp.GetNextPageToken())
 
 	if d := cmp.Diff(
-		expected,
+		expected[:10],
 		resp.GetInstances(),
 		protocmp.Transform(),
 		test.IgnoredProtoFlavorVersionFields,
@@ -182,6 +168,30 @@ func TestAPIListInstances(t *testing.T) {
 		test.IgnoredProtoUserFields,
 	); d != "" {
 		t.Fatalf("diff (-want +got):\n%s", d)
+	}
+
+	secondPage, err := client.ListInstances(ctx, &instancev1alpha1.ListInstancesRequest{
+		PageToken: resp.GetNextPageToken(),
+	})
+	require.NoError(t, err)
+	require.Len(t, secondPage.GetInstances(), 2)
+	require.Empty(t, secondPage.GetNextPageToken())
+
+	_, err = client.ListInstances(ctx, &instancev1alpha1.ListInstancesRequest{
+		PageToken: "invalid",
+	})
+	require.ErrorIs(t, err, apierrs.ErrInvalidPageToken.GRPCStatus().Err())
+
+	if d := cmp.Diff(
+		expected[10:],
+		secondPage.GetInstances(),
+		protocmp.Transform(),
+		test.IgnoredProtoFlavorVersionFields,
+		test.IgnoredProtoChunkFields,
+		test.IgnoredProtoInstanceFields,
+		test.IgnoredProtoUserFields,
+	); d != "" {
+		t.Fatalf("second page diff (-want +got):\n%s", d)
 	}
 }
 
