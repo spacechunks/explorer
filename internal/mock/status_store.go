@@ -49,7 +49,7 @@ func (_c *MockStatusStore_Del_Call) Return() *MockStatusStore_Del_Call {
 }
 
 func (_c *MockStatusStore_Del_Call) RunAndReturn(run func(string)) *MockStatusStore_Del_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -131,11 +131,11 @@ func (_c *MockStatusStore_Update_Call) Return() *MockStatusStore_Update_Call {
 }
 
 func (_c *MockStatusStore_Update_Call) RunAndReturn(run func(string, status.Status)) *MockStatusStore_Update_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// View provides a mock function with given fields:
+// View provides a mock function with no fields
 func (_m *MockStatusStore) View() map[string]status.Status {
 	ret := _m.Called()
 

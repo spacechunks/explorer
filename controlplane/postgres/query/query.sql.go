@@ -1183,7 +1183,7 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 	return items, nil
 }
 
-const listChunksWithPagination = `-- name: ListChunksWithPagination :many
+const listChunksWithPaginationIgnoreDeleted = `-- name: ListChunksWithPaginationIgnoreDeleted :many
 WITH paged_chunks AS (
     SELECT id FROM chunks
     WHERE deleted_at IS NULL
@@ -1200,12 +1200,12 @@ SELECT c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_
 ORDER BY c.id
 `
 
-type ListChunksWithPaginationParams struct {
+type ListChunksWithPaginationIgnoreDeletedParams struct {
 	AfterID *string
 	Limit   int32
 }
 
-type ListChunksWithPaginationRow struct {
+type ListChunksWithPaginationIgnoreDeletedRow struct {
 	ID                     string
 	Name                   string
 	Description            string
@@ -1245,15 +1245,15 @@ type ListChunksWithPaginationRow struct {
 	UpdatedAt_3            pgtype.Timestamptz
 }
 
-func (q *Queries) ListChunksWithPagination(ctx context.Context, arg ListChunksWithPaginationParams) ([]ListChunksWithPaginationRow, error) {
-	rows, err := q.db.Query(ctx, listChunksWithPagination, arg.AfterID, arg.Limit)
+func (q *Queries) ListChunksWithPaginationIgnoreDeleted(ctx context.Context, arg ListChunksWithPaginationIgnoreDeletedParams) ([]ListChunksWithPaginationIgnoreDeletedRow, error) {
+	rows, err := q.db.Query(ctx, listChunksWithPaginationIgnoreDeleted, arg.AfterID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListChunksWithPaginationRow
+	var items []ListChunksWithPaginationIgnoreDeletedRow
 	for rows.Next() {
-		var i ListChunksWithPaginationRow
+		var i ListChunksWithPaginationIgnoreDeletedRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,

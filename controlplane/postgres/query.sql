@@ -48,7 +48,7 @@ SELECT * FROM chunks c
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id;
 
--- name: ListChunksWithPagination :many
+-- name: ListChunksWithPaginationIgnoreDeleted :many
 WITH paged_chunks AS (
     SELECT id FROM chunks
     WHERE deleted_at IS NULL

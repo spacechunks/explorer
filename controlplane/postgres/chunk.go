@@ -120,7 +120,7 @@ func (db *DB) UpdateChunk(ctx context.Context, c resource.Chunk) (resource.Chunk
 func (db *DB) ListChunks(ctx context.Context, pageSize int, afterID *string) ([]resource.Chunk, error) {
 	ret := make([]resource.Chunk, 0)
 	if err := db.do(ctx, func(q *query.Queries) error {
-		rows, err := q.ListChunksWithPagination(ctx, query.ListChunksWithPaginationParams{
+		rows, err := q.ListChunksWithPaginationIgnoreDeleted(ctx, query.ListChunksWithPaginationIgnoreDeletedParams{
 			Limit:   int32(pageSize),
 			AfterID: afterID,
 		})
