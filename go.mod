@@ -33,7 +33,7 @@ require (
 	github.com/johannesboyne/gofakes3 v0.0.0-20260208201424-4c385a1f6a73
 	github.com/lestrrat-go/jwx/v4 v4.0.1
 	github.com/magiconair/properties v1.8.10
-	github.com/moby/moby/api v1.54.1
+	github.com/moby/moby/api v1.54.2
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
