@@ -2,7 +2,7 @@ name: cli-release
 on:
   push:
     tags:
-      - "cli/v*"
+      - "v*-cli*"
 permissions:
   contents: write
   packages: read
