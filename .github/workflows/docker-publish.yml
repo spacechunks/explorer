@@ -1,4 +1,4 @@
-name: docker-publish
+name: controlplane-release
 on:
   push:
     branches:
@@ -30,5 +30,6 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
+          file: build/controlplane.dockerfile
           push: true
           tags: ghcr.io/spacechunks/explorer:${{ github.sha }}
