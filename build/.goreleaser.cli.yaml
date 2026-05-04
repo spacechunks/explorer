@@ -1,0 +1,33 @@
+version: 2
+before:
+  hooks:
+    - cp LICENSE LICENSE.txt
+builds:
+  - id: cli
+    main: ./cmd/cli
+    binary: "explorer_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    flags:
+      - -trimpath
+    env:
+      - GOEXPERIMENT=jsonv2
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    mod_timestamp: "{{ .CommitTimestamp }}"
+archives:
+  - id: tar.gz
+    ids:
+      - cli
+    formats:
+      - tar.gz
+    name_template: "explorer_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE.txt
+checksum:
+  name_template: "explorer_v{{ .Version }}_sha256sums"
+  algorithm: sha256

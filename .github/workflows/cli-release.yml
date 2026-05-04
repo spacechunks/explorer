@@ -1,0 +1,25 @@
+name: cli-release
+on:
+  push:
+    tags:
+      - "cli/v*"
+permissions:
+  contents: write
+  packages: read
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: git fetch --prune --unshallow
+      - name: set up go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.2"
+      - name: run goreleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: latest
+          args: release -f build/.goreleaser.cli.yaml --clean --timeout 120m
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
