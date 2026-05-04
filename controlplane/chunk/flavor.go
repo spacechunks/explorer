@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -129,11 +130,19 @@ func (s *svc) CreateFlavorVersion(
 			fmt.Errorf("minecraft version exists: %w", err)
 	}
 
+	if err := cleanFileHashPaths(version.FileHashes); err != nil {
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, err
+	}
+
 	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
 	if err != nil {
 		return resource.FlavorVersion{},
 			resource.FlavorVersionDiff{},
 			fmt.Errorf("latest flavor version file hashes: %w", err)
+	}
+
+	if err := cleanFileHashPaths(prevVersion.FileHashes); err != nil {
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, err
 	}
 
 	newContentTree, err := file.HashTree(version.FileHashes)
@@ -144,9 +153,6 @@ func (s *svc) CreateFlavorVersion(
 	if file.HashTreeRootString(newContentTree) != version.Hash {
 		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrHashMismatch
 	}
-
-	// TODO: clean all received paths using filepath.Clean to avoid
-	// possible path traversal techniques. relative paths are not allowed.
 
 	var (
 		unchanged = make([]file.Hash, 0)
@@ -235,6 +241,22 @@ func (s *svc) CreateFlavorVersion(
 	}
 
 	return created, diff, nil
+}
+
+func cleanFileHashPaths(hashes []file.Hash) error {
+	for i := range hashes {
+		cleanPath := filepath.Clean(hashes[i].Path)
+		if cleanPath == "." ||
+			filepath.IsAbs(cleanPath) ||
+			cleanPath == ".." ||
+			strings.HasPrefix(cleanPath, ".."+string(filepath.Separator)) {
+			return apierrs.ErrInvalidPath
+		}
+
+		hashes[i].Path = filepath.ToSlash(cleanPath)
+	}
+
+	return nil
 }
 
 func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {

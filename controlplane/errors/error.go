@@ -71,6 +71,7 @@ var (
 	ErrMinecraftVersionNotSupported = New(codes.FailedPrecondition, "minecraft version not found")
 	ErrHashMismatch                 = New(codes.FailedPrecondition, "hash does not match")
 	ErrInvalidHash                  = New(codes.InvalidArgument, "invalid hash")
+	ErrInvalidPath                  = New(codes.InvalidArgument, "invalid path")
 	ErrFlavorFilesNotUploaded       = New(codes.FailedPrecondition, "flavor files have not been uploaded")
 	ErrFlavorFilesUploaded          = New(codes.AlreadyExists, "flavor files have already been uploaded")
 	ErrFlavorVersionNotFound        = New(codes.NotFound, "flavor version does not exist")
