@@ -146,6 +146,13 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 				},
 			}
 
+			var meta map[string]string
+			if err := json.Unmarshal(row.Metadata, &meta); err != nil {
+				return fmt.Errorf("unmarshal metadata: %w", err)
+			}
+
+			i.Metadata = meta
+
 			flavors := make([]resource.Flavor, 0, len(rows))
 			for _, instanceRow := range v {
 				f := resource.Flavor{
