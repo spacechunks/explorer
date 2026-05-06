@@ -61,6 +61,8 @@ message Instance {
   InstanceState state = 6;
 
   user.v1alpha1.User owner = 7;
+
+  map<string, string> metadata = 8;
 }
 
 message InstanceStatusReport {
