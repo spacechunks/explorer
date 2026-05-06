@@ -72,6 +72,9 @@ message ListInstancesResponse {
 message RunFlavorVersionRequest {
   string chunk_id = 1;
   string flavor_version_id = 2;
+  
+  // metadata to apply to the instance, that will be created.
+  map<string, string> metadata = 3;
 }
 
 message RunFlavorVersionResponse {

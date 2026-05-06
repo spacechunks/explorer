@@ -82,8 +82,6 @@ func TestGetInstance(t *testing.T) {
 			cp.AddUserAPIKey(t, &ctx, ins.Owner)
 			client := cp.InstanceClient(t)
 
-			fmt.Println("AAAAA", ins.Owner.ID)
-
 			resp, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
 				Id: ins.ID,
 			})
@@ -258,6 +256,9 @@ func TestRunFlavorVersion(t *testing.T) {
 				},
 				Ip:    fixture.Node().Addr.String(),
 				State: instancev1alpha1.InstanceState_PENDING,
+				Metadata: map[string]string{
+					"key": "value",
+				},
 			}
 
 			if tt.chunkID == "" {
@@ -274,6 +275,9 @@ func TestRunFlavorVersion(t *testing.T) {
 			resp, err := client.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
 				ChunkId:         tt.chunkID,
 				FlavorVersionId: tt.flavorVersionID,
+				Metadata: map[string]string{
+					"key": "value",
+				},
 			})
 
 			if tt.err != nil {
