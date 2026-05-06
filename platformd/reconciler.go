@@ -321,6 +321,7 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 		CPUPeriod:        r.cfg.WorkloadCPUPeriod,
 		CPUQuota:         r.cfg.WorkloadCPUQuota,
 		MemoryLimitBytes: r.cfg.WorkloadMemoryLimit,
+		InstanceOwner:    instance.Metadata[workload.LabelInstanceOwner],
 	}
 
 	if err := r.wlService.RunWorkload(ctx, w, attempt); err != nil {

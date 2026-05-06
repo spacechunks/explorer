@@ -13,6 +13,8 @@ const (
 	LabelFlavorVersionID = "explorer.chunks.cloud/flavor-version-id"
 
 	LabelWorkloadPort = "explorer.chunks.cloud/workload-port"
+
+	LabelInstanceOwner = "explorer.chunks.cloud/instance-owner"
 )
 
 // SystemWorkloadLabels returns the labels used by system workloads
@@ -30,5 +32,6 @@ func InstanceLabels(instance *instancev1alpha1.Instance) map[string]string {
 		LabelChunkID:         instance.GetChunk().GetId(),
 		LabelChunkName:       instance.GetChunk().GetName(),
 		LabelFlavorVersionID: instance.FlavorVersion.Id,
+		LabelInstanceOwner:   instance.Metadata[LabelInstanceOwner],
 	}
 }
