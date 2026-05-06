@@ -66,6 +66,7 @@ func TestReconciler(t *testing.T) {
 			CPUPeriod:        cpuPeriod,
 			CPUQuota:         cpuQuota,
 			MemoryLimitBytes: memoryLimit,
+			InstanceOwner:    ins.Metadata[workload.LabelInstanceOwner],
 		}
 	}
 
@@ -530,6 +531,9 @@ func discoverInstance(
 			Id: "flavor-version-id",
 		},
 		State: state,
+		Metadata: map[string]string{
+			workload.LabelInstanceOwner: "test",
+		},
 	}
 
 	insClient.EXPECT().

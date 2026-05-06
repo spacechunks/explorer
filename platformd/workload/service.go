@@ -118,6 +118,12 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 			},
 			Labels:  w.Labels,
 			LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, w.Name),
+			Envs: []*runtimev1.KeyValue{
+				{
+					Key:   "EXPLORER_INSTANCE_OWNER",
+					Value: w.InstanceOwner,
+				},
+			},
 		},
 		SandboxConfig: sboxCfg,
 	}

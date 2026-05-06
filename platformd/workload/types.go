@@ -22,6 +22,7 @@ type Workload struct {
 	ID              string
 	CheckpointImage string
 	BaseImage       string
+	InstanceOwner   string
 
 	// below map directly to pod fields
 	Name             string

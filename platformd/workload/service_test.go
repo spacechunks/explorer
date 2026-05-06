@@ -51,8 +51,9 @@ func TestRunWorkload(t *testing.T) {
 			name: "everyhing works",
 			w: workload.Workload{
 				ID:               test.NewUUIDv7(t),
-				Name:             "test",
 				CheckpointImage:  "test-image",
+				InstanceOwner:    "test",
+				Name:             "test",
 				Namespace:        "test",
 				Hostname:         "test",
 				Labels:           map[string]string{"k": "v"},
@@ -106,6 +107,12 @@ func TestRunWorkload(t *testing.T) {
 							},
 							Labels:  w.Labels,
 							LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, w.Name),
+							Envs: []*runtimev1.KeyValue{
+								{
+									Key:   "EXPLORER_INSTANCE_OWNER",
+									Value: "test",
+								},
+							},
 						},
 						SandboxConfig: sboxCfg,
 					}
