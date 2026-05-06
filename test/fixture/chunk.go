@@ -178,6 +178,9 @@ func Instance(mod ...func(i *resource.Instance)) resource.Instance {
 		Owner:         c.Owner,
 		CreatedAt:     time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
 		UpdatedAt:     time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
+		Metadata: map[string]string{
+			"key": "value",
+		},
 	}
 
 	for _, fn := range mod {
