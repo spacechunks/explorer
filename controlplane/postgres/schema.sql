@@ -1,5 +1,7 @@
+\restrict dbmate
+
 -- Dumped from database version 17.2 (Debian 17.2-1.pgdg120+1)
--- Dumped by pg_dump version 18.3 (Homebrew)
+-- Dumped by pg_dump version 17.9
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -206,7 +208,8 @@ CREATE TABLE public.instances (
     state public.instance_state DEFAULT 'PENDING'::public.instance_state NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    owner_id uuid NOT NULL
+    owner_id uuid NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -696,6 +699,9 @@ ALTER TABLE ONLY public.river_client_queue
 -- PostgreSQL database dump complete
 --
 
+\unrestrict dbmate
+
+
 --
 -- Dbmate schema migrations
 --
@@ -717,4 +723,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260410102614'),
     ('20260415141037'),
     ('20260417174036'),
-    ('20260429200153');
+    ('20260429200153'),
+    ('20260506175127');
