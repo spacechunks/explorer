@@ -67,6 +67,7 @@ func TestRunWorkload(t *testing.T) {
 				CPUPeriod:        100000,
 				CPUQuota:         200000,
 				MemoryLimitBytes: 100000,
+				Instance:         instance.ToTransport(fixture.Instance()),
 			},
 			cfg: workload.Config{
 				MCManagementAPIToken:   "some-token",
@@ -77,6 +78,9 @@ func TestRunWorkload(t *testing.T) {
 			},
 			attempt: 1,
 			prep: func(criService *mock.MockCriService, cfg workload.Config, w workload.Workload, attempt uint) {
+				data, err := protojson.Marshal(w.Instance)
+				require.NoError(t, err)
+
 				var (
 					podID   = "pod-test"
 					sboxCfg = &runtimev1.PodSandboxConfig{
@@ -93,6 +97,9 @@ func TestRunWorkload(t *testing.T) {
 							Servers:  []string{"10.0.0.53"},
 							Options:  []string{"edns0", "trust-ad"},
 							Searches: []string{"."},
+						},
+						Annotations: map[string]string{
+							workload.AnnotationInstance: string(data),
 						},
 						Linux: &runtimev1.LinuxPodSandboxConfig{
 							Resources: &runtimev1.LinuxContainerResources{
