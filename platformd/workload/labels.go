@@ -32,6 +32,5 @@ func InstanceLabels(instance *instancev1alpha1.Instance) map[string]string {
 		LabelChunkID:         instance.GetChunk().GetId(),
 		LabelChunkName:       instance.GetChunk().GetName(),
 		LabelFlavorVersionID: instance.FlavorVersion.Id,
-		LabelInstanceOwner:   instance.Metadata[LabelInstanceOwner],
 	}
 }
