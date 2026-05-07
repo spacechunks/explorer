@@ -81,7 +81,7 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 				MemoryLimitInBytes: int64(w.MemoryLimitBytes),
 			},
 		},
-	}
+	}²
 
 	pulled, err := s.criService.EnsureImage(ctx, w.BaseImage, s.registryAuth)
 	if err != nil {
@@ -334,8 +334,8 @@ func (s *svc) WorkloadMetadata(ctx context.Context, id string) (Metadata, error)
 			Name:        instance.Chunk.Name,
 			Description: instance.Chunk.Description,
 			Tags:        instance.Chunk.Tags,
-			CreatedAt: instance.Chunk.CreatedAt.AsTime(),
-			UpdatedAt: instance.Chunk.CreatedAt.AsTime(),
+			CreatedAt:   instance.Chunk.CreatedAt.AsTime(),
+			UpdatedAt:   instance.Chunk.CreatedAt.AsTime(),
 		},
 		FlavorVersion: chunk.FlavorVersionToDomain(instance.FlavorVersion),
 		OrderedBy:     instance.OrderedBy,
