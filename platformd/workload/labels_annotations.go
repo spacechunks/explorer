@@ -31,11 +31,11 @@ func SystemWorkloadLabels(name string) map[string]string {
 
 func InstanceLabels(instance *instancev1alpha1.Instance) map[string]string {
 	return map[string]string{
-		LabelWorkloadID:      instance.GetId(),
-		LabelWorkloadType:    "instance",
-		LabelChunkID:         instance.GetChunk().GetId(),
-		LabelChunkName:       instance.GetChunk().GetName(),
-		LabelFlavorVersionID: instance.FlavorVersion.Id,
+		LabelWorkloadID:        instance.GetId(),
+		LabelWorkloadType:      "instance",
+		LabelChunkID:           instance.GetChunk().GetId(),
+		LabelChunkName:         instance.GetChunk().GetName(),
+		LabelFlavorVersionID:   instance.FlavorVersion.Id,
 		LabelInstanceOrderedBy: instance.GetOrderedBy(),
 	}
 }
