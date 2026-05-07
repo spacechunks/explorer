@@ -123,7 +123,7 @@ type Instance struct {
 	Owner         User
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
-	Metadata      map[string]string
+	OrderedBy     string
 }
 
 type InstanceStatusReport struct {

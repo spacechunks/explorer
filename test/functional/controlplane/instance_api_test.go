@@ -254,11 +254,9 @@ func TestRunFlavorVersion(t *testing.T) {
 					CreatedAt: timestamppb.New(c.Owner.CreatedAt),
 					UpdatedAt: timestamppb.New(c.Owner.UpdatedAt),
 				},
-				Ip:    fixture.Node().Addr.String(),
-				State: instancev1alpha1.InstanceState_PENDING,
-				Metadata: map[string]string{
-					"key": "value",
-				},
+				Ip:        fixture.Node().Addr.String(),
+				State:     instancev1alpha1.InstanceState_PENDING,
+				OrderedBy: "orderer",
 			}
 
 			if tt.chunkID == "" {
@@ -275,9 +273,7 @@ func TestRunFlavorVersion(t *testing.T) {
 			resp, err := client.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
 				ChunkId:         tt.chunkID,
 				FlavorVersionId: tt.flavorVersionID,
-				Metadata: map[string]string{
-					"key": "value",
-				},
+				OrderedBy:       "orderer",
 			})
 
 			if tt.err != nil {

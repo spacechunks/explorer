@@ -60,9 +60,15 @@ message Instance {
 
   InstanceState state = 6;
 
+  // the owner of the instance is the user that issued the api call
+  // to create it. they have full control over what happens with
+  // the instance.
   user.v1alpha1.User owner = 7;
 
-  map<string, string> metadata = 8;
+  // contains an opaque identifier representing the player
+  // that ordered the creation this instance. ordered_by and
+  // owner of the instance are not necessarily the same.
+  string ordered_by = 8;
 }
 
 message InstanceStatusReport {

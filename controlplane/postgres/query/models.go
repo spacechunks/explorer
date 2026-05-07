@@ -234,7 +234,7 @@ type Instance struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	OwnerID         string
-	Metadata        []byte
+	OrderedBy       string
 }
 
 type MinecraftVersion struct {

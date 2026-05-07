@@ -20,7 +20,6 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -32,11 +31,6 @@ import (
 )
 
 func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID string) (resource.Instance, error) {
-	data, err := json.Marshal(ins.Metadata)
-	if err != nil {
-		return resource.Instance{}, fmt.Errorf("marshal metadata: %w", err)
-	}
-
 	params := query.CreateInstanceParams{
 		ID:              ins.ID,
 		ChunkID:         ins.Chunk.ID,
@@ -46,7 +40,7 @@ func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID 
 		OwnerID:         ins.Owner.ID,
 		CreatedAt:       ins.CreatedAt,
 		UpdatedAt:       ins.UpdatedAt,
-		Metadata:        data,
+		OrderedBy:       ins.OrderedBy,
 	}
 
 	var ret resource.Instance
@@ -110,6 +104,7 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 				State:     resource.InstanceState(row.State),
 				CreatedAt: row.CreatedAt.UTC(),
 				UpdatedAt: row.UpdatedAt.UTC(),
+				OrderedBy: row.OrderedBy,
 				Chunk: resource.Chunk{
 					ID:          row.ID_3,
 					Name:        row.Name,
@@ -145,13 +140,6 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 					UpdatedAt: row.UpdatedAt_4,
 				},
 			}
-
-			var meta map[string]string
-			if err := json.Unmarshal(row.Metadata, &meta); err != nil {
-				return fmt.Errorf("unmarshal metadata: %w", err)
-			}
-
-			i.Metadata = meta
 
 			flavors := make([]resource.Flavor, 0, len(rows))
 			for _, instanceRow := range v {
@@ -215,11 +203,6 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 				port = ptr.Pointer(uint16(*row.Port))
 			}
 
-			var meta map[string]string
-			if err := json.Unmarshal(row.Metadata, &meta); err != nil {
-				return fmt.Errorf("unmarshal metadata: %w", err)
-			}
-
 			ret = append(ret, resource.Instance{
 				ID: row.ID,
 				Chunk: resource.Chunk{
@@ -253,7 +236,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 				Port:      port,
 				CreatedAt: row.CreatedAt.UTC(),
 				UpdatedAt: row.UpdatedAt.UTC(),
-				Metadata:  meta,
+				OrderedBy: row.OrderedBy,
 			})
 		}
 
@@ -352,6 +335,7 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 		State:     resource.InstanceState(row.State),
 		CreatedAt: row.CreatedAt.UTC(),
 		UpdatedAt: row.UpdatedAt.UTC(),
+		OrderedBy: row.OrderedBy,
 		Chunk: resource.Chunk{
 			ID:          row.ID_3,
 			Name:        row.Name,
@@ -385,12 +369,6 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 		port = ptr.Pointer(uint16(*row.Port))
 	}
 
-	var meta map[string]string
-	if err := json.Unmarshal(row.Metadata, &meta); err != nil {
-		return resource.Instance{}, fmt.Errorf("unmarshal metadata: %w", err)
-	}
-
-	ret.Metadata = meta
 	ret.Port = port
 
 	flavors := make([]resource.Flavor, 0, len(rows))
