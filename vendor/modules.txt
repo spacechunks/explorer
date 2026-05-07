@@ -515,7 +515,7 @@ github.com/klauspost/cpuid/v2
 ## explicit; go 1.23.0
 github.com/lestrrat-go/dsig
 github.com/lestrrat-go/dsig/internal/ecutil
-# github.com/lestrrat-go/jwx/v4 v4.0.1
+# github.com/lestrrat-go/jwx/v4 v4.0.2
 ## explicit; go 1.26.0
 github.com/lestrrat-go/jwx/v4
 github.com/lestrrat-go/jwx/v4/cert

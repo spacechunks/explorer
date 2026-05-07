@@ -42,16 +42,16 @@ func Settings(options ...GlobalOption) error {
 			parsePedantic = option.MustGet[bool](opt)
 		case identNumericDateParsePrecision{}:
 			v := option.MustGet[int](opt)
-			// only accept this value if it's in our desired range
-			if v >= 0 && v <= int(types.MaxPrecision) {
-				parsePrecision = uint32(v)
+			if v < 0 || v > int(types.MaxPrecision) {
+				return fmt.Errorf(`jwt.Settings: WithNumericDateParsePrecision(%d) is out of range; must be between 0 and %d (inclusive)`, v, types.MaxPrecision)
 			}
+			parsePrecision = uint32(v)
 		case identNumericDateFormatPrecision{}:
 			v := option.MustGet[int](opt)
-			// only accept this value if it's in our desired range
-			if v >= 0 && v <= int(types.MaxPrecision) {
-				formatPrecision = uint32(v)
+			if v < 0 || v > int(types.MaxPrecision) {
+				return fmt.Errorf(`jwt.Settings: WithNumericDateFormatPrecision(%d) is out of range; must be between 0 and %d (inclusive)`, v, types.MaxPrecision)
 			}
+			formatPrecision = uint32(v)
 		}
 	}
 
@@ -316,22 +316,27 @@ func verifyJWS(ctx *parseCtx, payload []byte) ([]byte, int, error) {
 		if ok && len(wk.options) == 0 {
 			verified, err := jws.VerifyCompactFast(wk.key, payload, alg)
 			if err == nil {
-				return verified, _JwsVerifyDone, nil
+				return verified, peekJWSNestedState(ctx, payload), nil
 			}
 			// VerifyCompactFast refuses crit-bearing messages; on
 			// that sentinel, fall through to jws.Verify below so
 			// the full validateCritical rule set applies.
 			if !errors.Is(err, jws.ErrCritPresent()) {
 				// The fast path uses strict base64url (RFC 7515).
-				// A caller whose issuer emits padded/standard
-				// base64 can re-run with jwt.WithStrictBase64Encoding(false)
-				// to fall back to jws.Verify's lenient decoder.
-				// The error message itself doesn't point at that
-				// escape hatch, so surface the hint here.
+				// On a strict-decode failure, surface a diagnosis
+				// first ("input is not strict RFC 7515 base64url")
+				// and only then mention the conditional remedy —
+				// the failure shape can't distinguish a known-non-
+				// conforming issuer from genuinely malformed /
+				// tampered input, so the caller has to make that
+				// call deliberately. Without the diagnosis-first
+				// shape, the previous wording read as a fix-it
+				// instruction and tilted users toward weakening
+				// strictness reflexively.
 				var corrupt base64.CorruptInputError
 				if errors.As(err, &corrupt) {
 					return nil, _JwsVerifyDone, fmt.Errorf(
-						`jwt.Parse: base64 decode failed; if the issuer emits padded/standard base64, set jwt.WithStrictBase64Encoding(false): %w`,
+						`jwt.Parse: base64url decode failed under strict RFC 7515 rule; if the issuer is known to emit padded or standard-base64 alphabet, retry with jwt.WithStrictBase64Encoding(false), otherwise treat the input as malformed: %w`,
 						err,
 					)
 				}
@@ -342,7 +347,39 @@ func verifyJWS(ctx *parseCtx, payload []byte) ([]byte, int, error) {
 
 	verifyOpts := append(ctx.verifyOpts, jws.WithCompact())
 	verified, err := jws.Verify(payload, verifyOpts...)
-	return verified, _JwsVerifyDone, err
+	if err != nil {
+		return nil, _JwsVerifyDone, err
+	}
+	return verified, peekJWSNestedState(ctx, payload), nil
+}
+
+// peekJWSNestedState returns _JwsVerifyExpectNested when pedantic mode is on
+// and the verified JWS protected header carries cty=JWT (RFC 7519 §5.2 — the
+// payload is itself a Nested JWT; the outer envelope expects another signed/
+// encrypted layer wrapping the JWT, not a raw JWT). Otherwise returns
+// _JwsVerifyDone. The signature has already been verified at this point, so
+// re-parsing the protected header is safe — it operates on bytes the producer
+// signed.
+func peekJWSNestedState(ctx *parseCtx, payload []byte) int {
+	if !ctx.pedantic {
+		return _JwsVerifyDone
+	}
+	msg, err := jws.Parse(payload, jws.WithCompact())
+	if err != nil || len(msg.Signatures()) == 0 {
+		return _JwsVerifyDone
+	}
+	hdr := msg.Signatures()[0].ProtectedHeaders()
+	if hdr == nil {
+		return _JwsVerifyDone
+	}
+	cty, ok := hdr.ContentType()
+	if !ok {
+		return _JwsVerifyDone
+	}
+	if cty == "JWT" {
+		return _JwsVerifyExpectNested
+	}
+	return _JwsVerifyDone
 }
 
 // verify parameter exists to make sure that we don't accidentally skip
@@ -426,8 +463,11 @@ OUTER:
 				}
 			}
 
-			// No verification.
-			m, err := jws.Parse(data, jws.WithCompact())
+			// No verification. Parse the LOOP-LOCAL `payload` (not the
+			// original `data`); for a 2-layer nested JWS, iter 2 must
+			// see the inner JWS bytes that iter 1 produced, not re-
+			// parse the outer envelope.
+			m, err := jws.Parse(payload, jws.WithCompact())
 			if err != nil {
 				return nil, fmt.Errorf(`invalid jws message: %w`, err)
 			}
