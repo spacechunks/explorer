@@ -60,6 +60,7 @@ func TestReconciler(t *testing.T) {
 			Name:             ins.GetFlavorVersion().GetId(),
 			BaseImage:        baseURL + ":base",
 			CheckpointImage:  baseURL + ":checkpoint",
+			Instance:         ins,
 			Namespace:        namespace,
 			Hostname:         ins.GetId(),
 			Labels:           labels,
