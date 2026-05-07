@@ -36,6 +36,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	WorkloadService_WorkloadStatus_FullMethodName = "/platformd.workload.v1alpha2.WorkloadService/WorkloadStatus"
 	WorkloadService_StopWorkload_FullMethodName   = "/platformd.workload.v1alpha2.WorkloadService/StopWorkload"
+	WorkloadService_GetWorkload_FullMethodName    = "/platformd.workload.v1alpha2.WorkloadService/GetWorkload"
 )
 
 // WorkloadServiceClient is the client API for WorkloadService service.
@@ -44,6 +45,7 @@ const (
 type WorkloadServiceClient interface {
 	WorkloadStatus(ctx context.Context, in *WorkloadStatusRequest, opts ...grpc.CallOption) (*WorkloadStatusResponse, error)
 	StopWorkload(ctx context.Context, in *WorkloadStopRequest, opts ...grpc.CallOption) (*WorkloadStopResponse, error)
+	GetWorkload(ctx context.Context, in *GetWorkloadRequest, opts ...grpc.CallOption) (*GetWorkloadResponse, error)
 }
 
 type workloadServiceClient struct {
@@ -74,12 +76,23 @@ func (c *workloadServiceClient) StopWorkload(ctx context.Context, in *WorkloadSt
 	return out, nil
 }
 
+func (c *workloadServiceClient) GetWorkload(ctx context.Context, in *GetWorkloadRequest, opts ...grpc.CallOption) (*GetWorkloadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWorkloadResponse)
+	err := c.cc.Invoke(ctx, WorkloadService_GetWorkload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkloadServiceServer is the server API for WorkloadService service.
 // All implementations must embed UnimplementedWorkloadServiceServer
 // for forward compatibility.
 type WorkloadServiceServer interface {
 	WorkloadStatus(context.Context, *WorkloadStatusRequest) (*WorkloadStatusResponse, error)
 	StopWorkload(context.Context, *WorkloadStopRequest) (*WorkloadStopResponse, error)
+	GetWorkload(context.Context, *GetWorkloadRequest) (*GetWorkloadResponse, error)
 	mustEmbedUnimplementedWorkloadServiceServer()
 }
 
@@ -95,6 +108,9 @@ func (UnimplementedWorkloadServiceServer) WorkloadStatus(context.Context, *Workl
 }
 func (UnimplementedWorkloadServiceServer) StopWorkload(context.Context, *WorkloadStopRequest) (*WorkloadStopResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopWorkload not implemented")
+}
+func (UnimplementedWorkloadServiceServer) GetWorkload(context.Context, *GetWorkloadRequest) (*GetWorkloadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWorkload not implemented")
 }
 func (UnimplementedWorkloadServiceServer) mustEmbedUnimplementedWorkloadServiceServer() {}
 func (UnimplementedWorkloadServiceServer) testEmbeddedByValue()                         {}
@@ -153,6 +169,24 @@ func _WorkloadService_StopWorkload_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkloadService_GetWorkload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorkloadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkloadServiceServer).GetWorkload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkloadService_GetWorkload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkloadServiceServer).GetWorkload(ctx, req.(*GetWorkloadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkloadService_ServiceDesc is the grpc.ServiceDesc for WorkloadService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -167,6 +201,10 @@ var WorkloadService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopWorkload",
 			Handler:    _WorkloadService_StopWorkload_Handler,
+		},
+		{
+			MethodName: "GetWorkload",
+			Handler:    _WorkloadService_GetWorkload_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -209,7 +209,7 @@ CREATE TABLE public.instances (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     owner_id uuid NOT NULL,
-    metadata jsonb DEFAULT '{}'::jsonb NOT NULL
+    ordered_by character varying(100) DEFAULT ''::character varying NOT NULL
 );
 
 
@@ -724,4 +724,4 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260415141037'),
     ('20260417174036'),
     ('20260429200153'),
-    ('20260506175127');
+    ('20260507140844');

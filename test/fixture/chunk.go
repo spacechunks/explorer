@@ -31,7 +31,6 @@ import (
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
-	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/zeebo/xxh3"
 )
 
@@ -174,13 +173,11 @@ func Instance(mod ...func(i *resource.Instance)) resource.Instance {
 		FlavorVersion: c.Flavors[0].Versions[0],
 		Address:       netip.MustParseAddr("198.51.100.1"),
 		State:         resource.InstanceStatePending,
-		Port:          ptr.Pointer(uint16(1337)),
+		Port:          new(uint16(1337)),
 		Owner:         c.Owner,
 		CreatedAt:     time.Date(2025, 2, 23, 13, 12, 15, 0, time.UTC),
 		UpdatedAt:     time.Date(2025, 2, 28, 10, 26, 0, 0, time.UTC),
-		Metadata: map[string]string{
-			"key": "value",
-		},
+		OrderedBy:     "orderer",
 	}
 
 	for _, fn := range mod {
