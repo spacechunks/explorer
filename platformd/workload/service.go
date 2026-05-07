@@ -81,7 +81,7 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 				MemoryLimitInBytes: int64(w.MemoryLimitBytes),
 			},
 		},
-	}²
+	}
 
 	pulled, err := s.criService.EnsureImage(ctx, w.BaseImage, s.registryAuth)
 	if err != nil {
