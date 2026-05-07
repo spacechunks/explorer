@@ -25,80 +25,6 @@ func (_m *MockV1alpha2WorkloadServiceClient) EXPECT() *MockV1alpha2WorkloadServi
 	return &MockV1alpha2WorkloadServiceClient_Expecter{mock: &_m.Mock}
 }
 
-// GetWorkload provides a mock function with given fields: ctx, in, opts
-func (_m *MockV1alpha2WorkloadServiceClient) GetWorkload(ctx context.Context, in *v1alpha2.GetWorkloadRequest, opts ...grpc.CallOption) (*v1alpha2.GetWorkloadResponse, error) {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, in)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetWorkload")
-	}
-
-	var r0 *v1alpha2.GetWorkloadResponse
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha2.GetWorkloadRequest, ...grpc.CallOption) (*v1alpha2.GetWorkloadResponse, error)); ok {
-		return rf(ctx, in, opts...)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha2.GetWorkloadRequest, ...grpc.CallOption) *v1alpha2.GetWorkloadResponse); ok {
-		r0 = rf(ctx, in, opts...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v1alpha2.GetWorkloadResponse)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, *v1alpha2.GetWorkloadRequest, ...grpc.CallOption) error); ok {
-		r1 = rf(ctx, in, opts...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockV1alpha2WorkloadServiceClient_GetWorkload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetWorkload'
-type MockV1alpha2WorkloadServiceClient_GetWorkload_Call struct {
-	*mock.Call
-}
-
-// GetWorkload is a helper method to define mock.On call
-//   - ctx context.Context
-//   - in *v1alpha2.GetWorkloadRequest
-//   - opts ...grpc.CallOption
-func (_e *MockV1alpha2WorkloadServiceClient_Expecter) GetWorkload(ctx interface{}, in interface{}, opts ...interface{}) *MockV1alpha2WorkloadServiceClient_GetWorkload_Call {
-	return &MockV1alpha2WorkloadServiceClient_GetWorkload_Call{Call: _e.mock.On("GetWorkload",
-		append([]interface{}{ctx, in}, opts...)...)}
-}
-
-func (_c *MockV1alpha2WorkloadServiceClient_GetWorkload_Call) Run(run func(ctx context.Context, in *v1alpha2.GetWorkloadRequest, opts ...grpc.CallOption)) *MockV1alpha2WorkloadServiceClient_GetWorkload_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]grpc.CallOption, len(args)-2)
-		for i, a := range args[2:] {
-			if a != nil {
-				variadicArgs[i] = a.(grpc.CallOption)
-			}
-		}
-		run(args[0].(context.Context), args[1].(*v1alpha2.GetWorkloadRequest), variadicArgs...)
-	})
-	return _c
-}
-
-func (_c *MockV1alpha2WorkloadServiceClient_GetWorkload_Call) Return(_a0 *v1alpha2.GetWorkloadResponse, _a1 error) *MockV1alpha2WorkloadServiceClient_GetWorkload_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockV1alpha2WorkloadServiceClient_GetWorkload_Call) RunAndReturn(run func(context.Context, *v1alpha2.GetWorkloadRequest, ...grpc.CallOption) (*v1alpha2.GetWorkloadResponse, error)) *MockV1alpha2WorkloadServiceClient_GetWorkload_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // StopWorkload provides a mock function with given fields: ctx, in, opts
 func (_m *MockV1alpha2WorkloadServiceClient) StopWorkload(ctx context.Context, in *v1alpha2.WorkloadStopRequest, opts ...grpc.CallOption) (*v1alpha2.WorkloadStopResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -169,6 +95,80 @@ func (_c *MockV1alpha2WorkloadServiceClient_StopWorkload_Call) Return(_a0 *v1alp
 }
 
 func (_c *MockV1alpha2WorkloadServiceClient_StopWorkload_Call) RunAndReturn(run func(context.Context, *v1alpha2.WorkloadStopRequest, ...grpc.CallOption) (*v1alpha2.WorkloadStopResponse, error)) *MockV1alpha2WorkloadServiceClient_StopWorkload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WorkloadMetadata provides a mock function with given fields: ctx, in, opts
+func (_m *MockV1alpha2WorkloadServiceClient) WorkloadMetadata(ctx context.Context, in *v1alpha2.WorkloadMetadataRequest, opts ...grpc.CallOption) (*v1alpha2.WorkloadMetadataResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WorkloadMetadata")
+	}
+
+	var r0 *v1alpha2.WorkloadMetadataResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha2.WorkloadMetadataRequest, ...grpc.CallOption) (*v1alpha2.WorkloadMetadataResponse, error)); ok {
+		return rf(ctx, in, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha2.WorkloadMetadataRequest, ...grpc.CallOption) *v1alpha2.WorkloadMetadataResponse); ok {
+		r0 = rf(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v1alpha2.WorkloadMetadataResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *v1alpha2.WorkloadMetadataRequest, ...grpc.CallOption) error); ok {
+		r1 = rf(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockV1alpha2WorkloadServiceClient_WorkloadMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WorkloadMetadata'
+type MockV1alpha2WorkloadServiceClient_WorkloadMetadata_Call struct {
+	*mock.Call
+}
+
+// WorkloadMetadata is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *v1alpha2.WorkloadMetadataRequest
+//   - opts ...grpc.CallOption
+func (_e *MockV1alpha2WorkloadServiceClient_Expecter) WorkloadMetadata(ctx interface{}, in interface{}, opts ...interface{}) *MockV1alpha2WorkloadServiceClient_WorkloadMetadata_Call {
+	return &MockV1alpha2WorkloadServiceClient_WorkloadMetadata_Call{Call: _e.mock.On("WorkloadMetadata",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *MockV1alpha2WorkloadServiceClient_WorkloadMetadata_Call) Run(run func(ctx context.Context, in *v1alpha2.WorkloadMetadataRequest, opts ...grpc.CallOption)) *MockV1alpha2WorkloadServiceClient_WorkloadMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		run(args[0].(context.Context), args[1].(*v1alpha2.WorkloadMetadataRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockV1alpha2WorkloadServiceClient_WorkloadMetadata_Call) Return(_a0 *v1alpha2.WorkloadMetadataResponse, _a1 error) *MockV1alpha2WorkloadServiceClient_WorkloadMetadata_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockV1alpha2WorkloadServiceClient_WorkloadMetadata_Call) RunAndReturn(run func(context.Context, *v1alpha2.WorkloadMetadataRequest, ...grpc.CallOption) (*v1alpha2.WorkloadMetadataResponse, error)) *MockV1alpha2WorkloadServiceClient_WorkloadMetadata_Call {
 	_c.Call.Return(run)
 	return _c
 }

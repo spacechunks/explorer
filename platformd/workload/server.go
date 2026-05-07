@@ -83,3 +83,23 @@ func (s *Server) StopWorkload(
 
 	return &workloadv1alpha2.WorkloadStopResponse{}, nil
 }
+
+func (s *Server) WorkloadMetadata(
+	ctx context.Context,
+	req *workloadv1alpha2.WorkloadMetadataRequest,
+) (*workloadv1alpha2.WorkloadMetadataResponse, error) {
+	id := req.GetWorkloadId()
+
+	if id == "" {
+		return nil, fmt.Errorf("workload id required")
+	}
+
+	meta, err := s.service.WorkloadMetadata(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("workload metadata: %w", err)
+	}
+
+	return &workloadv1alpha2.WorkloadMetadataResponse{
+		Metadata: MetadataToTransport(meta),
+	}, nil
+}
