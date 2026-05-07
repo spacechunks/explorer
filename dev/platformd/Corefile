@@ -5,3 +5,9 @@
     errors
     forward . 1.1.1.1
 }
+
+chunks.internal:1053 {
+    hosts {
+        127.10.10.10 metadata.chunks.internal
+    }
+}
