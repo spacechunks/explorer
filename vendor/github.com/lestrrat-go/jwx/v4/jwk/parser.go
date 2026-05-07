@@ -23,7 +23,7 @@ type KeyParser interface {
 	// If your KeyParser decides that the payload is not something
 	// you can parse, and you would like to continue parsing with
 	// the remaining KeyParser instances that are registered,
-	// return a `jwk.ContinueParseError`. Any other errors will immediately
+	// return a `jwk.ContinueError()`. Any other errors will immediately
 	// halt the parsing process.
 	//
 	// When unmarshaling JSON, use the unmarshaler object supplied as
@@ -64,7 +64,7 @@ func defaultParseKey(probe *KeyProbe, unmarshaler KeyUnmarshaler, data []byte) (
 	var key Key
 	ktyV, ok := probe.Field("Kty")
 	if !ok {
-		return nil, fmt.Errorf(`jwk.Parse: failed to get "kty" hint`)
+		return nil, fmt.Errorf(`jwk.Parse: %w`, UnknownKeyTypeError{})
 	}
 	kty, ok := ktyV.(string)
 	if !ok {
@@ -104,7 +104,7 @@ func defaultParseKey(probe *KeyProbe, unmarshaler KeyUnmarshaler, data []byte) (
 			key = newAKPPublicKey()
 		}
 	default:
-		return nil, fmt.Errorf(`invalid key type from JSON (%s)`, kty)
+		return nil, UnknownKeyTypeError{KeyType: kty}
 	}
 
 	if err := unmarshaler.UnmarshalKey(data, key); err != nil {
@@ -215,7 +215,13 @@ func (pt *probeTarget) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		key := tok.String()
 
 		def, ok := pt.kp.jsonKeys[key]
-		if !ok || remaining <= 0 {
+		// Skip when: the key is not registered for probing, we've
+		// already filled every slot, OR this slot is already filled
+		// (a duplicate occurrence of an earlier field — first-wins).
+		// Without the duplicate-skip, N repeats of one field would
+		// drain `remaining` and prevent later registered fields from
+		// being read, silently misclassifying the key.
+		if !ok || remaining <= 0 || pt.results[def.index] != nil {
 			if err := dec.SkipValue(); err != nil {
 				return err
 			}

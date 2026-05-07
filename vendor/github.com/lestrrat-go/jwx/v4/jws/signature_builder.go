@@ -3,6 +3,7 @@ package jws
 import (
 	"bytes"
 	"fmt"
+	"slices"
 
 	"github.com/lestrrat-go/jwx/v4/internal/json"
 	"github.com/lestrrat-go/jwx/v4/internal/pool"
@@ -144,6 +145,23 @@ func (sb *signatureBuilder) Build(sc *signContext, payload []byte) (buildResult,
 		}
 	}
 
+	// RFC 7797 §3 requires producers that set "b64":false to also list
+	// "b64" in "crit". Auto-declare it in the protected header so a
+	// caller who set b64=false but forgot the crit declaration does not
+	// emit a non-conformant stream that strict verifiers (including
+	// jws.Verify itself, since #2101) refuse. Idempotent: if "b64" is
+	// already in crit, the list is unchanged. If crit is unset, it is
+	// created with just "b64".
+	if !getB64Value(protected) {
+		crit, _ := protected.Critical()
+		if !slices.Contains(crit, "b64") {
+			crit = append(crit, "b64")
+			if err := protected.Set(CriticalKey, crit); err != nil {
+				return br, makeSignError(prefixJwsSign, `failed to set "crit" header: %w`, err)
+			}
+		}
+	}
+
 	// When there are no public (unprotected) headers, skip the merge
 	// to avoid allocating a third Headers object just to copy into.
 	hdrs := protected
@@ -165,7 +183,7 @@ func (sb *signatureBuilder) Build(sc *signContext, payload []byte) (buildResult,
 	b64 := getB64Value(hdrs)
 	if !b64 && !sc.detached {
 		if bytes.IndexByte(payload, tokens.Period) != -1 {
-			return br, fmt.Errorf(`payload must not contain a "."`)
+			return br, fmt.Errorf(`compact serialization with b64=false requires payload to contain no "." characters per RFC 7797 §5.2; use jws.WithDetachedPayload to keep the payload out of the wire format`)
 		}
 	}
 
