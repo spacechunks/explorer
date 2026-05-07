@@ -43,6 +43,7 @@ type player struct {
 }
 
 func (m Monitor) Run(ctx context.Context) error {
+	m.logger.InfoContext(ctx, "waiting for minecraft server management endpoint")
 	if err := waitEndpointReady(m.conf.MCServerManagementAPIEndpoint, 20*time.Second); err != nil {
 		return fmt.Errorf("wait endpoint ready: %w", err)
 	}
@@ -66,6 +67,8 @@ func (m Monitor) Run(ctx context.Context) error {
 		)
 		return fmt.Errorf("dial: %w", err)
 	}
+
+	m.logger.InfoContext(ctx, "started servermon")
 
 	rpcConn := jsonrpc2.NewConn(ctx, websocket.NewObjectStream(wsConn), &m)
 	defer rpcConn.Close()
