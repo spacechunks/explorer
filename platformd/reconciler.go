@@ -315,6 +315,7 @@ func (r *reconciler) handleInstanceCreation(ctx context.Context, instance *insta
 		Name:             instance.GetFlavorVersion().GetId(),
 		BaseImage:        baseURL + ":base",
 		CheckpointImage:  baseURL + ":checkpoint",
+		Instance:         instance,
 		Namespace:        r.cfg.WorkloadNamespace,
 		Hostname:         id,
 		Labels:           labels,

@@ -80,6 +80,11 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 				CpuQuota:           int64(w.CPUQuota),
 				MemoryLimitInBytes: int64(w.MemoryLimitBytes),
 			},
+			// for whatever reason, CAP_NET_BIND_SERVICE does not allow us
+			// to bind the mds to port 80. to fix it we just set the sysctl.
+			Sysctls: map[string]string{
+				"net.ipv4.ip_unprivileged_port_start": "0",
+			},
 		},
 	}
 

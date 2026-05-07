@@ -107,6 +107,9 @@ func TestRunWorkload(t *testing.T) {
 								CpuQuota:           int64(w.CPUQuota),
 								MemoryLimitInBytes: int64(w.MemoryLimitBytes),
 							},
+							Sysctls: map[string]string{
+								"net.ipv4.ip_unprivileged_port_start": "0",
+							},
 						},
 					}
 					mcCtrReq = &runtimev1.CreateContainerRequest{
