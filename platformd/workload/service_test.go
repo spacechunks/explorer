@@ -30,6 +30,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/internal/resource"
+	"github.com/spacechunks/explorer/internal/resource/codec"
 	"github.com/spacechunks/explorer/platformd/cri"
 	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
@@ -412,7 +413,7 @@ func TestWorkloadMetadata(t *testing.T) {
 					UpdatedAt:   fixture.Instance().CreatedAt,
 				},
 				// whatever
-				FlavorVersion: chunk.FlavorVersionToDomain(
+				FlavorVersion: codec.FlavorVersionToDomain(
 					chunk.FlavorVersionToTransport(fixture.Instance().FlavorVersion),
 				),
 				OrderedBy: fixture.Instance().OrderedBy,

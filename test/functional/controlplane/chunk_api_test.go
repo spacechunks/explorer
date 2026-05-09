@@ -43,6 +43,7 @@ import (
 	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/internal/resource"
+	"github.com/spacechunks/explorer/internal/resource/codec"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/spacechunks/explorer/test/functional/controlplane/testdata"
@@ -123,7 +124,7 @@ func TestAPICreateChunk(t *testing.T) {
 			tt.expected.Owner = u
 
 			if d := cmp.Diff(
-				chunk.ChunkToTransport(tt.expected),
+				codec.ChunkToTransport(tt.expected),
 				resp.GetChunk(),
 				protocmp.Transform(),
 				test.IgnoredProtoChunkFields,
@@ -187,7 +188,7 @@ func TestGetChunk(t *testing.T) {
 			require.NoError(t, err)
 
 			if d := cmp.Diff(
-				chunk.ChunkToTransport(c),
+				codec.ChunkToTransport(c),
 				resp.GetChunk(),
 				protocmp.Transform(),
 				test.IgnoredProtoChunkFields,
@@ -247,7 +248,7 @@ func TestListChunks(t *testing.T) {
 		if c.DeletedAt != nil {
 			continue
 		}
-		expected = append(expected, chunk.ChunkToTransport(c))
+		expected = append(expected, codec.ChunkToTransport(c))
 	}
 
 	sort.Slice(expected, func(i, j int) bool {
@@ -413,7 +414,7 @@ func TestUpdateChunk(t *testing.T) {
 
 			require.NoError(t, err)
 
-			expected := chunk.ChunkToTransport(*tt.c)
+			expected := codec.ChunkToTransport(*tt.c)
 
 			if tt.req.Name != "" {
 				expected.Name = tt.req.Name
@@ -1237,7 +1238,7 @@ func TestAPIDeleteFlavor(t *testing.T) {
 
 	if d := cmp.Diff(
 		resp.Chunk,
-		chunk.ChunkToTransport(expected),
+		codec.ChunkToTransport(expected),
 		protocmp.Transform(),
 		test.IgnoredProtoChunkFields,
 		test.IgnoredProtoFlavorVersionFields,
