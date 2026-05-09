@@ -32,8 +32,8 @@ import (
 	"github.com/riverqueue/river"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
-	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 func (db *DB) CreateFlavor(ctx context.Context, chunkID string, flavor resource.Flavor) (resource.Flavor, error) {

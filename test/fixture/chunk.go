@@ -29,8 +29,8 @@ import (
 
 	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/node"
-	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
+	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/zeebo/xxh3"
 )
 

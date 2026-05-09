@@ -31,10 +31,10 @@ import (
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/controlplane/job"
-	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/controlplane/serverconfig"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
+	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/internal/tarhelper"
 	"go.opentelemetry.io/otel/trace"
 )

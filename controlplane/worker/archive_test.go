@@ -6,9 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/mock"
+	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/test/fixture"
 	mocky "github.com/stretchr/testify/mock"
 )

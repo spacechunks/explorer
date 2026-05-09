@@ -23,7 +23,7 @@ import (
 	"fmt"
 
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 type AccessRuleOption func(*accessRules)

@@ -5,7 +5,7 @@ package mock
 import (
 	context "context"
 
-	resource "github.com/spacechunks/explorer/controlplane/resource"
+	resource "github.com/spacechunks/explorer/internal/resource"
 	mock "github.com/stretchr/testify/mock"
 )
 
