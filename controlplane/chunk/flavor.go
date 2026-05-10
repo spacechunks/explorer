@@ -141,10 +141,6 @@ func (s *svc) CreateFlavorVersion(
 			fmt.Errorf("latest flavor version file hashes: %w", err)
 	}
 
-	if err := cleanFileHashPaths(prevVersion.FileHashes); err != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, err
-	}
-
 	newContentTree, err := file.HashTree(version.FileHashes)
 	if err != nil {
 		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("new content tree: %w", err)
