@@ -26,7 +26,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/internal/resource/codec"
@@ -413,7 +412,7 @@ func TestWorkloadMetadata(t *testing.T) {
 				},
 				// whatever
 				FlavorVersion: codec.FlavorVersionToDomain(
-					chunk.FlavorVersionToTransport(fixture.Instance().FlavorVersion),
+					codec.FlavorVersionToTransport(fixture.Instance().FlavorVersion),
 				),
 				OrderedBy: fixture.Instance().OrderedBy,
 			},
