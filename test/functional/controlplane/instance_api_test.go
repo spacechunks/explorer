@@ -31,7 +31,6 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/internal/resource"
@@ -468,7 +467,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 
 			_, err := client.ReceiveInstanceStatusReports(ctx, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
 				Reports: []*instancev1alpha1.InstanceStatusReport{
-					instance.StatusReportToTransport(tt.report),
+					codec.StatusReportToTransport(tt.report),
 				},
 			})
 			require.NoError(t, err)
