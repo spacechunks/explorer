@@ -112,3 +112,21 @@ func FileHashSliceToDomain(transport []*chunkv1alpha1.FileHashes) []file.Hash {
 	}
 	return hashes
 }
+
+func FlavorToTransport(domain resource.Flavor) *chunkv1alpha1.Flavor {
+	return &chunkv1alpha1.Flavor{
+		Id:        domain.ID,
+		Name:      domain.Name,
+		CreatedAt: timestamppb.New(domain.CreatedAt),
+		UpdatedAt: timestamppb.New(domain.UpdatedAt),
+	}
+}
+
+func FlavorToDomain(transport *chunkv1alpha1.Flavor) resource.Flavor {
+	return resource.Flavor{
+		ID:        transport.GetId(),
+		Name:      transport.GetName(),
+		CreatedAt: transport.GetCreatedAt().AsTime(),
+		UpdatedAt: transport.GetUpdatedAt().AsTime(),
+	}
+}
