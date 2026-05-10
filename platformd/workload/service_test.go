@@ -27,7 +27,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/spacechunks/explorer/controlplane/chunk"
-	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/internal/resource/codec"
@@ -68,7 +67,7 @@ func TestRunWorkload(t *testing.T) {
 				CPUPeriod:        100000,
 				CPUQuota:         200000,
 				MemoryLimitBytes: 100000,
-				Instance:         instance.ToTransport(fixture.Instance()),
+				Instance:         codec.InstanceToTransport(fixture.Instance()),
 			},
 			cfg: workload.Config{
 				MCManagementAPIToken:   "some-token",
@@ -390,7 +389,7 @@ func TestWorkloadMetadata(t *testing.T) {
 		{
 			name: "works fine",
 			pods: func(t *testing.T) []*runtimev1.PodSandbox {
-				data, err := protojson.Marshal(instance.ToTransport(fixture.Instance()))
+				data, err := protojson.Marshal(codec.InstanceToTransport(fixture.Instance()))
 				require.NoError(t, err)
 
 				return []*runtimev1.PodSandbox{

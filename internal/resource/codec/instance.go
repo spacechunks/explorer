@@ -16,19 +16,18 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package instance
+package codec
 
 import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	"github.com/spacechunks/explorer/internal/resource"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// ToTransport converts the domain object to a transport layer object
-func ToTransport(ins resource.Instance) *instancev1alpha1.Instance {
+// InstanceToTransport converts the domain object to a transport layer object
+func InstanceToTransport(ins resource.Instance) *instancev1alpha1.Instance {
 	var (
 		port  uint32 = 0
 		state        = instancev1alpha1.InstanceState(instancev1alpha1.InstanceState_value[string(ins.State)])
@@ -53,7 +52,7 @@ func ToTransport(ins resource.Instance) *instancev1alpha1.Instance {
 			Version:          ins.FlavorVersion.Version,
 			MinecraftVersion: ins.FlavorVersion.MinecraftVersion,
 			Hash:             ins.FlavorVersion.Hash,
-			FileHashes:       chunk.FileHashSliceToTransport(ins.FlavorVersion.FileHashes),
+			FileHashes:       FileHashSliceToTransport(ins.FlavorVersion.FileHashes),
 			BuildStatus:      chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(ins.FlavorVersion.BuildStatus)]),
 			CreatedAt:        timestamppb.New(ins.FlavorVersion.CreatedAt),
 		},
