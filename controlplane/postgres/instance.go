@@ -26,8 +26,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
-	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/ptr"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID string) (resource.Instance, error) {

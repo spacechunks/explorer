@@ -26,7 +26,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/authz"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/job"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 type Service interface {

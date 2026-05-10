@@ -20,7 +20,7 @@ package workload
 
 import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 type Workload struct {

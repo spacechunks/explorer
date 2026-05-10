@@ -20,7 +20,7 @@ package workload
 
 import (
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
-	"github.com/spacechunks/explorer/controlplane/chunk"
+	"github.com/spacechunks/explorer/internal/resource/codec"
 	"github.com/spacechunks/explorer/platformd/status"
 )
 
@@ -54,8 +54,8 @@ func StateToTransport(state status.WorkloadState) workloadv1alpha2.WorkloadState
 func MetadataToTransport(meta Metadata) *workloadv1alpha2.WorkloadMetadata {
 	return &workloadv1alpha2.WorkloadMetadata{
 		Id:            meta.ID,
-		Chunk:         chunk.ChunkToTransport(meta.Chunk),
-		FlavorVersion: chunk.FlavorVersionToTransport(meta.FlavorVersion),
+		Chunk:         codec.ChunkToTransport(meta.Chunk),
+		FlavorVersion: codec.FlavorVersionToTransport(meta.FlavorVersion),
 		OrderedBy:     meta.OrderedBy,
 	}
 }

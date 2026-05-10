@@ -16,13 +16,13 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package chunk
+package codec
 
 import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
-	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
+	"github.com/spacechunks/explorer/internal/resource"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -64,24 +64,6 @@ func ChunkToTransport(domain resource.Chunk) *chunkv1alpha1.Chunk {
 	c.Flavors = flavors
 
 	return c
-}
-
-func FlavorToTransport(domain resource.Flavor) *chunkv1alpha1.Flavor {
-	return &chunkv1alpha1.Flavor{
-		Id:        domain.ID,
-		Name:      domain.Name,
-		CreatedAt: timestamppb.New(domain.CreatedAt),
-		UpdatedAt: timestamppb.New(domain.UpdatedAt),
-	}
-}
-
-func FlavorToDomain(transport *chunkv1alpha1.Flavor) resource.Flavor {
-	return resource.Flavor{
-		ID:        transport.GetId(),
-		Name:      transport.GetName(),
-		CreatedAt: transport.GetCreatedAt().AsTime(),
-		UpdatedAt: transport.GetUpdatedAt().AsTime(),
-	}
 }
 
 func FlavorVersionToDomain(transport *chunkv1alpha1.FlavorVersion) resource.FlavorVersion {
@@ -129,4 +111,22 @@ func FileHashSliceToDomain(transport []*chunkv1alpha1.FileHashes) []file.Hash {
 		})
 	}
 	return hashes
+}
+
+func FlavorToTransport(domain resource.Flavor) *chunkv1alpha1.Flavor {
+	return &chunkv1alpha1.Flavor{
+		Id:        domain.ID,
+		Name:      domain.Name,
+		CreatedAt: timestamppb.New(domain.CreatedAt),
+		UpdatedAt: timestamppb.New(domain.UpdatedAt),
+	}
+}
+
+func FlavorToDomain(transport *chunkv1alpha1.Flavor) resource.Flavor {
+	return resource.Flavor{
+		ID:        transport.GetId(),
+		Name:      transport.GetName(),
+		CreatedAt: transport.GetCreatedAt().AsTime(),
+		UpdatedAt: transport.GetUpdatedAt().AsTime(),
+	}
 }

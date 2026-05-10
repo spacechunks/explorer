@@ -26,7 +26,8 @@ import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/pagination"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
+	"github.com/spacechunks/explorer/internal/resource/codec"
 )
 
 type Server struct {
@@ -64,7 +65,7 @@ func (s *Server) CreateChunk(
 	}
 
 	return &chunkv1alpha1.CreateChunkResponse{
-		Chunk: ChunkToTransport(ret),
+		Chunk: codec.ChunkToTransport(ret),
 	}, nil
 }
 
@@ -82,7 +83,7 @@ func (s *Server) GetChunk(
 	}
 
 	return &chunkv1alpha1.GetChunkResponse{
-		Chunk: ChunkToTransport(c),
+		Chunk: codec.ChunkToTransport(c),
 	}, nil
 }
 
@@ -112,7 +113,7 @@ func (s *Server) UpdateChunk(
 	}
 
 	return &chunkv1alpha1.UpdateChunkResponse{
-		Chunk: ChunkToTransport(ret),
+		Chunk: codec.ChunkToTransport(ret),
 	}, nil
 }
 
@@ -143,7 +144,7 @@ func (s *Server) ListChunks(
 
 	transport := make([]*chunkv1alpha1.Chunk, 0, len(ret))
 	for _, c := range ret {
-		transport = append(transport, ChunkToTransport(c))
+		transport = append(transport, codec.ChunkToTransport(c))
 	}
 
 	return &chunkv1alpha1.ListChunksResponse{
@@ -174,7 +175,7 @@ func (s *Server) CreateFlavor(
 	}
 
 	return &chunkv1alpha1.CreateFlavorResponse{
-		Flavor: FlavorToTransport(created),
+		Flavor: codec.FlavorToTransport(created),
 	}, nil
 }
 
@@ -182,7 +183,7 @@ func (s *Server) CreateFlavorVersion(
 	ctx context.Context,
 	req *chunkv1alpha1.CreateFlavorVersionRequest,
 ) (*chunkv1alpha1.CreateFlavorVersionResponse, error) {
-	domain := FlavorVersionToDomain(req.GetVersion())
+	domain := codec.FlavorVersionToDomain(req.GetVersion())
 
 	version, diff, err := s.service.CreateFlavorVersion(ctx, req.GetFlavorId(), domain)
 	if err != nil {
@@ -190,10 +191,10 @@ func (s *Server) CreateFlavorVersion(
 	}
 
 	return &chunkv1alpha1.CreateFlavorVersionResponse{
-		Version:      FlavorVersionToTransport(version),
-		ChangedFiles: FileHashSliceToTransport(diff.Changed),
-		RemovedFiles: FileHashSliceToTransport(diff.Removed),
-		AddedFiles:   FileHashSliceToTransport(diff.Added),
+		Version:      codec.FlavorVersionToTransport(version),
+		ChangedFiles: codec.FileHashSliceToTransport(diff.Changed),
+		RemovedFiles: codec.FileHashSliceToTransport(diff.Removed),
+		AddedFiles:   codec.FileHashSliceToTransport(diff.Added),
 	}, nil
 }
 

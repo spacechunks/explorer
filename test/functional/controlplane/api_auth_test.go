@@ -30,7 +30,7 @@ import (
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"

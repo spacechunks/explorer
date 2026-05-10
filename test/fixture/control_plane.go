@@ -38,7 +38,7 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/test"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
-	"github.com/spacechunks/explorer/controlplane/chunk"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
+	"github.com/spacechunks/explorer/internal/resource/codec"
 	"github.com/spacechunks/explorer/platformd/cri"
 	"github.com/spacechunks/explorer/platformd/status"
 	"google.golang.org/grpc/codes"
@@ -342,7 +342,7 @@ func (s *svc) WorkloadMetadata(ctx context.Context, id string) (Metadata, error)
 			CreatedAt:   instance.Chunk.CreatedAt.AsTime(),
 			UpdatedAt:   instance.Chunk.CreatedAt.AsTime(),
 		},
-		FlavorVersion: chunk.FlavorVersionToDomain(instance.FlavorVersion),
+		FlavorVersion: codec.FlavorVersionToDomain(instance.FlavorVersion),
 		OrderedBy:     instance.OrderedBy,
 	}, nil
 }

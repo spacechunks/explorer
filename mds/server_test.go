@@ -13,9 +13,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
-	"github.com/spacechunks/explorer/controlplane/chunk"
-	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/mock"
+	"github.com/spacechunks/explorer/internal/resource"
+	"github.com/spacechunks/explorer/internal/resource/codec"
 	"github.com/spacechunks/explorer/mds"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"github.com/spacechunks/explorer/test/fixture"
@@ -62,7 +62,7 @@ func TestMDSWorks(t *testing.T) {
 			CreatedAt:   ins.Chunk.CreatedAt,
 			UpdatedAt:   ins.Chunk.CreatedAt,
 		},
-		FlavorVersion: chunk.FlavorVersionToDomain(chunk.FlavorVersionToTransport(ins.FlavorVersion)),
+		FlavorVersion: codec.FlavorVersionToDomain(codec.FlavorVersionToTransport(ins.FlavorVersion)),
 		OrderedBy:     ins.OrderedBy,
 	}
 

@@ -22,7 +22,7 @@ import (
 	"context"
 
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 func (db *DB) ChunkOwner(ctx context.Context, chunkID string) (resource.User, error) {
