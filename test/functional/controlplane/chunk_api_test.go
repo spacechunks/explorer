@@ -36,7 +36,6 @@ import (
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/controlplane/blob"
-	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
@@ -621,12 +620,12 @@ func TestCreateFlavorVersion(t *testing.T) {
 			if tt.prevVersion != nil {
 				_, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
 					FlavorId: c.Flavors[0].ID,
-					Version:  chunk.FlavorVersionToTransport(*tt.prevVersion),
+					Version:  codec.FlavorVersionToTransport(*tt.prevVersion),
 				})
 				require.NoError(t, err)
 			}
 
-			version := chunk.FlavorVersionToTransport(tt.newVersion)
+			version := codec.FlavorVersionToTransport(tt.newVersion)
 
 			resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
 				FlavorId: c.Flavors[0].ID,
@@ -643,9 +642,9 @@ func TestCreateFlavorVersion(t *testing.T) {
 
 			expected := &chunkv1alpha1.CreateFlavorVersionResponse{
 				Version:      version,
-				AddedFiles:   chunk.FileHashSliceToTransport(tt.diff.Added),
-				ChangedFiles: chunk.FileHashSliceToTransport(tt.diff.Changed),
-				RemovedFiles: chunk.FileHashSliceToTransport(tt.diff.Removed),
+				AddedFiles:   codec.FileHashSliceToTransport(tt.diff.Added),
+				ChangedFiles: codec.FileHashSliceToTransport(tt.diff.Changed),
+				RemovedFiles: codec.FileHashSliceToTransport(tt.diff.Removed),
 			}
 
 			if d := cmp.Diff(
@@ -1450,7 +1449,7 @@ func TestAPIDeleteChunk(t *testing.T) {
 	for _, f := range c.Flavors {
 		_, err = chunkClient.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
 			FlavorId: f.ID,
-			Version:  chunk.FlavorVersionToTransport(f.Versions[0]),
+			Version:  codec.FlavorVersionToTransport(f.Versions[0]),
 		})
 		require.ErrorIsf(t, err, apierrs.ErrNotFound.GRPCStatus().Err(), "create flavor version (%s)", f.Name)
 
