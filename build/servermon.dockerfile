@@ -1,11 +1,11 @@
-FROM golang:1.26.2-alpine3.23 AS builder
+FROM golang:1.26.3-alpine3.23 AS builder
 WORKDIR /build
 RUN apk add --no-cache git
 COPY go.mod go.sum ./
 RUN go mod download
 COPY .. .
 RUN mkdir bin
-RUN go go build -mod vendor -o bin ./cmd/servermon
+RUN go build -mod vendor -o bin ./cmd/servermon
 
 FROM alpine:3.23
 RUN apk add --no-cache ca-certificates curl

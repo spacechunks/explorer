@@ -39,6 +39,7 @@ var minPBES2Count atomic.Int64
 var pbes2Count atomic.Int64
 var maxRecipients atomic.Int64
 var maxDecompressBufferSize atomic.Int64
+var disabledKeyAlgs atomic.Pointer[map[string]struct{}]
 
 func init() {
 	// maxPBES2Count: 1_000_000 covers OWASP 2023's 600k HS256 floor with
@@ -72,9 +73,31 @@ func Settings(options ...GlobalOption) error {
 			maxDecompressBufferSize.Store(option.MustGet[int64](opt))
 		case identCBCBufferSize{}:
 			aescbc.SetMaxBufferSize(option.MustGet[int64](opt))
+		case identDisabledKeyAlgorithms{}:
+			algs := option.MustGet[[]jwa.KeyEncryptionAlgorithm](opt)
+			if len(algs) == 0 {
+				disabledKeyAlgs.Store(nil)
+				continue
+			}
+			m := make(map[string]struct{}, len(algs))
+			for _, alg := range algs {
+				m[alg.String()] = struct{}{}
+			}
+			disabledKeyAlgs.Store(&m)
 		}
 	}
 	return nil
+}
+
+// isKeyAlgorithmDisabled reports whether alg is in the global
+// jwe.WithDisabledKeyAlgorithms set.
+func isKeyAlgorithmDisabled(alg jwa.KeyEncryptionAlgorithm) bool {
+	m := disabledKeyAlgs.Load()
+	if m == nil {
+		return false
+	}
+	_, ok := (*m)[alg.String()]
+	return ok
 }
 
 const (
@@ -95,6 +118,9 @@ type recipientBuilder struct {
 }
 
 func (b *recipientBuilder) Build(r Recipient, cek []byte, calg jwa.ContentEncryptionAlgorithm) ([]byte, error) {
+	if isKeyAlgorithmDisabled(b.alg) {
+		return nil, fmt.Errorf(`jwe.Encrypt: key encryption algorithm %q is disabled by jwe.WithDisabledKeyAlgorithms`, b.alg)
+	}
 	// Resolve the key to its raw form and extract key ID.
 	resolvedKey := b.key
 
@@ -371,6 +397,9 @@ func (dc *decryptContext) ProcessOptions(options []DecryptOption) error {
 			if !ok {
 				return fmt.Errorf("jwe.decrypt: WithKey() option must be specified using jwa.KeyEncryptionAlgorithm (got %T)", pair.alg)
 			}
+			if err := validateAlgorithmForKey(alg, pair.key); err != nil {
+				return fmt.Errorf("jwe.WithKey: %w", err)
+			}
 			dc.keyProviders = append(dc.keyProviders, &staticKeyProvider{alg: alg, key: pair.key})
 		case identCEK{}:
 			dc.cek = option.MustGet[*[]byte](opt)
@@ -534,6 +563,14 @@ func (dc *decryptContext) DecryptMessage(buf []byte) ([]byte, error) {
 
 	errs := make([]error, 0, len(recipients))
 	for _, recipient := range recipients {
+		// Honor caller's deadline between recipients. Without this
+		// check, a hostile JWE with many recipients keeps the loop
+		// running long after the deadline. Symmetric with the
+		// per-keyProvider and per-(alg,key) checks in tryRecipient.
+		if err := dc.ctx.Err(); err != nil {
+			return nil, makeDecryptError(`%w`, err)
+		}
+
 		decrypted, err := dc.tryRecipient(msg, recipient, h, aad, computedAad)
 		if err != nil {
 			errs = append(errs, makeRecipientError(err))
@@ -546,19 +583,55 @@ func (dc *decryptContext) DecryptMessage(buf []byte) ([]byte, error) {
 		}
 		return decrypted, nil
 	}
-	return nil, fmt.Errorf(`jwe.Decrypt: failed to decrypt any of the recipients: %w`, errors.Join(errs...))
+	// Bound the joined-error count so a hostile JWE with many recipients
+	// can't produce an unbounded error string. R×K errors at default
+	// MaxRecipients=100 with a multi-key keyset can otherwise grow into
+	// a log-spam vector. Keep the first decryptErrorJoinCap entries
+	// verbatim and replace the rest with a single "... and N more" sentinel.
+	return nil, fmt.Errorf(`jwe.Decrypt: failed to decrypt any of the recipients: %w`, joinDecryptErrors(errs))
+}
+
+// decryptErrorJoinCap caps how many per-recipient / per-(alg,key)
+// constituent errors get joined into the final Decrypt error. A
+// hostile JWE with R recipients × K keys produces R×K constituent
+// errors; the cap prevents the resulting err.Error() string from
+// growing unboundedly.
+const decryptErrorJoinCap = 10
+
+func joinDecryptErrors(errs []error) error {
+	if len(errs) <= decryptErrorJoinCap {
+		return errors.Join(errs...)
+	}
+	kept := make([]error, decryptErrorJoinCap, decryptErrorJoinCap+1)
+	copy(kept, errs[:decryptErrorJoinCap])
+	kept = append(kept, fmt.Errorf("... and %d more error(s) suppressed", len(errs)-decryptErrorJoinCap))
+	return errors.Join(kept...)
 }
 
 func (dc *decryptContext) tryRecipient(msg *Message, recipient Recipient, protectedHeaders Headers, aad, computedAad []byte) ([]byte, error) {
 	var tried int
 	var attemptErrors []error
 	for i, kp := range dc.keyProviders {
+		// Honor caller's deadline between key providers.
+		if err := dc.ctx.Err(); err != nil {
+			return nil, err
+		}
+
 		var sink algKeySink
 		if err := kp.FetchKeys(dc.ctx, &sink, recipient, msg); err != nil {
 			return nil, fmt.Errorf(`key provider %d failed: %w`, i, err)
 		}
 
 		for _, pair := range sink.list {
+			// Honor caller's deadline between (alg,key) pairs.
+			// Under WithRequireKid(false) + a large keyset, this
+			// inner loop is the dominant cost — checking ctx
+			// between attempts caps the post-deadline crypto
+			// work at one operation.
+			if err := dc.ctx.Err(); err != nil {
+				return nil, err
+			}
+
 			tried++
 			// alg is converted here because pair.alg is of type jwa.KeyAlgorithm.
 			// this may seem ugly, but we're trying to avoid declaring separate
@@ -579,14 +652,18 @@ func (dc *decryptContext) tryRecipient(msg *Message, recipient Recipient, protec
 			return decrypted, nil
 		}
 	}
-	// Preserve every per-key attempt error via errors.Join so that each
-	// constituent remains reachable through errors.Is / errors.As on the
-	// outer error. The top-level "jwe.Decrypt:" prefix is added by the
-	// caller (Decrypt) via makeDecryptError.
-	return nil, fmt.Errorf(`tried %d keys, but failed to match any of the keys with recipient: %w`, tried, errors.Join(attemptErrors...))
+	// Preserve per-key attempt errors via errors.Join so each constituent
+	// remains reachable through errors.Is / errors.As on the outer error.
+	// Cap the count so a hostile JWE with many keys per provider can't
+	// produce unbounded error text. Top-level "jwe.Decrypt:" prefix is
+	// added by the caller (Decrypt) via makeDecryptError.
+	return nil, fmt.Errorf(`tried %d keys, but failed to match any of the keys with recipient: %w`, tried, joinDecryptErrors(attemptErrors))
 }
 
 func (dc *decryptContext) decryptContent(msg *Message, alg jwa.KeyEncryptionAlgorithm, key any, recipient Recipient, protectedHeaders Headers, aad, computedAad []byte) ([]byte, error) {
+	if isKeyAlgorithmDisabled(alg) {
+		return nil, decryptError{fmt.Errorf(`jwe.Decrypt: key encryption algorithm %q is disabled by jwe.WithDisabledKeyAlgorithms`, alg)}
+	}
 	if jwkKey, ok := key.(jwk.Key); ok {
 		raw, err := jwk.Export[any](jwkKey)
 		if err != nil {
@@ -763,6 +840,9 @@ func (ec *encryptContext) ProcessOptions(options []EncryptOption) error {
 			v, ok := wk.alg.(jwa.KeyEncryptionAlgorithm)
 			if !ok {
 				return fmt.Errorf("jwe.encrypt: WithKey() option must be specified using jwa.KeyEncryptionAlgorithm (got %T)", wk.alg)
+			}
+			if err := validateAlgorithmForKey(v, wk.key); err != nil {
+				return fmt.Errorf("jwe.WithKey: %w", err)
 			}
 			if jwebb.IsDirectCEK(v.String()) {
 				useRawCEK = true
@@ -1075,6 +1155,17 @@ func (ec *encryptContext) EncryptMessage(payload []byte, cek []byte) ([]byte, er
 //
 //	jwe.Settings(jwe.WithMaxDecompressBufferSize(10*1024*1024)) // changes value globally
 //	jwe.Decrypt(..., jwe.WithMaxDecompressBufferSize(250*1024)) // changes just for this call
+//
+// PBES2 amplification: PBES2 algorithms (PBES2-HS256+A128KW, etc.)
+// derive the CEK via PBKDF2 with the iteration count taken from the
+// JWE's `p2c` header. An attacker-controlled iteration count multiplied
+// by `WithMaxRecipients` is the major CPU-amplification vector on the
+// decrypt side. Bound it via `WithMaxPBES2Count` (default 1,000,000)
+// and reject too-low counts via `WithMinPBES2Count` (default 1000;
+// RFC 7518 §4.8.1.2 floor — note OWASP 2023 recommends ≥600,000 for
+// production password-derived key material). Both options accept a
+// `Settings()` global or a per-call value the same way
+// `WithMaxDecompressBufferSize` does.
 func Decrypt(buf []byte, options ...DecryptOption) ([]byte, error) {
 	dc := decryptContextPool.Get()
 	defer decryptContextPool.Put(dc)
@@ -1085,7 +1176,11 @@ func Decrypt(buf []byte, options ...DecryptOption) ([]byte, error) {
 
 	ret, err := dc.DecryptMessage(buf)
 	if err != nil {
-		return nil, makeDecryptError(`%w`, err)
+		// DecryptMessage already returns errors prefixed with
+		// "jwe.Decrypt:" — wrap as decryptError without adding a
+		// second prefix, otherwise multi-recipient errors carry the
+		// "jwe.Decrypt:" string R×K + 2 times in their message.
+		return nil, decryptError{err}
 	}
 	return ret, nil
 }

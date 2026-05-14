@@ -26,8 +26,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
-	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/ptr"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID string) (resource.Instance, error) {
@@ -40,6 +40,7 @@ func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID 
 		OwnerID:         ins.Owner.ID,
 		CreatedAt:       ins.CreatedAt,
 		UpdatedAt:       ins.UpdatedAt,
+		OrderedBy:       ins.OrderedBy,
 	}
 
 	var ret resource.Instance
@@ -103,6 +104,7 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 				State:     resource.InstanceState(row.State),
 				CreatedAt: row.CreatedAt.UTC(),
 				UpdatedAt: row.UpdatedAt.UTC(),
+				OrderedBy: row.OrderedBy,
 				Chunk: resource.Chunk{
 					ID:          row.ID_3,
 					Name:        row.Name,
@@ -234,6 +236,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 				Port:      port,
 				CreatedAt: row.CreatedAt.UTC(),
 				UpdatedAt: row.UpdatedAt.UTC(),
+				OrderedBy: row.OrderedBy,
 			})
 		}
 
@@ -332,6 +335,7 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 		State:     resource.InstanceState(row.State),
 		CreatedAt: row.CreatedAt.UTC(),
 		UpdatedAt: row.UpdatedAt.UTC(),
+		OrderedBy: row.OrderedBy,
 		Chunk: resource.Chunk{
 			ID:          row.ID_3,
 			Name:        row.Name,

@@ -203,9 +203,9 @@ SELECT * FROM blobs WHERE hash = $1;
 
 -- name: CreateInstance :exec
 INSERT INTO instances
-    (id, chunk_id, flavor_version_id, node_id, state, owner_id, created_at, updated_at)
+    (id, chunk_id, flavor_version_id, node_id, state, owner_id, created_at, updated_at, ordered_by)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8);
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: ListInstances :many
 SELECT * FROM instances i

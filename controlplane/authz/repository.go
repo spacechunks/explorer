@@ -21,7 +21,7 @@ package authz
 import (
 	"context"
 
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 type Repository interface {

@@ -26,7 +26,8 @@ import (
 	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/pagination"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
+	"github.com/spacechunks/explorer/internal/resource/codec"
 )
 
 type Server struct {
@@ -53,7 +54,7 @@ func (s *Server) GetInstance(
 		return nil, err
 	}
 	return &instancev1alpha1.GetInstanceResponse{
-		Instance: ToTransport(ins),
+		Instance: codec.InstanceToTransport(ins),
 	}, nil
 }
 
@@ -84,7 +85,7 @@ func (s *Server) ListInstances(
 
 	transport := make([]*instancev1alpha1.Instance, 0, len(instances))
 	for _, ins := range instances {
-		transport = append(transport, ToTransport(ins))
+		transport = append(transport, codec.InstanceToTransport(ins))
 	}
 
 	return &instancev1alpha1.ListInstancesResponse{
@@ -98,13 +99,13 @@ func (s *Server) RunFlavorVersion(
 	req *instancev1alpha1.RunFlavorVersionRequest,
 ) (*instancev1alpha1.RunFlavorVersionResponse, error) {
 	userID := ctx.Value(contextkey.ActorID).(string)
-	ins, err := s.service.RunFlavorVersion(ctx, req.GetChunkId(), req.GetFlavorVersionId(), userID)
+	ins, err := s.service.RunFlavorVersion(ctx, req.GetChunkId(), req.GetFlavorVersionId(), userID, req.OrderedBy)
 	if err != nil {
 		return nil, fmt.Errorf("run chunk: %w", err)
 	}
 
 	return &instancev1alpha1.RunFlavorVersionResponse{
-		Instance: ToTransport(ins),
+		Instance: codec.InstanceToTransport(ins),
 	}, nil
 }
 
@@ -123,7 +124,7 @@ func (s *Server) DiscoverInstances(
 
 	ret := make([]*instancev1alpha1.Instance, 0, len(instances))
 	for _, ins := range instances {
-		ret = append(ret, ToTransport(ins))
+		ret = append(ret, codec.InstanceToTransport(ins))
 	}
 
 	return &instancev1alpha1.DiscoverInstanceResponse{
@@ -137,7 +138,7 @@ func (s *Server) ReceiveInstanceStatusReports(
 ) (*instancev1alpha1.ReceiveInstanceStatusReportsResponse, error) {
 	reports := make([]resource.InstanceStatusReport, 0, len(req.GetReports()))
 	for _, r := range req.GetReports() {
-		reports = append(reports, StatusReportToDomain(r))
+		reports = append(reports, codec.StatusReportToDomain(r))
 	}
 
 	if err := s.service.ReceiveInstanceStatusReports(ctx, reports); err != nil {

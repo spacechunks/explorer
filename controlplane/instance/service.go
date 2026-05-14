@@ -25,12 +25,13 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/node"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 type Service interface {
@@ -41,6 +42,7 @@ type Service interface {
 		chunkID string,
 		flavorVersionID string,
 		ownerID string,
+		orderedBy string,
 	) (resource.Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]resource.Instance, error)
 	ReceiveInstanceStatusReports(ctx context.Context, reports []resource.InstanceStatusReport) error
@@ -83,6 +85,7 @@ func (s *svc) RunFlavorVersion(
 	chunkID string,
 	flavorVersionID string,
 	ownerID string,
+	orderedBy string,
 ) (resource.Instance, error) {
 	n, err := s.nodeRepo.BestNode(ctx)
 	if err != nil {
@@ -131,6 +134,9 @@ func (s *svc) RunFlavorVersion(
 		Owner: resource.User{
 			ID: ownerID,
 		},
+		OrderedBy: orderedBy,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}, n.ID)
 	if err != nil {
 		return resource.Instance{}, fmt.Errorf("create instance: %w", err)

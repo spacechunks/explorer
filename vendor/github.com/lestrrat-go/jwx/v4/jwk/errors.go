@@ -73,6 +73,14 @@ func sparseerr(f string, args ...any) error {
 	return bparseerr(`jwk.ParseString`, f, args...)
 }
 
+func kparseerr(f string, args ...any) error {
+	return bparseerr(`jwk.ParseKey`, f, args...)
+}
+
+func kasparseerr(f string, args ...any) error {
+	return bparseerr(`jwk.ParseKeyAs`, f, args...)
+}
+
 var errDefaultParseError = parseError{errors.New(`parse error`)}
 
 func ParseError() error {
@@ -83,23 +91,24 @@ func ParseError() error {
 // KeyTypeMismatchError
 //-------------------------------------------------------------------
 
-// KeyTypeMismatchError is returned by [Import] when the imported key's
-// concrete type does not match the generic type parameter supplied by
-// the caller.
+// KeyTypeMismatchError is returned by [Import] / [ParseKeyAs] /
+// [Export] / [ExportAll] when the value the function produced does
+// not match the generic type parameter supplied by the caller.
 //
-// Callers that need to distinguish "wrong generic type parameter" from
-// "key validation failed" should use [errors.Is] with
-// KeyTypeMismatchError{}, or [errors.AsType] to recover the Got and
-// Want fields.
+// Got is the runtime type of the value the library produced; Want is
+// the type the caller asked for via the type parameter. Callers that
+// need to distinguish "wrong generic type parameter" from other
+// failures should use [errors.Is] with KeyTypeMismatchError{}, or
+// [errors.AsType] to recover the Got and Want fields.
 type KeyTypeMismatchError struct {
-	// Got is the runtime type of the key that was imported.
+	// Got is the runtime type of the value the library produced.
 	Got reflect.Type
-	// Want is the type requested via the Import type parameter.
+	// Want is the type requested via the function's type parameter.
 	Want reflect.Type
 }
 
 func (e KeyTypeMismatchError) Error() string {
-	return fmt.Sprintf(`imported key is %s, not %s`, typeName(e.Got), typeName(e.Want))
+	return fmt.Sprintf(`key type mismatch: got %s, want %s`, typeName(e.Got), typeName(e.Want))
 }
 
 func (e KeyTypeMismatchError) Is(target error) bool {
@@ -115,6 +124,41 @@ func typeName(t reflect.Type) string {
 		return "<nil>"
 	}
 	return t.String()
+}
+
+//-------------------------------------------------------------------
+// UnknownKeyTypeError
+//-------------------------------------------------------------------
+
+// UnknownKeyTypeError is returned by [Parse] / [ParseKey] / [ParseKeyAs]
+// when the input's "kty" hint cannot be resolved to a known key
+// family.
+//
+// KeyType is empty when the input had no "kty" field at all, or when
+// "kty" was present but not a JSON string (the probe could not extract
+// a usable identifier). KeyType is populated when the input carried a
+// string "kty" that didn't match any registered key family — useful
+// for callers that want to suggest installing an extension module.
+//
+// Use [errors.Is] with UnknownKeyTypeError{} to recognize the
+// condition, or [errors.AsType] to recover the KeyType field. The
+// error chain also satisfies [errors.Is] with [ParseError].
+type UnknownKeyTypeError struct {
+	// KeyType is the raw "kty" value the input carried, or "" when
+	// "kty" was missing or non-string.
+	KeyType string
+}
+
+func (e UnknownKeyTypeError) Error() string {
+	if e.KeyType == "" {
+		return `failed to get "kty" hint`
+	}
+	return fmt.Sprintf(`invalid key type from JSON (%s)`, e.KeyType)
+}
+
+func (UnknownKeyTypeError) Is(target error) bool {
+	_, ok := target.(UnknownKeyTypeError)
+	return ok
 }
 
 //-------------------------------------------------------------------

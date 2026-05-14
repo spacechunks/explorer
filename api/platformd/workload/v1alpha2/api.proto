@@ -28,6 +28,7 @@ option go_package = "github.com/spacechunks/explorer/api/platformd/workload/v1al
 service WorkloadService {
   rpc WorkloadStatus(WorkloadStatusRequest) returns (WorkloadStatusResponse);
   rpc StopWorkload(WorkloadStopRequest) returns (WorkloadStopResponse);
+  rpc WorkloadMetadata(WorkloadMetadataRequest) returns (WorkloadMetadataResponse);
 }
 
 message WorkloadStatusRequest {
@@ -43,4 +44,12 @@ message WorkloadStopRequest {
 }
 
 message WorkloadStopResponse {
+}
+
+message WorkloadMetadataRequest {
+  string workload_id = 1;
+}
+
+message WorkloadMetadataResponse {
+  platformd.workload.v1alpha2.WorkloadMetadata metadata = 1;
 }

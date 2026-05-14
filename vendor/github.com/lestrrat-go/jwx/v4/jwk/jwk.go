@@ -20,6 +20,7 @@ import (
 	"github.com/lestrrat-go/jwx/v4/internal/base64"
 	"github.com/lestrrat-go/jwx/v4/internal/json"
 	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/jwx/v4/jwk/jwkbb"
 	"github.com/lestrrat-go/option/v3"
 )
 
@@ -65,7 +66,10 @@ func init() {
 //   - "crypto/rsa".PrivateKey and "crypto/rsa".PublicKey creates an RSA based key
 //   - "crypto/ecdsa".PrivateKey and "crypto/ecdsa".PublicKey creates an EC based key
 //   - "crypto/ed25519".PrivateKey and "crypto/ed25519".PublicKey creates an OKP based key
-//   - "crypto/ecdh".PrivateKey and "crypto/ecdh".PublicKey creates an OKP based key
+//   - "crypto/ecdh".PrivateKey and "crypto/ecdh".PublicKey for X25519
+//     creates an OKP based key; for the NIST P-curves (P-256, P-384,
+//     P-521) creates an EC based key (the same key material is valid
+//     for both ECDH and ECDSA, so JWK has no separate "EC for ECDH" type)
 //   - []byte creates a symmetric key
 //
 // The type parameter T specifies the expected key type. Use [Key] when you
@@ -164,7 +168,7 @@ func convertRawKey(raw any) (Key, error) {
 		return nil, fmt.Errorf(`failed to convert %T to jwk.Key: no converters were able to convert`, raw)
 	}
 
-	return conv.Import(raw)
+	return conv(raw)
 }
 
 func doImport(raw any) (Key, error) {
@@ -360,7 +364,11 @@ func (ctx *setDecodeCtx) IgnoreParseError() bool {
 // Use [ParseKeyAs] when a concrete key subtype (e.g. [RSAPrivateKey],
 // [ECDSAPublicKey]) is required.
 func ParseKey(data []byte, options ...ParseOption) (Key, error) {
-	return doParseKey(data, options...)
+	key, err := doParseKey(data, options...)
+	if err != nil {
+		return nil, kparseerr(`%w`, err)
+	}
+	return key, nil
 }
 
 // ParseKeyAs behaves like [ParseKey] but asserts the parsed key to the
@@ -373,11 +381,11 @@ func ParseKeyAs[T Key](data []byte, options ...ParseOption) (T, error) {
 	var zero T
 	key, err := doParseKey(data, options...)
 	if err != nil {
-		return zero, err
+		return zero, kasparseerr(`%w`, err)
 	}
 	result, ok := key.(T)
 	if !ok {
-		return zero, parseerr(`%w`, KeyTypeMismatchError{
+		return zero, kasparseerr(`%w`, KeyTypeMismatchError{
 			Got:  reflect.TypeOf(key),
 			Want: reflect.TypeFor[T](),
 		})
@@ -436,6 +444,13 @@ func doParseKey(data []byte, options ...ParseOption) (Key, error) {
 		parser := parsers[i]
 		key, err := parser.ParseKey(probe, &unmarshaler, data)
 		if err == nil {
+			// A buggy custom parser may return (nil, nil); treat
+			// that as if it had returned ContinueError so the next
+			// parser runs instead of handing the caller a nil Key
+			// they will dereference.
+			if key == nil {
+				continue
+			}
 			if err := validateReturnedKey(key); err != nil {
 				return nil, fmt.Errorf(`jwk.Parse: %w`, err)
 			}
@@ -552,8 +567,26 @@ func Parse(src []byte, options ...ParseOption) (Set, error) {
 		defer setter.setRejectDuplicateKID(false)
 	}
 
-	if err := json.Unmarshal(src, s); err != nil {
-		return nil, parseerr(`failed to unmarshal JWK set: %w`, err)
+	// Dispatch JWK-vs-JWKS up front. Set.UnmarshalJSON / UnmarshalJSONFrom
+	// require JWKS shape; the bare-JWK convenience lives here.
+	if jwkbb.HeaderHas(jwkbb.HeaderParse(src), "keys") {
+		if err := json.Unmarshal(src, s); err != nil {
+			return nil, parseerr(`failed to unmarshal JWK set: %w`, err)
+		}
+	} else {
+		key, err := doParseKey(src, options...)
+		if err != nil {
+			return nil, parseerr(`failed to parse sole key: %w`, err)
+		}
+		if err := s.AddKey(key); err != nil {
+			return nil, parseerr(`failed to add jwk.Key to set: %w`, err)
+		}
+	}
+
+	if rejectDupKid {
+		if kid, dup := firstDuplicateKID(s); dup {
+			return nil, parseerr(`duplicate "kid" %q`, kid)
+		}
 	}
 
 	return s, nil

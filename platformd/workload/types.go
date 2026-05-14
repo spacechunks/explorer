@@ -18,10 +18,16 @@
 
 package workload
 
+import (
+	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	"github.com/spacechunks/explorer/internal/resource"
+)
+
 type Workload struct {
 	ID              string
 	CheckpointImage string
 	BaseImage       string
+	Instance        *instancev1alpha1.Instance
 
 	// below map directly to pod fields
 	Name             string
@@ -31,4 +37,11 @@ type Workload struct {
 	CPUPeriod        uint64
 	CPUQuota         uint64
 	MemoryLimitBytes uint64
+}
+
+type Metadata struct {
+	ID            string
+	Chunk         resource.Chunk
+	FlavorVersion resource.FlavorVersion
+	OrderedBy     string
 }

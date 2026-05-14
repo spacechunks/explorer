@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

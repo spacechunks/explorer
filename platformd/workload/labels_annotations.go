@@ -13,6 +13,12 @@ const (
 	LabelFlavorVersionID = "explorer.chunks.cloud/flavor-version-id"
 
 	LabelWorkloadPort = "explorer.chunks.cloud/workload-port"
+
+	LabelInstanceOrderedBy = "explorer.chunks.cloud/ordered-by"
+)
+
+const (
+	AnnotationInstance = "explorer.chunks.cloud/instance"
 )
 
 // SystemWorkloadLabels returns the labels used by system workloads
@@ -25,10 +31,11 @@ func SystemWorkloadLabels(name string) map[string]string {
 
 func InstanceLabels(instance *instancev1alpha1.Instance) map[string]string {
 	return map[string]string{
-		LabelWorkloadID:      instance.GetId(),
-		LabelWorkloadType:    "instance",
-		LabelChunkID:         instance.GetChunk().GetId(),
-		LabelChunkName:       instance.GetChunk().GetName(),
-		LabelFlavorVersionID: instance.FlavorVersion.Id,
+		LabelWorkloadID:        instance.GetId(),
+		LabelWorkloadType:      "instance",
+		LabelChunkID:           instance.GetChunk().GetId(),
+		LabelChunkName:         instance.GetChunk().GetName(),
+		LabelFlavorVersionID:   instance.FlavorVersion.Id,
+		LabelInstanceOrderedBy: instance.GetOrderedBy(),
 	}
 }

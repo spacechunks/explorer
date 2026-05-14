@@ -8,8 +8,8 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.7
 	github.com/aws/aws-sdk-go-v2/config v1.32.17
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
-	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.20
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.100.1
+	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.21
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.101.0
 	github.com/aws/smithy-go v1.25.1
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cilium/ebpf v0.21.0
@@ -28,10 +28,10 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hetznercloud/hcloud-go/v2 v2.39.0
+	github.com/hetznercloud/hcloud-go/v2 v2.40.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/johannesboyne/gofakes3 v0.0.0-20260208201424-4c385a1f6a73
-	github.com/lestrrat-go/jwx/v4 v4.0.1
+	github.com/lestrrat-go/jwx/v4 v4.0.2
 	github.com/magiconair/properties v1.8.10
 	github.com/moby/moby/api v1.54.2
 	github.com/peterbourgon/ff/v3 v3.4.0
@@ -55,9 +55,9 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
-	golang.org/x/crypto v0.50.0
+	golang.org/x/crypto v0.51.0
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/sys v0.43.0
+	golang.org/x/sys v0.44.0
 	google.golang.org/grpc v1.81.0
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	k8s.io/client-go v0.36.0
@@ -198,8 +198,8 @@ require (
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/term v0.42.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/term v0.43.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260427160629-7cedc36a6bc4 // indirect

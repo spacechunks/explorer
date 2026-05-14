@@ -63,6 +63,7 @@ Text output labels each finding as `(auto)` or `(manual)`, with migration notes 
 | `jwk.InsecureWhitelist{}` / `jwk.MapWhitelist` / `jwk.RegexpWhitelist` / `jwk.WhitelistFunc` | `jwkfetch.InsecureWhitelist{}` / `jwkfetch.MapWhitelist` / `jwkfetch.RegexpWhitelist` / `jwkfetch.WhitelistFunc` | Extension module |
 | `jwk.WhitelistError()` | `jwkfetch.WhitelistError()` | Extension module |
 | `jwk.Fetcher` | `jwk.Fetcher` (unchanged name, new shape: `Fetch(ctx, url) (Set, error)` — no variadic options) | Core interface, no in-package implementation |
+| `jwk.PublicSetOf(set)` (silent pass-through for symmetric keys) | `jwk.PublicSetOf(set)` (returns error if any oct key is present) / `jwk.PublicSetOf(set, jwk.WithAllowSymmetric(true))` | Behavioral. Default-rejects sets containing symmetric keys to prevent accidental publication of secret material (e.g. as `/.well-known/jwks.json`). Pass `WithAllowSymmetric(true)` to opt into the v3 pass-through. |
 | `jws.WithVerifyAuto(f, fetchOpts...)` | `jws.WithVerifyAuto(f)` | Variadic options dropped; nil fetcher now errors instead of silently using `jwk.Fetch` |
 | `jwt.WithVerifyAuto(f, fetchOpts...)` | `jwt.WithVerifyAuto(f)` | Same as jws |
 | `jws.Signer2` | `jws.Signer` | Interface renamed |
@@ -398,7 +399,7 @@ import _ "github.com/jwx-go/asmbase64/v4" // registration only
 ### Recipe 10: Custom Key Importer
 
 ```go
-// Before
+// Before (v3)
 jwk.RegisterKeyImporter(&myKeyType{}, jwk.KeyImportFunc(func(raw any) (jwk.Key, error) {
     src, ok := raw.(*myKeyType)
     if !ok {
@@ -407,10 +408,14 @@ jwk.RegisterKeyImporter(&myKeyType{}, jwk.KeyImportFunc(func(raw any) (jwk.Key, 
     // ... convert
 }))
 
-// After
-jwk.RegisterKeyImporter(func(src *myKeyType) (jwk.Key, error) {
-    // ... convert — type parameter inferred, no assertion needed
-})
+// After (v4): RegisterKeyImporter takes a jwk.KeyImporter[T]; use
+// jwk.KeyImportFunc[T] to adapt a typed function. The outer type
+// parameter is inferred from the adapter's typed Import method.
+jwk.RegisterKeyImporter(jwk.KeyImportFunc[*myKeyType](func(src *myKeyType) (jwk.Key, error) {
+    // The interface is typed, so src is *myKeyType in the body —
+    // no manual assertion.
+    // ... convert
+}))
 ```
 
 ### Recipe 11: Iterating Over Sets and Tokens

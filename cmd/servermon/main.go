@@ -3,14 +3,17 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/peterbourgon/ff/v3"
 	workloadv1alpha2 "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2"
+	"github.com/spacechunks/explorer/mds"
 	"github.com/spacechunks/explorer/servermon"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -25,6 +28,7 @@ func main() {
 		mgmtEndpoint             = fs.String("mc-server-management-api-endpoint", "ws://localhost:26656", "the endpoint at which the minecraft server management api is available") //nolint:lll
 		mgmtAPIToken             = fs.String("mc-server-management-api-token", "", "token to use for the minecraft server management api")                                          //nolint:lll
 		platformdListenSock      = fs.String("platformd-listen-sock", "", "path to the platformd management api unix socket file")                                                  //nolint:lll
+		mdsAddr                  = fs.String("mds-listen-addr", "127.10.10.10:80", "listen address of the metadata service")                                                        //nolint:lll
 	)
 
 	if err := ff.Parse(fs, os.Args[1:],
@@ -46,12 +50,18 @@ func main() {
 	}
 
 	var (
-		cfg = servermon.Config{
+		client = workloadv1alpha2.NewWorkloadServiceClient(conn)
+		cfg    = servermon.Config{
 			PlayerCountCheckInterval:      *playerCountCheckInterval,
 			MCServerManagementAPIEndpoint: *mgmtEndpoint,
 			MCServerManagementAPIToken:    *mgmtAPIToken,
 		}
-		mon = servermon.New(logger, cfg, workloadv1alpha2.NewWorkloadServiceClient(conn))
+		mon = servermon.New(
+			logger.With("component", "servermon"),
+			cfg,
+			client,
+		)
+		server = mds.New(logger.With("component", "mds"), *mdsAddr, client)
 	)
 
 	go func() {
@@ -62,8 +72,23 @@ func main() {
 		cancel()
 	}()
 
-	if err := mon.Run(ctx); err != nil {
-		logger.ErrorContext(ctx, "error running servermon", "err", err)
-		os.Exit(1)
-	}
+	var g multierror.Group
+
+	g.Go(func() error {
+		if err := server.Run(ctx); err != nil {
+			logger.ErrorContext(ctx, "failed to run mds", "err", err)
+			return fmt.Errorf("run mds: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		if err := mon.Run(ctx); err != nil {
+			logger.ErrorContext(ctx, "failed to run servermon", "err", err)
+			return fmt.Errorf("run servermon: %w", err)
+		}
+		return nil
+	})
+
+	_ = g.Wait()
 }

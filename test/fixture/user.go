@@ -21,7 +21,7 @@ package fixture
 import (
 	"time"
 
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 func User(mod ...func(c *resource.User)) resource.User {

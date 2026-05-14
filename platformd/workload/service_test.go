@@ -25,13 +25,20 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/spacechunks/explorer/internal/mock"
+	"github.com/spacechunks/explorer/internal/resource"
+	"github.com/spacechunks/explorer/internal/resource/codec"
 	"github.com/spacechunks/explorer/platformd/cri"
 	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"github.com/spacechunks/explorer/test"
+	"github.com/spacechunks/explorer/test/fixture"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
@@ -51,14 +58,15 @@ func TestRunWorkload(t *testing.T) {
 			name: "everyhing works",
 			w: workload.Workload{
 				ID:               test.NewUUIDv7(t),
-				Name:             "test",
 				CheckpointImage:  "test-image",
+				Name:             "test",
 				Namespace:        "test",
 				Hostname:         "test",
 				Labels:           map[string]string{"k": "v"},
 				CPUPeriod:        100000,
 				CPUQuota:         200000,
 				MemoryLimitBytes: 100000,
+				Instance:         codec.InstanceToTransport(fixture.Instance()),
 			},
 			cfg: workload.Config{
 				MCManagementAPIToken:   "some-token",
@@ -69,6 +77,9 @@ func TestRunWorkload(t *testing.T) {
 			},
 			attempt: 1,
 			prep: func(criService *mock.MockCriService, cfg workload.Config, w workload.Workload, attempt uint) {
+				data, err := protojson.Marshal(w.Instance)
+				require.NoError(t, err)
+
 				var (
 					podID   = "pod-test"
 					sboxCfg = &runtimev1.PodSandboxConfig{
@@ -86,11 +97,17 @@ func TestRunWorkload(t *testing.T) {
 							Options:  []string{"edns0", "trust-ad"},
 							Searches: []string{"."},
 						},
+						Annotations: map[string]string{
+							workload.AnnotationInstance: string(data),
+						},
 						Linux: &runtimev1.LinuxPodSandboxConfig{
 							Resources: &runtimev1.LinuxContainerResources{
 								CpuPeriod:          int64(w.CPUPeriod),
 								CpuQuota:           int64(w.CPUQuota),
 								MemoryLimitInBytes: int64(w.MemoryLimitBytes),
+							},
+							Sysctls: map[string]string{
+								"net.ipv4.ip_unprivileged_port_start": "0",
 							},
 						},
 					}
@@ -357,6 +374,105 @@ func TestGetWorkloadHealth(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tt.expected, st)
+		})
+	}
+}
+
+func TestWorkloadMetadata(t *testing.T) {
+	tests := []struct {
+		name     string
+		pods     func(*testing.T) []*runtimev1.PodSandbox
+		err      error
+		expected workload.Metadata
+	}{
+		{
+			name: "works fine",
+			pods: func(t *testing.T) []*runtimev1.PodSandbox {
+				data, err := protojson.Marshal(codec.InstanceToTransport(fixture.Instance()))
+				require.NoError(t, err)
+
+				return []*runtimev1.PodSandbox{
+					{
+						Id: "blabla",
+						Annotations: map[string]string{
+							workload.AnnotationInstance: string(data),
+						},
+					},
+				}
+			},
+			expected: workload.Metadata{
+				ID: fixture.Instance().ID,
+				Chunk: resource.Chunk{
+					ID:          fixture.Instance().Chunk.ID,
+					Name:        fixture.Instance().Chunk.Name,
+					Description: fixture.Instance().Chunk.Description,
+					Tags:        fixture.Instance().Chunk.Tags,
+					CreatedAt:   fixture.Instance().CreatedAt,
+					UpdatedAt:   fixture.Instance().CreatedAt,
+				},
+				// whatever
+				FlavorVersion: codec.FlavorVersionToDomain(
+					codec.FlavorVersionToTransport(fixture.Instance().FlavorVersion),
+				),
+				OrderedBy: fixture.Instance().OrderedBy,
+			},
+		},
+		{
+			name: "error when annotation emtpy",
+			pods: func(t *testing.T) []*runtimev1.PodSandbox {
+				return []*runtimev1.PodSandbox{
+					{
+						Id: "blabla",
+					},
+				}
+			},
+			err: grpcstatus.Error(codes.Internal, "invalid instance data"),
+		},
+		{
+			name: "error when pods empty",
+			pods: func(t *testing.T) []*runtimev1.PodSandbox {
+				return nil
+			},
+			err: grpcstatus.Error(codes.NotFound, "workload not found"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx     = context.Background()
+				wlID    = test.NewUUIDv7(t)
+				logger  = slog.New(slog.NewTextHandler(os.Stdout, nil))
+				regAuth = cri.RegistryAuth{
+					Username: "user",
+					Password: "pass",
+				}
+				mockCRIService = mock.NewMockCriService(t)
+				svc            = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth)
+			)
+
+			mockCRIService.EXPECT().
+				ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
+					Filter: &runtimev1.PodSandboxFilter{
+						LabelSelector: map[string]string{
+							workload.LabelWorkloadID: wlID,
+						},
+					},
+				}).
+				Return(&runtimev1.ListPodSandboxResponse{
+					Items: tt.pods(t),
+				}, nil)
+
+			meta, err := svc.WorkloadMetadata(ctx, wlID)
+
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				return
+			}
+			require.NoError(t, err)
+
+			if d := cmp.Diff(tt.expected, meta); d != "" {
+				t.Fatalf("workload metadata diff (-want, +got): %s", d)
+			}
 		})
 	}
 }

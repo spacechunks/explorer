@@ -8,8 +8,14 @@ import (
 	"os/exec"
 	"time"
 
+	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
+	"github.com/spacechunks/explorer/internal/resource"
+	"github.com/spacechunks/explorer/internal/resource/codec"
 	"github.com/spacechunks/explorer/platformd/cri"
 	"github.com/spacechunks/explorer/platformd/status"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
@@ -17,6 +23,7 @@ type Service interface {
 	RunWorkload(ctx context.Context, w Workload, attempt uint) error
 	RemoveWorkload(ctx context.Context, id string) error
 	GetWorkloadHealth(ctx context.Context, id string) (status.WorkloadHealthStatus, error)
+	WorkloadMetadata(ctx context.Context, id string) (Metadata, error)
 }
 
 type svc struct {
@@ -44,12 +51,20 @@ func NewService(
 func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 	logger := s.logger.With("workload_id", w.ID, "pod_name", w.Name, "namespace", w.Namespace)
 
+	data, err := protojson.Marshal(w.Instance)
+	if err != nil {
+		return fmt.Errorf("marshalling instance: %w", err)
+	}
+
 	sboxCfg := &runtimev1.PodSandboxConfig{
 		Metadata: &runtimev1.PodSandboxMetadata{
 			Name:      w.Name,
 			Uid:       w.ID,
 			Namespace: w.Namespace,
 			Attempt:   uint32(attempt),
+		},
+		Annotations: map[string]string{
+			AnnotationInstance: string(data),
 		},
 		Hostname:     w.Hostname, // TODO: explore if we can use the id as the hostname
 		LogDirectory: cri.PodLogDir,
@@ -64,6 +79,11 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 				CpuPeriod:          int64(w.CPUPeriod),
 				CpuQuota:           int64(w.CPUQuota),
 				MemoryLimitInBytes: int64(w.MemoryLimitBytes),
+			},
+			// for whatever reason, CAP_NET_BIND_SERVICE does not allow us
+			// to bind the mds to port 80. to fix it we just set the sysctl.
+			Sysctls: map[string]string{
+				"net.ipv4.ip_unprivileged_port_start": "0",
 			},
 		},
 	}
@@ -284,4 +304,45 @@ func (s *svc) GetWorkloadHealth(ctx context.Context, id string) (status.Workload
 	}
 
 	return status.WorkloadHealthStatusHealthy, nil
+}
+
+func (s *svc) WorkloadMetadata(ctx context.Context, id string) (Metadata, error) {
+	listResp, err := s.criService.ListPodSandbox(ctx, &runtimev1.ListPodSandboxRequest{
+		Filter: &runtimev1.PodSandboxFilter{
+			LabelSelector: map[string]string{
+				LabelWorkloadID: id,
+			},
+		},
+	})
+	if err != nil {
+		return Metadata{}, fmt.Errorf("list pod sandbox: %w", err)
+	}
+
+	if len(listResp.Items) == 0 {
+		return Metadata{}, grpcstatus.Error(codes.NotFound, "workload not found")
+	}
+
+	insData := listResp.Items[0].Annotations[AnnotationInstance]
+	if insData == "" {
+		return Metadata{}, grpcstatus.Error(codes.Internal, "invalid instance data")
+	}
+
+	instance := &instancev1alpha1.Instance{}
+	if err := protojson.Unmarshal([]byte(insData), instance); err != nil {
+		return Metadata{}, fmt.Errorf("unmarshal instance data: %w", err)
+	}
+
+	return Metadata{
+		ID: instance.GetId(),
+		Chunk: resource.Chunk{
+			ID:          instance.Chunk.Id,
+			Name:        instance.Chunk.Name,
+			Description: instance.Chunk.Description,
+			Tags:        instance.Chunk.Tags,
+			CreatedAt:   instance.Chunk.CreatedAt.AsTime(),
+			UpdatedAt:   instance.Chunk.CreatedAt.AsTime(),
+		},
+		FlavorVersion: codec.FlavorVersionToDomain(instance.FlavorVersion),
+		OrderedBy:     instance.OrderedBy,
+	}, nil
 }

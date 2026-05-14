@@ -31,10 +31,10 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/instance"
 	"github.com/spacechunks/explorer/controlplane/postgres"
-	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/ptr"
+	"github.com/spacechunks/explorer/internal/resource"
+	"github.com/spacechunks/explorer/internal/resource/codec"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
@@ -82,8 +82,6 @@ func TestGetInstance(t *testing.T) {
 			cp.AddUserAPIKey(t, &ctx, ins.Owner)
 			client := cp.InstanceClient(t)
 
-			fmt.Println("AAAAA", ins.Owner.ID)
-
 			resp, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
 				Id: ins.ID,
 			})
@@ -96,7 +94,7 @@ func TestGetInstance(t *testing.T) {
 			require.NoError(t, err)
 
 			if d := cmp.Diff(
-				instance.ToTransport(ins),
+				codec.InstanceToTransport(ins),
 				resp.GetInstance(),
 				protocmp.Transform(),
 				test.IgnoredProtoFlavorFields,
@@ -145,7 +143,7 @@ func TestAPIListInstances(t *testing.T) {
 
 	expected := make([]*instancev1alpha1.Instance, 0, len(ins))
 	for _, i := range ins {
-		expected = append(expected, instance.ToTransport(i))
+		expected = append(expected, codec.InstanceToTransport(i))
 	}
 
 	sort.Slice(expected, func(i, j int) bool {
@@ -256,8 +254,9 @@ func TestRunFlavorVersion(t *testing.T) {
 					CreatedAt: timestamppb.New(c.Owner.CreatedAt),
 					UpdatedAt: timestamppb.New(c.Owner.UpdatedAt),
 				},
-				Ip:    fixture.Node().Addr.String(),
-				State: instancev1alpha1.InstanceState_PENDING,
+				Ip:        fixture.Node().Addr.String(),
+				State:     instancev1alpha1.InstanceState_PENDING,
+				OrderedBy: "orderer",
 			}
 
 			if tt.chunkID == "" {
@@ -274,6 +273,7 @@ func TestRunFlavorVersion(t *testing.T) {
 			resp, err := client.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
 				ChunkId:         tt.chunkID,
 				FlavorVersionId: tt.flavorVersionID,
+				OrderedBy:       "orderer",
 			})
 
 			if tt.err != nil {
@@ -340,7 +340,7 @@ func TestDiscoverInstances(t *testing.T) {
 				for _, ins := range instances {
 					ins.Port = nil                     // port will be nil at this point
 					ins.FlavorVersion.FileHashes = nil // not returned atm
-					ret = append(ret, instance.ToTransport(ins))
+					ret = append(ret, codec.InstanceToTransport(ins))
 				}
 				return ret
 			},
@@ -467,7 +467,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 
 			_, err := client.ReceiveInstanceStatusReports(ctx, &instancev1alpha1.ReceiveInstanceStatusReportsRequest{
 				Reports: []*instancev1alpha1.InstanceStatusReport{
-					instance.StatusReportToTransport(tt.report),
+					codec.StatusReportToTransport(tt.report),
 				},
 			})
 			require.NoError(t, err)
@@ -481,7 +481,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			if !reflect.DeepEqual(tt.expected, resource.Instance{}) {
 				tt.expected.Owner = ins.Owner
 				expected = []*instancev1alpha1.Instance{
-					instance.ToTransport(tt.expected),
+					codec.InstanceToTransport(tt.expected),
 				}
 			}
 

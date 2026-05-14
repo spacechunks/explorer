@@ -34,8 +34,8 @@ import (
 	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
-	"github.com/spacechunks/explorer/controlplane/resource"
 	"github.com/spacechunks/explorer/internal/file"
+	"github.com/spacechunks/explorer/internal/resource"
 	"go.opentelemetry.io/otel/trace"
 )
 

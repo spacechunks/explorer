@@ -29,7 +29,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
-	"github.com/spacechunks/explorer/controlplane/resource"
+	"github.com/spacechunks/explorer/internal/resource"
 )
 
 func (db *DB) GetUserByEmail(ctx context.Context, email string) (resource.User, error) {

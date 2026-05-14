@@ -176,6 +176,63 @@ func (_c *MockWorkloadService_RunWorkload_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// WorkloadMetadata provides a mock function with given fields: ctx, id
+func (_m *MockWorkloadService) WorkloadMetadata(ctx context.Context, id string) (workload.Metadata, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WorkloadMetadata")
+	}
+
+	var r0 workload.Metadata
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (workload.Metadata, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) workload.Metadata); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Get(0).(workload.Metadata)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockWorkloadService_WorkloadMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WorkloadMetadata'
+type MockWorkloadService_WorkloadMetadata_Call struct {
+	*mock.Call
+}
+
+// WorkloadMetadata is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockWorkloadService_Expecter) WorkloadMetadata(ctx interface{}, id interface{}) *MockWorkloadService_WorkloadMetadata_Call {
+	return &MockWorkloadService_WorkloadMetadata_Call{Call: _e.mock.On("WorkloadMetadata", ctx, id)}
+}
+
+func (_c *MockWorkloadService_WorkloadMetadata_Call) Run(run func(ctx context.Context, id string)) *MockWorkloadService_WorkloadMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockWorkloadService_WorkloadMetadata_Call) Return(_a0 workload.Metadata, _a1 error) *MockWorkloadService_WorkloadMetadata_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockWorkloadService_WorkloadMetadata_Call) RunAndReturn(run func(context.Context, string) (workload.Metadata, error)) *MockWorkloadService_WorkloadMetadata_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockWorkloadService creates a new instance of MockWorkloadService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockWorkloadService(t interface {
