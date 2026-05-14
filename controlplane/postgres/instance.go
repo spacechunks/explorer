@@ -150,6 +150,10 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 					UpdatedAt: instanceRow.UpdatedAt_3.UTC(),
 				}
 				flavors = append(flavors, f)
+
+				if f.ID == instanceRow.FlavorID {
+					i.Flavor = f
+				}
 			}
 
 			sort.Slice(flavors, func(i, j int) bool {
@@ -388,8 +392,10 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 			CreatedAt: instanceRow.CreatedAt_2.UTC(),
 			UpdatedAt: instanceRow.UpdatedAt_2.UTC(),
 		}
-
 		flavors = append(flavors, f)
+		if f.ID == instanceRow.FlavorID {
+			ret.Flavor = f
+		}
 	}
 
 	sort.Slice(flavors, func(i, j int) bool {
