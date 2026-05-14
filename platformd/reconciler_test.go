@@ -527,6 +527,10 @@ func discoverInstance(
 		Chunk: &chunkv1alpha1.Chunk{
 			Name: "test-chunk",
 		},
+		Flavor: &chunkv1alpha1.Flavor{
+			Id:   "test-flavor-id",
+			Name: "test-flavor",
+		},
 		FlavorVersion: &chunkv1alpha1.FlavorVersion{
 			Id: "flavor-version-id",
 		},
