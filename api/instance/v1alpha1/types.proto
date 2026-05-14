@@ -69,6 +69,8 @@ message Instance {
   // that ordered the creation this instance. ordered_by and
   // owner of the instance are not necessarily the same.
   string ordered_by = 8;
+
+  chunk.v1alpha1.Flavor flavor = 9;
 }
 
 message InstanceStatusReport {

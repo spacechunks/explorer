@@ -117,6 +117,7 @@ type Instance struct {
 	ID            string
 	Chunk         Chunk
 	FlavorVersion FlavorVersion
+	Flavor        Flavor
 	Address       netip.Addr
 	State         InstanceState
 	Port          *uint16

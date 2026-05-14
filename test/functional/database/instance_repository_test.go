@@ -297,6 +297,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 		ins := resource.Instance{
 			ID:            test.NewUUIDv7(t),
 			Chunk:         chunks[i],
+			Flavor:        chunks[i].Flavors[0],
 			FlavorVersion: v,
 			Address:       fixture.Node().Addr,
 			State:         resource.InstanceStatePending,
@@ -307,6 +308,9 @@ func TestGetInstancesByNodeID(t *testing.T) {
 
 		ins.Chunk.Owner = resource.User{}          // will not be returned atm
 		ins.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
+		ins.Chunk.DeletedAt = nil // will not be returned atm
+		ins.Owner.Email = "" // will not be returned atm
+		ins.Flavor.Versions = nil // will not be returned atm
 
 		// see FIXME in GetInstancesByNodeID
 		ins.Chunk.Flavors = nil

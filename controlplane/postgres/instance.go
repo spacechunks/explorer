@@ -199,44 +199,53 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 
 		for _, row := range rows {
 			var port *uint16
-			if row.Port != nil {
-				port = ptr.Pointer(uint16(*row.Port))
+			if row.Instance.Port != nil {
+				port = ptr.Pointer(uint16(*row.Instance.Port))
 			}
 
 			ret = append(ret, resource.Instance{
-				ID: row.ID,
+				ID: row.Instance.ID,
 				Chunk: resource.Chunk{
-					ID:          row.ID_3,
-					Name:        row.Name,
-					Description: row.Description,
-					Tags:        row.Tags,
-					CreatedAt:   row.CreatedAt_3.UTC(),
-					UpdatedAt:   row.UpdatedAt_2.UTC(),
+					ID:          row.Chunk.ID,
+					Name:        row.Chunk.Name,
+					Description: row.Chunk.Description,
+					Tags:        row.Chunk.Tags,
+					CreatedAt:   row.Chunk.CreatedAt.UTC(),
+					UpdatedAt:   row.Chunk.UpdatedAt.UTC(),
+					DeletedAt:   nil, // not needed atm
+				},
+				Flavor: resource.Flavor{
+					ID:        row.Flavor.ID,
+					Name:      row.Flavor.Name,
+					Versions:  nil, // not needed atm
+					CreatedAt: row.Flavor.CreatedAt.UTC(),
+					UpdatedAt: row.Flavor.UpdatedAt.UTC(),
+					DeletedAt: nil, // not needed atm
 				},
 				FlavorVersion: resource.FlavorVersion{
-					ID:               row.ID_2,
-					Version:          row.Version,
-					MinecraftVersion: row.MinecraftVersion,
-					Hash:             row.Hash,
-					ChangeHash:       row.ChangeHash,
+					ID:               row.FlavorVersion.ID,
+					Version:          row.FlavorVersion.Version,
+					MinecraftVersion: row.FlavorVersion.MinecraftVersion,
+					Hash:             row.FlavorVersion.Hash,
+					ChangeHash:       row.FlavorVersion.ChangeHash,
 					FileHashes:       nil,
-					FilesUploaded:    row.FilesUploaded,
-					BuildStatus:      resource.FlavorVersionBuildStatus(row.BuildStatus),
-					CreatedAt:        row.CreatedAt_2.UTC(),
+					FilesUploaded:    row.FlavorVersion.FilesUploaded,
+					BuildStatus:      resource.FlavorVersionBuildStatus(row.FlavorVersion.BuildStatus),
+					CreatedAt:        row.FlavorVersion.CreatedAt.UTC(),
 				},
 				Owner: resource.User{
-					ID:        row.ID_5,
-					Nickname:  row.Nickname,
-					Email:     row.Email,
-					CreatedAt: row.CreatedAt_5,
-					UpdatedAt: row.UpdatedAt_3,
+					ID:        row.User.ID,
+					Nickname:  row.User.Nickname,
+					Email:     "", // we don't want to leak emails in calls everyone can do
+					CreatedAt: row.User.CreatedAt,
+					UpdatedAt: row.User.UpdatedAt,
 				},
-				Address:   row.Address,
-				State:     resource.InstanceState(row.State),
+				Address:   row.Node.Address,
+				State:     resource.InstanceState(row.Instance.State),
 				Port:      port,
-				CreatedAt: row.CreatedAt.UTC(),
-				UpdatedAt: row.UpdatedAt.UTC(),
-				OrderedBy: row.OrderedBy,
+				CreatedAt: row.Instance.CreatedAt.UTC(),
+				UpdatedAt: row.Instance.UpdatedAt.UTC(),
+				OrderedBy: row.Instance.OrderedBy,
 			})
 		}
 
