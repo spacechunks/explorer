@@ -141,7 +141,7 @@ func TestRunWorkload(t *testing.T) {
 								UserSpecifiedImage: cfg.ServerMonImage,
 								Image:              cfg.ServerMonImage,
 							},
-							LogPath: "servermon.log",
+							LogPath: "servermon.slog",
 							Mounts: []*runtimev1.Mount{
 								{
 									HostPath:      cfg.PlatformdListenSockURL.Path,
