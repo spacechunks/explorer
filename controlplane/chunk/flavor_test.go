@@ -35,6 +35,8 @@ import (
 	"github.com/spacechunks/explorer/test/fixture"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestCreateFlavor(t *testing.T) {
@@ -120,46 +122,13 @@ func TestCreateFlavor(t *testing.T) {
 }
 
 func TestCreateFlavorVersion(t *testing.T) {
-	cleanedPathVersion := fixture.FlavorVersion(func(v *resource.FlavorVersion) {
-		v.Version = "v2"
-		v.FileHashes = []file.Hash{
-			{
-				Path: "paper.yml",
-				Hash: "pppppppppppppppp",
-			},
-			{
-				Path: "server.properties",
-				Hash: "hash changed",
-			},
-			{
-				Path: "plugins/myplugin.jar",
-				Hash: "hash1",
-			},
-		}
-		v.ChangeHash = "68df46974f6dc5fe"
-	})
-	uncleanPathVersion := cleanedPathVersion
-	uncleanPathVersion.FileHashes = []file.Hash{
-		{
-			Path: "paper.yml",
-			Hash: "pppppppppppppppp",
-		},
-		{
-			Path: "plugins/myplugin.jar",
-			Hash: "hash1",
-		},
-		{
-			Path: "plugins/../server.properties",
-			Hash: "hash changed",
-		},
-	}
-
-	tests := []struct {
+	type testCase struct {
 		name         string
 		prevVersion  resource.FlavorVersion
 		newVersion   resource.FlavorVersion
 		expected     *resource.FlavorVersion
 		expectedDiff resource.FlavorVersionDiff
+		badRequest   *errdetails.BadRequest
 		prep         func(
 			*mock.MockChunkRepository,
 			resource.FlavorVersion,
@@ -167,7 +136,9 @@ func TestCreateFlavorVersion(t *testing.T) {
 			*mock.MockAuthzAccessEvaluator,
 		)
 		err error
-	}{
+	}
+
+	tests := []testCase{
 		{
 			name:        "works",
 			prevVersion: fixture.FlavorVersion(),
@@ -248,69 +219,106 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Return(newVersion, nil)
 			},
 		},
-		{
-			name:        "cleans paths",
-			prevVersion: fixture.FlavorVersion(),
-			newVersion:  uncleanPathVersion,
-			expected:    &cleanedPathVersion,
-			expectedDiff: resource.FlavorVersionDiff{
-				Added: []file.Hash{
+		func() testCase {
+			cleanedPathVersion := fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "v2"
+				v.FileHashes = []file.Hash{
 					{
-						Path: "plugins/myplugin.jar",
-						Hash: "hash1",
+						Path: "paper.yml",
+						Hash: "pppppppppppppppp",
 					},
-				},
-				Removed: []file.Hash{
-					{
-						Path: "plugins/myplugin/config.json",
-						Hash: "cooooooooooooooo",
-					},
-				},
-				Changed: []file.Hash{
 					{
 						Path: "server.properties",
 						Hash: "hash changed",
 					},
+					{
+						Path: "plugins/myplugin.jar",
+						Hash: "hash1",
+					},
+				}
+				v.ChangeHash = "68df46974f6dc5fe"
+			})
+
+			uncleanPathVersion := cleanedPathVersion
+			uncleanPathVersion.FileHashes = []file.Hash{
+				{
+					Path: "paper.yml",
+					Hash: "pppppppppppppppp",
 				},
-			},
-			prep: func(
-				repo *mock.MockChunkRepository,
-				newVersion resource.FlavorVersion,
-				prevVersion resource.FlavorVersion,
-				access *mock.MockAuthzAccessEvaluator,
-			) {
-				access.EXPECT().
-					AccessAuthorized(
-						mocky.Anything,
-						mocky.AnythingOfType("authz.AccessRuleOption"),
-					).
-					Return(nil)
+				{
+					Path: "plugins/myplugin.jar",
+					Hash: "hash1",
+				},
+				{
+					Path: "plugins/../server.properties",
+					Hash: "hash changed",
+				},
+			}
 
-				repo.EXPECT().
-					FlavorByID(mocky.Anything, fixture.Flavor().ID).
-					Return(fixture.Flavor(), nil)
+			return testCase{
+				name:        "cleans paths",
+				prevVersion: fixture.FlavorVersion(),
+				newVersion:  uncleanPathVersion,
+				expected:    &cleanedPathVersion,
+				expectedDiff: resource.FlavorVersionDiff{
+					Added: []file.Hash{
+						{
+							Path: "plugins/myplugin.jar",
+							Hash: "hash1",
+						},
+					},
+					Removed: []file.Hash{
+						{
+							Path: "plugins/myplugin/config.json",
+							Hash: "cooooooooooooooo",
+						},
+					},
+					Changed: []file.Hash{
+						{
+							Path: "server.properties",
+							Hash: "hash changed",
+						},
+					},
+				},
+				prep: func(
+					repo *mock.MockChunkRepository,
+					newVersion resource.FlavorVersion,
+					prevVersion resource.FlavorVersion,
+					access *mock.MockAuthzAccessEvaluator,
+				) {
+					access.EXPECT().
+						AccessAuthorized(
+							mocky.Anything,
+							mocky.AnythingOfType("authz.AccessRuleOption"),
+						).
+						Return(nil)
 
-				repo.EXPECT().
-					FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
-					Return(false, nil)
+					repo.EXPECT().
+						FlavorByID(mocky.Anything, fixture.Flavor().ID).
+						Return(fixture.Flavor(), nil)
 
-				repo.EXPECT().
-					GetMinecraftVersionByVersion(mocky.Anything, newVersion.MinecraftVersion).
-					Return(resource.MinecraftVersion{
-						Version:   newVersion.MinecraftVersion,
-						ImageURL:  "some-url",
-						CreatedAt: time.Time{},
-					}, nil)
+					repo.EXPECT().
+						FlavorVersionExists(mocky.Anything, fixture.Flavor().ID, newVersion.Version).
+						Return(false, nil)
 
-				repo.EXPECT().
-					LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).
-					Return(prevVersion, nil)
+					repo.EXPECT().
+						GetMinecraftVersionByVersion(mocky.Anything, newVersion.MinecraftVersion).
+						Return(resource.MinecraftVersion{
+							Version:   newVersion.MinecraftVersion,
+							ImageURL:  "some-url",
+							CreatedAt: time.Time{},
+						}, nil)
 
-				repo.EXPECT().
-					CreateFlavorVersion(mocky.Anything, fixture.FlavorID, cleanedPathVersion, prevVersion.ID).
-					Return(cleanedPathVersion, nil)
-			},
-		},
+					repo.EXPECT().
+						LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).
+						Return(prevVersion, nil)
+
+					repo.EXPECT().
+						CreateFlavorVersion(mocky.Anything, fixture.FlavorID, cleanedPathVersion, prevVersion.ID).
+						Return(cleanedPathVersion, nil)
+				},
+			}
+		}(),
 		{
 			name:        "rejects relative traversal paths",
 			prevVersion: fixture.FlavorVersion(),
@@ -321,8 +329,26 @@ func TestCreateFlavorVersion(t *testing.T) {
 						Path: "../server.properties",
 						Hash: "hash changed",
 					},
+					{
+						Path: "/plugins/myplugin.jar",
+						Hash: "hash1",
+					},
 				}
 			}),
+			badRequest: &errdetails.BadRequest{
+				FieldViolations: []*errdetails.BadRequest_FieldViolation{
+					{
+						Field:       "version.file_hashes[0].path",
+						Description: `path "../server.properties" must be a relative path within the flavor version`,
+						Reason:      "INVALID_PATH",
+					},
+					{
+						Field:       "version.file_hashes[1].path",
+						Description: `path "/plugins/myplugin.jar" must be a relative path within the flavor version`,
+						Reason:      "INVALID_PATH",
+					},
+				},
+			},
 			prep: func(
 				repo *mock.MockChunkRepository,
 				newVersion resource.FlavorVersion,
@@ -352,7 +378,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 						CreatedAt: time.Time{},
 					}, nil)
 			},
-			err: apierrs.ErrInvalidPath,
+			err: apierrs.InvalidPath(apierrs.InvalidPathViolation{
+				Field: "version.file_hashes[0].path",
+				Path:  "../server.properties",
+			}),
 		},
 		{
 			name:        "rejects absolute paths",
@@ -366,6 +395,15 @@ func TestCreateFlavorVersion(t *testing.T) {
 					},
 				}
 			}),
+			badRequest: &errdetails.BadRequest{
+				FieldViolations: []*errdetails.BadRequest_FieldViolation{
+					{
+						Field:       "version.file_hashes[0].path",
+						Description: `path "/server.properties" must be a relative path within the flavor version`,
+						Reason:      "INVALID_PATH",
+					},
+				},
+			},
 			prep: func(
 				repo *mock.MockChunkRepository,
 				newVersion resource.FlavorVersion,
@@ -395,7 +433,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 						CreatedAt: time.Time{},
 					}, nil)
 			},
-			err: apierrs.ErrInvalidPath,
+			err: apierrs.InvalidPath(apierrs.InvalidPathViolation{
+				Field: "version.file_hashes[0].path",
+				Path:  "/server.properties",
+			}),
 		},
 		{
 			name:        "version hash mismatch",
@@ -559,6 +600,17 @@ func TestCreateFlavorVersion(t *testing.T) {
 
 			if tt.err != nil {
 				require.ErrorAs(t, err, &tt.err)
+				if tt.badRequest != nil {
+					var apiErr apierrs.Error
+					require.ErrorAs(t, err, &apiErr)
+
+					details := apiErr.GRPCStatus().Details()
+					require.Len(t, details, 1)
+
+					badRequest, ok := details[0].(*errdetails.BadRequest)
+					require.True(t, ok)
+					require.True(t, proto.Equal(tt.badRequest, badRequest))
+				}
 				return
 			}
 

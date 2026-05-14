@@ -19,9 +19,12 @@
 package errors
 
 import (
-	"github.com/gogo/protobuf/proto"
+	"fmt"
+
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/runtime/protoiface"
 )
 
 /*
@@ -71,12 +74,36 @@ var (
 	ErrMinecraftVersionNotSupported = New(codes.FailedPrecondition, "minecraft version not found")
 	ErrHashMismatch                 = New(codes.FailedPrecondition, "hash does not match")
 	ErrInvalidHash                  = New(codes.InvalidArgument, "invalid hash")
-	ErrInvalidPath                  = New(codes.InvalidArgument, "invalid path")
 	ErrFlavorFilesNotUploaded       = New(codes.FailedPrecondition, "flavor files have not been uploaded")
 	ErrFlavorFilesUploaded          = New(codes.AlreadyExists, "flavor files have already been uploaded")
 	ErrFlavorVersionNotFound        = New(codes.NotFound, "flavor version does not exist")
 	ErrChangeSetTarballTooBig       = New(codes.InvalidArgument, "tarball size exceeds maximum allowed")
 )
+
+type InvalidPathViolation struct {
+	Field string
+	Path  string
+}
+
+func InvalidPath(violations ...InvalidPathViolation) Error {
+	fieldViolations := make([]*errdetails.BadRequest_FieldViolation, 0, len(violations))
+	for _, violation := range violations {
+		field := violation.Field
+		if field == "" {
+			field = "version.file_hashes.path"
+		}
+
+		fieldViolations = append(fieldViolations, &errdetails.BadRequest_FieldViolation{
+			Field:       field,
+			Description: fmt.Sprintf("path %q must be a relative path within the flavor version", violation.Path),
+			Reason:      "INVALID_PATH",
+		})
+	}
+
+	return New(codes.InvalidArgument, "invalid path", &errdetails.BadRequest{
+		FieldViolations: fieldViolations,
+	})
+}
 
 /*
  * instance related errors
@@ -91,7 +118,7 @@ var (
 
 type Error struct {
 	Message string
-	Detail  proto.Message
+	Detail  protoiface.MessageV1
 	Code    codes.Code
 }
 
@@ -120,7 +147,7 @@ func New(args ...any) Error {
 			e.Message = arg
 		case codes.Code:
 			e.Code = arg
-		case proto.Message:
+		case protoiface.MessageV1:
 			e.Detail = arg
 		default:
 			continue

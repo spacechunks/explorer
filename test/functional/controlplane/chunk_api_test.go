@@ -48,6 +48,9 @@ import (
 	"github.com/spacechunks/explorer/test/functional/controlplane/testdata"
 	"github.com/stretchr/testify/require"
 	"github.com/zeebo/xxh3"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
@@ -516,13 +519,17 @@ func TestCreateFlavor(t *testing.T) {
 func TestCreateFlavorVersion(t *testing.T) {
 	c := fixture.Chunk()
 
-	tests := []struct {
-		name        string
-		prevVersion *resource.FlavorVersion
-		newVersion  resource.FlavorVersion
-		diff        resource.FlavorVersionDiff
-		err         error
-	}{
+	type testCase struct {
+		name            string
+		prevVersion     *resource.FlavorVersion
+		newVersion      resource.FlavorVersion
+		expectedVersion *resource.FlavorVersion
+		diff            resource.FlavorVersionDiff
+		err             error
+		badRequest      *errdetails.BadRequest
+	}
+
+	tests := []testCase{
 		{
 			name:       "create initial version",
 			newVersion: fixture.FlavorVersion(),
@@ -568,6 +575,103 @@ func TestCreateFlavorVersion(t *testing.T) {
 					{
 						Path: "plugins/myplugin/config.json",
 						Hash: "cooooooooooooooo",
+					},
+				},
+			},
+		},
+		func() testCase {
+			cleanedPathVersion := fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "v2"
+				v.FileHashes = []file.Hash{
+					{
+						Path: "paper.yml",
+						Hash: "pppppppppppppppp",
+					},
+					{
+						Path: "server.properties",
+						Hash: "cccccccccccccccc",
+					},
+					{
+						Path: "plugins/myplugin.jar",
+						Hash: "yyyyyyyyyyyyyyyy",
+					},
+				}
+			})
+
+			uncleanPathVersion := cleanedPathVersion
+			uncleanPathVersion.FileHashes = []file.Hash{
+				{
+					Path: "paper.yml",
+					Hash: "pppppppppppppppp",
+				},
+				{
+					Path: "plugins/myplugin.jar",
+					Hash: "yyyyyyyyyyyyyyyy",
+				},
+				{
+					Path: "plugins/../server.properties",
+					Hash: "cccccccccccccccc",
+				},
+			}
+
+			return testCase{
+				name:            "cleans paths",
+				prevVersion:     ptr.Pointer(fixture.FlavorVersion()),
+				newVersion:      uncleanPathVersion,
+				expectedVersion: &cleanedPathVersion,
+				diff: resource.FlavorVersionDiff{
+					Added: []file.Hash{
+						{
+							Path: "plugins/myplugin.jar",
+							Hash: "yyyyyyyyyyyyyyyy",
+						},
+					},
+					Changed: []file.Hash{
+						{
+							Path: "server.properties",
+							Hash: "cccccccccccccccc",
+						},
+					},
+					Removed: []file.Hash{
+						{
+							Path: "plugins/myplugin/config.json",
+							Hash: "cooooooooooooooo",
+						},
+					},
+				},
+			}
+		}(),
+		{
+			name:        "invalid paths",
+			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "v2"
+				v.FileHashes = []file.Hash{
+					{
+						Path: "../server.properties",
+						Hash: "cccccccccccccccc",
+					},
+					{
+						Path: "/plugins/myplugin.jar",
+						Hash: "yyyyyyyyyyyyyyyy",
+					},
+				}
+			}),
+			err: apierrs.InvalidPath(apierrs.InvalidPathViolation{
+				Field: "version.file_hashes[0].path",
+				Path:  "../server.properties",
+			}).GRPCStatus().Err(),
+			badRequest: &errdetails.BadRequest{
+				FieldViolations: []*errdetails.BadRequest_FieldViolation{
+					{
+						Field:       "version.file_hashes[0].path",
+						Description: `path "../server.properties" must be a relative path within the flavor version`,
+						Reason:      "INVALID_PATH",
+					},
+					{
+						Field:       "version.file_hashes[1].path",
+						Description: `path "/plugins/myplugin.jar" must be a relative path within the flavor version`,
+						Reason:      "INVALID_PATH",
 					},
 				},
 			},
@@ -634,14 +738,33 @@ func TestCreateFlavorVersion(t *testing.T) {
 
 			if err != nil {
 				if tt.err != nil {
-					require.ErrorIs(t, err, tt.err)
+					if tt.badRequest != nil {
+						st, ok := status.FromError(err)
+						require.True(t, ok)
+						expectedStatus, ok := status.FromError(tt.err)
+						require.True(t, ok)
+						require.Equal(t, expectedStatus.Code(), st.Code())
+						require.Equal(t, expectedStatus.Message(), st.Message())
+						require.Len(t, st.Details(), 1)
+
+						badRequest, ok := st.Details()[0].(*errdetails.BadRequest)
+						require.True(t, ok)
+						require.True(t, proto.Equal(tt.badRequest, badRequest))
+					} else {
+						require.ErrorIs(t, err, tt.err)
+					}
 					return
 				}
 				require.NoError(t, err)
 			}
 
+			expectedVersion := version
+			if tt.expectedVersion != nil {
+				expectedVersion = chunk.FlavorVersionToTransport(*tt.expectedVersion)
+			}
+
 			expected := &chunkv1alpha1.CreateFlavorVersionResponse{
-				Version:      version,
+				Version:      expectedVersion,
 				AddedFiles:   chunk.FileHashSliceToTransport(tt.diff.Added),
 				ChangedFiles: chunk.FileHashSliceToTransport(tt.diff.Changed),
 				RemovedFiles: chunk.FileHashSliceToTransport(tt.diff.Removed),

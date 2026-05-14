@@ -240,16 +240,25 @@ func (s *svc) CreateFlavorVersion(
 }
 
 func cleanFileHashPaths(hashes []file.Hash) error {
+	invalidPaths := make([]apierrs.InvalidPathViolation, 0)
 	for i := range hashes {
 		cleanPath := filepath.Clean(hashes[i].Path)
 		if cleanPath == "." ||
 			filepath.IsAbs(cleanPath) ||
 			cleanPath == ".." ||
 			strings.HasPrefix(cleanPath, ".."+string(filepath.Separator)) {
-			return apierrs.ErrInvalidPath
+			invalidPaths = append(invalidPaths, apierrs.InvalidPathViolation{
+				Field: fmt.Sprintf("version.file_hashes[%d].path", i),
+				Path:  hashes[i].Path,
+			})
+			continue
 		}
 
 		hashes[i].Path = filepath.ToSlash(cleanPath)
+	}
+
+	if len(invalidPaths) > 0 {
+		return apierrs.InvalidPath(invalidPaths...)
 	}
 
 	return nil
