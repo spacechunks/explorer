@@ -20,6 +20,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"net/netip"
 	"sort"
 	"strings"
@@ -84,17 +85,23 @@ func TestCreateInstance(t *testing.T) {
 	pg.InsertMinecraftVersion(t)
 
 	c.Flavors = []resource.Flavor{c.Flavors[0]}
+	fmt.Println("gef", c.Flavors[0].ID)
+
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	fmt.Println("af", c.Flavors[0].ID)
 
 	expected := fixture.Instance()
 	expected.Chunk = c
 	expected.FlavorVersion = c.Flavors[0].Versions[0]
+	expected.Flavor = c.Flavors[0]
 	expected.Port = nil                             // port will not be saved when creating
 	expected.FlavorVersion.FileHashes = nil         // will not be returned atm
 	expected.Chunk.Owner = resource.User{}          // will not be returned atm
 	expected.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 	expected.Flavor.Versions = nil                  // will not be returned atm
 	expected.Owner = c.Owner
+	expected.Owner.Email = "" // will not be returned atm
 
 	actual, err := pg.DB.CreateInstance(ctx, expected, fixture.Node().ID)
 	require.NoError(t, err)
@@ -207,8 +214,6 @@ func TestGetInstanceByID(t *testing.T) {
 			pg.InsertMinecraftVersion(t)
 
 			if tt.create {
-				pg.CreateChunk(t, &tt.expected.Chunk, fixture.CreateOptionsAll)
-
 				tt.expected.Owner = tt.expected.Chunk.Owner
 				tt.expected.Chunk.Owner = resource.User{}          // will not be returned atm
 				tt.expected.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
@@ -219,10 +224,9 @@ func TestGetInstanceByID(t *testing.T) {
 
 				tt.expected.FlavorVersion = v
 
-				_, err := pg.DB.CreateInstance(ctx, tt.expected, fixture.Node().ID)
-				require.NoError(t, err)
+				pg.CreateInstance(t, fixture.Node().ID, &tt.expected)
 
-				_, err = pg.Pool.Exec(
+				_, err := pg.Pool.Exec(
 					ctx,
 					`UPDATE instances SET port = $1 WHERE id = $2`,
 					tt.expected.Port,

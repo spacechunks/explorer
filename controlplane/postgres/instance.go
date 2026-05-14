@@ -343,43 +343,43 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 	// instance port is intentionally left out, because it will not be
 	// known beforehand atm, thus it will always be nil when creating.
 	ret := resource.Instance{
-		ID:        row.ID,
-		Address:   row.Address,
-		State:     resource.InstanceState(row.State),
-		CreatedAt: row.CreatedAt.UTC(),
-		UpdatedAt: row.UpdatedAt.UTC(),
-		OrderedBy: row.OrderedBy,
+		ID:        row.Instance.ID,
+		Address:   row.Node.Address,
+		State:     resource.InstanceState(row.Instance.State),
+		CreatedAt: row.Instance.CreatedAt.UTC(),
+		UpdatedAt: row.Instance.UpdatedAt.UTC(),
+		OrderedBy: row.Instance.OrderedBy,
 		Chunk: resource.Chunk{
-			ID:          row.ID_3,
-			Name:        row.Name,
-			Description: row.Description,
-			Tags:        row.Tags,
-			CreatedAt:   row.CreatedAt_3.UTC(),
-			UpdatedAt:   row.UpdatedAt_2.UTC(),
+			ID:          row.Chunk.ID,
+			Name:        row.Chunk.Name,
+			Description: row.Chunk.Description,
+			Tags:        row.Chunk.Tags,
+			CreatedAt:   row.Chunk.CreatedAt.UTC(),
+			UpdatedAt:   row.Chunk.UpdatedAt.UTC(),
 		},
 		FlavorVersion: resource.FlavorVersion{
-			ID:               row.ID_2,
-			Version:          row.Version,
-			MinecraftVersion: row.MinecraftVersion,
-			Hash:             row.Hash,
-			ChangeHash:       row.ChangeHash,
+			ID:               row.FlavorVersion.ID,
+			Version:          row.FlavorVersion.Version,
+			MinecraftVersion: row.FlavorVersion.MinecraftVersion,
+			Hash:             row.FlavorVersion.Hash,
+			ChangeHash:       row.FlavorVersion.ChangeHash,
 			FileHashes:       nil,
-			FilesUploaded:    row.FilesUploaded,
-			BuildStatus:      resource.FlavorVersionBuildStatus(row.BuildStatus),
-			CreatedAt:        row.CreatedAt_2.UTC(),
+			FilesUploaded:    row.FlavorVersion.FilesUploaded,
+			BuildStatus:      resource.FlavorVersionBuildStatus(row.FlavorVersion.BuildStatus),
+			CreatedAt:        row.FlavorVersion.CreatedAt.UTC(),
 		},
 		Owner: resource.User{
-			ID:        row.ID_6,
-			Nickname:  row.Nickname,
-			Email:     row.Email,
-			CreatedAt: row.CreatedAt_5,
-			UpdatedAt: row.UpdatedAt_3,
+			ID:        row.User.ID,
+			Nickname:  row.User.Nickname,
+			Email:     "", // dont return email
+			CreatedAt: row.User.CreatedAt,
+			UpdatedAt: row.User.UpdatedAt,
 		},
 	}
 
 	var port *uint16
-	if row.Port != nil {
-		port = ptr.Pointer(uint16(*row.Port))
+	if row.Instance.Port != nil {
+		port = ptr.Pointer(uint16(*row.Instance.Port))
 	}
 
 	ret.Port = port
@@ -387,13 +387,14 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 	flavors := make([]resource.Flavor, 0, len(rows))
 	for _, instanceRow := range rows {
 		f := resource.Flavor{
-			ID:        instanceRow.ID_2,
-			Name:      instanceRow.Name_2,
-			CreatedAt: instanceRow.CreatedAt_2.UTC(),
-			UpdatedAt: instanceRow.UpdatedAt_2.UTC(),
+			ID:        instanceRow.Flavor.ID,
+			Name:      instanceRow.Flavor.Name,
+			CreatedAt: instanceRow.Flavor.CreatedAt.UTC(),
+			UpdatedAt: instanceRow.Flavor.UpdatedAt.UTC(),
 		}
 		flavors = append(flavors, f)
-		if f.ID == instanceRow.FlavorID {
+
+		if f.ID == instanceRow.FlavorVersion.FlavorID {
 			ret.Flavor = f
 		}
 	}

@@ -232,7 +232,14 @@ SELECT i.*, v.*, c.*, f.*, n.*, u.* FROM instances i
 ORDER BY i.id;
 
 -- name: GetInstance :many
-SELECT * FROM instances i
+SELECT
+    sqlc.embed(v),
+    sqlc.embed(c),
+    sqlc.embed(f),
+    sqlc.embed(n),
+    sqlc.embed(u),
+    sqlc.embed(i)
+FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.chunk_id = c.id
