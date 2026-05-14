@@ -304,6 +304,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 			CreatedAt:     chunks[i].CreatedAt,
 			UpdatedAt:     chunks[i].UpdatedAt,
 			Owner:         chunks[i].Owner,
+			OrderedBy:     "ordered_by",
 		}
 
 		ins.Chunk.Owner = resource.User{}          // will not be returned atm
