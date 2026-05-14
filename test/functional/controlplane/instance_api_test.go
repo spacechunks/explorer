@@ -242,6 +242,7 @@ func TestRunFlavorVersion(t *testing.T) {
 					UpdatedAt:   timestamppb.New(c.UpdatedAt),
 				},
 				Flavor: &chunkv1alpha1.Flavor{
+					Id:        f.ID,
 					Name:      f.Name,
 					CreatedAt: timestamppb.New(f.CreatedAt),
 					UpdatedAt: timestamppb.New(f.UpdatedAt),
@@ -488,6 +489,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			var expected []*instancev1alpha1.Instance
 			if !reflect.DeepEqual(tt.expected, resource.Instance{}) {
 				tt.expected.Owner = ins.Owner
+				tt.expected.Flavor = ins.Flavor
 				expected = []*instancev1alpha1.Instance{
 					codec.InstanceToTransport(tt.expected),
 				}
