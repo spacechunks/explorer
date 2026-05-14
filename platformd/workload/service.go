@@ -66,8 +66,8 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 		Annotations: map[string]string{
 			AnnotationInstance: string(data),
 		},
-		Hostname: w.Hostname, // TODO: explore if we can use the id as the hostname
-		Labels:   w.Labels,
+		Hostname:     w.Hostname, // TODO: explore if we can use the id as the hostname
+		Labels:       w.Labels,
 		LogDirectory: cri.PodLogDir,
 		DnsConfig: &runtimev1.DNSConfig{
 			Servers:  []string{"10.0.0.53"}, // TODO: make configurable
