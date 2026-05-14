@@ -77,10 +77,10 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 		m := make(map[string][]query.ListInstancesWithPaginationRow)
 		order := make([]string, 0)
 		for _, r := range rows {
-			if _, ok := m[r.ID]; !ok {
-				order = append(order, r.ID)
+			if _, ok := m[r.Instance.ID]; !ok {
+				order = append(order, r.Instance.ID)
 			}
-			m[r.ID] = append(m[r.ID], r)
+			m[r.Instance.ID] = append(m[r.Instance.ID], r)
 		}
 
 		ret = make([]resource.Instance, 0, len(m))
@@ -99,19 +99,19 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 			// instance port is intentionally left out, because it will not be
 			// known beforehand atm, thus it will always be nil when creating.
 			i := resource.Instance{
-				ID:        row.ID,
-				Address:   row.Address,
-				State:     resource.InstanceState(row.State),
-				CreatedAt: row.CreatedAt.UTC(),
-				UpdatedAt: row.UpdatedAt.UTC(),
-				OrderedBy: row.OrderedBy,
+				ID:        row.Instance.ID,
+				Address:   row.Node.Address,
+				State:     resource.InstanceState(row.Instance.State),
+				CreatedAt: row.Instance.CreatedAt.UTC(),
+				UpdatedAt: row.Instance.UpdatedAt.UTC(),
+				OrderedBy: row.Instance.OrderedBy,
 				Chunk: resource.Chunk{
-					ID:          row.ID_3,
-					Name:        row.Name,
-					Description: row.Description,
-					Tags:        row.Tags,
-					CreatedAt:   row.CreatedAt_3.UTC(),
-					UpdatedAt:   row.UpdatedAt_2.UTC(),
+					ID:          row.Chunk.ID,
+					Name:        row.Chunk.Name,
+					Description: row.Chunk.Description,
+					Tags:        row.Chunk.Tags,
+					CreatedAt:   row.Chunk.CreatedAt.UTC(),
+					UpdatedAt:   row.Chunk.UpdatedAt.UTC(),
 
 					// FIXME: for now this is not needed anywhere, so it is not included in the query
 					Thumbnail: resource.Thumbnail{
@@ -119,39 +119,39 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 					},
 				},
 				FlavorVersion: resource.FlavorVersion{
-					ID:               row.ID_2,
-					Version:          row.Version,
-					MinecraftVersion: row.MinecraftVersion,
-					Hash:             row.Hash,
-					ChangeHash:       row.ChangeHash,
+					ID:               row.FlavorVersion.ID,
+					Version:          row.FlavorVersion.Version,
+					MinecraftVersion: row.FlavorVersion.MinecraftVersion,
+					Hash:             row.FlavorVersion.Hash,
+					ChangeHash:       row.FlavorVersion.ChangeHash,
 
 					// FIXME: for now those are not needed anywhere, so they are not included in the query
 					FileHashes: nil,
 
-					FilesUploaded: row.FilesUploaded,
-					BuildStatus:   resource.FlavorVersionBuildStatus(row.BuildStatus),
-					CreatedAt:     row.CreatedAt_2.UTC(),
+					FilesUploaded: row.FlavorVersion.FilesUploaded,
+					BuildStatus:   resource.FlavorVersionBuildStatus(row.FlavorVersion.BuildStatus),
+					CreatedAt:     row.FlavorVersion.CreatedAt.UTC(),
 				},
 				Owner: resource.User{
-					ID:        row.ID_6,
-					Nickname:  row.Nickname,
-					Email:     row.Email,
-					CreatedAt: row.CreatedAt_6,
-					UpdatedAt: row.UpdatedAt_4,
+					ID:        row.User.ID,
+					Nickname:  row.User.Nickname,
+					Email:     "", // do not return
+					CreatedAt: row.User.CreatedAt,
+					UpdatedAt: row.User.UpdatedAt,
 				},
 			}
 
 			flavors := make([]resource.Flavor, 0, len(rows))
 			for _, instanceRow := range v {
 				f := resource.Flavor{
-					ID:        instanceRow.ID_4,
-					Name:      instanceRow.Name_2,
-					CreatedAt: instanceRow.CreatedAt_4.UTC(),
-					UpdatedAt: instanceRow.UpdatedAt_3.UTC(),
+					ID:        instanceRow.Flavor.ID,
+					Name:      instanceRow.Flavor.Name,
+					CreatedAt: instanceRow.Flavor.CreatedAt.UTC(),
+					UpdatedAt: instanceRow.Flavor.UpdatedAt.UTC(),
 				}
 				flavors = append(flavors, f)
 
-				if f.ID == instanceRow.FlavorID {
+				if f.ID == instanceRow.FlavorVersion.FlavorID {
 					i.Flavor = f
 				}
 			}

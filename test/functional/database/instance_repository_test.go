@@ -122,7 +122,6 @@ func TestDBListInstances(t *testing.T) {
 	var (
 		ctx = context.Background()
 		pg  = fixture.NewPostgres()
-		c   = fixture.Chunk()
 	)
 
 	pg.Run(t, ctx)
@@ -132,37 +131,46 @@ func TestDBListInstances(t *testing.T) {
 
 	// make sure we only have one flavor, the fixture has 2 configured by default
 	// but for this test we only we need one.
-	c.Flavors = []resource.Flavor{c.Flavors[0]}
-	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+	//c.Flavors = []resource.Flavor{c.Flavors[0]}
+	//pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 	expected := []resource.Instance{
 		fixture.Instance(func(i *resource.Instance) {
+			c := fixture.Chunk(func(tmpC *resource.Chunk) {
+				tmpC.ID = test.NewUUIDv7(t)
+			})
 			i.ID = test.NewUUIDv7(t)
 			i.Chunk = c
 			i.FlavorVersion = c.Flavors[0].Versions[0]
+			i.Flavor = c.Flavors[0]
 			i.Port = nil                             // port will not be saved when creating
 			i.FlavorVersion.FileHashes = nil         // will not be returned atm
 			i.Chunk.Owner = resource.User{}          // will not be returned atm
 			i.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 			i.Flavor.Versions = nil                  // will not be returned atm
 			i.Owner = c.Owner
+			i.Owner.Email = "" // will not be returned atm
 		}),
 		fixture.Instance(func(i *resource.Instance) {
-			i.ID = test.NewUUIDv7(t)
+			c := fixture.Chunk(func(tmpC *resource.Chunk) {
+				tmpC.ID = test.NewUUIDv7(t)
+			})
 			i.Chunk = c
+			i.ID = test.NewUUIDv7(t)
 			i.FlavorVersion = c.Flavors[0].Versions[0]
+			i.Flavor = c.Flavors[0]
 			i.Port = nil                             // port will not be saved when creating
 			i.FlavorVersion.FileHashes = nil         // will not be returned atm
 			i.Chunk.Owner = resource.User{}          // will not be returned atm
 			i.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 			i.Flavor.Versions = nil                  // will not be returned atm
 			i.Owner = c.Owner
+			i.Owner.Email = "" // will not be returned atm
 		}),
 	}
 
-	for _, i := range expected {
-		_, err := pg.DB.CreateInstance(ctx, i, fixture.Node().ID)
-		require.NoError(t, err)
+	for idx := range expected {
+		pg.CreateInstance(t, fixture.Node().ID, &expected[idx])
 	}
 
 	sort.Slice(expected, func(i, j int) bool {

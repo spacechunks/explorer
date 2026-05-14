@@ -222,7 +222,14 @@ WITH paged_instances AS (
     ORDER BY id
     LIMIT sqlc.arg('limit')
 )
-SELECT i.*, v.*, c.*, f.*, n.*, u.* FROM instances i
+SELECT
+    sqlc.embed(v),
+    sqlc.embed(c),
+    sqlc.embed(f),
+    sqlc.embed(n),
+    sqlc.embed(u),
+    sqlc.embed(i)
+FROM instances i
     JOIN paged_instances pi ON pi.id = i.id
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN chunks c ON i.chunk_id = c.id
