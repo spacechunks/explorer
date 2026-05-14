@@ -47,6 +47,7 @@ func InstanceToTransport(ins resource.Instance) *instancev1alpha1.Instance {
 			CreatedAt:   timestamppb.New(ins.Chunk.CreatedAt),
 			UpdatedAt:   timestamppb.New(ins.Chunk.UpdatedAt),
 		},
+		Flavor: FlavorToTransport(ins.Flavor),
 		FlavorVersion: &chunkv1alpha1.FlavorVersion{
 			Id:               ins.FlavorVersion.ID,
 			Version:          ins.FlavorVersion.Version,

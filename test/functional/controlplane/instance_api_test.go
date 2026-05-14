@@ -131,6 +131,7 @@ func TestAPIListInstances(t *testing.T) {
 			i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
 			i.Port = nil                     // port will not be saved when creating
 			i.FlavorVersion.FileHashes = nil // not returned atm
+			i.Flavor.Versions = nil          // not returned atm
 		}))
 	}
 
@@ -227,6 +228,7 @@ func TestRunFlavorVersion(t *testing.T) {
 			cp.Postgres.InsertNode(t)
 			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
+			f := c.Flavors[0]
 			v := c.Flavors[0].Versions[0]
 
 			expected := &instancev1alpha1.Instance{
@@ -238,6 +240,13 @@ func TestRunFlavorVersion(t *testing.T) {
 					Tags:        c.Tags,
 					CreatedAt:   timestamppb.New(c.CreatedAt),
 					UpdatedAt:   timestamppb.New(c.UpdatedAt),
+				},
+				Flavor: &chunkv1alpha1.Flavor{
+					Id:        f.ID,
+					Name:      f.Name,
+					CreatedAt: timestamppb.New(f.CreatedAt),
+					UpdatedAt: timestamppb.New(f.UpdatedAt),
+					Versions:  nil, // not returned atm
 				},
 				FlavorVersion: &chunkv1alpha1.FlavorVersion{
 					Id:               v.ID,
@@ -480,6 +489,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			var expected []*instancev1alpha1.Instance
 			if !reflect.DeepEqual(tt.expected, resource.Instance{}) {
 				tt.expected.Owner = ins.Owner
+				tt.expected.Flavor = ins.Flavor
 				expected = []*instancev1alpha1.Instance{
 					codec.InstanceToTransport(tt.expected),
 				}

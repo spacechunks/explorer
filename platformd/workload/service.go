@@ -67,8 +67,8 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 			AnnotationInstance: string(data),
 		},
 		Hostname:     w.Hostname, // TODO: explore if we can use the id as the hostname
-		LogDirectory: cri.PodLogDir,
 		Labels:       w.Labels,
+		LogDirectory: cri.PodLogDir,
 		DnsConfig: &runtimev1.DNSConfig{
 			Servers:  []string{"10.0.0.53"}, // TODO: make configurable
 			Options:  []string{"edns0", "trust-ad"},
