@@ -170,6 +170,7 @@ func Instance(mod ...func(i *resource.Instance)) resource.Instance {
 	ins := resource.Instance{
 		ID:            "019533f6-a770-7903-8f99-88ae6b271663",
 		Chunk:         c,
+		Flavor:        c.Flavors[0],
 		FlavorVersion: c.Flavors[0].Versions[0],
 		Address:       netip.MustParseAddr("198.51.100.1"),
 		State:         resource.InstanceStatePending,
