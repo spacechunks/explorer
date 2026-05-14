@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
@@ -68,7 +69,7 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 		},
 		Hostname:     w.Hostname, // TODO: explore if we can use the id as the hostname
 		Labels:       w.Labels,
-		LogDirectory: cri.PodLogDir,
+		LogDirectory: podLogDir(w.Instance),
 		DnsConfig: &runtimev1.DNSConfig{
 			Servers:  []string{"10.0.0.53"}, // TODO: make configurable
 			Options:  []string{"edns0", "trust-ad"},
@@ -136,8 +137,11 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 				UserSpecifiedImage: w.CheckpointImage,
 				Image:              w.CheckpointImage,
 			},
-			Labels:  w.Labels,
-			LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, w.Name),
+			Labels: w.Labels,
+			// this is just a dummy value, it has no effect.
+			// the restored checkpoint creates a log file named <container-id>.log.
+			// it seems that crio simply doesn't forward the log path we set here.
+			LogPath: "mcserver.log",
 		},
 		SandboxConfig: sboxCfg,
 	}
@@ -162,7 +166,10 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 				UserSpecifiedImage: s.cfg.ServerMonImage,
 				Image:              s.cfg.ServerMonImage,
 			},
-			LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, "servermon"),
+			// use a different suffix for servermon, so the log reader tooling can
+			// distinguish it from the minecraft server log. the servermon logs should
+			// not be visible for the end-user.
+			LogPath: "servermon.slog",
 			Mounts: []*runtimev1.Mount{
 				{
 					HostPath:      s.cfg.PlatformdListenSockURL.Path,
@@ -345,4 +352,25 @@ func (s *svc) WorkloadMetadata(ctx context.Context, id string) (Metadata, error)
 		FlavorVersion: codec.FlavorVersionToDomain(instance.FlavorVersion),
 		OrderedBy:     instance.OrderedBy,
 	}, nil
+}
+
+func podLogDir(ins *instancev1alpha1.Instance) string {
+	var (
+		cName = strings.ReplaceAll(ins.Chunk.Name, " ", "-")
+		fName = strings.ReplaceAll(ins.Flavor.Name, " ", "-")
+	)
+
+	cName = strings.ReplaceAll(cName, "_", "-")
+	fName = strings.ReplaceAll(fName, "_", "-")
+
+	return fmt.Sprintf("%s/%s_%s_%s_%s_%s_%s_%s",
+		cri.PodLogDir,
+		cName,
+		fName,
+		ins.FlavorVersion.Version,
+		ins.Chunk.Id,
+		ins.FlavorVersion.Id,
+		ins.Id,
+		ins.Owner.Id,
+	)
 }

@@ -23,9 +23,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/internal/resource/codec"
@@ -90,7 +92,7 @@ func TestRunWorkload(t *testing.T) {
 							Attempt:   uint32(attempt),
 						},
 						Hostname:     w.Hostname,
-						LogDirectory: cri.PodLogDir,
+						LogDirectory: podLogDir(w.Instance),
 						Labels:       w.Labels,
 						DnsConfig: &runtimev1.DNSConfig{
 							Servers:  []string{"10.0.0.53"},
@@ -122,7 +124,7 @@ func TestRunWorkload(t *testing.T) {
 								Image:              w.CheckpointImage,
 							},
 							Labels:  w.Labels,
-							LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, w.Name),
+							LogPath: "mcserver.log",
 						},
 						SandboxConfig: sboxCfg,
 					}
@@ -139,7 +141,7 @@ func TestRunWorkload(t *testing.T) {
 								UserSpecifiedImage: cfg.ServerMonImage,
 								Image:              cfg.ServerMonImage,
 							},
-							LogPath: fmt.Sprintf("%s_%s_%s", w.Namespace, w.ID, "servermon"),
+							LogPath: "servermon.log",
 							Mounts: []*runtimev1.Mount{
 								{
 									HostPath:      cfg.PlatformdListenSockURL.Path,
@@ -475,4 +477,21 @@ func TestWorkloadMetadata(t *testing.T) {
 			}
 		})
 	}
+}
+
+func podLogDir(ins *instancev1alpha1.Instance) string {
+	var (
+		cName = strings.ReplaceAll(ins.Chunk.Name, " ", "-")
+		fName = strings.ReplaceAll(ins.Flavor.Name, " ", "-")
+	)
+	return fmt.Sprintf("%s/%s_%s_%s_%s_%s_%s_%s",
+		cri.PodLogDir,
+		cName,
+		fName,
+		ins.FlavorVersion.Version,
+		ins.Chunk.Id,
+		ins.FlavorVersion.Id,
+		ins.Id,
+		ins.Owner.Id,
+	)
 }
