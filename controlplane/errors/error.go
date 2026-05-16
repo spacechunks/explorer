@@ -21,10 +21,11 @@ package errors
 import (
 	"fmt"
 
+	"github.com/gogo/protobuf/proto"
+
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/runtime/protoiface"
 )
 
 /*
@@ -118,7 +119,7 @@ var (
 
 type Error struct {
 	Message string
-	Detail  protoiface.MessageV1
+	Detail  proto.Message
 	Code    codes.Code
 }
 
@@ -147,7 +148,7 @@ func New(args ...any) Error {
 			e.Message = arg
 		case codes.Code:
 			e.Code = arg
-		case protoiface.MessageV1:
+		case proto.Message:
 			e.Detail = arg
 		default:
 			continue

@@ -519,7 +519,46 @@ func TestCreateFlavor(t *testing.T) {
 func TestCreateFlavorVersion(t *testing.T) {
 	c := fixture.Chunk()
 
-	type testCase struct {
+	cleanedPathVersion := func() resource.FlavorVersion {
+		return fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+			v.Version = "v2"
+			v.FileHashes = []file.Hash{
+				{
+					Path: "paper.yml",
+					Hash: "pppppppppppppppp",
+				},
+				{
+					Path: "server.properties",
+					Hash: "cccccccccccccccc",
+				},
+				{
+					Path: "plugins/myplugin.jar",
+					Hash: "yyyyyyyyyyyyyyyy",
+				},
+			}
+		})
+	}
+
+	uncleanPathVersion := func() resource.FlavorVersion {
+		version := cleanedPathVersion()
+		version.FileHashes = []file.Hash{
+			{
+				Path: "paper.yml",
+				Hash: "pppppppppppppppp",
+			},
+			{
+				Path: "plugins/myplugin.jar",
+				Hash: "yyyyyyyyyyyyyyyy",
+			},
+			{
+				Path: "plugins/../server.properties",
+				Hash: "cccccccccccccccc",
+			},
+		}
+		return version
+	}
+
+	tests := []struct {
 		name            string
 		prevVersion     *resource.FlavorVersion
 		newVersion      resource.FlavorVersion
@@ -527,9 +566,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		diff            resource.FlavorVersionDiff
 		err             error
 		badRequest      *errdetails.BadRequest
-	}
-
-	tests := []testCase{
+	}{
 		{
 			name:       "create initial version",
 			newVersion: fixture.FlavorVersion(),
@@ -579,68 +616,32 @@ func TestCreateFlavorVersion(t *testing.T) {
 				},
 			},
 		},
-		func() testCase {
-			cleanedPathVersion := fixture.FlavorVersion(func(v *resource.FlavorVersion) {
-				v.Version = "v2"
-				v.FileHashes = []file.Hash{
-					{
-						Path: "paper.yml",
-						Hash: "pppppppppppppppp",
-					},
-					{
-						Path: "server.properties",
-						Hash: "cccccccccccccccc",
-					},
+		{
+			name:            "cleans paths",
+			prevVersion:     ptr.Pointer(fixture.FlavorVersion()),
+			newVersion:      uncleanPathVersion(),
+			expectedVersion: ptr.Pointer(cleanedPathVersion()),
+			diff: resource.FlavorVersionDiff{
+				Added: []file.Hash{
 					{
 						Path: "plugins/myplugin.jar",
 						Hash: "yyyyyyyyyyyyyyyy",
 					},
-				}
-			})
-
-			uncleanPathVersion := cleanedPathVersion
-			uncleanPathVersion.FileHashes = []file.Hash{
-				{
-					Path: "paper.yml",
-					Hash: "pppppppppppppppp",
 				},
-				{
-					Path: "plugins/myplugin.jar",
-					Hash: "yyyyyyyyyyyyyyyy",
-				},
-				{
-					Path: "plugins/../server.properties",
-					Hash: "cccccccccccccccc",
-				},
-			}
-
-			return testCase{
-				name:            "cleans paths",
-				prevVersion:     ptr.Pointer(fixture.FlavorVersion()),
-				newVersion:      uncleanPathVersion,
-				expectedVersion: &cleanedPathVersion,
-				diff: resource.FlavorVersionDiff{
-					Added: []file.Hash{
-						{
-							Path: "plugins/myplugin.jar",
-							Hash: "yyyyyyyyyyyyyyyy",
-						},
-					},
-					Changed: []file.Hash{
-						{
-							Path: "server.properties",
-							Hash: "cccccccccccccccc",
-						},
-					},
-					Removed: []file.Hash{
-						{
-							Path: "plugins/myplugin/config.json",
-							Hash: "cooooooooooooooo",
-						},
+				Changed: []file.Hash{
+					{
+						Path: "server.properties",
+						Hash: "cccccccccccccccc",
 					},
 				},
-			}
-		}(),
+				Removed: []file.Hash{
+					{
+						Path: "plugins/myplugin/config.json",
+						Hash: "cooooooooooooooo",
+					},
+				},
+			},
+		},
 		{
 			name:        "invalid paths",
 			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
