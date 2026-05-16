@@ -26,6 +26,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 func TarFiles(rootDir string, files []*os.File, dest string) error {
@@ -52,11 +54,17 @@ func TarFiles(rootDir string, files []*os.File, dest string) error {
 			"",
 		)
 
+		// force nfc file names, because if the tar file was created on some oses, macos for example,
+		// untarring on linux will create bogus file names.
+		filename := norm.NFC.String(
+			// TarFiles will also be called on windows, so we need to adjust the paths
+			filepath.ToSlash(name),
+		)
+
 		if err := tw.WriteHeader(&tar.Header{
 			Typeflag: tar.TypeReg,
-			// TarFiles will also be called in windows, so we need to adjust the paths
-			Name: filepath.ToSlash(name),
-			Size: info.Size(),
+			Name:     filename,
+			Size:     info.Size(),
 		}); err != nil {
 			return fmt.Errorf("tar header: %w", err)
 		}
