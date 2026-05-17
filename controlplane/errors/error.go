@@ -96,7 +96,7 @@ func InvalidPath(violations ...InvalidPathViolation) Error {
 
 		fieldViolations = append(fieldViolations, &errdetails.BadRequest_FieldViolation{
 			Field:       field,
-			Description: fmt.Sprintf("path %q must be a relative path within the flavor version", violation.Path),
+			Description: fmt.Sprintf("path %q must not be absolute or escape the flavor version root", violation.Path),
 			Reason:      "INVALID_PATH",
 		})
 	}

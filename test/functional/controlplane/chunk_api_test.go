@@ -666,12 +666,12 @@ func TestCreateFlavorVersion(t *testing.T) {
 				FieldViolations: []*errdetails.BadRequest_FieldViolation{
 					{
 						Field:       "version.file_hashes[0].path",
-						Description: `path "../server.properties" must be a relative path within the flavor version`,
+						Description: `path "../server.properties" must not be absolute or escape the flavor version root`,
 						Reason:      "INVALID_PATH",
 					},
 					{
 						Field:       "version.file_hashes[1].path",
-						Description: `path "/plugins/myplugin.jar" must be a relative path within the flavor version`,
+						Description: `path "/plugins/myplugin.jar" must not be absolute or escape the flavor version root`,
 						Reason:      "INVALID_PATH",
 					},
 				},
