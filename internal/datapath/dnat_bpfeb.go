@@ -8,11 +8,13 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type dnatDnatTarget struct {
+	_        structs.HostLayout
 	IpAddr   uint32
 	IfaceIdx uint8
 	MacAddr  [6]uint8
@@ -20,13 +22,16 @@ type dnatDnatTarget struct {
 }
 
 type dnatNetData struct {
+	_       structs.HostLayout
 	PodPeer struct {
+		_       structs.HostLayout
 		IfIndex uint32
 		IfAddr  uint32
 		MacAddr [6]uint8
 		_       [2]byte
 	}
 	HostPeer struct {
+		_       structs.HostLayout
 		IfIndex uint32
 		IfAddr  uint32
 		MacAddr [6]uint8
@@ -71,9 +76,10 @@ func loadDnatObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type dnatSpecs struct {
 	dnatProgramSpecs
 	dnatMapSpecs
+	dnatVariableSpecs
 }
 
-// dnatSpecs contains programs before they are loaded into the kernel.
+// dnatProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type dnatProgramSpecs struct {
@@ -88,12 +94,20 @@ type dnatMapSpecs struct {
 	PtpDnatTargets *ebpf.MapSpec `ebpf:"ptp_dnat_targets"`
 }
 
+// dnatVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type dnatVariableSpecs struct {
+	HostPeerMac *ebpf.VariableSpec `ebpf:"host_peer_mac"`
+}
+
 // dnatObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadDnatObjects or ebpf.CollectionSpec.LoadAndAssign.
 type dnatObjects struct {
 	dnatPrograms
 	dnatMaps
+	dnatVariables
 }
 
 func (o *dnatObjects) Close() error {
@@ -116,6 +130,13 @@ func (m *dnatMaps) Close() error {
 		m.NetDataMap,
 		m.PtpDnatTargets,
 	)
+}
+
+// dnatVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadDnatObjects or ebpf.CollectionSpec.LoadAndAssign.
+type dnatVariables struct {
+	HostPeerMac *ebpf.Variable `ebpf:"host_peer_mac"`
 }
 
 // dnatPrograms contains all programs after they have been loaded into the kernel.

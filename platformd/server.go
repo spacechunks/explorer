@@ -201,6 +201,10 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("attach getsockopt: %w", err) // TODO: ignore exists, FIXME: update if exists
 	}
 
+	if err := bpf.AttachSocketRestriction(); err != nil {
+		return fmt.Errorf("attach socket restriction: %w", err)
+	}
+
 	if err := proxySvc.ApplyGlobalResources(ctx); err != nil {
 		return fmt.Errorf("apply global resources: %w", err)
 	}

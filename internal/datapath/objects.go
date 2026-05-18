@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"structs"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -33,6 +34,7 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang-18 -strip llvm-strip-18 dnat ./bpf/dnat.c -- -I ./bpf -I ./bpf/include
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang-18 -strip llvm-strip-18 arp ./bpf/arp.c -- -I ./bpf/ -I ./bpf/include
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang-18 -strip llvm-strip-18 tproxy ./bpf/tproxy.c -- -I ./bpf -I ./bpf/include
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang-18 -strip llvm-strip-18 sock ./bpf/sock.c -- -I ./bpf -I ./bpf/include
 
 const (
 	ProgPinPath = "/sys/fs/bpf/progs"
@@ -44,6 +46,7 @@ type Objects struct {
 	dnatObjs   dnatObjects
 	arpObjs    arpObjects
 	tproxyObjs tproxyObjects
+	sockObjs   sockObjects
 }
 
 func LoadBPF() (*Objects, error) {
@@ -91,12 +94,35 @@ func LoadBPF() (*Objects, error) {
 		return nil, fmt.Errorf("load tproxy objs: %w", err)
 	}
 
+	var sockObjs sockObjects
+	if err := loadSockObjects(&sockObjs, &ebpf.CollectionOptions{
+		Maps: ebpf.MapOptions{
+			PinPath: mapPinPath,
+		},
+	}); err != nil {
+		return nil, fmt.Errorf("load sock objs: %w", err)
+	}
+
 	return &Objects{
 		snatObjs:   snatObjs,
 		dnatObjs:   dnatObjs,
 		arpObjs:    arpObjs,
 		tproxyObjs: tproxyObjs,
+		sockObjs:   sockObjs,
 	}, nil
+}
+
+func (o *Objects) AttachSocketRestriction() error {
+	_, err := link.AttachLSM(link.LSMOptions{
+		Program: o.sockObjs.RestrictCreate,
+	})
+	if err != nil {
+		return fmt.Errorf("attach sock: %w", err)
+	}
+
+	// TODO: pin later
+
+	return nil
 }
 
 func (o *Objects) AttachAndPinSNAT(iface *net.Interface) error {
@@ -108,6 +134,9 @@ func (o *Objects) AttachAndPinSNAT(iface *net.Interface) error {
 	if err != nil {
 		return fmt.Errorf("attach: %w", err)
 	}
+
+	// 7883
+
 
 	// pin because cni is short-lived
 	if err := l.Pin(fmt.Sprintf("%s/snat_%s", ProgPinPath, iface.Name)); err != nil {
@@ -337,6 +366,7 @@ func (o *Objects) DelVethPairEntry(veth VethPair) error {
 func netDataToMapValue(data NetData) dnatNetData {
 	return dnatNetData{
 		PodPeer: struct {
+			_       structs.HostLayout
 			IfIndex uint32
 			IfAddr  uint32
 			MacAddr [6]uint8
@@ -347,6 +377,7 @@ func netDataToMapValue(data NetData) dnatNetData {
 			MacAddr: [6]byte(data.Veth.PodPeer.Iface.HardwareAddr[:]),
 		},
 		HostPeer: struct {
+			_       structs.HostLayout
 			IfIndex uint32
 			IfAddr  uint32
 			MacAddr [6]uint8
