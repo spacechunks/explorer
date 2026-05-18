@@ -382,6 +382,8 @@ github.com/riverqueue/river/rivertype v0.35.1 h1:7SfjZ3Hkr7gRjItMHAUzJBAHIqx41yS
 github.com/riverqueue/river/rivertype v0.35.1/go.mod h1:D1Ad+EaZiaXbQbJcJcfeicXJMBKno0n6UcfKI5Q7DIQ=
 github.com/riverqueue/rivercontrib/otelriver v0.7.0 h1:zLjPf674dcGrz7OPG2JF5xea0fyitFax6Cc6q370Xzo=
 github.com/riverqueue/rivercontrib/otelriver v0.7.0/go.mod h1:MuyMZmYBz3JXC8ZLP0dH9IqXK95qRY6gCQSoJGh9h7E=
+github.com/riverqueue/rivercontrib/otelriver v0.8.0 h1:zBFuoMhcGq0P1rrNl+kbxW6A2EI3/eRROAkY6bnNCZE=
+github.com/riverqueue/rivercontrib/otelriver v0.8.0/go.mod h1:qwnMagI9IsFGEaKlp5oMecLGxE4byhOk8kqis7oeomo=
 github.com/robfig/cron/v3 v3.0.1 h1:WdRxkvbJztn8LMz/QEvLN5sBU+xKpSqwwUO1Pjr4qDs=
 github.com/robfig/cron/v3 v3.0.1/go.mod h1:eQICP3HwyT7UooqI/z+Ov+PtYAWygg1TEWWzGIFLtro=
 github.com/rodaine/table v1.3.1 h1:jBVgg1bEu5EzEdYSrwUUlQpayDtkvtTmgFS0FPAxOq8=

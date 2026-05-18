@@ -40,7 +40,7 @@ require (
 	github.com/riverqueue/river v0.35.1
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.1
 	github.com/riverqueue/river/rivertype v0.35.1
-	github.com/riverqueue/rivercontrib/otelriver v0.7.0
+	github.com/riverqueue/rivercontrib/otelriver v0.8.0
 	github.com/rodaine/table v1.3.1
 	github.com/sourcegraph/jsonrpc2 v0.2.1
 	github.com/spf13/cobra v1.10.2
@@ -58,6 +58,7 @@ require (
 	golang.org/x/crypto v0.51.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sys v0.44.0
+	golang.org/x/text v0.37.0
 	google.golang.org/grpc v1.81.0
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	k8s.io/client-go v0.36.0
@@ -199,7 +200,6 @@ require (
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260427160629-7cedc36a6bc4 // indirect
