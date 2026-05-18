@@ -40,7 +40,7 @@ require (
 	github.com/riverqueue/river v0.35.1
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.1
 	github.com/riverqueue/river/rivertype v0.35.1
-	github.com/riverqueue/rivercontrib/otelriver v0.7.0
+	github.com/riverqueue/rivercontrib/otelriver v0.8.0
 	github.com/rodaine/table v1.3.1
 	github.com/sourcegraph/jsonrpc2 v0.2.1
 	github.com/spf13/cobra v1.10.2
