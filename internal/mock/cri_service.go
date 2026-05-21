@@ -174,6 +174,63 @@ func (_c *MockCriService_CheckpointContainer_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// ContainerInfo provides a mock function with given fields: ctx, id
+func (_m *MockCriService) ContainerInfo(ctx context.Context, id string) (cri.ContainerInfo, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ContainerInfo")
+	}
+
+	var r0 cri.ContainerInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (cri.ContainerInfo, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) cri.ContainerInfo); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Get(0).(cri.ContainerInfo)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCriService_ContainerInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ContainerInfo'
+type MockCriService_ContainerInfo_Call struct {
+	*mock.Call
+}
+
+// ContainerInfo is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+func (_e *MockCriService_Expecter) ContainerInfo(ctx interface{}, id interface{}) *MockCriService_ContainerInfo_Call {
+	return &MockCriService_ContainerInfo_Call{Call: _e.mock.On("ContainerInfo", ctx, id)}
+}
+
+func (_c *MockCriService_ContainerInfo_Call) Run(run func(ctx context.Context, id string)) *MockCriService_ContainerInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockCriService_ContainerInfo_Call) Return(_a0 cri.ContainerInfo, _a1 error) *MockCriService_ContainerInfo_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCriService_ContainerInfo_Call) RunAndReturn(run func(context.Context, string) (cri.ContainerInfo, error)) *MockCriService_ContainerInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ContainerStats provides a mock function with given fields: ctx, in, opts
 func (_m *MockCriService) ContainerStats(ctx context.Context, in *v1.ContainerStatsRequest, opts ...grpc.CallOption) (*v1.ContainerStatsResponse, error) {
 	_va := make([]interface{}, len(opts))
