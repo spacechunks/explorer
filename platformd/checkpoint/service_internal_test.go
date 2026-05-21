@@ -39,14 +39,15 @@ import (
 )
 
 type prepArgs struct {
-	svc        *ServiceImpl
-	mockCRISvc *mock.MockCriService
-	mockImgSvc *mock.MockImageService
-	cfg        Config
-	checkID    string
-	podID      string
-	ctrID      string
-	baseRef    name.Reference
+	svc             *ServiceImpl
+	mockCRISvc      *mock.MockCriService
+	mockImgSvc      *mock.MockImageService
+	mockSockHandler *mock.MockDatapathSockHandler
+	cfg             Config
+	checkID         string
+	podID           string
+	ctrID           string
+	baseRef         name.Reference
 }
 
 func TestCheckpoint(t *testing.T) {
@@ -85,6 +86,30 @@ func TestCheckpoint(t *testing.T) {
 				)
 
 				fileLoc := fmt.Sprintf("%s/%s", args.cfg.CheckpointFileDir, args.checkID)
+
+				args.mockCRISvc.EXPECT().
+					ContainerInfo(mocky.Anything, args.ctrID).
+					Return(cri.ContainerInfo{
+						RuntimeSpec: cri.RuntimeSpec{
+							Linux: cri.Linux{
+								CgroupsPath: "system.slice:crio:<container-id>",
+								Namespaces: []cri.Namespace{
+									{
+										Type: cri.NamespaceTypeNet,
+										Path: "/var/run/something",
+									},
+								},
+							},
+						},
+					}, nil)
+
+				args.mockSockHandler.EXPECT().
+					BlockNewConnections("system.slice:crio:<container-id>").
+					Return(nil)
+
+				args.mockSockHandler.EXPECT().
+					DestroySocks("/var/run/something").
+					Return(nil)
 
 				args.mockCRISvc.EXPECT().
 					CheckpointContainer(mocky.Anything, &runtimev1.CheckpointContainerRequest{
@@ -142,10 +167,11 @@ func TestCheckpoint(t *testing.T) {
 				ctrID   = "container-id"
 				checkID = "checkpoint-id"
 
-				mockImgSvc  = mock.NewMockImageService(t)
-				mockCRISvc  = mock.NewMockCriService(t)
-				statusStore = status.NewMemStore()
-				mockExecer  = func(url string) (remotecommand.Executor, error) {
+				mockImgSvc      = mock.NewMockImageService(t)
+				mockCRISvc      = mock.NewMockCriService(t)
+				mockSockHandler = mock.NewMockDatapathSockHandler(t)
+				statusStore     = status.NewMemStore()
+				mockExecer      = func(url string) (remotecommand.Executor, error) {
 					return &test.RemoteCmdExecutor{}, nil
 				}
 
@@ -157,6 +183,7 @@ func TestCheckpoint(t *testing.T) {
 					statusStore,
 					mockExecer,
 					workload.NewPortAllocator(1, 1),
+					mockSockHandler,
 				)
 			)
 
@@ -164,14 +191,15 @@ func TestCheckpoint(t *testing.T) {
 			require.NoError(t, err)
 
 			tt.prep(prepArgs{
-				svc:        svc,
-				mockCRISvc: mockCRISvc,
-				mockImgSvc: mockImgSvc,
-				cfg:        tt.cfg,
-				checkID:    checkID,
-				podID:      podID,
-				ctrID:      ctrID,
-				baseRef:    baseRef,
+				svc:             svc,
+				mockCRISvc:      mockCRISvc,
+				mockImgSvc:      mockImgSvc,
+				mockSockHandler: mockSockHandler,
+				cfg:             tt.cfg,
+				checkID:         checkID,
+				podID:           podID,
+				ctrID:           ctrID,
+				baseRef:         baseRef,
 			})
 
 			err = svc.checkpoint(ctx, checkID, baseRef)

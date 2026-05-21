@@ -150,7 +150,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 				return checkpoint.NewSPDYExecutor(url)
 			},
 			portAlloc,
-			bpf,
+			datapath.NewLinuxSockHandler(bpf),
 		)
 
 		proxyServer = proxy.NewServer(proxySvc)
