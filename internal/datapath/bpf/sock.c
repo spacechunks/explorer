@@ -43,9 +43,8 @@ int destroy_tcp(struct bpf_iter__tcp *ctx)
         return 0;
 
     /* as we don't want to kill the mc server, we just skip all listening sockets */
-    if (sk->skc_state == TCP_LISTEN) {
+    if (sk->skc_state == TCP_LISTEN)
         return 0;
-    }
 
     /* FIXME: log when there is a failure */
     bpf_sock_destroy(sk);
