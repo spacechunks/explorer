@@ -128,6 +128,11 @@ functests-shared: $(TEST_IMG)
 	# GOEXPERIMENT=jsonv2 required by github.com/lestrrat-go/jwx/v4
 	$(RUN) $(SUDO) GOEXPERIMENT=jsonv2 go test -v ./test/functional/shared
 
+.PHONY: ebpf
+ebpf:
+	$(RUN) $(SUDO) go generate ./internal/datapath
+	$(RUN) $(SUDO) go test ./internal/datapath -run TestVerifier -count 1
+
 $(TEST_IMG):
 	@docker build -t test-img -f $(IMG_TESTDATA_DIR)/Dockerfile $(IMG_TESTDATA_DIR)
 	@docker image save test-img > $(IMG_TESTDATA_DIR)/img.tar.gz
