@@ -25,10 +25,14 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"strings"
+	"syscall"
 	"time"
 
+	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/uuid"
+	"github.com/spacechunks/explorer/internal/datapath"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/cri"
@@ -54,6 +58,7 @@ type ServiceImpl struct {
 	cfg         Config
 	statusStore status.Store
 	portAlloc   *workload.PortAllocator
+	bpf         *datapath.Objects
 
 	// this factory function allows us to inject a mock executor for testing.
 	newRemoteCMDExecutor RemoteCMDExecutorFactory
@@ -67,6 +72,7 @@ func NewService(
 	statusStore status.Store,
 	newRemoteCMDExecutor RemoteCMDExecutorFactory,
 	portAlloc *workload.PortAllocator,
+	bpf *datapath.Objects,
 
 ) *ServiceImpl {
 	return &ServiceImpl{
@@ -77,6 +83,7 @@ func NewService(
 		statusStore:          statusStore,
 		portAlloc:            portAlloc,
 		newRemoteCMDExecutor: newRemoteCMDExecutor,
+		bpf:                  bpf,
 	}
 }
 
@@ -202,7 +209,8 @@ func (s *ServiceImpl) CollectGarbage(ctx context.Context) error {
 }
 
 func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Reference) (ret error) {
-	s.logger.InfoContext(ctx, "creating checkpoint", "checkpoint", id, "baseRef", baseRef.String())
+	logger := s.logger.With("checkpoint", id, "baseRef", baseRef.String())
+	logger.InfoContext(ctx, "creating checkpoint")
 
 	s.statusStore.Update(id, status.Status{
 		CheckpointStatus: &status.CheckpointStatus{
@@ -235,10 +243,9 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 		return fmt.Errorf("pull base image: %w", err)
 	}
 
-	s.logger.InfoContext(
+	logger.InfoContext(
 		ctx,
 		"waiting for regex",
-		"checkpoint_id", id,
 		"regex", paperServerReadyRegex.String(),
 	)
 
@@ -250,6 +257,65 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 
 	// TODO: check if checkpoint is already present and then only build image and push
 	location := fmt.Sprintf("%s/%s", s.cfg.CheckpointFileDir, id)
+
+	info, err := s.criService.ContainerInfo(ctx, ctrID)
+	if err != nil {
+		return fmt.Errorf("container info: %w", err)
+	}
+
+	// the cgroup path returned by the container info is not a path
+	// that is found in the filesystem. cgroupData returns a path to
+	// the cgroup on the current filesystem.
+	cgroupPath, cgroupID, err := cgroupData(info.RuntimeSpec.Linux.CgroupsPath)
+	if err != nil {
+		state = status.CheckpointStateContainerCheckpointFailed
+		return fmt.Errorf("cgroup data: %w", err)
+	}
+
+	logger.InfoContext(
+		ctx,
+		"found cgroup for container",
+		"cgroup_path", cgroupPath,
+		"cgroup_id", cgroupID,
+		"container_id", ctrID,
+	)
+
+	netnsPath, err := netnsPath(info.RuntimeSpec.Linux.Namespaces)
+	if err != nil {
+		state = status.CheckpointStateContainerCheckpointFailed
+		return fmt.Errorf("netns id: %w", err)
+	}
+
+	logger.InfoContext(ctx, "found netnsPath for container", "netns_path", netnsPath, "container_id", ctrID)
+
+	if err := s.bpf.BlockIP4Connections(cgroupPath); err != nil {
+		state = status.CheckpointStateContainerCheckpointFailed
+		return fmt.Errorf("block ip4: %w", err)
+	}
+
+	if err := s.bpf.BlockIP6Connections(cgroupPath); err != nil {
+		state = status.CheckpointStateContainerCheckpointFailed
+		return fmt.Errorf("block ip6: %w", err)
+	}
+
+	// it is very important that we run the socket destruction
+	// inside the network namespace of the container, so the
+	// ebpf program knows what sockets to kill.
+	if err := ns.WithNetNSPath(netnsPath, func(netNS ns.NetNS) error {
+		if err := s.bpf.DestroyTCPSocks(); err != nil {
+			state = status.CheckpointStateContainerCheckpointFailed
+			return fmt.Errorf("destroy tcp socks: %w", err)
+		}
+
+		if err := s.bpf.DestroyUDPSocks(); err != nil {
+			state = status.CheckpointStateContainerCheckpointFailed
+			return fmt.Errorf("destroy tcp socks: %w", err)
+		}
+		return nil
+	}); err != nil {
+		state = status.CheckpointStateContainerCheckpointFailed
+		return fmt.Errorf("in netns: %w", err)
+	}
 
 	// immediately checkpointing after canceling the attach stream in waitContainerReady
 	// leads to this error consistently appearing:
@@ -263,7 +329,7 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 	// initialized.
 	time.Sleep(s.cfg.WaitAfterServerInit)
 
-	s.logger.InfoContext(ctx, "checkpointing container", "checkpoint_id", id, "container_id", ctrID)
+	logger.InfoContext(ctx, "checkpointing container", "container_id", ctrID)
 
 	if _, err := s.criService.CheckpointContainer(ctx, &runtimev1.CheckpointContainerRequest{
 		ContainerId: ctrID,
@@ -405,4 +471,41 @@ func (s *ServiceImpl) ctrConfig(checkID string, baseImgURL string) *runtimev1.Co
 		},
 		LogPath: fmt.Sprintf("%s_%s", Namespace, "payload"),
 	}
+}
+
+func cgroupData(cgroupsPath string) (string, uint64, error) {
+	// cgroupsPath looks like this: system.slice:crio:<container-id>
+	parts := strings.Split(cgroupsPath, ":")
+	if len(parts) < 3 {
+		return "", 0, fmt.Errorf("invalid cgroups path: %s", cgroupsPath)
+	}
+
+	path := fmt.Sprintf("/sys/fs/cgroup/%s/%s-%s.scope/container", parts[0], parts[1], parts[2])
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", 0, err
+	}
+
+	sys, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return "", 0, fmt.Errorf("failed to convert sys info")
+	}
+
+	return path, sys.Ino, nil
+}
+
+func netnsPath(namespaces []cri.Namespace) (string, error) {
+	var path string
+	for _, n := range namespaces {
+		if n.Type != "network" {
+			continue
+		}
+		path = n.Path
+	}
+
+	if path == "" {
+		return "", fmt.Errorf("no network namespace found")
+	}
+
+	return path, nil
 }

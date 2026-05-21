@@ -75,6 +75,11 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("failed to parse dns server address: %w", err)
 	}
 
+	bpf, err := datapath.LoadBPF()
+	if err != nil {
+		return fmt.Errorf("failed to load bpf: %w", err)
+	}
+
 	// hardcode envoy node id here, because implementing support
 	// for multiple proxy nodes is currently way out of scope
 	// and might not even be needed at all. being configurable
@@ -145,6 +150,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 				return checkpoint.NewSPDYExecutor(url)
 			},
 			portAlloc,
+			bpf,
 		)
 
 		proxyServer = proxy.NewServer(proxySvc)
@@ -168,11 +174,6 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 
 	checkGRPCServer := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 	checkpointv1alpha1.RegisterCheckpointServiceServer(checkGRPCServer, checkServer)
-
-	bpf, err := datapath.LoadBPF()
-	if err != nil {
-		return fmt.Errorf("failed to load bpf: %w", err)
-	}
 
 	iface, err := net.InterfaceByName(cfg.HostIface)
 	if err != nil {
@@ -199,10 +200,6 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 
 	if err := bpf.AttachAndPinGetsockopt(cfg.GetsockoptCGroup); err != nil {
 		return fmt.Errorf("attach getsockopt: %w", err) // TODO: ignore exists, FIXME: update if exists
-	}
-
-	if err := bpf.AttachSocketRestriction(); err != nil {
-		return fmt.Errorf("attach socket restriction: %w", err)
 	}
 
 	if err := proxySvc.ApplyGlobalResources(ctx); err != nil {
