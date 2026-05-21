@@ -95,7 +95,7 @@ func TestCheckpoint(t *testing.T) {
 								CgroupsPath: "system.slice:crio:<container-id>",
 								Namespaces: []cri.Namespace{
 									{
-										Type: cri.NamespaceTypeNet,
+										Type: string(cri.NamespaceTypeNet),
 										Path: "/var/run/something",
 									},
 								},
