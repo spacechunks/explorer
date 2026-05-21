@@ -211,10 +211,18 @@ func (m *Middleware) Work(ctx context.Context, job *rivertype.JobRow, doInner fu
 		duration := m.durationInPreferredUnit(time.Since(begin))
 
 		if err != nil {
+			var batchResult interface { // To be superseded if riverbatch.MultiError is moved to rivertype.
+				ErrorsByID() map[int64]error
+			}
+			if errors.As(err, &batchResult) {
+				err = batchResult.ErrorsByID()[job.ID]
+			}
+
 			var (
 				cancelErr *river.JobCancelError
 				snoozeErr *river.JobSnoozeError
 			)
+
 			switch {
 			case errors.As(err, &cancelErr):
 				attrs = append(attrs, attribute.Bool("cancel", true))

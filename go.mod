@@ -39,7 +39,7 @@ require (
 	github.com/riverqueue/river v0.35.1
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.35.1
 	github.com/riverqueue/river/rivertype v0.35.1
-	github.com/riverqueue/rivercontrib/otelriver v0.7.0
+	github.com/riverqueue/rivercontrib/otelriver v0.8.0
 	github.com/rodaine/table v1.3.1
 	github.com/sourcegraph/jsonrpc2 v0.2.1
 	github.com/spf13/cobra v1.10.2
@@ -58,10 +58,10 @@ require (
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sys v0.44.0
 	golang.org/x/text v0.37.0
-	google.golang.org/grpc v1.81.0
+	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
-	k8s.io/client-go v0.36.0
-	k8s.io/cri-api v0.36.0
+	k8s.io/client-go v0.36.1
+	k8s.io/cri-api v0.36.1
 )
 
 require (
@@ -204,11 +204,11 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260427160629-7cedc36a6bc4 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.36.0 // indirect
-	k8s.io/apimachinery v0.36.0 // indirect
+	k8s.io/api v0.36.1 // indirect
+	k8s.io/apimachinery v0.36.1 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
-	k8s.io/streaming v0.36.0 // indirect
+	k8s.io/streaming v0.36.1 // indirect
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2 // indirect
 	modernc.org/libc v1.72.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect

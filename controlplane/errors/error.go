@@ -19,7 +19,11 @@
 package errors
 
 import (
+	"fmt"
+
 	"github.com/gogo/protobuf/proto"
+
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -76,6 +80,31 @@ var (
 	ErrFlavorVersionNotFound        = New(codes.NotFound, "flavor version does not exist")
 	ErrChangeSetTarballTooBig       = New(codes.InvalidArgument, "tarball size exceeds maximum allowed")
 )
+
+type InvalidPathViolation struct {
+	Field string
+	Path  string
+}
+
+func InvalidPath(violations ...InvalidPathViolation) Error {
+	fieldViolations := make([]*errdetails.BadRequest_FieldViolation, 0, len(violations))
+	for _, violation := range violations {
+		field := violation.Field
+		if field == "" {
+			field = "version.file_hashes.path"
+		}
+
+		fieldViolations = append(fieldViolations, &errdetails.BadRequest_FieldViolation{
+			Field:       field,
+			Description: fmt.Sprintf("path %q must not be absolute or escape the flavor version root", violation.Path),
+			Reason:      "INVALID_PATH",
+		})
+	}
+
+	return New(codes.InvalidArgument, "invalid path", &errdetails.BadRequest{
+		FieldViolations: fieldViolations,
+	})
+}
 
 /*
  * instance related errors
