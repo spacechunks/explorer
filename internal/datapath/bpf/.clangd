@@ -1,0 +1,5 @@
+# add these, so zed can provide autocompletion
+CompileFlags:
+  Add:
+    - -I./include
+    - --target=bpf

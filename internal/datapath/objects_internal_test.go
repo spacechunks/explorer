@@ -1,5 +1,3 @@
-//go:build functests
-
 /*
 Explorer Platform, a platform for hosting and discovering Minecraft servers.
 Copyright (C) 2024 Yannic Rieger <oss@76k.io>
@@ -213,4 +211,10 @@ func TestAddDNATTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, expected, actual)
+}
+
+func TestVerifier(t *testing.T) {
+	// this test will check if our progs can actually be loaded into the kernel
+	_, err := LoadBPF()
+	require.NoError(t, err)
 }

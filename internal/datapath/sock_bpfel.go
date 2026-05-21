@@ -54,7 +54,10 @@ type sockSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type sockProgramSpecs struct {
-	RestrictCreate *ebpf.ProgramSpec `ebpf:"restrict_create"`
+	BlockConnect4 *ebpf.ProgramSpec `ebpf:"block_connect4"`
+	BlockConnect6 *ebpf.ProgramSpec `ebpf:"block_connect6"`
+	DestroyTcp    *ebpf.ProgramSpec `ebpf:"destroy_tcp"`
+	DestroyUdp    *ebpf.ProgramSpec `ebpf:"destroy_udp"`
 }
 
 // sockMapSpecs contains maps before they are loaded into the kernel.
@@ -105,12 +108,18 @@ type sockVariables struct {
 //
 // It can be passed to loadSockObjects or ebpf.CollectionSpec.LoadAndAssign.
 type sockPrograms struct {
-	RestrictCreate *ebpf.Program `ebpf:"restrict_create"`
+	BlockConnect4 *ebpf.Program `ebpf:"block_connect4"`
+	BlockConnect6 *ebpf.Program `ebpf:"block_connect6"`
+	DestroyTcp    *ebpf.Program `ebpf:"destroy_tcp"`
+	DestroyUdp    *ebpf.Program `ebpf:"destroy_udp"`
 }
 
 func (p *sockPrograms) Close() error {
 	return _SockClose(
-		p.RestrictCreate,
+		p.BlockConnect4,
+		p.BlockConnect6,
+		p.DestroyTcp,
+		p.DestroyUdp,
 	)
 }
 

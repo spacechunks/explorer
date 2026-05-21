@@ -22,6 +22,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"structs"
@@ -112,16 +113,33 @@ func LoadBPF() (*Objects, error) {
 	}, nil
 }
 
-func (o *Objects) AttachSocketRestriction() error {
-	_, err := link.AttachLSM(link.LSMOptions{
-		Program: o.sockObjs.RestrictCreate,
-	})
-	if err != nil {
-		return fmt.Errorf("attach sock: %w", err)
+func (o *Objects) DestroyTCPSocks() error {
+	return o.destroySocks(o.sockObjs.DestroyTcp)
+}
+
+func (o *Objects) DestroyUDPSocks() error {
+	return o.destroySocks(o.sockObjs.DestroyUdp)
+}
+
+func (o *Objects) BlockIP4Connections(cgroupPath string) error {
+	if _, err := link.AttachCgroup(link.CgroupOptions{
+		Program: o.sockObjs.BlockConnect4,
+		Attach:  ebpf.AttachCGroupInet4Connect,
+		Path:    cgroupPath,
+	}); err != nil {
+		return err
 	}
+	return nil
+}
 
-	// TODO: pin later
-
+func (o *Objects) BlockIP6Connections(cgroupPath string) error {
+	if _, err := link.AttachCgroup(link.CgroupOptions{
+		Program: o.sockObjs.BlockConnect6,
+		Attach:  ebpf.AttachCGroupInet6Connect,
+		Path:    cgroupPath,
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -134,9 +152,6 @@ func (o *Objects) AttachAndPinSNAT(iface *net.Interface) error {
 	if err != nil {
 		return fmt.Errorf("attach: %w", err)
 	}
-
-	// 7883
-
 
 	// pin because cni is short-lived
 	if err := l.Pin(fmt.Sprintf("%s/snat_%s", ProgPinPath, iface.Name)); err != nil {
@@ -359,6 +374,31 @@ func (o *Objects) DelVethPairEntry(veth VethPair) error {
 	if err := o.tproxyObjs.VethPairMap.Delete(uint32(veth.PodPeer.Iface.Index)); err != nil {
 		return fmt.Errorf("delete using pod peer index: %w", err)
 	}
+
+	return nil
+}
+
+func (o *Objects) destroySocks(prog *ebpf.Program) error {
+	iter, err := link.AttachIter(link.IterOptions{
+		Program: prog,
+	})
+	if err != nil {
+		return fmt.Errorf("attach iter: %w", err)
+	}
+
+	defer iter.Close()
+
+	r, err := iter.Open()
+	if err != nil {
+		return fmt.Errorf("open iter: %w", err)
+	}
+
+	d, err := io.ReadAll(r)
+	if err != nil {
+		return fmt.Errorf("read: %w", err)
+	}
+
+	fmt.Println(string(d))
 
 	return nil
 }
