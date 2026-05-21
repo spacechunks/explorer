@@ -1,13 +1,17 @@
+chunks.internal:1053 {
+    bind 127.0.0.1
+    whoami
+    log
+    errors
+    hosts {
+        127.10.10.10 metadata.chunks.internal
+    }
+}
+
 .:1053 {
     bind 127.0.0.1
     whoami
     log
     errors
     forward . 1.1.1.1
-}
-
-chunks.internal:1053 {
-    hosts {
-        127.10.10.10 metadata.chunks.internal
-    }
 }
