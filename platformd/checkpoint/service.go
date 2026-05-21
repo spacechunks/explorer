@@ -29,6 +29,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/uuid"
+	"github.com/spacechunks/explorer/internal/datapath"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/cri"
@@ -54,6 +55,7 @@ type ServiceImpl struct {
 	cfg         Config
 	statusStore status.Store
 	portAlloc   *workload.PortAllocator
+	sockHandler datapath.SockHandler
 
 	// this factory function allows us to inject a mock executor for testing.
 	newRemoteCMDExecutor RemoteCMDExecutorFactory
@@ -67,7 +69,7 @@ func NewService(
 	statusStore status.Store,
 	newRemoteCMDExecutor RemoteCMDExecutorFactory,
 	portAlloc *workload.PortAllocator,
-
+	sockCleaner datapath.SockHandler,
 ) *ServiceImpl {
 	return &ServiceImpl{
 		logger:               logger,
@@ -77,6 +79,7 @@ func NewService(
 		statusStore:          statusStore,
 		portAlloc:            portAlloc,
 		newRemoteCMDExecutor: newRemoteCMDExecutor,
+		sockHandler:          sockCleaner,
 	}
 }
 
@@ -202,7 +205,8 @@ func (s *ServiceImpl) CollectGarbage(ctx context.Context) error {
 }
 
 func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Reference) (ret error) {
-	s.logger.InfoContext(ctx, "creating checkpoint", "checkpoint", id, "baseRef", baseRef.String())
+	logger := s.logger.With("checkpoint", id, "baseRef", baseRef.String())
+	logger.InfoContext(ctx, "creating checkpoint")
 
 	s.statusStore.Update(id, status.Status{
 		CheckpointStatus: &status.CheckpointStatus{
@@ -235,10 +239,9 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 		return fmt.Errorf("pull base image: %w", err)
 	}
 
-	s.logger.InfoContext(
+	logger.InfoContext(
 		ctx,
 		"waiting for regex",
-		"checkpoint_id", id,
 		"regex", paperServerReadyRegex.String(),
 	)
 
@@ -250,6 +253,24 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 
 	// TODO: check if checkpoint is already present and then only build image and push
 	location := fmt.Sprintf("%s/%s", s.cfg.CheckpointFileDir, id)
+
+	info, err := s.criService.ContainerInfo(ctx, ctrID)
+	if err != nil {
+		return fmt.Errorf("container info: %w", err)
+	}
+
+	if err := s.sockHandler.BlockNewConnections(info.RuntimeSpec.Linux.CgroupsPath); err != nil {
+		return fmt.Errorf("block: %w", err)
+	}
+
+	netnsPath, err := cri.FindNsPath(cri.NamespaceTypeNet, info.RuntimeSpec.Linux.Namespaces)
+	if err != nil {
+		return fmt.Errorf("find netns: %w", err)
+	}
+
+	if err := s.sockHandler.DestroySocks(netnsPath); err != nil {
+		return fmt.Errorf("kill sockets: %w", err)
+	}
 
 	// immediately checkpointing after canceling the attach stream in waitContainerReady
 	// leads to this error consistently appearing:
@@ -263,7 +284,7 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 	// initialized.
 	time.Sleep(s.cfg.WaitAfterServerInit)
 
-	s.logger.InfoContext(ctx, "checkpointing container", "checkpoint_id", id, "container_id", ctrID)
+	logger.InfoContext(ctx, "checkpointing container", "container_id", ctrID)
 
 	if _, err := s.criService.CheckpointContainer(ctx, &runtimev1.CheckpointContainerRequest{
 		ContainerId: ctrID,

@@ -57,7 +57,7 @@ int dnat(struct __sk_buff *ctx)
 
     if (tgt == NULL) {
         /* prevent SSH connections from spamming */
-        if (hport != 22) bpf_printk("no dnat target for port %d", hport);
+        /*if (hport != 22) bpf_printk("no dnat target for port %d", hport);*/
         return TC_ACT_OK;
     }
 

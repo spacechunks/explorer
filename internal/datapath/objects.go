@@ -22,8 +22,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
+	"structs"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -33,6 +35,7 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang-18 -strip llvm-strip-18 dnat ./bpf/dnat.c -- -I ./bpf -I ./bpf/include
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang-18 -strip llvm-strip-18 arp ./bpf/arp.c -- -I ./bpf/ -I ./bpf/include
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang-18 -strip llvm-strip-18 tproxy ./bpf/tproxy.c -- -I ./bpf -I ./bpf/include
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang-18 -strip llvm-strip-18 sock ./bpf/sock.c -- -I ./bpf -I ./bpf/include
 
 const (
 	ProgPinPath = "/sys/fs/bpf/progs"
@@ -44,6 +47,7 @@ type Objects struct {
 	dnatObjs   dnatObjects
 	arpObjs    arpObjects
 	tproxyObjs tproxyObjects
+	sockObjs   sockObjects
 }
 
 func LoadBPF() (*Objects, error) {
@@ -91,12 +95,52 @@ func LoadBPF() (*Objects, error) {
 		return nil, fmt.Errorf("load tproxy objs: %w", err)
 	}
 
+	var sockObjs sockObjects
+	if err := loadSockObjects(&sockObjs, &ebpf.CollectionOptions{
+		Maps: ebpf.MapOptions{
+			PinPath: mapPinPath,
+		},
+	}); err != nil {
+		return nil, fmt.Errorf("load sock objs: %w", err)
+	}
+
 	return &Objects{
 		snatObjs:   snatObjs,
 		dnatObjs:   dnatObjs,
 		arpObjs:    arpObjs,
 		tproxyObjs: tproxyObjs,
+		sockObjs:   sockObjs,
 	}, nil
+}
+
+func (o *Objects) DestroyTCPSocks() error {
+	return o.destroySocks(o.sockObjs.DestroyTcp)
+}
+
+func (o *Objects) DestroyUDPSocks() error {
+	return o.destroySocks(o.sockObjs.DestroyUdp)
+}
+
+func (o *Objects) BlockIP4Connections(cgroupPath string) error {
+	if _, err := link.AttachCgroup(link.CgroupOptions{
+		Program: o.sockObjs.BlockConnect4,
+		Attach:  ebpf.AttachCGroupInet4Connect,
+		Path:    cgroupPath,
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *Objects) BlockIP6Connections(cgroupPath string) error {
+	if _, err := link.AttachCgroup(link.CgroupOptions{
+		Program: o.sockObjs.BlockConnect6,
+		Attach:  ebpf.AttachCGroupInet6Connect,
+		Path:    cgroupPath,
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (o *Objects) AttachAndPinSNAT(iface *net.Interface) error {
@@ -334,9 +378,35 @@ func (o *Objects) DelVethPairEntry(veth VethPair) error {
 	return nil
 }
 
+func (o *Objects) destroySocks(prog *ebpf.Program) error {
+	iter, err := link.AttachIter(link.IterOptions{
+		Program: prog,
+	})
+	if err != nil {
+		return fmt.Errorf("attach iter: %w", err)
+	}
+
+	defer iter.Close()
+
+	r, err := iter.Open()
+	if err != nil {
+		return fmt.Errorf("open iter: %w", err)
+	}
+
+	d, err := io.ReadAll(r)
+	if err != nil {
+		return fmt.Errorf("read: %w", err)
+	}
+
+	fmt.Println(string(d))
+
+	return nil
+}
+
 func netDataToMapValue(data NetData) dnatNetData {
 	return dnatNetData{
 		PodPeer: struct {
+			_       structs.HostLayout
 			IfIndex uint32
 			IfAddr  uint32
 			MacAddr [6]uint8
@@ -347,6 +417,7 @@ func netDataToMapValue(data NetData) dnatNetData {
 			MacAddr: [6]byte(data.Veth.PodPeer.Iface.HardwareAddr[:]),
 		},
 		HostPeer: struct {
+			_       structs.HostLayout
 			IfIndex uint32
 			IfAddr  uint32
 			MacAddr [6]uint8

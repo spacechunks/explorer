@@ -47,9 +47,10 @@ func loadArpObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type arpSpecs struct {
 	arpProgramSpecs
 	arpMapSpecs
+	arpVariableSpecs
 }
 
-// arpSpecs contains programs before they are loaded into the kernel.
+// arpProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type arpProgramSpecs struct {
@@ -62,12 +63,20 @@ type arpProgramSpecs struct {
 type arpMapSpecs struct {
 }
 
+// arpVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type arpVariableSpecs struct {
+	HostPeerMac *ebpf.VariableSpec `ebpf:"host_peer_mac"`
+}
+
 // arpObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadArpObjects or ebpf.CollectionSpec.LoadAndAssign.
 type arpObjects struct {
 	arpPrograms
 	arpMaps
+	arpVariables
 }
 
 func (o *arpObjects) Close() error {
@@ -85,6 +94,13 @@ type arpMaps struct {
 
 func (m *arpMaps) Close() error {
 	return _ArpClose()
+}
+
+// arpVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadArpObjects or ebpf.CollectionSpec.LoadAndAssign.
+type arpVariables struct {
+	HostPeerMac *ebpf.Variable `ebpf:"host_peer_mac"`
 }
 
 // arpPrograms contains all programs after they have been loaded into the kernel.

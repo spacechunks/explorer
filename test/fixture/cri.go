@@ -122,6 +122,33 @@ func (f *FakeCRI) Attach(ctx context.Context, req *runtimev1.AttachRequest) (*ru
 	}, nil
 }
 
+func (f *FakeCRI) ContainerStatus(
+	ctx context.Context,
+	req *runtimev1.ContainerStatusRequest,
+) (*runtimev1.ContainerStatusResponse, error) {
+	resp := &runtimev1.ContainerStatusResponse{
+		Status: &runtimev1.ContainerStatus{},
+	}
+	if req.Verbose {
+		resp.Info = map[string]string{
+			"info": `{
+				"runtimeSpec": {
+					"linux": {
+        				"cgroupsPath": "system.slice:crio:<container-id>",
+        				"namespaces": [
+          					{
+            					"path": "/var/run/netns/298ba339-686a-49fd-afba-0cda69253b84",
+            					"type": "network"
+          					}
+        				]
+					}
+				}
+			}`,
+		}
+	}
+	return resp, nil
+}
+
 func RunFakeCRI(t *testing.T) {
 	criServ := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 

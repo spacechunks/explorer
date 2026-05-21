@@ -103,11 +103,12 @@ func TestCollectGarbage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ctx        = context.Background()
-				logger     = slog.New(slog.NewTextHandler(os.Stdout, nil))
-				store      = status.NewMemStore()
-				mockCRISvc = mock.NewMockCriService(t)
-				svc        = checkpoint.NewService(
+				ctx             = context.Background()
+				logger          = slog.New(slog.NewTextHandler(os.Stdout, nil))
+				store           = status.NewMemStore()
+				mockCRISvc      = mock.NewMockCriService(t)
+				mockSockHandler = mock.NewMockDatapathSockHandler(t)
+				svc             = checkpoint.NewService(
 					logger,
 					tt.cfg,
 					mockCRISvc,
@@ -115,6 +116,7 @@ func TestCollectGarbage(t *testing.T) {
 					store,
 					nil,
 					workload.NewPortAllocator(1, 1),
+					mockSockHandler,
 				)
 			)
 

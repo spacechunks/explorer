@@ -2,6 +2,7 @@ package cri
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -44,6 +45,8 @@ type Service interface {
 	// EnsureImage makes sure that the OCI image with the given url is present.
 	// Returns true if pulling was necessary, false if not.
 	EnsureImage(ctx context.Context, imageURL string, auth RegistryAuth) (bool, error)
+
+	ContainerInfo(ctx context.Context, id string) (ContainerInfo, error)
 }
 
 type svc struct {
@@ -173,6 +176,28 @@ func (s *svc) EnsureImage(ctx context.Context, imageURL string, auth RegistryAut
 	}
 
 	return true, nil
+}
+
+func (s *svc) ContainerInfo(ctx context.Context, id string) (ContainerInfo, error) {
+	res, err := s.ContainerStatus(ctx, &runtimev1.ContainerStatusRequest{
+		ContainerId: id,
+		Verbose:     true,
+	})
+	if err != nil {
+		return ContainerInfo{}, fmt.Errorf("get container status: %w", err)
+	}
+
+	data, ok := res.Info["info"]
+	if !ok {
+		return ContainerInfo{}, fmt.Errorf("info key missing")
+	}
+
+	var info ContainerInfo
+	if err := json.Unmarshal([]byte(data), &info); err != nil {
+		return ContainerInfo{}, fmt.Errorf("unmarshal: %w", err)
+	}
+
+	return info, nil
 }
 
 // TODO: DeletePodAndContainers function

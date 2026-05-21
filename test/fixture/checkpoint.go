@@ -76,6 +76,7 @@ func RunCheckpointAPIFixtures(t *testing.T, registryUser string, registryPass st
 				return &test.RemoteCmdExecutor{}, nil
 			},
 			workload.NewPortAllocator(5000, 6000),
+			&noopSockHandler{},
 		)
 		checkServ = checkpoint.NewServer(svc)
 	)
@@ -94,4 +95,15 @@ func RunCheckpointAPIFixtures(t *testing.T, registryUser string, registryPass st
 	}()
 
 	test.WaitServerReady(t, "tcp", CheckpointAPIAddr, 20*time.Second)
+}
+
+type noopSockHandler struct {
+}
+
+func (n noopSockHandler) BlockNewConnections(_ string) error {
+	return nil
+}
+
+func (n noopSockHandler) DestroySocks(_ string) error {
+	return nil
 }

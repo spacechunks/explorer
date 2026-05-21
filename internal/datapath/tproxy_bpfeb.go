@@ -8,17 +8,20 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"structs"
 
 	"github.com/cilium/ebpf"
 )
 
 type tproxyOriginalDstEntry struct {
+	_      structs.HostLayout
 	IpAddr uint32
 	Port   uint16
 	_      [2]byte
 }
 
 type tproxyVethPair struct {
+	_           structs.HostLayout
 	HostIfIndex uint32
 	HostIfAddr  uint32
 }
@@ -58,9 +61,10 @@ func loadTproxyObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
 type tproxySpecs struct {
 	tproxyProgramSpecs
 	tproxyMapSpecs
+	tproxyVariableSpecs
 }
 
-// tproxySpecs contains programs before they are loaded into the kernel.
+// tproxyProgramSpecs contains programs before they are loaded into the kernel.
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tproxyProgramSpecs struct {
@@ -77,12 +81,20 @@ type tproxyMapSpecs struct {
 	VethPairMap    *ebpf.MapSpec `ebpf:"veth_pair_map"`
 }
 
+// tproxyVariableSpecs contains global variables before they are loaded into the kernel.
+//
+// It can be passed ebpf.CollectionSpec.Assign.
+type tproxyVariableSpecs struct {
+	HostPeerMac *ebpf.VariableSpec `ebpf:"host_peer_mac"`
+}
+
 // tproxyObjects contains all objects after they have been loaded into the kernel.
 //
 // It can be passed to loadTproxyObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tproxyObjects struct {
 	tproxyPrograms
 	tproxyMaps
+	tproxyVariables
 }
 
 func (o *tproxyObjects) Close() error {
@@ -105,6 +117,13 @@ func (m *tproxyMaps) Close() error {
 		m.OriginalDstMap,
 		m.VethPairMap,
 	)
+}
+
+// tproxyVariables contains all global variables after they have been loaded into the kernel.
+//
+// It can be passed to loadTproxyObjects or ebpf.CollectionSpec.LoadAndAssign.
+type tproxyVariables struct {
+	HostPeerMac *ebpf.Variable `ebpf:"host_peer_mac"`
 }
 
 // tproxyPrograms contains all programs after they have been loaded into the kernel.
