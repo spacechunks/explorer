@@ -24,7 +24,7 @@ type NamespaceType string
 
 const (
 	NamespaceTypePid NamespaceType = "pid"
-	NamespaceTypeNet               = "network"
+	NamespaceTypeNet NamespaceType = "network"
 )
 
 func FindNsPath(nsType NamespaceType, namespaces []Namespace) (string, error) {
