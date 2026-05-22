@@ -199,6 +199,12 @@ func (s *ServiceImpl) CollectGarbage(ctx context.Context) error {
 		}
 
 		s.logger.InfoContext(ctx, "cleaned up pod", "checkpoint_id", pod.Metadata.Uid, "pod_id", pod.Id)
+
+		if err := os.RemoveAll(
+			fmt.Sprintf("%s/checkpoints/%s", cri.PodLogDir, pod.Metadata.Uid),
+		); err != nil {
+			return fmt.Errorf("remove checkpoint logs: %w", err)
+		}
 	}
 
 	return nil
@@ -391,7 +397,7 @@ func (s *ServiceImpl) podConfig(id string) *runtimev1.PodSandboxConfig {
 			Namespace: Namespace,
 		},
 		Hostname:     id,
-		LogDirectory: cri.PodLogDir,
+		LogDirectory: cri.PodLogDir + "/checkpoints/" + id,
 		DnsConfig: &runtimev1.DNSConfig{
 			Servers:  []string{"10.0.0.53"}, // TODO: make configurable
 			Options:  []string{"edns0", "trust-ad"},
@@ -424,6 +430,6 @@ func (s *ServiceImpl) ctrConfig(checkID string, baseImgURL string) *runtimev1.Co
 			workload.LabelWorkloadID:   checkID,
 			workload.LabelWorkloadType: "checkpoint",
 		},
-		LogPath: fmt.Sprintf("%s_%s", Namespace, "payload"),
+		LogPath: "checkpoint.log",
 	}
 }

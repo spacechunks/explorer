@@ -55,6 +55,10 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("create dir: %w", err)
 	}
 
+	if err := os.MkdirAll(cri.PodLogDir+"/checkpoints", os.ModePerm); err != nil {
+		return fmt.Errorf("create log dirs: %w", err)
+	}
+
 	tlsCreds := credentials.NewTLS(&tls.Config{
 		InsecureSkipVerify: true,
 	})
