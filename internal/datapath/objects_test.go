@@ -1,4 +1,4 @@
-//go:build functests
+//go:build bpf
 
 /*
 Explorer Platform, a platform for hosting and discovering Minecraft servers.
