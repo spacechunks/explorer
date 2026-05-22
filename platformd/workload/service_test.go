@@ -195,7 +195,7 @@ func TestRunWorkload(t *testing.T) {
 
 				criService.EXPECT().
 					RunContainer(mocky.Anything, mcCtrReq).
-					Return("", nil)
+					Return("abc", nil)
 
 				criService.EXPECT().
 					EnsureImage(mocky.Anything, cfg.ServerMonImage, cri.Unauthenticated).
@@ -204,6 +204,12 @@ func TestRunWorkload(t *testing.T) {
 				criService.EXPECT().
 					RunContainer(mocky.Anything, serverMonCtrReq).
 					Return("", nil)
+
+				criService.EXPECT().
+					ContainerInfo(mocky.Anything, "abc").
+					Return(cri.ContainerInfo{
+						Pid: os.Getpid(),
+					}, nil)
 			},
 		},
 	}

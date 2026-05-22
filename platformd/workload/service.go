@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
@@ -210,6 +211,20 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 	}
 
 	logger.InfoContext(ctx, "started servermon container", "container_id", serverMonCtrID)
+
+	info, err := s.criService.ContainerInfo(ctx, mcCtrID)
+	if err != nil {
+		return fmt.Errorf("container info: %w", err)
+	}
+
+	proc, err := os.FindProcess(info.Pid)
+	if err != nil {
+		return fmt.Errorf("find process: %w", err)
+	}
+
+	if err := proc.Signal(syscall.SIGUSR1); err != nil {
+		return fmt.Errorf("signal process: %w", err)
+	}
 
 	return nil
 }

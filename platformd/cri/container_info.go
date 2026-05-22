@@ -17,13 +17,13 @@ type RuntimeSpec struct {
 }
 
 type ContainerInfo struct {
+	Pid         int         `json:"pid"`
 	RuntimeSpec RuntimeSpec `json:"runtimeSpec"`
 }
 
 type NamespaceType string
 
 const (
-	NamespaceTypePid NamespaceType = "pid"
 	NamespaceTypeNet NamespaceType = "network"
 )
 
