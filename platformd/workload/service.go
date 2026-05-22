@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -287,6 +288,10 @@ func (s *svc) RemoveWorkload(ctx context.Context, id string) error {
 		}
 	}
 
+	if err := s.removeLogDir(ctx, id); err != nil {
+		s.logger.WarnContext(ctx, "removing log dir failed", "workload_id", id, "err", err)
+	}
+
 	return nil
 }
 
@@ -370,6 +375,32 @@ func (s *svc) WorkloadMetadata(ctx context.Context, id string) (Metadata, error)
 		FlavorVersion: codec.FlavorVersionToDomain(instance.FlavorVersion),
 		OrderedBy:     instance.OrderedBy,
 	}, nil
+}
+
+func (s *svc) removeLogDir(ctx context.Context, instanceID string) error {
+	entries, err := os.ReadDir(cri.PodLogDir)
+	if err != nil {
+		return fmt.Errorf("read dir: %w", err)
+	}
+
+	for _, e := range entries {
+		if !strings.Contains(e.Name(), instanceID) {
+			continue
+		}
+		path := filepath.Join(cri.PodLogDir, e.Name())
+
+		s.logger.InfoContext(
+			ctx,
+			"remove log dir",
+			"workload_id", instanceID,
+			"path", path,
+		)
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("remove: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func podLogDir(ins *instancev1alpha1.Instance) string {
