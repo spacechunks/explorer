@@ -2,6 +2,7 @@ package checkpoint_test
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/spacechunks/explorer/internal/mock"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/checkpoint"
+	"github.com/spacechunks/explorer/platformd/cri"
 	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
 	mocky "github.com/stretchr/testify/mock"
@@ -120,15 +122,22 @@ func TestCollectGarbage(t *testing.T) {
 				)
 			)
 
-			for id, status := range tt.storeItems {
-				store.Update(id, status)
+			for id, st := range tt.storeItems {
+				store.Update(id, st)
 			}
 
 			pods := make([]*runtimev1.PodSandbox, 0, len(store.View()))
+			logDir := fmt.Sprintf("%s/checkpoints", cri.PodLogDir)
 
 			for id, st := range store.View() {
-				path := tt.cfg.CheckpointFileDir + "/" + id
+				path := fmt.Sprintf("%s/%s", tt.cfg.CheckpointFileDir, id)
 				err := os.WriteFile(path, []byte{}, 0777)
+				require.NoError(t, err)
+
+				err = os.MkdirAll(fmt.Sprintf("%s/%s", logDir, id), os.ModePerm)
+				require.NoError(t, err)
+
+				err = os.WriteFile(fmt.Sprintf("%s/%s/checkpoint.log", logDir, id), []byte{}, 0777)
 				require.NoError(t, err)
 
 				pods = append(pods, &runtimev1.PodSandbox{
@@ -171,12 +180,15 @@ func TestCollectGarbage(t *testing.T) {
 			require.NoError(t, err)
 
 			for id, st := range store.View() {
-				_, err := os.Stat(tt.cfg.CheckpointFileDir + "/" + id)
 				if st.CheckpointStatus.State == status.CheckpointStateRunning {
 					require.NoError(t, err)
 					continue
 				}
 
+				_, err := os.Stat(fmt.Sprintf("%s/%s", tt.cfg.CheckpointFileDir, id))
+				require.ErrorIs(t, err, os.ErrNotExist)
+
+				_, err = os.Stat(fmt.Sprintf("%s/%s", logDir, id))
 				require.ErrorIs(t, err, os.ErrNotExist)
 			}
 
