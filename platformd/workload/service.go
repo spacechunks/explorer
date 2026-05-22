@@ -222,7 +222,10 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 		return fmt.Errorf("find process: %w", err)
 	}
 
-	if err := proc.Signal(syscall.SIGUSR1); err != nil {
+	// default behavior of SIGCONT is to simply continue the process,
+	// so if plugins do not add a handler for it, the mc server continues
+	// to live. other signals might terminate the process.
+	if err := proc.Signal(syscall.SIGCONT); err != nil {
 		return fmt.Errorf("signal process: %w", err)
 	}
 
