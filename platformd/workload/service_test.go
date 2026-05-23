@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -144,8 +145,8 @@ func TestRunWorkload(t *testing.T) {
 							LogPath: "servermon.slog",
 							Mounts: []*runtimev1.Mount{
 								{
-									HostPath:      cfg.PlatformdListenSockURL.Path,
-									ContainerPath: cfg.PlatformdListenSockURL.Path,
+									HostPath:      filepath.Dir(cfg.PlatformdListenSockURL.Path),
+									ContainerPath: filepath.Dir(cfg.PlatformdListenSockURL.Path),
 								},
 							},
 							Linux: &runtimev1.LinuxContainerConfig{

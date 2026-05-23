@@ -174,8 +174,14 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 			LogPath: "servermon.slog",
 			Mounts: []*runtimev1.Mount{
 				{
-					HostPath:      s.cfg.PlatformdListenSockURL.Path,
-					ContainerPath: s.cfg.PlatformdListenSockURL.Path,
+					// mount the parent dir of the socket instead of the socket
+					// path directly, because if platformd restarts the socket
+					// mount will go stale as the socket is closed. this causes
+					// all clients requests to fail until we restart the container.
+					// the parent dir will still be present, if platformd is stopped.
+					// once it's back up clients can access the socket again.
+					HostPath:      filepath.Dir(s.cfg.PlatformdListenSockURL.Path),
+					ContainerPath: filepath.Dir(s.cfg.PlatformdListenSockURL.Path),
 				},
 			},
 			Linux: &runtimev1.LinuxContainerConfig{

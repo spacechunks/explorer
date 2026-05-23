@@ -293,8 +293,14 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 					ContainerPath: "/etc/envoy/config.yaml",
 				},
 				{
-					HostPath:      cfg.ManagementServerListenSock.Path,
-					ContainerPath: cfg.ManagementServerListenSock.Path,
+					// mount the parent dir of the socket instead of the socket
+					// path directly, because if platformd restarts the socket
+					// mount will go stale as the socket is closed. this causes
+					// all clients requests to fail until we restart the container.
+					// the parent dir will still be present, if platformd is stopped.
+					// once it's back up clients can access the socket again.
+					HostPath:      filepath.Dir(cfg.ManagementServerListenSock.Path),
+					ContainerPath: filepath.Dir(cfg.ManagementServerListenSock.Path),
 				},
 			},
 			Linux: &runtimev1.LinuxContainerConfig{
