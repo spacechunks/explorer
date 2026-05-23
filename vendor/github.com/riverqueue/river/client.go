@@ -24,6 +24,7 @@ import (
 	"github.com/riverqueue/river/internal/notifier"
 	"github.com/riverqueue/river/internal/notifylimiter"
 	"github.com/riverqueue/river/internal/rivercommon"
+	"github.com/riverqueue/river/internal/rivermiddleware"
 	"github.com/riverqueue/river/internal/workunit"
 	"github.com/riverqueue/river/riverdriver"
 	"github.com/riverqueue/river/rivershared/baseservice"
@@ -328,6 +329,32 @@ type Config struct {
 	// setting of Postgres `search_path`.
 	Schema string
 
+	// SoftStopTimeout is the maximum amount of time that the client will wait
+	// for running jobs to finish during a stop before their contexts are
+	// cancelled. After the timeout elapses, the client escalates to a hard stop
+	// by cancelling the context of all running jobs. This applies regardless of
+	// how stop is initiated — whether by calling Stop, StopAndCancel, or by
+	// cancelling the context passed to Start.
+	//
+	// In combination with signal.NotifyContext on the context passed to Start,
+	// this can simplify graceful stop to:
+	//
+	//	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	//	defer stop()
+	//
+	//	if err := client.Start(ctx); err != nil { ... }
+	//	<-client.Stopped()
+	//
+	// The signal cancels the Start context, which initiates a soft stop. If
+	// running jobs haven't finished after SoftStopTimeout, their contexts are
+	// automatically cancelled to trigger a hard stop.
+	//
+	// StopAndCancel bypasses the timeout entirely and cancels job contexts
+	// immediately.
+	//
+	// Defaults to no timeout (wait indefinitely for jobs to finish).
+	SoftStopTimeout time.Duration
+
 	// SkipJobKindValidation causes the job kind format validation check to be
 	// skipped. This is available as an interim stopgap for users that have
 	// invalid job kind names, but would rather disable the check rather than
@@ -457,6 +484,7 @@ func (c *Config) WithDefaults() *Config {
 		RescueStuckJobsAfter:        cmp.Or(c.RescueStuckJobsAfter, rescueAfter),
 		RetryPolicy:                 retryPolicy,
 		Schema:                      c.Schema,
+		SoftStopTimeout:             c.SoftStopTimeout,
 		SkipJobKindValidation:       c.SkipJobKindValidation,
 		SkipUnknownJobCheck:         c.SkipUnknownJobCheck,
 		Test:                        c.Test,
@@ -636,6 +664,7 @@ type Client[TTx any] struct {
 	periodicJobs           *PeriodicJobBundle
 	pilot                  riverpilot.Pilot
 	producersByQueueName   map[string]*producer
+	producersMu            sync.RWMutex
 	queueMaintainer        *maintenance.QueueMaintainer
 	queueMaintainerLeader  *maintenance.QueueMaintainerLeader
 	queues                 *QueueBundle
@@ -766,10 +795,11 @@ func NewClient[TTx any](driver riverdriver.Driver[TTx], config *Config) (*Client
 	}
 
 	client.queues = &QueueBundle{
-		addProducer:             client.addProducer,
 		clientFetchCooldown:     config.FetchCooldown,
 		clientFetchPollInterval: config.FetchPollInterval,
 		clientWillExecuteJobs:   config.willExecuteJobs(),
+		producerAdd:             client.producerAdd,
+		producerRemove:          client.producerRemove,
 	}
 
 	baseservice.Init(archetype, &client.baseService)
@@ -780,7 +810,8 @@ func NewClient[TTx any](driver riverdriver.Driver[TTx], config *Config) (*Client
 	// the more abstract config.Middleware for middleware are set, but not both,
 	// so in practice we never append all three of these to each other.
 	{
-		middleware := config.Middleware
+		middleware := rivermiddleware.DefaultMiddleware()
+		middleware = append(middleware, config.Middleware...)
 		for _, jobInsertMiddleware := range config.JobInsertMiddleware {
 			middleware = append(middleware, jobInsertMiddleware)
 		}
@@ -877,7 +908,7 @@ func NewClient[TTx any](driver riverdriver.Driver[TTx], config *Config) (*Client
 		client.services = append(client.services, client.elector)
 
 		for queue, queueConfig := range config.Queues {
-			if _, err := client.addProducer(queue, queueConfig); err != nil {
+			if _, err := client.producerAdd(queue, queueConfig); err != nil {
 				return nil, err
 			}
 		}
@@ -1080,10 +1111,19 @@ func (c *Client[TTx]) Start(ctx context.Context) error {
 			return err
 		}
 
-		// We use separate contexts for fetching and working to allow for a graceful
-		// stop. Both inherit from the provided context, so if it's cancelled, a
-		// more aggressive stop will be initiated.
-		workCtx, workCancel := context.WithCancelCause(ctx)
+		// We use separate contexts for fetching and working to allow for a
+		// graceful stop. When SoftStopTimeout is configured, the work context
+		// is detached from the start context so that cancelling the start
+		// context initiates a soft stop (with timeout escalation) rather than
+		// an immediate hard stop. When SoftStopTimeout is not configured, the
+		// work context inherits from the start context to preserve the
+		// existing behavior where cancelling the start context is equivalent
+		// to StopAndCancel.
+		workParentCtx := ctx
+		if c.config.SoftStopTimeout > 0 {
+			workParentCtx = context.WithoutCancel(ctx)
+		}
+		workCtx, workCancel := context.WithCancelCause(workParentCtx)
 
 		// Client available to executors and to various service hooks.
 		fetchCtx := withClient(fetchCtx, c)
@@ -1147,6 +1187,18 @@ func (c *Client[TTx]) Start(ctx context.Context) error {
 		c.queues.startStopMu.Lock()
 		defer c.queues.startStopMu.Unlock()
 
+		// If SoftStopTimeout is configured, start a timer that will cancel
+		// the work context (escalating to a hard stop) if producers don't
+		// finish in time. StopAndCancel also calls workCancel, in which case
+		// this timer is a harmless no-op because the context is already done.
+		if c.config.SoftStopTimeout > 0 {
+			softStopTimer := time.AfterFunc(c.config.SoftStopTimeout, func() {
+				c.baseService.Logger.WarnContext(ctx, c.baseService.Name+": Soft stop timeout; cancelling remaining job contexts", slog.Duration("soft_stop_timeout", c.config.SoftStopTimeout))
+				c.workCancel(rivercommon.ErrStop)
+			})
+			defer softStopTimer.Stop()
+		}
+
 		// On stop, have the producers stop fetching first of all.
 		c.baseService.Logger.DebugContext(ctx, c.baseService.Name+": Stopping producers")
 		startstop.StopAllParallel(producersAsServices()...)
@@ -1179,6 +1231,10 @@ func (c *Client[TTx]) Start(ctx context.Context) error {
 // complete before exiting. If the provided context is done before shutdown has
 // completed, Stop will return immediately with the context's error.
 //
+// If SoftStopTimeout is configured, running job contexts will be automatically
+// cancelled after the timeout elapses, escalating to a hard stop. This also
+// applies when stop is initiated by cancelling the context passed to Start.
+//
 // There's no need to call this method if a hard stop has already been initiated
 // by cancelling the context passed to Start or by calling StopAndCancel.
 func (c *Client[TTx]) Stop(ctx context.Context) error {
@@ -1207,6 +1263,12 @@ func (c *Client[TTx]) Stop(ctx context.Context) error {
 // This can also be initiated by cancelling the context passed to Start. There is
 // no need to call this method if the context passed to Start is cancelled
 // instead.
+//
+// In most cases, using Stop with SoftStopTimeout configured is preferable to
+// calling StopAndCancel directly. SoftStopTimeout gives running jobs a chance
+// to finish before automatically escalating to context cancellation, providing
+// graceful stop semantics without requiring manual orchestration of Stop and
+// StopAndCancel.
 func (c *Client[TTx]) StopAndCancel(ctx context.Context) error {
 	c.baseService.Logger.InfoContext(ctx, c.baseService.Name+": Hard stop started; cancelling all work")
 	c.workCancel(rivercommon.ErrStop)
@@ -1959,7 +2021,14 @@ func (c *Client[TTx]) insertManyParams(params []InsertManyParams) ([]*rivertype.
 // transaction, the producer wouldn't yet be able to access the new jobs that
 // triggered the notification because they're not committed yet.
 func (c *Client[TTx]) notifyProducerWithoutListenerJobFetch(_ context.Context, res []*rivertype.JobInsertResult) {
-	if c.driver.SupportsListener() || len(c.producersByQueueName) < 1 {
+	if c.driver.SupportsListener() {
+		return
+	}
+
+	c.producersMu.RLock()
+	defer c.producersMu.RUnlock()
+
+	if len(c.producersByQueueName) < 1 {
 		return
 	}
 
@@ -2168,7 +2237,10 @@ func (c *Client[TTx]) validateJobArgs(args JobArgs) error {
 	return nil
 }
 
-func (c *Client[TTx]) addProducer(queueName string, queueConfig QueueConfig) (*producer, error) {
+func (c *Client[TTx]) producerAdd(queueName string, queueConfig QueueConfig) (*producer, error) {
+	c.producersMu.Lock()
+	defer c.producersMu.Unlock()
+
 	if _, alreadyExists := c.producersByQueueName[queueName]; alreadyExists {
 		return nil, &QueueAlreadyAddedError{Name: queueName}
 	}
@@ -2196,6 +2268,31 @@ func (c *Client[TTx]) addProducer(queueName string, queueConfig QueueConfig) (*p
 	})
 	c.producersByQueueName[queueName] = producer
 	return producer, nil
+}
+
+func (c *Client[TTx]) producerRemove(ctx context.Context, queueName string) error {
+	c.producersMu.Lock()
+	defer c.producersMu.Unlock()
+
+	producer, ok := c.producersByQueueName[queueName]
+	if !ok {
+		return &QueueNotFoundError{Name: queueName}
+	}
+
+	shouldStop, stopped, finalizeStop := producer.StopInit()
+	if shouldStop {
+		select {
+		case <-ctx.Done():
+			finalizeStop(false)
+			return ctx.Err()
+		case <-stopped:
+			finalizeStop(true)
+		}
+	}
+
+	delete(c.producersByQueueName, queueName)
+
+	return nil
 }
 
 var nameRegex = regexp.MustCompile(`^(?:[a-z0-9])+(?:[_|\-]?[a-z0-9]+)*$`)
@@ -2722,7 +2819,14 @@ func (c *Client[TTx]) QueueUpdateTx(ctx context.Context, tx TTx, name string, pa
 // transaction, the producer wouldn't yet be able to access the state that
 // triggered the notification because it's not committed yet.
 func (c *Client[TTx]) notifyProducerWithoutListenerQueueControlEvent(queue string, controlEvent *controlEventPayload) {
-	if c.driver.SupportsListener() || len(c.producersByQueueName) < 1 {
+	if c.driver.SupportsListener() {
+		return
+	}
+
+	c.producersMu.RLock()
+	defer c.producersMu.RUnlock()
+
+	if len(c.producersByQueueName) < 1 {
 		return
 	}
 
@@ -2778,15 +2882,14 @@ func (c *Client[TTx]) Schema() string { return c.config.Schema }
 // QueueBundle is a bundle for adding additional queues. It's made accessible
 // through Client.Queues.
 type QueueBundle struct {
-	// Function that adds a producer to the associated client.
-	addProducer func(queueName string, queueConfig QueueConfig) (*producer, error)
-
 	clientFetchCooldown     time.Duration
 	clientFetchPollInterval time.Duration
 
 	clientWillExecuteJobs bool
 
-	fetchCtx context.Context //nolint:containedctx
+	fetchCtx       context.Context                                                    //nolint:containedctx
+	producerAdd    func(queueName string, queueConfig QueueConfig) (*producer, error) // add producer to associated client
+	producerRemove func(ctx context.Context, queueName string) error                  // remove producer from associated client
 
 	// Mutex that's acquired when client is starting and stopping and when a
 	// queue is being added so that we can be sure that a client is fully
@@ -2811,7 +2914,7 @@ func (b *QueueBundle) Add(queueName string, queueConfig QueueConfig) error {
 	b.startStopMu.Lock()
 	defer b.startStopMu.Unlock()
 
-	producer, err := b.addProducer(queueName, queueConfig)
+	producer, err := b.producerAdd(queueName, queueConfig)
 	if err != nil {
 		return err
 	}
@@ -2824,6 +2927,29 @@ func (b *QueueBundle) Add(queueName string, queueConfig QueueConfig) error {
 	}
 
 	return nil
+}
+
+// Remove removes a queue from the client, stopping the producer if the client
+// is running. It waits for any jobs currently being worked in the queue to
+// complete before returning.
+//
+// If the provided context is done before the producer has fully stopped, Remove
+// returns the context's error and does not fully remove the queue, though the
+// queue's producer may have started stopping, leaving it in a stopped state
+// where it doesn't work new jobs. Call Remove again with a new context to
+// remove it completely.
+//
+// Returns an error if the client is not configured to execute jobs or if the
+// specified queue does not exist.
+func (b *QueueBundle) Remove(ctx context.Context, queueName string) error {
+	if !b.clientWillExecuteJobs {
+		return errors.New("client is not configured to execute jobs, cannot remove queue")
+	}
+
+	b.startStopMu.Lock()
+	defer b.startStopMu.Unlock()
+
+	return b.producerRemove(ctx, queueName)
 }
 
 // Generates a default client ID using the current hostname and time.
