@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 )
 
 const (
@@ -34,14 +34,22 @@ const (
 	pgxPoolEmptyAcquireWaitTime    = "pgxpool.empty_acquire_wait_time"
 )
 
-// RecordStats records database statistics for provided pgxpool.Pool at a default 1 second interval
+// RecordStats records database statistics for provided [pgxpool.Pool] at a default 1 second interval
 // unless otherwise specified by the WithMinimumReadDBStatsInterval StatsOption.
+//
+// Attributes provided via WithStatsAttributes override the library-supplied defaults
+// (db.system.name, db.client.connection.pool.name) on key collision, since
+// attribute.NewSet applies last-value-wins semantics over the resulting slice.
 func RecordStats(db PoolStats, opts ...StatsOption) error {
+	connCfg := db.Config().ConnConfig
+	poolName := fmt.Sprintf("%s:%d/%s", connCfg.Host, connCfg.Port, connCfg.Database)
+
 	o := statsOptions{
 		meterProvider:              otel.GetMeterProvider(),
 		minimumReadDBStatsInterval: defaultMinimumReadDBStatsInterval,
 		defaultAttributes: []attribute.KeyValue{
-			semconv.DBSystemPostgreSQL,
+			semconv.DBSystemNamePostgreSQL,
+			semconv.DBClientConnectionPoolName(poolName),
 		},
 	}
 
@@ -92,12 +100,6 @@ func recordStats(
 		// lock prevents a race between batch observer and instrument registration.
 		lock sync.Mutex
 	)
-
-	serverAddress := semconv.ServerAddress(db.Config().ConnConfig.Host)
-	serverPort := semconv.ServerPort(int(db.Config().ConnConfig.Port))
-	dbNamespace := semconv.DBNamespace(db.Config().ConnConfig.Database)
-	poolName := fmt.Sprintf("%s:%d/%s", serverAddress.Value.AsString(), serverPort.Value.AsInt64(), dbNamespace.Value.AsString())
-	dbClientConnectionPoolName := semconv.DBClientConnectionPoolName(poolName)
 
 	lock.Lock()
 	defer lock.Unlock()
@@ -194,11 +196,6 @@ func recordStats(
 	); err != nil {
 		return fmt.Errorf("failed to create asynchronous metric: %s with error: %w", pgxPoolEmptyAcquireWaitTime, err)
 	}
-
-	attrs = append(attrs, []attribute.KeyValue{
-		semconv.DBSystemPostgreSQL,
-		dbClientConnectionPoolName,
-	}...)
 
 	observeOptions = []metric.ObserveOption{
 		metric.WithAttributeSet(attribute.NewSet(attrs...)),

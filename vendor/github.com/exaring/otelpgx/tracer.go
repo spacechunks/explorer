@@ -16,7 +16,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
-	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	dbconv "go.opentelemetry.io/otel/semconv/v1.40.0/dbconv"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -71,7 +72,7 @@ type Tracer struct {
 	attributeSlicePool   sync.Pool
 	metricAttrs          map[string]attribute.Set
 
-	operationDuration metric.Int64Histogram
+	operationDuration dbconv.ClientOperationDuration
 	operationErrors   metric.Int64Counter
 
 	trimQuerySpanName    bool
@@ -80,6 +81,7 @@ type Tracer struct {
 	logSQLStatement      bool
 	logConnectionDetails bool
 	includeParams        bool
+	disableAcquireTracer bool
 }
 
 type tracerConfig struct {
@@ -95,6 +97,7 @@ type tracerConfig struct {
 	logSQLStatement      bool
 	logConnectionDetails bool
 	includeParams        bool
+	disableAcquireTracer bool
 }
 
 // NewTracer returns a new Tracer.
@@ -103,10 +106,10 @@ func NewTracer(opts ...Option) *Tracer {
 		tracerProvider: otel.GetTracerProvider(),
 		meterProvider:  otel.GetMeterProvider(),
 		tracerAttrs: []attribute.KeyValue{
-			semconv.DBSystemPostgreSQL,
+			semconv.DBSystemNamePostgreSQL,
 		},
 		meterAttrs: []attribute.KeyValue{
-			semconv.DBSystemPostgreSQL,
+			semconv.DBSystemNamePostgreSQL,
 		},
 		trimQuerySpanName:    false,
 		spanNameCtxFunc:      defaultSpanNameCtxFunc,
@@ -114,6 +117,7 @@ func NewTracer(opts ...Option) *Tracer {
 		logSQLStatement:      true,
 		logConnectionDetails: true,
 		includeParams:        false,
+		disableAcquireTracer: false,
 	}
 
 	for _, opt := range opts {
@@ -135,13 +139,15 @@ func NewTracer(opts ...Option) *Tracer {
 				return &s
 			},
 		},
-		tracerAttrs:         cfg.tracerAttrs,
-		meterAttrs:          cfg.meterAttrs,
-		trimQuerySpanName:   cfg.trimQuerySpanName,
-		spanNameCtxFunc:     cfg.spanNameCtxFunc,
-		prefixQuerySpanName: cfg.prefixQuerySpanName,
-		logSQLStatement:     cfg.logSQLStatement,
-		includeParams:       cfg.includeParams,
+		tracerAttrs:          cfg.tracerAttrs,
+		meterAttrs:           cfg.meterAttrs,
+		trimQuerySpanName:    cfg.trimQuerySpanName,
+		spanNameCtxFunc:      cfg.spanNameCtxFunc,
+		prefixQuerySpanName:  cfg.prefixQuerySpanName,
+		logSQLStatement:      cfg.logSQLStatement,
+		logConnectionDetails: cfg.logConnectionDetails,
+		includeParams:        cfg.includeParams,
+		disableAcquireTracer: cfg.disableAcquireTracer,
 	}
 
 	tracer.createMetrics()
@@ -155,11 +161,7 @@ func NewTracer(opts ...Option) *Tracer {
 func (t *Tracer) createMetrics() {
 	var err error
 
-	t.operationDuration, err = t.meter.Int64Histogram(
-		semconv.DBClientOperationDurationName,
-		metric.WithDescription(semconv.DBClientOperationDurationDescription),
-		metric.WithUnit(semconv.DBClientOperationDurationUnit),
-	)
+	t.operationDuration, err = dbconv.NewClientOperationDuration(t.meter)
 	if err != nil {
 		otel.Handle(err)
 	}
@@ -217,9 +219,7 @@ func (t *Tracer) incrementOperationErrorCount(ctx context.Context, err error, pg
 // recordOperationDuration will compute and record the time since the start of an operation.
 func (t *Tracer) recordOperationDuration(ctx context.Context, pgxOperation string) {
 	if startTime, ok := ctx.Value(startTimeCtxKey{}).(time.Time); ok {
-		t.operationDuration.Record(ctx, time.Since(startTime).Milliseconds(), metric.WithAttributeSet(
-			t.metricAttrs[pgxOperation],
-		))
+		t.operationDuration.RecordSet(ctx, time.Since(startTime).Seconds(), t.metricAttrs[pgxOperation])
 	}
 }
 
@@ -228,7 +228,7 @@ func (t *Tracer) recordOperationDuration(ctx context.Context, pgxOperation strin
 func connectionAttributesFromConfig(config *pgx.ConnConfig) []attribute.KeyValue {
 	if config != nil {
 		return []attribute.KeyValue{
-			semconv.DBSystemPostgreSQL,
+			semconv.DBSystemNamePostgreSQL,
 			semconv.ServerAddress(config.Host),
 			semconv.ServerPort(int(config.Port)),
 			semconv.UserName(config.User),
@@ -596,7 +596,12 @@ func (t *Tracer) TracePrepareEnd(ctx context.Context, _ *pgx.Conn, data pgx.Trac
 
 // TraceAcquireStart is called at the beginning of Acquire.
 // The returned context is used for the rest of the call and will be passed to the TraceAcquireEnd.
+// If WithDisableAcquireTracer was set, then the function is no-op.
 func (t *Tracer) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool, data pgxpool.TraceAcquireStartData) context.Context {
+	if t.disableAcquireTracer {
+		return ctx
+	}
+
 	ctx = context.WithValue(ctx, startTimeCtxKey{}, time.Now())
 
 	if !trace.SpanFromContext(ctx).IsRecording() {
@@ -629,7 +634,12 @@ func (t *Tracer) TraceAcquireStart(ctx context.Context, pool *pgxpool.Pool, data
 }
 
 // TraceAcquireEnd is called when a connection has been acquired.
+// If WithDisableAcquireTracer was set, then the function is no-op.
 func (t *Tracer) TraceAcquireEnd(ctx context.Context, _ *pgxpool.Pool, data pgxpool.TraceAcquireEndData) {
+	if t.disableAcquireTracer {
+		return
+	}
+
 	span := trace.SpanFromContext(ctx)
 	t.incrementOperationErrorCount(ctx, data.Err, pgxOperationAcquire)
 	t.recordOperationDuration(ctx, pgxOperationAcquire)
