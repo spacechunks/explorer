@@ -28,9 +28,9 @@ func JobCancel(err error) error {
 type JobSnoozeError = rivertype.JobSnoozeError
 
 // JobSnooze can be returned from a Worker's Work method to cause the job to be
-// tried again after the specified duration. This also has the effect of
-// incrementing the job's MaxAttempts by 1, meaning that jobs can be repeatedly
-// snoozed without ever being discarded.
+// tried again after the specified duration. This will not increment the job's
+// Attempt count, meaning that jobs can be repeatedly snoozed without ever being
+// discarded.
 //
 // A special duration of zero can be used to make the job immediately available
 // to be reworked. This may be useful in cases like where a long-running job is
@@ -56,6 +56,21 @@ func (e *QueueAlreadyAddedError) Error() string {
 
 func (e *QueueAlreadyAddedError) Is(target error) bool {
 	_, ok := target.(*QueueAlreadyAddedError)
+	return ok
+}
+
+// QueueNotFoundError is returned when attempting to remove a queue that does
+// not exist on the Client.
+type QueueNotFoundError struct {
+	Name string
+}
+
+func (e *QueueNotFoundError) Error() string {
+	return fmt.Sprintf("queue %q not found", e.Name)
+}
+
+func (e *QueueNotFoundError) Is(target error) bool {
+	_, ok := target.(*QueueNotFoundError)
 	return ok
 }
 

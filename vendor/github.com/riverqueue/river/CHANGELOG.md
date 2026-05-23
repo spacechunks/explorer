@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-05-22
+
+### Added
+
+- Added new configuration `Config.SoftStopTimeout` to provide a cleaner way to gracefully stop a client. [PR #1239](https://github.com/riverqueue/river/pull/1239)
+
+## [0.37.1] - 2026-05-15
+
+### Fixed
+
+- Wrap `PeriodicJobEnqueuer.insertBatch` database calls in a 30-second timeout. Previously, a stalled pgx `Begin`/`Insert`/`Commit` could hang the periodic enqueuer indefinitely, halting all periodic job insertion until the process was restarted or leader re-elected. [PR #1251](https://github.com/riverqueue/river/pull/1251)
+
+## [0.37.0] - 2026-05-11
+
+### Added
+
+- Added "resumable jobs" that can be broken down into multiple steps and with a step persisted after it finishes that lets them skip work that's already been done. This is particularly useful for long running jobs that may experience a cancellation (like in the event of a deploy) during the span of their run. [PR #1226](https://github.com/riverqueue/river/pull/1226).
+
+## [0.36.0] - 2026-05-09
+
+### Added
+
+- Add `QeueueBundle.Remove` to remove an already added queue/producer. [PR #1235](https://github.com/riverqueue/river/pull/1235) and [PR #1240](https://github.com/riverqueue/river/pull/1240).
+
+### Fixed
+
+- Fix unsafe concurrent producer map access in client. [PR #1236](https://github.com/riverqueue/river/pull/1236).
+- Mark schema replacements as `Stable` in sqlc templates, preventing query SQL from having to be reallocated over and over again.. [PR #1242](https://github.com/riverqueue/river/pull/1242).
+- Fix bug in `sqltemplate` cached path in order in which named args are passed to a query (previously, the order was unstable). [PR #1243](https://github.com/riverqueue/river/pull/1243).
+
 ## [0.35.1] - 2026-04-26
 
 ### Fixed
