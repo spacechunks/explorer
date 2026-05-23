@@ -127,8 +127,9 @@ func (o *Objects) BlockIP4Connections(cgroupPath string) error {
 		Attach:  ebpf.AttachCGroupInet4Connect,
 		Path:    cgroupPath,
 	}); err != nil {
-		return err
+		return fmt.Errorf("attach: %w", err)
 	}
+
 	return nil
 }
 
@@ -138,8 +139,9 @@ func (o *Objects) BlockIP6Connections(cgroupPath string) error {
 		Attach:  ebpf.AttachCGroupInet6Connect,
 		Path:    cgroupPath,
 	}); err != nil {
-		return err
+		return fmt.Errorf("attach: %w", err)
 	}
+
 	return nil
 }
 
@@ -155,7 +157,7 @@ func (o *Objects) AttachAndPinSNAT(iface *net.Interface) error {
 
 	// pin because cni is short-lived
 	if err := l.Pin(fmt.Sprintf("%s/snat_%s", ProgPinPath, iface.Name)); err != nil {
-		return fmt.Errorf("pin link: %w", err)
+		return fmt.Errorf("pin: %w", err)
 	}
 
 	return nil
@@ -177,7 +179,7 @@ func (o *Objects) AttachAndPinDNAT(iface *net.Interface) error {
 			// TODO: update prog
 			return nil
 		}
-		return fmt.Errorf("pin link: %w", err)
+		return fmt.Errorf("pin: %w", err)
 	}
 
 	return nil
@@ -195,7 +197,7 @@ func (o *Objects) AttachAndPinARP(iface *net.Interface) error {
 
 	// pin because cni is short-lived
 	if err := l.Pin(fmt.Sprintf("%s/arp_%s", ProgPinPath, iface.Name)); err != nil {
-		return fmt.Errorf("pin link: %w", err)
+		return fmt.Errorf("pin: %w", err)
 	}
 
 	return nil
