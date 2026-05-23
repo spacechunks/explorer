@@ -145,7 +145,6 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 				ListenAddr:               cfg.CheckpointConfig.ListenAddr,
 				StatusRetentionPeriod:    cfg.CheckpointConfig.StatusRetentionPeriod,
 				ContainerReadyTimeout:    cfg.CheckpointConfig.ContainerReadyTimeout,
-				SocketDestructionTimeout: cfg.CheckpointConfig.SocketDestructionTimeout,
 			},
 			criSvc,
 			image.NewService(checkSvcLogger, cfg.RegistryUser, cfg.RegistryPass, "/tmp"),
