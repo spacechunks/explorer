@@ -278,16 +278,11 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 		return fmt.Errorf("kill sockets: %w", err)
 	}
 
-	// immediately checkpointing after canceling the attach stream in waitContainerReady
-	// leads to this error consistently appearing:
+	// wait a little after closing all sockets, as it seems that if we directly checkpoint we still get:
 	//
 	//		Error (criu/sk-inet.c:191): inet: Connected TCP socket, consider using --tcp-established option.
 	//
-	// the problem is, that there seems to be an open tcp connection which blocks criu
-	// from checkpointing. i don't know where this is coming from, my workaround for
-	// now is to just wait a bit.
-	// FIXME: possible solution could be to cut internet access after the server has
-	// initialized.
+	// linux might take some time to close all sockets eventually.
 	time.Sleep(s.cfg.WaitAfterServerInit)
 
 	logger.InfoContext(ctx, "checkpointing container", "container_id", ctrID)
