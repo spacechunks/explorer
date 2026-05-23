@@ -274,16 +274,15 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 		return fmt.Errorf("find netns: %w", err)
 	}
 
+	// sockets in state TCP_TIME_WAIT and TCP_CLOSE_WAIT, will be a left-over
+	// because our ebpf programs will not be able to close them.
+	//
+	// in order to make restoring the checkpoint work, we have to specify
+	// the --tcp-close option in /etc/criu/crun.conf to make it work.
+	// see https://criu.org/CLI/opt/--tcp-close for reference.
 	if err := s.sockHandler.DestroySocks(netnsPath); err != nil {
 		return fmt.Errorf("kill sockets: %w", err)
 	}
-
-	// wait a little after closing all sockets, as it seems that if we directly checkpoint we still get:
-	//
-	//		Error (criu/sk-inet.c:191): inet: Connected TCP socket, consider using --tcp-established option.
-	//
-	// linux might take some time to close all sockets eventually.
-	time.Sleep(s.cfg.WaitAfterServerInit)
 
 	logger.InfoContext(ctx, "checkpointing container", "container_id", ctrID)
 

@@ -131,7 +131,7 @@ functests-shared: $(TEST_IMG)
 .PHONY: ebpf
 ebpf:
 	$(RUN) $(SUDO) go generate ./internal/datapath
-	$(RUN) $(SUDO) go test ./internal/datapath -run TestVerifier -count 1
+	$(RUN) $(SUDO) go test -tags bpf ./internal/datapath -run TestVerifier -count 1
 
 $(TEST_IMG):
 	@docker build -t test-img -f $(IMG_TESTDATA_DIR)/Dockerfile $(IMG_TESTDATA_DIR)
