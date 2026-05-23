@@ -346,8 +346,8 @@ github.com/envoyproxy/go-control-plane/ratelimit/service/ratelimit/v3
 # github.com/envoyproxy/protoc-gen-validate v1.3.3
 ## explicit; go 1.24.1
 github.com/envoyproxy/protoc-gen-validate/validate
-# github.com/exaring/otelpgx v0.10.0
-## explicit; go 1.22.0
+# github.com/exaring/otelpgx v0.11.1
+## explicit; go 1.25.0
 github.com/exaring/otelpgx
 # github.com/felixge/httpsnoop v1.0.4
 ## explicit; go 1.13
@@ -924,10 +924,10 @@ go.opentelemetry.io/otel/internal/baggage
 go.opentelemetry.io/otel/internal/errorhandler
 go.opentelemetry.io/otel/internal/global
 go.opentelemetry.io/otel/propagation
-go.opentelemetry.io/otel/semconv/v1.27.0
 go.opentelemetry.io/otel/semconv/v1.37.0
 go.opentelemetry.io/otel/semconv/v1.37.0/rpcconv
 go.opentelemetry.io/otel/semconv/v1.40.0
+go.opentelemetry.io/otel/semconv/v1.40.0/dbconv
 go.opentelemetry.io/otel/semconv/v1.40.0/httpconv
 go.opentelemetry.io/otel/semconv/v1.40.0/otelconv
 go.opentelemetry.io/otel/semconv/v1.40.0/rpcconv
