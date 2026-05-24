@@ -102,7 +102,7 @@ func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[j
 		return fmt.Errorf("validate args: %w", err)
 	}
 
-	// TODO: check if checkpoint already exists in repo.
+	// TODO: check if checkpoint already exists in repo. -> should happen on platformd side
 	//       it could happen that things take too long
 	//       and the job times out, but in the background
 	//       platformd still executes the checkpointing
