@@ -36,6 +36,8 @@ import (
 	"github.com/spacechunks/explorer/test"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestCreateCheckpointWorker(t *testing.T) {
@@ -140,4 +142,63 @@ func TestCreateCheckpointWorker(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestCheckpointWorkerReturnsIfNotFound(t *testing.T) {
+	var (
+		ctx           = context.Background()
+		logger        = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		mockNodeRepo  = mock.NewMockNodeRepository(t)
+		mockChunkRepo = mock.NewMockChunkRepository(t)
+		mockClient    = mock.NewMockV1alpha1CheckpointServiceClient(t)
+		newClient     = func(_ string) (checkpointv1alpha1.CheckpointServiceClient, error) {
+			return mockClient, nil
+		}
+		baseImgURL      = "some-url"
+		checkID         = "checkpoint-id"
+		flavorVersionID = test.NewUUIDv7(t)
+	)
+
+	mockNodeRepo.EXPECT().
+		RandomNode(mocky.Anything).
+		Return(node.Node{}, nil) // return value doesn't matter
+
+	mockClient.EXPECT().
+		CreateCheckpoint(mocky.Anything, &checkpointv1alpha1.CreateCheckpointRequest{
+			BaseImageUrl: baseImgURL,
+		}).
+		Return(&checkpointv1alpha1.CreateCheckpointResponse{
+			CheckpointId: checkID,
+		}, nil)
+
+	mockClient.EXPECT().
+		CheckpointStatus(mocky.Anything, &checkpointv1alpha1.CheckpointStatusRequest{
+			CheckpointId: checkID,
+		}).
+		Return(nil, status.Errorf(codes.NotFound, "checkpoint not found"))
+
+	w := worker.NewCheckpointWorker(
+		logger,
+		newClient,
+		mockNodeRepo,
+		mockChunkRepo,
+		worker.CreateCheckpointWorkerConfig{
+			Timeout:             10 * time.Second,
+			StatusCheckInterval: 5 * time.Millisecond,
+		},
+	)
+
+	riverJob := &river.Job[job.CreateCheckpoint]{
+		JobRow: &rivertype.JobRow{
+			Attempt:     0,
+			MaxAttempts: 5,
+		},
+		Args: job.CreateCheckpoint{
+			FlavorVersionID: flavorVersionID,
+			BaseImageURL:    baseImgURL,
+		},
+	}
+
+	err := w.Work(ctx, riverJob)
+	require.ErrorIs(t, err, status.Error(codes.NotFound, "checkpoint not found"))
 }

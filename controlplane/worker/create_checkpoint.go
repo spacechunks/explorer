@@ -31,6 +31,8 @@ import (
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/internal/resource"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type CreateCheckpointWorkerConfig struct {
@@ -138,7 +140,11 @@ func (w *CreateCheckpointWorker) Work(ctx context.Context, riverJob *river.Job[j
 				CheckpointId: resp.CheckpointId,
 			})
 			if err != nil {
-				// TODO: if error is not found return directly
+				if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+					w.logger.WarnContext(ctx, "checkpoint not available anymore, retrying")
+					return err
+				}
+
 				w.logger.ErrorContext(ctx, "checkpoint status error", "err", err)
 				continue
 			}
