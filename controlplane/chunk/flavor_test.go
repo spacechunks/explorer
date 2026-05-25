@@ -140,7 +140,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Hash: "hash1",
 				},
 			}
-			v.ChangeHash = "68df46974f6dc5fe"
 		})
 	}
 
@@ -198,7 +197,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 						Hash: "hash1",
 					},
 				}
-				v.ChangeHash = "68df46974f6dc5fe"
 			}),
 			expectedDiff: resource.FlavorVersionDiff{
 				Added: []file.Hash{

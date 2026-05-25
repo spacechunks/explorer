@@ -169,7 +169,6 @@ CREATE TABLE public.flavor_versions (
     id uuid NOT NULL,
     flavor_id uuid NOT NULL,
     hash character(16) NOT NULL,
-    change_hash character(16) NOT NULL,
     build_status public.build_status DEFAULT 'PENDING'::public.build_status NOT NULL,
     version character varying(25) NOT NULL,
     files_uploaded boolean DEFAULT false NOT NULL,
@@ -724,4 +723,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260415141037'),
     ('20260417174036'),
     ('20260429200153'),
-    ('20260507140844');
+    ('20260507140844'),
+    ('20260525101218');

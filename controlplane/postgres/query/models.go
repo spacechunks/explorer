@@ -199,7 +199,6 @@ type FlavorVersion struct {
 	ID                     string
 	FlavorID               string
 	Hash                   string
-	ChangeHash             string
 	BuildStatus            BuildStatus
 	Version                string
 	FilesUploaded          bool

@@ -150,7 +150,6 @@ func (db *DB) ListChunks(ctx context.Context, pageSize int, afterID *string) ([]
 				MinecraftVersion:       r.MinecraftVersion.String,
 				Hash:                   r.Hash.String,
 				BuildStatus:            string(r.BuildStatus.BuildStatus),
-				ChangeHash:             r.ChangeHash.String,
 				FilesUploaded:          r.FilesUploaded.Bool,
 				FlavorVersionCreatedAt: r.CreatedAt_3.Time,
 
@@ -340,7 +339,6 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (re
 			MinecraftVersion:       r.MinecraftVersion.String,
 			Hash:                   r.Hash.String,
 			BuildStatus:            string(r.BuildStatus.BuildStatus),
-			ChangeHash:             r.ChangeHash.String,
 			FilesUploaded:          r.FilesUploaded.Bool,
 			FlavorVersionCreatedAt: r.CreatedAt_3.Time.UTC(),
 
@@ -414,7 +412,6 @@ type chunkRelationsRow struct {
 	MinecraftVersion       string
 	Hash                   string
 	BuildStatus            string
-	ChangeHash             string
 	FilesUploaded          bool
 	FlavorVersionCreatedAt time.Time
 	PresingedURLExpiryDate *time.Time
@@ -491,7 +488,6 @@ func collectChunks(rows []chunkRelationsRow) resource.Chunk {
 					MinecraftVersion:       r.MinecraftVersion,
 					Hash:                   r.Hash,
 					BuildStatus:            resource.FlavorVersionBuildStatus(r.BuildStatus),
-					ChangeHash:             r.ChangeHash,
 					FilesUploaded:          r.FilesUploaded,
 					CreatedAt:              r.FlavorVersionCreatedAt,
 					PresignedURLExpiryDate: r.PresingedURLExpiryDate,

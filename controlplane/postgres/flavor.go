@@ -177,7 +177,6 @@ func (db *DB) CreateFlavorVersion(
 			Hash:             version.Hash,
 			Version:          version.Version,
 			MinecraftVersion: version.MinecraftVersion,
-			ChangeHash:       version.ChangeHash,
 			CreatedAt:        now,
 		}
 
@@ -257,7 +256,6 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (resource.Flavor
 			Version:          row.Version,
 			MinecraftVersion: row.MinecraftVersion,
 			Hash:             row.Hash,
-			ChangeHash:       row.ChangeHash,
 			BuildStatus:      resource.FlavorVersionBuildStatus(row.BuildStatus),
 			FilesUploaded:    row.FilesUploaded,
 			CreatedAt:        row.CreatedAt,
@@ -422,7 +420,6 @@ func (db *DB) FlavorByID(ctx context.Context, id string) (resource.Flavor, error
 				Version:                r.Version.String,
 				MinecraftVersion:       r.MinecraftVersion.String,
 				Hash:                   r.Hash.String,
-				ChangeHash:             r.ChangeHash.String,
 				FilesUploaded:          r.FilesUploaded.Bool,
 				BuildStatus:            resource.FlavorVersionBuildStatus(r.BuildStatus.BuildStatus),
 				CreatedAt:              r.CreatedAt_2.Time.UTC(),

@@ -123,7 +123,6 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 					Version:          row.FlavorVersion.Version,
 					MinecraftVersion: row.FlavorVersion.MinecraftVersion,
 					Hash:             row.FlavorVersion.Hash,
-					ChangeHash:       row.FlavorVersion.ChangeHash,
 
 					// FIXME: for now those are not needed anywhere, so they are not included in the query
 					FileHashes: nil,
@@ -231,7 +230,6 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 					Version:          row.FlavorVersion.Version,
 					MinecraftVersion: row.FlavorVersion.MinecraftVersion,
 					Hash:             row.FlavorVersion.Hash,
-					ChangeHash:       row.FlavorVersion.ChangeHash,
 					FileHashes:       nil,
 					FilesUploaded:    row.FlavorVersion.FilesUploaded,
 					BuildStatus:      resource.FlavorVersionBuildStatus(row.FlavorVersion.BuildStatus),
@@ -362,7 +360,6 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 			Version:          row.FlavorVersion.Version,
 			MinecraftVersion: row.FlavorVersion.MinecraftVersion,
 			Hash:             row.FlavorVersion.Hash,
-			ChangeHash:       row.FlavorVersion.ChangeHash,
 			FileHashes:       nil,
 			FilesUploaded:    row.FlavorVersion.FilesUploaded,
 			BuildStatus:      resource.FlavorVersionBuildStatus(row.FlavorVersion.BuildStatus),
