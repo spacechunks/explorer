@@ -88,7 +88,6 @@ type FlavorVersion struct {
 	Version                string                   `json:"version"`
 	MinecraftVersion       string                   `json:"minecraftVersion"`
 	Hash                   string                   `json:"hash"`
-	ChangeHash             string                   `json:"changeHash"`
 	FileHashes             []file.Hash              `json:"fileHashes"`
 	FilesUploaded          bool                     `json:"filesUploaded"`
 	BuildStatus            FlavorVersionBuildStatus `json:"buildStatus"`

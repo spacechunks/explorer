@@ -108,7 +108,6 @@ func Flavor(mod ...func(f *resource.Flavor)) resource.Flavor {
 func FlavorVersion(mod ...func(v *resource.FlavorVersion)) resource.FlavorVersion {
 	version := resource.FlavorVersion{
 		Version:    "v1",
-		ChangeHash: "kkkkkkkkkkkkkkkk",
 		FileHashes: []file.Hash{
 			{
 				Path: "server.properties",

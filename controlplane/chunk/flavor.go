@@ -223,12 +223,6 @@ func (s *svc) CreateFlavorVersion(
 
 	sortByPath(all)
 
-	changesTree, err := file.HashTree(changes)
-	if err != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("changes tree: %w", err)
-	}
-
-	version.ChangeHash = file.HashTreeRootString(changesTree)
 	version.FileHashes = all
 
 	created, err := s.repo.CreateFlavorVersion(ctx, flavorID, version, prevVersion.ID)

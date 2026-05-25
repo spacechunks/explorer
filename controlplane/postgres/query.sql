@@ -124,9 +124,9 @@ SELECT * FROM flavor_version_files WHERE flavor_version_id = $1;
 
 -- name: CreateFlavorVersion :exec
 INSERT INTO flavor_versions
-    (id, flavor_id, hash, change_hash, version, prev_version_id, minecraft_version, created_at)
+    (id, flavor_id, hash, version, prev_version_id, minecraft_version, created_at)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8);
+    ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: BulkInsertFlavorFileHashes :batchexec
 INSERT INTO flavor_version_files
