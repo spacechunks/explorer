@@ -5,6 +5,7 @@ package platformd.checkpoint.v1alpha1;
 option go_package = "github.com/spacechunks/explorer/api/platformd/checkpoint/v1alpha1";
 
 import "platformd/checkpoint/v1alpha1/types.proto";
+import "buf/validate/validate.proto";
 
 service CheckpointService {
   rpc CreateCheckpoint(CreateCheckpointRequest) returns (CreateCheckpointResponse);
@@ -12,7 +13,7 @@ service CheckpointService {
 }
 
 message CreateCheckpointRequest {
-  string base_image_url = 1;
+  string base_image_url = 1 [(buf.validate.field).string.uri = true];
 }
 
 message CreateCheckpointResponse {
@@ -20,7 +21,7 @@ message CreateCheckpointResponse {
 }
 
 message CheckpointStatusRequest {
-  string checkpoint_id = 1;
+  string checkpoint_id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message CheckpointStatusResponse {

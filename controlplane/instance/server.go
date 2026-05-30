@@ -45,10 +45,6 @@ func (s *Server) GetInstance(
 	ctx context.Context,
 	req *instancev1alpha1.GetInstanceRequest,
 ) (*instancev1alpha1.GetInstanceResponse, error) {
-	if req.GetId() == "" {
-		return nil, apierrs.ErrInvalidInstanceID
-	}
-
 	ins, err := s.service.GetInstance(ctx, req.GetId())
 	if err != nil {
 		return nil, err

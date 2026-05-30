@@ -26,6 +26,7 @@ option java_package = "chunks.space.api.explorer.chunk.v1alpha1";
 
 import "google/protobuf/timestamp.proto";
 import "user/v1alpha1/types.proto";
+import "buf/validate/validate.proto";
 
 enum BuildStatus {
   PENDING = 0;

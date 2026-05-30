@@ -26,6 +26,7 @@ option java_package = "chunks.space.api.explorer.instance.v1alpha1";
 
 import "instance/v1alpha1/types.proto";
 import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
 
 service InstanceService {
   // GetInstance returns an instance by its id.
@@ -70,8 +71,8 @@ message ListInstancesResponse {
 }
 
 message RunFlavorVersionRequest {
-  string chunk_id = 1;
-  string flavor_version_id = 2;
+  string chunk_id = 1 [(buf.validate.field).string.uuid = true];
+  string flavor_version_id = 2 [(buf.validate.field).string.uuid = true];
 
   // contains an opaque identifier representing the player
   // that ordered the creation this instance.
@@ -83,7 +84,7 @@ message RunFlavorVersionResponse {
 }
 
 message GetInstanceRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message GetInstanceResponse {

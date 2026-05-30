@@ -24,6 +24,7 @@ package platformd.workload.v1alpha2;
 import "chunk/v1alpha1/types.proto";
 import "user/v1alpha1/types.proto";
 import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
 
 option go_package = "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2";
 
@@ -33,7 +34,7 @@ option go_package = "github.com/spacechunks/explorer/api/platformd/workload/v1al
 message WorkloadMetadata {
   // id is a universally unique value identifying the workload.
   // currently this is in UUIDv7 format.
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 
   chunk.v1alpha1.Chunk chunk = 2;
 

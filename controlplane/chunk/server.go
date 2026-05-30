@@ -22,7 +22,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/pagination"
@@ -45,10 +44,6 @@ func (s *Server) CreateChunk(
 	ctx context.Context,
 	req *chunkv1alpha1.CreateChunkRequest,
 ) (*chunkv1alpha1.CreateChunkResponse, error) {
-	if req.GetName() == "" {
-		return nil, apierrs.ErrInvalidName
-	}
-
 	// we allow the description to be empty, because
 	// some things like bedwars for example do not
 	// need a description.
@@ -73,10 +68,6 @@ func (s *Server) GetChunk(
 	ctx context.Context,
 	req *chunkv1alpha1.GetChunkRequest,
 ) (*chunkv1alpha1.GetChunkResponse, error) {
-	if _, err := uuid.Parse(req.GetId()); err != nil {
-		return nil, apierrs.ErrInvalidChunkID
-	}
-
 	c, err := s.service.GetChunk(ctx, req.GetId())
 	if err != nil {
 		return nil, err
@@ -91,10 +82,6 @@ func (s *Server) UpdateChunk(
 	ctx context.Context,
 	req *chunkv1alpha1.UpdateChunkRequest,
 ) (*chunkv1alpha1.UpdateChunkResponse, error) {
-	if _, err := uuid.Parse(req.GetId()); err != nil {
-		return nil, apierrs.ErrInvalidChunkID
-	}
-
 	c := resource.Chunk{
 		ID:          req.GetId(),
 		Name:        req.GetName(),
@@ -157,14 +144,6 @@ func (s *Server) CreateFlavor(
 	ctx context.Context,
 	req *chunkv1alpha1.CreateFlavorRequest,
 ) (*chunkv1alpha1.CreateFlavorResponse, error) {
-	if _, err := uuid.Parse(req.GetChunkId()); err != nil {
-		return nil, apierrs.ErrInvalidChunkID
-	}
-
-	if req.GetName() == "" {
-		return nil, apierrs.ErrInvalidName
-	}
-
 	domain := resource.Flavor{
 		Name: req.GetName(),
 	}
@@ -209,14 +188,6 @@ func (s *Server) GetUploadURL(
 	ctx context.Context,
 	req *chunkv1alpha1.GetUploadURLRequest,
 ) (*chunkv1alpha1.GetUploadURLResponse, error) {
-	if _, err := uuid.Parse(req.GetFlavorVersionId()); err != nil {
-		return nil, apierrs.ErrInvalidChunkID
-	}
-
-	if req.GetTarballHash() == "" {
-		return nil, apierrs.ErrInvalidHash
-	}
-
 	url, err := s.service.GetUploadURL(ctx, req.GetFlavorVersionId(), req.GetTarballHash(), req.GetTarballSizeBytes())
 	if err != nil {
 		return nil, fmt.Errorf("upload url: %w", err)
@@ -244,10 +215,6 @@ func (s *Server) UploadThumbnail(
 	ctx context.Context,
 	req *chunkv1alpha1.UploadThumbnailRequest,
 ) (*chunkv1alpha1.UploadThumbnailResponse, error) {
-	if _, err := uuid.Parse(req.ChunkId); err != nil {
-		return nil, apierrs.ErrInvalidChunkID
-	}
-
 	if err := s.service.UpdateThumbnail(ctx, req.ChunkId, req.Image); err != nil {
 		return nil, err
 	}
@@ -258,10 +225,6 @@ func (s *Server) DeleteFlavor(
 	ctx context.Context,
 	req *chunkv1alpha1.DeleteFlavorRequest,
 ) (*chunkv1alpha1.DeleteFlavorResponse, error) {
-	if _, err := uuid.Parse(req.Id); err != nil {
-		return nil, apierrs.ErrInvalidChunkID
-	}
-
 	if err := s.service.DeleteFlavor(ctx, req.Id); err != nil {
 		return nil, fmt.Errorf("delete flavor: %w", err)
 	}
@@ -273,10 +236,6 @@ func (s *Server) DeleteChunk(
 	ctx context.Context,
 	req *chunkv1alpha1.DeleteChunkRequest,
 ) (*chunkv1alpha1.DeleteChunkResponse, error) {
-	if _, err := uuid.Parse(req.Id); err != nil {
-		return nil, apierrs.ErrInvalidChunkID
-	}
-
 	if err := s.service.DeleteChunk(ctx, req.Id); err != nil {
 		return nil, fmt.Errorf("delete chunk: %w", err)
 	}

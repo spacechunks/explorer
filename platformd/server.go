@@ -12,7 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"buf.build/go/protovalidate"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
+	protovalidatemw "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 	"github.com/hashicorp/go-multierror"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/internal/image"
@@ -169,7 +171,15 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 		gc = garbage.NewExecutor(s.logger, 1*time.Second, checkSvc)
 	)
 
-	mgmtServer := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
+	validator, err := protovalidate.New()
+	if err != nil {
+		return fmt.Errorf("create validator: %w", err)
+	}
+
+	mgmtServer := grpc.NewServer(
+		grpc.Creds(insecure.NewCredentials()),
+		grpc.UnaryInterceptor(protovalidatemw.UnaryServerInterceptor(validator)),
+	)
 	proxyv1alpha1.RegisterProxyServiceServer(mgmtServer, proxyServer)
 	workloadv1alpha2.RegisterWorkloadServiceServer(mgmtServer, wlServer)
 	checkpointv1alpha1.RegisterCheckpointServiceServer(mgmtServer, checkServer)

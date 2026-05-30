@@ -69,6 +69,10 @@ import (
 	"github.com/exaring/otelpgx"
 	"github.com/riverqueue/rivercontrib/otelriver"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+
+	"buf.build/go/protovalidate"
+
+	protovalidatemw "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 )
 
 type Server struct {
@@ -175,11 +179,17 @@ func (s *Server) Run(ctx context.Context) error {
 		return fmt.Errorf("parse ec private key: %w", err)
 	}
 
+	validator, err := protovalidate.New()
+	if err != nil {
+		return fmt.Errorf("create validator: %w", err)
+	}
+
 	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
 			grpc.StatsHandler(otelgrpc.NewServerHandler()),
 			grpc.ChainUnaryInterceptor(
+				protovalidatemw.UnaryServerInterceptor(validator),
 				errorInterceptor(s.logger),
 				authInterceptor(s.logger, key, s.cfg.APITokenIssuer),
 				traceParentInterceptor(s.logger),
@@ -302,8 +312,7 @@ func errorInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		resp, err := handler(ctx, req)
 		if err != nil {
-			var e cperrs.Error
-			if errors.As(err, &e) {
+			if e, ok := errors.AsType[cperrs.Error](err); ok {
 				return nil, e.GRPCStatus().Err()
 			}
 

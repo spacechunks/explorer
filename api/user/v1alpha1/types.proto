@@ -25,6 +25,7 @@ option go_package = "github.com/spacechunks/explorer/api/user/v1alpha1";
 option java_package = "chunks.space.api.explorer.user.v1alpha1";
 
 import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
 
 message User {
   string id = 1;

@@ -25,6 +25,7 @@ option go_package = "github.com/spacechunks/explorer/api/chunk/v1alpha1";
 option java_package = "chunks.space.api.explorer.chunk.v1alpha1";
 
 import "chunk/v1alpha1/types.proto";
+import "buf/validate/validate.proto";
 
 // ChunkService provides the public api for interacting with Chunks
 // and flavors of Chunks.
@@ -163,17 +164,20 @@ service ChunkService {
 
 message CreateChunkRequest {
   // Name of the chunk. can be up to 50 chars.
-  string name = 1;
+  string name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 50
+  ];
 
   // Description briefly describes what the user can
   // expect when running the Chunk. can be up to 100
   // chars.
-  string description = 2;
+  string description = 2 [(buf.validate.field).string.max_len = 100];
 
   // Tags categorize the chunk. Possible values could
   // be: pvp, adventure, single-player
   // Note that the limit is currently 4.
-  repeated string tags = 3;
+  repeated string tags = 3 [(buf.validate.field).repeated.max_items = 4];
 }
 
 message CreateChunkResponse {
@@ -181,7 +185,7 @@ message CreateChunkResponse {
 }
 
 message GetChunkRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message GetChunkResponse {
@@ -189,10 +193,10 @@ message GetChunkResponse {
 }
 
 message UpdateChunkRequest {
-  string id = 1;
-  string name = 2;
-  string description = 3;
-  repeated string tags = 4;
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  string name = 2 [(buf.validate.field).string.max_len = 50];
+  string description = 3 [(buf.validate.field).string.max_len = 100];
+  repeated string tags = 4 [(buf.validate.field).repeated.max_items = 4];
 }
 
 message UpdateChunkResponse {
@@ -210,8 +214,8 @@ message ListChunksResponse {
 }
 
 message CreateFlavorRequest {
-  string chunk_id = 1;
-  string name = 2;
+  string chunk_id = 1 [(buf.validate.field).string.uuid = true];
+  string name = 2 [(buf.validate.field).string.max_len = 25];
 }
 
 message CreateFlavorResponse {
@@ -219,7 +223,7 @@ message CreateFlavorResponse {
 }
 
 message CreateFlavorVersionRequest {
-  string flavor_id = 1;
+  string flavor_id = 1 [(buf.validate.field).string.uuid = true];
   FlavorVersion version = 2;
 }
 
@@ -231,17 +235,17 @@ message CreateFlavorVersionResponse {
 }
 
 message BuildFlavorVersionRequest {
-  string flavor_version_id = 1;
+  string flavor_version_id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message BuildFlavorVersionResponse {
 }
 
 message GetUploadURLRequest {
-  string flavor_version_id = 1;
+  string flavor_version_id = 1 [(buf.validate.field).string.uuid = true];
 
   // tarball_hash is the base64 encoded, 256-bit SHA256 digest of the tarball
-  string tarball_hash = 2;
+  string tarball_hash = 2 [(buf.validate.field).string.min_len = 1];
 
   uint64 tarball_size_bytes = 3;
 }
@@ -258,7 +262,7 @@ message GetSupportedMinecraftVersionsResponse {
 }
 
 message UploadThumbnailRequest {
-  string chunk_id = 1;
+  string chunk_id = 1 [(buf.validate.field).string.uuid = true];
 
   // image is the raw image bytes
   bytes image = 2;
@@ -268,14 +272,14 @@ message UploadThumbnailResponse {
 }
 
 message DeleteFlavorRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message DeleteFlavorResponse {
 }
 
 message DeleteChunkRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message DeleteChunkResponse {

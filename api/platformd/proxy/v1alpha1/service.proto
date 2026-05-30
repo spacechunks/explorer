@@ -21,6 +21,8 @@ syntax = "proto3";
 
 package platformd.proxy.v1alpha1;
 
+import "buf/validate/validate.proto";
+
 option go_package = "github.com/spacechunks/explorer/api/platformd/proxy/v1alpha1";
 
 service ProxyService {
@@ -29,14 +31,14 @@ service ProxyService {
 }
 
 message CreateListenersRequest {
-  string workloadID = 1;
-  string ip = 2;
+  string workloadID = 1 [(buf.validate.field).string.uuid = true];
+  string ip = 2 [(buf.validate.field).string.ip = true];
 }
 
 message CreateListenersResponse {}
 
 message DeleteListenersRequest {
-  string workloadID = 1;
+  string workloadID = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message DeleteListenersResponse {}
