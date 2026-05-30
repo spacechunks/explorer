@@ -245,7 +245,7 @@ message GetUploadURLRequest {
   string flavor_version_id = 1 [(buf.validate.field).string.uuid = true];
 
   // tarball_hash is the base64 encoded, 256-bit SHA256 digest of the tarball
-  string tarball_hash = 2;
+  string tarball_hash = 2 [(buf.validate.field).string.min_len = 1];
 
   uint64 tarball_size_bytes = 3;
 }

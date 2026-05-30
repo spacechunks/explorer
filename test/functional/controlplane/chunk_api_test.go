@@ -1030,9 +1030,11 @@ func TestGetUploadURLRenews(t *testing.T) {
 
 func TestGetUploadURLRequestValidations(t *testing.T) {
 	tests := []struct {
-		name string
-		req  *chunkv1alpha1.GetUploadURLRequest
-		err  error
+		name           string
+		req            *chunkv1alpha1.GetUploadURLRequest
+		err            error
+		errCode        codes.Code
+		errMsgContains string
 	}{
 		{
 			name: "invalid flavor version id",
@@ -1040,7 +1042,8 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 				FlavorVersionId: "blabla",
 				TarballHash:     "blabla",
 			},
-			err: apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "flavor_version_id: must be a valid UUID",
 		},
 		{
 			name: "invalid tarball hash",
@@ -1048,7 +1051,8 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 				FlavorVersionId: test.NewUUIDv7(t),
 				TarballHash:     "",
 			},
-			err: apierrs.ErrInvalidHash.GRPCStatus().Err(),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "tarball_hash: must be at least 1 characters",
 		},
 		{
 			name: "files not uploaded",
@@ -1058,7 +1062,7 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 		{
 			name: "changeset file too large",
 			req: &chunkv1alpha1.GetUploadURLRequest{
-				FlavorVersionId:  "blabla",
+				FlavorVersionId:  test.NewUUIDv7(t),
 				TarballHash:      "blabla",
 				TarballSizeBytes: fixture.MaxChangeSetTarballSize + 1,
 			},
@@ -1098,7 +1102,14 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 
 			_, err := client.GetUploadURL(ctx, tt.req)
 
-			require.ErrorIs(t, err, tt.err)
+			if tt.errCode != 0 {
+				st, ok := status.FromError(err)
+				require.True(t, ok)
+
+				require.Equal(t, tt.errCode, st.Code())
+				require.Contains(t, st.Message(), tt.errMsgContains)
+				return
+			}
 		})
 	}
 }
