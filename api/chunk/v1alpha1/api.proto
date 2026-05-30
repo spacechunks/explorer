@@ -262,7 +262,7 @@ message GetSupportedMinecraftVersionsResponse {
 }
 
 message UploadThumbnailRequest {
-  string chunk_id = 1;
+  string chunk_id = 1 [(buf.validate.field).string.uuid = true];
 
   // image is the raw image bytes
   bytes image = 2;
@@ -272,14 +272,14 @@ message UploadThumbnailResponse {
 }
 
 message DeleteFlavorRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message DeleteFlavorResponse {
 }
 
 message DeleteChunkRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message DeleteChunkResponse {
