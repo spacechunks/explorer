@@ -49,7 +49,7 @@ enum InstanceState {
 // there can be multiple replicas of a chunk flavor by different
 // users.
 message Instance {
-  string id = 1 [(buf.validate.field).string.uuid = true];
+  string id = 1;
 
   chunk.v1alpha1.Chunk chunk = 2;
 
@@ -75,7 +75,7 @@ message Instance {
 }
 
 message InstanceStatusReport {
-  string instance_id = 1 [(buf.validate.field).string.uuid = true];
+  string instance_id = 1;
 
   uint32 port = 2;
 

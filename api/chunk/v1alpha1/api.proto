@@ -164,7 +164,10 @@ service ChunkService {
 
 message CreateChunkRequest {
   // Name of the chunk. can be up to 50 chars.
-  string name = 1 [(buf.validate.field).string.max_len = 50];
+  string name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 50
+  ];
 
   // Description briefly describes what the user can
   // expect when running the Chunk. can be up to 100
@@ -182,7 +185,7 @@ message CreateChunkResponse {
 }
 
 message GetChunkRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message GetChunkResponse {

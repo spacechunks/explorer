@@ -49,6 +49,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zeebo/xxh3"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -56,9 +57,11 @@ import (
 
 func TestAPICreateChunk(t *testing.T) {
 	tests := []struct {
-		name     string
-		expected resource.Chunk
-		err      error
+		name           string
+		expected       resource.Chunk
+		err            error
+		errCode        codes.Code
+		errMsgContains string
 	}{
 		{
 			name: "works",
@@ -72,28 +75,32 @@ func TestAPICreateChunk(t *testing.T) {
 			expected: fixture.Chunk(func(c *resource.Chunk) {
 				c.Name = strings.Repeat("a", resource.MaxChunkNameChars+1)
 			}),
-			err: apierrs.ErrNameTooLong.GRPCStatus().Err(),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name",
 		},
 		{
 			name: "description too long",
 			expected: fixture.Chunk(func(c *resource.Chunk) {
 				c.Description = strings.Repeat("a", resource.MaxChunkDescriptionChars+1)
 			}),
-			err: apierrs.ErrDescriptionTooLong.GRPCStatus().Err(),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "description",
 		},
 		{
 			name: "too many tags",
 			expected: fixture.Chunk(func(c *resource.Chunk) {
 				c.Tags = slices.Repeat([]string{"a"}, resource.MaxChunkTags+1)
 			}),
-			err: apierrs.ErrTooManyTags.GRPCStatus().Err(),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "tags",
 		},
 		{
 			name: "invalid name",
 			expected: fixture.Chunk(func(c *resource.Chunk) {
 				c.Name = ""
 			}),
-			err: apierrs.ErrInvalidName.GRPCStatus().Err(),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name",
 		},
 	}
 	for _, tt := range tests {
@@ -116,8 +123,12 @@ func TestAPICreateChunk(t *testing.T) {
 				Tags:        tt.expected.Tags,
 			})
 
-			if tt.err != nil {
-				require.ErrorIs(t, err, tt.err)
+			if tt.errCode != 0 {
+				st, ok := status.FromError(err)
+				require.True(t, ok)
+
+				require.Equal(t, tt.errCode, st.Code())
+				require.Contains(t, st.Message(), tt.errMsgContains)
 				return
 			}
 
@@ -140,22 +151,26 @@ func TestAPICreateChunk(t *testing.T) {
 
 func TestGetChunk(t *testing.T) {
 	tests := []struct {
-		name    string
-		chunkID string
-		err     error
+		name           string
+		chunkID        string
+		errCode        codes.Code
+		errMsgContains string
+		err            error
 	}{
 		{
 			name: "works",
 		},
 		{
-			name:    "not found",
-			chunkID: test.NewUUIDv7(t),
-			err:     apierrs.ErrChunkNotFound.GRPCStatus().Err(),
+			name:           "not found",
+			chunkID:        test.NewUUIDv7(t),
+			errCode:        codes.NotFound,
+			errMsgContains: "chunk does not exist",
 		},
 		{
-			name:    "invalid id",
-			chunkID: "invalid",
-			err:     apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
+			name:           "invalid id",
+			chunkID:        "invalid",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "id: must be a valid UUID",
 		},
 	}
 	for _, tt := range tests {
@@ -182,8 +197,12 @@ func TestGetChunk(t *testing.T) {
 				Id: tt.chunkID,
 			})
 
-			if tt.err != nil {
-				require.ErrorIs(t, err, tt.err)
+			if tt.errCode != 0 {
+				st, ok := status.FromError(err)
+				require.True(t, ok)
+
+				require.Equal(t, tt.errCode, st.Code())
+				require.Contains(t, st.Message(), tt.errMsgContains)
 				return
 			}
 
@@ -304,10 +323,11 @@ func TestListChunks(t *testing.T) {
 
 func TestUpdateChunk(t *testing.T) {
 	tests := []struct {
-		name string
-		c    *resource.Chunk
-		req  *chunkv1alpha1.UpdateChunkRequest
-		err  error
+		name           string
+		c              *resource.Chunk
+		req            *chunkv1alpha1.UpdateChunkRequest
+		errCode        codes.Code
+		errMsgContains string
 	}{
 		{
 			name: "update all fields",
@@ -343,35 +363,40 @@ func TestUpdateChunk(t *testing.T) {
 				Description: "new-description",
 				Tags:        []string{"new-tags"},
 			},
-			err: apierrs.ErrChunkNotFound.GRPCStatus().Err(),
+			errCode:        codes.NotFound,
+			errMsgContains: "chunk does not exist",
 		},
 		{
 			name: "name too long",
 			req: &chunkv1alpha1.UpdateChunkRequest{
 				Name: strings.Repeat("a", resource.MaxChunkNameChars+1),
 			},
-			err: apierrs.ErrNameTooLong.GRPCStatus().Err(),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: must be at most 50 characters",
 		},
 		{
 			name: "description too long",
 			req: &chunkv1alpha1.UpdateChunkRequest{
 				Description: strings.Repeat("a", resource.MaxChunkDescriptionChars+1),
 			},
-			err: apierrs.ErrDescriptionTooLong.GRPCStatus().Err(),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "description: must be at most 100 characters",
 		},
 		{
 			name: "too many tags",
 			req: &chunkv1alpha1.UpdateChunkRequest{
 				Tags: slices.Repeat([]string{"a"}, resource.MaxChunkTags+1),
 			},
-			err: apierrs.ErrTooManyTags.GRPCStatus().Err(),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "tags: must contain no more than 4 item(s)",
 		},
 		{
 			name: "invalid chunk id",
 			req: &chunkv1alpha1.UpdateChunkRequest{
 				Id: "invalid",
 			},
-			err: apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "id: must be a valid UUID",
 		},
 		{
 			name: "chunk not found because it's deleted",
@@ -382,7 +407,8 @@ func TestUpdateChunk(t *testing.T) {
 			c: new(fixture.Chunk(func(tmp *resource.Chunk) {
 				tmp.DeletedAt = new(time.Time)
 			})),
-			err: apierrs.ErrChunkNotFound.GRPCStatus().Err(),
+			errCode:        codes.NotFound,
+			errMsgContains: "chunk does not exist",
 		},
 	}
 	for _, tt := range tests {
@@ -409,8 +435,12 @@ func TestUpdateChunk(t *testing.T) {
 
 			resp, err := client.UpdateChunk(ctx, tt.req)
 
-			if tt.err != nil {
-				require.ErrorAs(t, err, &tt.err)
+			if tt.errCode != 0 {
+				st, ok := status.FromError(err)
+				require.True(t, ok)
+
+				require.Equal(t, tt.errCode, st.Code())
+				require.Contains(t, st.Message(), tt.errMsgContains)
 				return
 			}
 
@@ -448,24 +478,28 @@ func TestUpdateChunk(t *testing.T) {
 func TestCreateFlavor(t *testing.T) {
 	c := fixture.Chunk()
 	tests := []struct {
-		name       string
-		flavorName string
-		chunkID    string
-		err        error
+		name           string
+		flavorName     string
+		chunkID        string
+		errCode        codes.Code
+		errMsgContains string
 	}{
 		{
 			name:       "works",
 			flavorName: fixture.Flavor().Name,
 		},
 		{
-			name:       "invalid chunk id",
-			flavorName: fixture.Flavor().Name,
-			chunkID:    "invalid",
-			err:        apierrs.ErrInvalidChunkID.GRPCStatus().Err(),
+			name:           "invalid chunk id",
+			flavorName:     fixture.Flavor().Name,
+			chunkID:        "invalid",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "id: must be a valid UUID",
 		},
 		{
-			name: "invalid flavor name",
-			err:  apierrs.ErrInvalidName.GRPCStatus().Err(),
+			name:           "invalid flavor name",
+			flavorName:     strings.Repeat("a", 26),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: must be at most 25 characters",
 		},
 	}
 	for _, tt := range tests {
@@ -493,8 +527,12 @@ func TestCreateFlavor(t *testing.T) {
 				Name:    tt.flavorName,
 			})
 
-			if tt.err != nil {
-				require.ErrorIs(t, err, tt.err)
+			if tt.errCode != 0 {
+				st, ok := status.FromError(err)
+				require.True(t, ok)
+
+				require.Equal(t, tt.errCode, st.Code())
+				require.Contains(t, st.Message(), tt.errMsgContains)
 				return
 			}
 
