@@ -26,6 +26,7 @@ option java_package = "chunks.space.api.explorer.chunk.v1alpha1";
 
 import "google/protobuf/timestamp.proto";
 import "user/v1alpha1/types.proto";
+import "buf/validate/validate.proto";
 
 enum BuildStatus {
   PENDING = 0;
@@ -40,20 +41,20 @@ enum BuildStatus {
 // of user-generated content. This can be anything
 // from a minigame to a freebuild server.
 message Chunk {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 
   // Name of the chunk. can be up to 50 chars.
-  string name = 2;
+  string name = 2 [(buf.validate.field).string.max_len = 50];
 
   // Description briefly describes what the user can
   // expect when running the Chunk. can be up to 100
   // chars.
-  string description = 3;
+  string description = 3 [(buf.validate.field).string.max_len = 100];
 
   // Tags categorize the chunk. Possible values could
   // be: pvp, adventure, single-player
   // Note that the limit is currently 4.
-  repeated string tags = 4;
+  repeated string tags = 4 [(buf.validate.field).repeated.max_items = 4];
 
   repeated Flavor flavors = 5;
 
@@ -68,15 +69,15 @@ message Chunk {
 }
 
 message Flavor {
-  string id = 1;
-  string name = 2;
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  string name = 2 [(buf.validate.field).string.max_len = 25];
   repeated FlavorVersion versions = 3;
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp updated_at = 5;
 }
 
 message FlavorVersion {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
   string version = 3;
   string hash = 4;
   repeated FileHashes file_hashes = 5;

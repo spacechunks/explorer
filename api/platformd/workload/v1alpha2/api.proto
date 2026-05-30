@@ -22,6 +22,7 @@ syntax = "proto3";
 package platformd.workload.v1alpha2;
 
 import "platformd/workload/v1alpha2/types.proto";
+import "buf/validate/validate.proto";
 
 option go_package = "github.com/spacechunks/explorer/api/platformd/workload/v1alpha2";
 
@@ -32,7 +33,7 @@ service WorkloadService {
 }
 
 message WorkloadStatusRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message WorkloadStatusResponse {
@@ -40,14 +41,14 @@ message WorkloadStatusResponse {
 }
 
 message WorkloadStopRequest {
-  string id = 1;
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message WorkloadStopResponse {
 }
 
 message WorkloadMetadataRequest {
-  string workload_id = 1;
+  string workload_id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message WorkloadMetadataResponse {

@@ -26,6 +26,7 @@ option java_package = "chunks.space.api.explorer.user.v1alpha1";
 
 import "user/v1alpha1/types.proto";
 import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
 
 service UserService {
   // Register registers a user to the Chunk Explorer.
@@ -38,7 +39,7 @@ service UserService {
 }
 
 message RegisterRequest {
-  string nickname = 1;
+  string nickname = 1 [(buf.validate.field).string.max_len = 16];
   string id_token = 2;
 }
 
