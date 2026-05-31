@@ -95,12 +95,84 @@ func TestAPICreateChunk(t *testing.T) {
 			errMsgContains: "tags",
 		},
 		{
-			name: "invalid name",
+			name: "empty name does not work",
 			expected: fixture.Chunk(func(c *resource.Chunk) {
 				c.Name = ""
 			}),
 			errCode:        codes.InvalidArgument,
 			errMsgContains: "name",
+		},
+		{
+			name: "name starting with space does not work",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Name = " hello"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name starting with .. does not work",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Name = "..hello"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name starting with ../ does not work",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Name = "../hello"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name starting with ... does not work",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Name = "...hello"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name ending with space oes not work",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Name = "hello "
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name ending with .. does not work",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Name = "hello.."
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name ending with /.. does not work",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Name = "hello/.."
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name containing /../ does not work",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Name = "hello/../world"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name containing / does not work",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Name = "hello/world"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
 		},
 	}
 	for _, tt := range tests {
@@ -410,6 +482,87 @@ func TestUpdateChunk(t *testing.T) {
 			errCode:        codes.NotFound,
 			errMsgContains: "chunk does not exist",
 		},
+		{
+			name: "name starting with space does not work",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Name: " hello",
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name starting with .. does not work",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Name: "..hello",
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name starting with ../ does not work",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Name: "../hello",
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name starting with ... does not work",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Name: "...hello",
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name ending with space oes not work",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Name: "hello ",
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name ending with .. does not work",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Name: "hello..",
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name ending with /.. does not work",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Name: "hello/..",
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name containing /../ does not work",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Name: "hello/../world",
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "name containing / does not work",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Name: "hello/world",
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -500,6 +653,60 @@ func TestCreateFlavor(t *testing.T) {
 			flavorName:     strings.Repeat("a", 26),
 			errCode:        codes.InvalidArgument,
 			errMsgContains: "name: must be at most 25 characters",
+		},
+		{
+			name:           "name starting with space does not work",
+			flavorName:     " hello",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name:           "name starting with .. does not work",
+			flavorName:     "..hello",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name:           "name starting with ../ does not work",
+			flavorName:     "../hello",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name:           "name starting with ... does not work",
+			flavorName:     "...hello",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name:           "name ending with space oes not work",
+			flavorName:     "hello ",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name:           "name ending with .. does not work",
+			flavorName:     "hello..",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name:           "name ending with /.. does not work",
+			flavorName:     "hello/..",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name:           "name containing /../ does not work",
+			flavorName:     "hello/../world",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name:       "name containing / does not work",
+			flavorName: "hello/world",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "name: names cannot start or end with a space",
 		},
 	}
 	for _, tt := range tests {

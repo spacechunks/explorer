@@ -166,7 +166,12 @@ message CreateChunkRequest {
   // Name of the chunk. can be up to 50 chars.
   string name = 1 [
     (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 50
+    (buf.validate.field).string.max_len = 50,
+    (buf.validate.field).cel = {
+      id: "name.sanitization",
+      message: "names cannot start or end with a space, underscore or slash. they cannot contain linux path operators (.. or ../ or /)",
+      expression: "!this.matches('^[._ /]') && !this.matches('[._ /]$') && !this.matches('[/]')",
+    }
   ];
 
   // Description briefly describes what the user can
@@ -194,7 +199,14 @@ message GetChunkResponse {
 
 message UpdateChunkRequest {
   string id = 1 [(buf.validate.field).string.uuid = true];
-  string name = 2 [(buf.validate.field).string.max_len = 50];
+  string name = 2 [
+    (buf.validate.field).string.max_len = 50,
+    (buf.validate.field).cel = {
+      id: "name.sanitization",
+      message: "names cannot start or end with a space, underscore or slash. they cannot contain linux path operators (.. or ../ or /)",
+      expression: "!this.matches('^[._ /]') && !this.matches('[._ /]$') && !this.matches('[/]')",
+    }
+  ];
   string description = 3 [(buf.validate.field).string.max_len = 100];
   repeated string tags = 4 [(buf.validate.field).repeated.max_items = 4];
 }
@@ -215,7 +227,14 @@ message ListChunksResponse {
 
 message CreateFlavorRequest {
   string chunk_id = 1 [(buf.validate.field).string.uuid = true];
-  string name = 2 [(buf.validate.field).string.max_len = 25];
+  string name = 2 [
+    (buf.validate.field).string.max_len = 25,
+    (buf.validate.field).cel = {
+      id: "name.sanitization",
+      message: "names cannot start or end with a space, underscore or slash. they cannot contain linux path operators (.. or ../ or /)",
+      expression: "!this.matches('^[._ /]') && !this.matches('[._ /]$') && !this.matches('[/]')",
+    }
+  ];
 }
 
 message CreateFlavorResponse {
