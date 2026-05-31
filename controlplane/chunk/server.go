@@ -162,7 +162,12 @@ func (s *Server) CreateFlavorVersion(
 	ctx context.Context,
 	req *chunkv1alpha1.CreateFlavorVersionRequest,
 ) (*chunkv1alpha1.CreateFlavorVersionResponse, error) {
-	domain := codec.FlavorVersionToDomain(req.GetVersion())
+	domain := resource.FlavorVersion{
+		Version:          req.GetVersion(),
+		MinecraftVersion: req.GetMinecraftVersion(),
+		Hash:             req.GetHash(),
+		FileHashes:       codec.FileHashSliceToDomain(req.GetFileHashes()),
+	}
 
 	version, diff, err := s.service.CreateFlavorVersion(ctx, req.GetFlavorId(), domain)
 	if err != nil {

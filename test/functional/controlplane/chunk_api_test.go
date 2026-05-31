@@ -40,7 +40,6 @@ import (
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
 	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
-	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/internal/resource/codec"
 	"github.com/spacechunks/explorer/test"
@@ -810,6 +809,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 		expectedVersion *resource.FlavorVersion
 		diff            resource.FlavorVersionDiff
 		err             error
+		errCode         codes.Code
+		errMsgContains  string
 		badRequest      *errdetails.BadRequest
 	}{
 		{
@@ -821,7 +822,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "create second version with changed files",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			prevVersion: new(fixture.FlavorVersion()),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
@@ -863,9 +864,9 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:            "cleans paths",
-			prevVersion:     ptr.Pointer(fixture.FlavorVersion()),
+			prevVersion:     new(fixture.FlavorVersion()),
 			newVersion:      uncleanPathVersion(),
-			expectedVersion: ptr.Pointer(cleanedPathVersion()),
+			expectedVersion: new(cleanedPathVersion()),
 			diff: resource.FlavorVersionDiff{
 				Added: []file.Hash{
 					{
@@ -889,7 +890,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "invalid paths",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			prevVersion: new(fixture.FlavorVersion()),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
@@ -924,13 +925,13 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version already exists",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			prevVersion: new(fixture.FlavorVersion()),
 			newVersion:  fixture.FlavorVersion(),
 			err:         apierrs.ErrFlavorVersionExists.GRPCStatus().Err(),
 		},
 		{
 			name:        "version hash mismatch",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			prevVersion: new(fixture.FlavorVersion()),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.Hash = "wrong-hash"
@@ -939,12 +940,93 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "unsupported minecraft version",
-			prevVersion: ptr.Pointer(fixture.FlavorVersion()),
+			prevVersion: new(fixture.FlavorVersion()),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.MinecraftVersion = "abcdef"
 			}),
 			err: apierrs.ErrMinecraftVersionNotSupported.GRPCStatus().Err(),
+		},
+		{
+			name:        "version starting with space does not work",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = " hello"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "version: version cannot start or end with a space",
+		},
+		{
+			name:        "version starting with .. does not work",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "..hello"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "version: version cannot start or end with a space",
+		},
+		{
+			name:        "version starting with ../ does not work",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "../hello"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "version: version cannot start or end with a space",
+		},
+		{
+			name:        "version starting with ... does not work",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "...hello"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "version: version cannot start or end with a space",
+		},
+		{
+			name:        "version ending with space does not work",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "hello "
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "version: version cannot start or end with a space",
+		},
+		{
+			name:        "version ending with .. does not work",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "hello.."
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "version: version cannot start or end with a space",
+		},
+		{
+			name:        "version ending with /.. does not work",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "hello/.."
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "version: version cannot start or end with a space",
+		},
+		{
+			name:        "version containing /../ does not work",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "hello/../world"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "version: version cannot start or end with a space",
+		},
+		{
+			name:        "version containing / does not work",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "hello/world"
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "version: version cannot start or end with a space",
 		},
 	}
 	for _, tt := range tests {
@@ -969,8 +1051,11 @@ func TestCreateFlavorVersion(t *testing.T) {
 
 			if tt.prevVersion != nil {
 				_, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
-					FlavorId: c.Flavors[0].ID,
-					Version:  codec.FlavorVersionToTransport(*tt.prevVersion),
+					FlavorId:         c.Flavors[0].ID,
+					Version:          tt.prevVersion.Version,
+					Hash:             tt.prevVersion.Hash,
+					FileHashes:       codec.FileHashSliceToTransport(tt.prevVersion.FileHashes),
+					MinecraftVersion: tt.prevVersion.MinecraftVersion,
 				})
 				require.NoError(t, err)
 			}
@@ -978,8 +1063,11 @@ func TestCreateFlavorVersion(t *testing.T) {
 			version := codec.FlavorVersionToTransport(tt.newVersion)
 
 			resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
-				FlavorId: c.Flavors[0].ID,
-				Version:  version,
+				FlavorId:         c.Flavors[0].ID,
+				Version:          version.Version,
+				Hash:             version.Hash,
+				FileHashes:       version.FileHashes,
+				MinecraftVersion: version.MinecraftVersion,
 			})
 
 			if err != nil {
@@ -1001,6 +1089,16 @@ func TestCreateFlavorVersion(t *testing.T) {
 					}
 					return
 				}
+
+				if tt.errCode != 0 {
+					st, ok := status.FromError(err)
+					require.True(t, ok)
+
+					require.Equal(t, tt.errCode, st.Code())
+					require.Contains(t, st.Message(), tt.errMsgContains)
+					return
+				}
+
 				require.NoError(t, err)
 			}
 
@@ -1362,7 +1460,10 @@ func TestUserCannotCreateFlavorVersionForFlavorHeIsNotOwnerOf(t *testing.T) {
 
 	_, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
 		FlavorId: c.Flavors[0].ID,
-		Version:  &chunkv1alpha1.FlavorVersion{},
+		//Version:          "",
+		//Hash:             "",
+		//FileHashes:       nil,
+		//MinecraftVersion: "",
 	})
 
 	require.ErrorIs(t, err, apierrs.ErrPermissionDenied.GRPCStatus().Err())
@@ -1670,12 +1771,10 @@ func TestFlavorInteractionsDontWorkAfterDelete(t *testing.T) {
 				flavor resource.Flavor,
 			) error {
 				_, err := c.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
-					FlavorId: flavor.ID,
-					Version: &chunkv1alpha1.FlavorVersion{
-						Version:          "v1",
-						Hash:             "awdawdawdawd",
-						MinecraftVersion: fixture.MinecraftVersion,
-					},
+					FlavorId:         flavor.ID,
+					Version:          "v1",
+					Hash:             "awdawdawdawd",
+					MinecraftVersion: fixture.MinecraftVersion,
 				})
 				return err
 			},
@@ -1828,8 +1927,11 @@ func TestAPIDeleteChunk(t *testing.T) {
 
 	for _, f := range c.Flavors {
 		_, err = chunkClient.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
-			FlavorId: f.ID,
-			Version:  codec.FlavorVersionToTransport(f.Versions[0]),
+			FlavorId:         f.ID,
+			Version:          f.Versions[0].Version,
+			Hash:             f.Versions[0].Hash,
+			FileHashes:       codec.FileHashSliceToTransport(f.Versions[0].FileHashes),
+			MinecraftVersion: f.Versions[0].MinecraftVersion,
 		})
 		require.ErrorIsf(t, err, apierrs.ErrNotFound.GRPCStatus().Err(), "create flavor version (%s)", f.Name)
 
