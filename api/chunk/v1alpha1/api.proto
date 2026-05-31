@@ -243,7 +243,14 @@ message CreateFlavorResponse {
 
 message CreateFlavorVersionRequest {
   string flavor_id = 1 [(buf.validate.field).string.uuid = true];
-  FlavorVersion version = 2;
+  string version = 2 [(buf.validate.field).cel = {
+    id: "version.sanitization",
+    message: "version cannot start or end with a space, underscore or slash. they cannot contain linux path operators (.. or ../ or /)",
+    expression: "!this.matches('^[._ /]') && !this.matches('[._ /]$') && !this.matches('[/]')",
+  }];
+  string hash = 3;
+  repeated FileHashes file_hashes = 4;
+  string minecraft_version = 5;
 }
 
 message CreateFlavorVersionResponse {
