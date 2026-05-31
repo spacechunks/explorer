@@ -61,7 +61,9 @@ type ChunkServiceClient interface {
 	//
 	// Defined error codes:
 	// - INVALID_ARGUMENT:
-	//   - name is invalid
+	//   - name is invalid. names cannot start or end with a
+	//     space, underscore or slash. they cannot contain linux
+	//     path operators (.. or ../ or /).
 	//   - too many tags have been provided
 	//   - name exceeds the maximum amount of allowed chars
 	//   - description exceeds the maximum amount of allowed chars.
@@ -85,7 +87,9 @@ type ChunkServiceClient interface {
 	//
 	// - INVALID_ARGUMENT:
 	//   - chunk id is invalid
-	//   - name is invalid
+	//   - name is invalid. names cannot start or end with a space,
+	//     underscore or slash. they cannot contain linux path
+	//     operators (.. or ../ or /).
 	//   - too many tags have been provided
 	//   - name exceeds the maximum amount of allowed chars
 	//   - description exceeds the maximum amount of allowed chars.
@@ -102,7 +106,9 @@ type ChunkServiceClient interface {
 	//
 	// - INVALID_ARGUMENT:
 	//   - the provided chunk id is invalid
-	//   - the provided flavor name is invalid
+	//   - the provided flavor name is invalid. names cannot start or end
+	//     with a space, underscore or slash. they cannot contain linux path
+	//     operators (.. or ../ or /).
 	CreateFlavor(ctx context.Context, in *CreateFlavorRequest, opts ...grpc.CallOption) (*CreateFlavorResponse, error)
 	// CreateFlavorVersion creates a new flavor version for a
 	// given flavor by determining the added, changed and removed
@@ -117,6 +123,10 @@ type ChunkServiceClient interface {
 	// - ALREADY_EXISTS:
 	//   - the flavor version about to be created is already present
 	//   - a version with the exact same set of files already exists
+	//
+	// - INVALID_ARGUMENT:
+	//   - the version is invalid. versions cannot start or end with a space,
+	//     underscore or slash. they cannot contain linux path operators (.. or ../ or /)
 	//
 	// - FAILED_PRECONDITION:
 	//   - the provided version hash does not match with the provided file hashes
@@ -326,7 +336,9 @@ type ChunkServiceServer interface {
 	//
 	// Defined error codes:
 	// - INVALID_ARGUMENT:
-	//   - name is invalid
+	//   - name is invalid. names cannot start or end with a
+	//     space, underscore or slash. they cannot contain linux
+	//     path operators (.. or ../ or /).
 	//   - too many tags have been provided
 	//   - name exceeds the maximum amount of allowed chars
 	//   - description exceeds the maximum amount of allowed chars.
@@ -350,7 +362,9 @@ type ChunkServiceServer interface {
 	//
 	// - INVALID_ARGUMENT:
 	//   - chunk id is invalid
-	//   - name is invalid
+	//   - name is invalid. names cannot start or end with a space,
+	//     underscore or slash. they cannot contain linux path
+	//     operators (.. or ../ or /).
 	//   - too many tags have been provided
 	//   - name exceeds the maximum amount of allowed chars
 	//   - description exceeds the maximum amount of allowed chars.
@@ -367,7 +381,9 @@ type ChunkServiceServer interface {
 	//
 	// - INVALID_ARGUMENT:
 	//   - the provided chunk id is invalid
-	//   - the provided flavor name is invalid
+	//   - the provided flavor name is invalid. names cannot start or end
+	//     with a space, underscore or slash. they cannot contain linux path
+	//     operators (.. or ../ or /).
 	CreateFlavor(context.Context, *CreateFlavorRequest) (*CreateFlavorResponse, error)
 	// CreateFlavorVersion creates a new flavor version for a
 	// given flavor by determining the added, changed and removed
@@ -382,6 +398,10 @@ type ChunkServiceServer interface {
 	// - ALREADY_EXISTS:
 	//   - the flavor version about to be created is already present
 	//   - a version with the exact same set of files already exists
+	//
+	// - INVALID_ARGUMENT:
+	//   - the version is invalid. versions cannot start or end with a space,
+	//     underscore or slash. they cannot contain linux path operators (.. or ../ or /)
 	//
 	// - FAILED_PRECONDITION:
 	//   - the provided version hash does not match with the provided file hashes

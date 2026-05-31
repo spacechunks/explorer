@@ -173,6 +173,30 @@ func TestAPICreateChunk(t *testing.T) {
 			errCode:        codes.InvalidArgument,
 			errMsgContains: "name: names cannot start or end with a space",
 		},
+		{
+			name: "tag starts with -",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Tags = []string{"valid", "-invalid"}
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "tags: tags can only contain lower-case ascii letters",
+		},
+		{
+			name: "tag ends with -",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Tags = []string{"valid", "invalid-"}
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "tags: tags can only contain lower-case ascii letters",
+		},
+		{
+			name: "tag contains space",
+			expected: fixture.Chunk(func(c *resource.Chunk) {
+				c.Tags = []string{"valid", "inv alid"}
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "tags: tags can only contain lower-case ascii letters",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -561,6 +585,33 @@ func TestUpdateChunk(t *testing.T) {
 			},
 			errCode:        codes.InvalidArgument,
 			errMsgContains: "name: names cannot start or end with a space",
+		},
+		{
+			name: "tag starts with -",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Tags: []string{"valid", "-invalid"},
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "tags: tags can only contain lower-case ascii letters",
+		},
+		{
+			name: "tag ends with -",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Tags: []string{"valid", "invalid-"},
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "tags: tags can only contain lower-case ascii letters",
+		},
+		{
+			name: "tag contains space",
+			req: &chunkv1alpha1.UpdateChunkRequest{
+				Id:   fixture.Chunk().ID,
+				Tags: []string{"valid", "inv alid"},
+			},
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "tags: tags can only contain lower-case ascii letters",
 		},
 	}
 	for _, tt := range tests {

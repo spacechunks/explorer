@@ -40,6 +40,9 @@ service ChunkService {
   //     space, underscore or slash. they cannot contain linux
   //     path operators (.. or ../ or /).
   //   - too many tags have been provided
+  //   - tag is invalid. "tags can only contain lower-case ascii letters,
+  //     numbers and dashes. dashes cannot be at the start or beginning of
+  //     the tag.
   //   - name exceeds the maximum amount of allowed chars
   //   - description exceeds the maximum amount of allowed chars.
   rpc CreateChunk(CreateChunkRequest) returns (CreateChunkResponse);
@@ -66,6 +69,9 @@ service ChunkService {
   //     underscore or slash. they cannot contain linux path
   //     operators (.. or ../ or /).
   //   - too many tags have been provided
+  //   - tag is invalid. "tags can only contain lower-case ascii letters,
+  //     numbers and dashes. dashes cannot be at the start or beginning of
+  //     the tag.
   //   - name exceeds the maximum amount of allowed chars
   //   - description exceeds the maximum amount of allowed chars.
   rpc UpdateChunk(UpdateChunkRequest) returns (UpdateChunkResponse);
@@ -191,7 +197,14 @@ message CreateChunkRequest {
   // Tags categorize the chunk. Possible values could
   // be: pvp, adventure, single-player
   // Note that the limit is currently 4.
-  repeated string tags = 3 [(buf.validate.field).repeated.max_items = 4];
+  repeated string tags = 3 [
+    (buf.validate.field).repeated.max_items = 4,
+    (buf.validate.field).cel = {
+      id: "tags.sanitization",
+      message: "tags can only contain lower-case ascii letters, numbers and dashes. dashes cannot be at the start or beginning of the tag",
+      expression: "this.all(tag, tag.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'))",
+    }
+  ];
 }
 
 message CreateChunkResponse {
@@ -217,7 +230,14 @@ message UpdateChunkRequest {
     }
   ];
   string description = 3 [(buf.validate.field).string.max_len = 100];
-  repeated string tags = 4 [(buf.validate.field).repeated.max_items = 4];
+  repeated string tags = 4 [
+    (buf.validate.field).repeated.max_items = 4,
+    (buf.validate.field).cel = {
+      id: "tags.sanitization",
+      message: "tags can only contain lower-case ascii letters, numbers and dashes. dashes cannot be at the start or beginning of the tag",
+      expression: "this.all(tag, tag.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'))",
+    }
+  ];
 }
 
 message UpdateChunkResponse {

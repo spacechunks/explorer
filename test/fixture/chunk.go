@@ -44,7 +44,7 @@ func Chunk(mod ...func(c *resource.Chunk)) resource.Chunk {
 		ID:          "019532bb-2bd3-73ea-afc2-99f368a3eb97",
 		Name:        "chunk-fixture",
 		Description: "some description bla bla",
-		Tags:        []string{"tag1", "tag2"},
+		Tags:        []string{"tag1", "tag-2"},
 		Flavors: []resource.Flavor{
 			// the latest flavor has to be first
 			Flavor(func(f *resource.Flavor) {
