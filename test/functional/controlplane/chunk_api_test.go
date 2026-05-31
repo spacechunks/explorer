@@ -703,8 +703,8 @@ func TestCreateFlavor(t *testing.T) {
 			errMsgContains: "name: names cannot start or end with a space",
 		},
 		{
-			name:       "name containing / does not work",
-			flavorName: "hello/world",
+			name:           "name containing / does not work",
+			flavorName:     "hello/world",
 			errCode:        codes.InvalidArgument,
 			errMsgContains: "name: names cannot start or end with a space",
 		},
