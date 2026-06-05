@@ -307,7 +307,7 @@ func newPlan(logger *slog.Logger, cfg config.Config, supportedVersions []string,
 		}
 	}
 
-	if len(p.addedFlavors) == 0 && len(p.changedFlavors) == 0 && len(cfg.Chunk.Flavors) == len(cfg.Chunk.Flavors) {
+	if len(p.addedFlavors) == 0 && len(p.changedFlavors) == 0 && len(cfg.Chunk.Flavors) == len(p.deletedFlavors) {
 		p.chunkWillBeRemoved = true
 	}
 
