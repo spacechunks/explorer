@@ -159,7 +159,6 @@ func (b builder) build(ctx context.Context, data buildData) {
 			return
 		}
 	}
-
 }
 
 func (b builder) Wait(ctx context.Context, f func(update buildUpdate)) {
