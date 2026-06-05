@@ -159,9 +159,15 @@ func (b builder) build(ctx context.Context, data buildData) {
 			return
 		}
 	}
+
 }
 
 func (b builder) Wait(ctx context.Context, f func(update buildUpdate)) {
+	time.Sleep(500 * time.Millisecond) // so hingefickt unglaublich
+	if b.buildCounter.Load() == 0 {
+		return
+	}
+	fmt.Println("\nNow waiting for updates:")
 	for {
 		select {
 		case u := <-b.updates:

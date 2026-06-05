@@ -274,8 +274,6 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 
 		updates := make(map[string]buildUpdate)
 
-		fmt.Println("\nNow waiting for updates:")
-
 		// this builds the following line in the terminal and redraws it once we receive an update
 		// <flavor1>: <status> | <flavor2>: <status> | <flavor3>: <status> etc...
 		b.Wait(ctx, func(u buildUpdate) {
