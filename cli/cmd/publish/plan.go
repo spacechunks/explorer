@@ -107,12 +107,13 @@ type actionable struct {
 }
 
 type plan struct {
-	addedFlavors    []localFlavor
-	changedFlavors  []changedFlavor
-	deletedFlavors  []deletedFlavor
-	actionables     []actionable
-	conflicts       []conflict
-	updateThumbnail bool
+	addedFlavors       []localFlavor
+	changedFlavors     []changedFlavor
+	deletedFlavors     []deletedFlavor
+	actionables        []actionable
+	conflicts          []conflict
+	updateThumbnail    bool
+	chunkWillBeRemoved bool
 }
 
 func newPlan(logger *slog.Logger, cfg config.Config, supportedVersions []string, chunk *chunkv1alpha1.Chunk) plan {
@@ -282,6 +283,14 @@ func newPlan(logger *slog.Logger, cfg config.Config, supportedVersions []string,
 			return p
 		}
 
+		defer thbFile.Close()
+
+		// if we initially publish the chunk, there will be no thumbnail, so we have to upload it
+		if chunk.Thumbnail == nil {
+			p.updateThumbnail = true
+			return p
+		}
+
 		h, err := file.ComputeHashStr(thbFile)
 		if err != nil {
 			p.conflicts = append(p.conflicts, errorConflict{
@@ -293,9 +302,13 @@ func newPlan(logger *slog.Logger, cfg config.Config, supportedVersions []string,
 			return p
 		}
 
-		if chunk.Thumbnail != nil && h != chunk.Thumbnail.Hash {
+		if h != chunk.Thumbnail.Hash {
 			p.updateThumbnail = true
 		}
+	}
+
+	if len(p.addedFlavors) == 0 && len(p.changedFlavors) == 0 && len(cfg.Chunk.Flavors) == len(cfg.Chunk.Flavors) {
+		p.chunkWillBeRemoved = true
 	}
 
 	return p
@@ -366,6 +379,10 @@ func (p plan) print() {
 			sec := cli.Section()
 			sec.AddRow(cli.ColorRed + indent1 + "=> " + fl.name)
 			sec.Print()
+		}
+
+		if p.chunkWillBeRemoved {
+			fmt.Println(cli.ColorRed + "\nWARNING: THE CHUNK WILL ALSO BE DELETED (due to all flavors being deleted)")
 		}
 	}
 
