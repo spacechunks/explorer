@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -156,12 +157,42 @@ func (m *Middleware) InsertMany(ctx context.Context, manyParams []*rivertype.Job
 		duration := m.durationInPreferredUnit(time.Since(begin))
 
 		setStatus(attrs, statusIndex, span, panicked, err)
+
+		var skipped int64
+		for _, r := range insertRes {
+			if r != nil && r.UniqueSkippedAsDuplicate {
+				skipped++
+			}
+		}
+
+		kinds := make([]string, 0, len(manyParams))
+		for _, p := range manyParams {
+			kinds = append(kinds, p.Kind)
+		}
+		slices.Sort(kinds)
+		kinds = slices.Compact(kinds)
+
 		span.SetAttributes(attrs...) // set after finalizing status
+		span.SetAttributes(
+			attribute.StringSlice("kinds", kinds),
+			attribute.Int64("unique_skipped_as_duplicate_count", skipped),
+		)
 
 		// This allocates a new slice, so make sure to do it as few times as possible.
 		measurementOpt := metric.WithAttributes(attrs...)
 
-		m.metrics.insertCount.Add(ctx, int64(len(manyParams)), measurementOpt)
+		// Partition insert_count by unique_skipped_as_duplicate so the
+		// metric shows how many of the submitted jobs were dropped by
+		// UniqueOpts vs. actually enqueued. Sum across both data points
+		// still equals len(manyParams).
+		if inserted := int64(len(manyParams)) - skipped; inserted > 0 {
+			m.metrics.insertCount.Add(ctx, inserted,
+				metric.WithAttributes(append(attrs, attribute.Bool("unique_skipped_as_duplicate", false))...))
+		}
+		if skipped > 0 {
+			m.metrics.insertCount.Add(ctx, skipped,
+				metric.WithAttributes(append(attrs, attribute.Bool("unique_skipped_as_duplicate", true))...))
+		}
 		m.metrics.insertManyCount.Add(ctx, 1, measurementOpt)
 		m.metrics.insertManyDuration.Record(ctx, duration, measurementOpt)
 		m.metrics.insertManyDurationHistogram.Record(ctx, duration, measurementOpt)
@@ -210,6 +241,11 @@ func (m *Middleware) Work(ctx context.Context, job *rivertype.JobRow, doInner fu
 	defer func() {
 		duration := m.durationInPreferredUnit(time.Since(begin))
 
+		var (
+			cancelErr *river.JobCancelError
+			snoozeErr *river.JobSnoozeError
+		)
+
 		if err != nil {
 			var batchResult interface { // To be superseded if riverbatch.MultiError is moved to rivertype.
 				ErrorsByID() map[int64]error
@@ -217,11 +253,6 @@ func (m *Middleware) Work(ctx context.Context, job *rivertype.JobRow, doInner fu
 			if errors.As(err, &batchResult) {
 				err = batchResult.ErrorsByID()[job.ID]
 			}
-
-			var (
-				cancelErr *river.JobCancelError
-				snoozeErr *river.JobSnoozeError
-			)
 
 			switch {
 			case errors.As(err, &cancelErr):
@@ -233,16 +264,17 @@ func (m *Middleware) Work(ctx context.Context, job *rivertype.JobRow, doInner fu
 
 		setStatus(attrs, statusIndex, span, panicked, err)
 
-		{
-			// Add some higher cardinality attributes to spans, but keep them
-			// out of metrics given it's been traditional wisdom that metric
-			// attribute sets shouldn't be too large.
-			attrs := append(attrs,
-				attribute.Int64("id", job.ID),
-				attribute.String("created_at", job.CreatedAt.Format(time.RFC3339)),
-				attribute.String("scheduled_at", job.ScheduledAt.Format(time.RFC3339)),
-			)
-			span.SetAttributes(attrs...) // set after finalizing status
+		// Add some higher cardinality attributes to spans, but keep them
+		// out of metrics given it's been traditional wisdom that metric
+		// attribute sets shouldn't be too large.
+		span.SetAttributes(
+			attribute.Int64("id", job.ID),
+			attribute.String("created_at", job.CreatedAt.Format(time.RFC3339)),
+			attribute.String("scheduled_at", job.ScheduledAt.Format(time.RFC3339)),
+		)
+		span.SetAttributes(attrs...) // set after finalizing status
+		if snoozeErr != nil {
+			span.SetAttributes(attribute.String("snooze.duration", snoozeErr.Duration.String()))
 		}
 
 		// This allocates a new slice, so make sure to do it as few times as possible.
@@ -316,6 +348,13 @@ func setStatus(attrs []attribute.KeyValue, statusIndex int, span trace.Span, pan
 	case panicked:
 		attrs[statusIndex] = attribute.String("status", "panic")
 		span.SetStatus(codes.Error, "panic")
+	case errors.Is(err, &river.JobSnoozeError{}):
+		// Snooze is flow control, not failure: the job will be retried
+		// later. Record as ok so it doesn't pollute error rates; the
+		// snooze:true span/metric attribute (set by the caller) keeps
+		// snoozes queryable as a dimension.
+		attrs[statusIndex] = attribute.String("status", "ok")
+		span.SetStatus(codes.Ok, "")
 	case err != nil:
 		attrs[statusIndex] = attribute.String("status", "error")
 		span.SetStatus(codes.Error, err.Error())
