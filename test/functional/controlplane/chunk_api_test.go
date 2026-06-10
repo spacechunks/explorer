@@ -1532,7 +1532,9 @@ func TestUserCannotCreateFlavorVersionForFlavorHeIsNotOwnerOf(t *testing.T) {
 	cp.AddUserAPIKey(t, &ctx, otherUser)
 
 	_, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
-		FlavorId: c.Flavors[0].ID,
+		FlavorId:   c.Flavors[0].ID,
+		MinPlayers: 1,
+		MaxPlayers: 1,
 		//Version:          "",
 		//Hash:             "",
 		//FileHashes:       nil,
@@ -1848,6 +1850,8 @@ func TestFlavorInteractionsDontWorkAfterDelete(t *testing.T) {
 					Version:          "v1",
 					Hash:             "awdawdawdawd",
 					MinecraftVersion: fixture.MinecraftVersion,
+					MinPlayers:       1,
+					MaxPlayers:       1,
 				})
 				return err
 			},
@@ -2004,6 +2008,8 @@ func TestAPIDeleteChunk(t *testing.T) {
 			Hash:             f.Versions[0].Hash,
 			FileHashes:       codec.FileHashSliceToTransport(f.Versions[0].FileHashes),
 			MinecraftVersion: f.Versions[0].MinecraftVersion,
+			MaxPlayers:       1,
+			MinPlayers:       1,
 		})
 		require.ErrorIsf(t, err, apierrs.ErrNotFound.GRPCStatus().Err(), "create flavor version (%s)", f.Name)
 
