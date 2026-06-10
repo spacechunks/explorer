@@ -176,6 +176,11 @@ service ChunkService {
   //   - chunk id is invalid
   rpc DeleteChunk(DeleteChunkRequest) returns (DeleteChunkResponse);
 
+  // GetFlavor returns the flavor specified by the provided id. Note that the file hashes of flavor
+  // versions are not being populated as of now.
+  // Defined error codes:
+  // - NOT_FOUND:
+  //   - the targeted flavor does not exist
   rpc GetFlavor(GetFlavorRequest) returns (GetFlavorResponse);
 }
 
@@ -282,6 +287,8 @@ message CreateFlavorVersionRequest {
   string hash = 3;
   repeated FileHashes file_hashes = 4;
   string minecraft_version = 5;
+  uint32 minPlayers = 6 [(buf.validate.field).uint32.gt = 0];
+  uint32 maxPlayers = 7 [(buf.validate.field).uint32.gt = 0];
 }
 
 message CreateFlavorVersionResponse {

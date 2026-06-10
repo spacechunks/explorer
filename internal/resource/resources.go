@@ -94,6 +94,8 @@ type FlavorVersion struct {
 	CreatedAt              time.Time                `json:"createdAt"`
 	PresignedURLExpiryDate *time.Time               `json:"presignedURLExpiryDate"`
 	PresignedURL           *string                  `json:"presignedURL"`
+	MinPlayers             uint32                   `json:"minPlayers"`
+	MaxPlayers             uint32                   `json:"maxPlayers"`
 }
 
 /*

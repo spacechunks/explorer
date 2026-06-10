@@ -1079,6 +1079,24 @@ func TestCreateFlavorVersion(t *testing.T) {
 			errCode:        codes.InvalidArgument,
 			errMsgContains: "version: version cannot start or end with a space",
 		},
+		{
+			name:        "minPlayers has to be greater than 0",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.MinPlayers = 0
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "minPlayers: must be greater than 0",
+		},
+		{
+			name:        "maxPlayers has to be greater than 0",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.MaxPlayers = 0
+			}),
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "maxPlayers: must be greater than 0",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1107,6 +1125,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 					Hash:             tt.prevVersion.Hash,
 					FileHashes:       codec.FileHashSliceToTransport(tt.prevVersion.FileHashes),
 					MinecraftVersion: tt.prevVersion.MinecraftVersion,
+					MinPlayers:       tt.prevVersion.MinPlayers,
+					MaxPlayers:       tt.prevVersion.MaxPlayers,
 				})
 				require.NoError(t, err)
 			}
@@ -1119,6 +1139,8 @@ func TestCreateFlavorVersion(t *testing.T) {
 				Hash:             version.Hash,
 				FileHashes:       version.FileHashes,
 				MinecraftVersion: version.MinecraftVersion,
+				MinPlayers:       version.MinPlayers,
+				MaxPlayers:       version.MaxPlayers,
 			})
 
 			if err != nil {
@@ -2166,7 +2188,15 @@ func TestGetFlavor(t *testing.T) {
 			var (
 				ctx = context.Background()
 				cp  = fixture.NewControlPlane(t)
-				c   = fixture.Chunk()
+				c   = fixture.Chunk(func(tmp *resource.Chunk) {
+					tmp.Flavors = []resource.Flavor{
+						fixture.Flavor(func(f *resource.Flavor) {
+							f.Versions = []resource.FlavorVersion{
+								fixture.FlavorVersion(),
+							}
+						}),
+					}
+				})
 			)
 
 			cp.Run(t)
@@ -2195,6 +2225,8 @@ func TestGetFlavor(t *testing.T) {
 			}
 
 			require.NoError(t, err)
+
+			c.Flavors[0].Versions[0].FileHashes = nil // file hashes are not sent when getting a flavor
 
 			if d := cmp.Diff(
 				codec.FlavorToTransport(c.Flavors[0]),

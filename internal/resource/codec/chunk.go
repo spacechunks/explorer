@@ -75,6 +75,8 @@ func FlavorVersionToDomain(transport *chunkv1alpha1.FlavorVersion) resource.Flav
 		BuildStatus:      resource.FlavorVersionBuildStatus(transport.BuildStatus),
 		FileHashes:       FileHashSliceToDomain(transport.FileHashes),
 		CreatedAt:        transport.GetCreatedAt().AsTime(),
+		MinPlayers:       transport.MinPlayers,
+		MaxPlayers:       transport.MaxPlayers,
 	}
 }
 
@@ -88,6 +90,8 @@ func FlavorVersionToTransport(domain resource.FlavorVersion) *chunkv1alpha1.Flav
 		BuildStatus:      chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(domain.BuildStatus)]),
 		FilesUploaded:    domain.FilesUploaded,
 		CreatedAt:        timestamppb.New(domain.CreatedAt),
+		MinPlayers:       domain.MinPlayers,
+		MaxPlayers:       domain.MaxPlayers,
 	}
 }
 
@@ -114,11 +118,17 @@ func FileHashSliceToDomain(transport []*chunkv1alpha1.FileHashes) []file.Hash {
 }
 
 func FlavorToTransport(domain resource.Flavor) *chunkv1alpha1.Flavor {
+	versions := make([]*chunkv1alpha1.FlavorVersion, 0, len(domain.Versions))
+	for _, v := range domain.Versions {
+		versions = append(versions, FlavorVersionToTransport(v))
+	}
+
 	return &chunkv1alpha1.Flavor{
 		Id:        domain.ID,
 		Name:      domain.Name,
 		CreatedAt: timestamppb.New(domain.CreatedAt),
 		UpdatedAt: timestamppb.New(domain.UpdatedAt),
+		Versions:  versions,
 	}
 }
 

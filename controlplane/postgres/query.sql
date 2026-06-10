@@ -1,7 +1,6 @@
 /*
  * NODES
  */
-
 -- name: RandomNode :one
 SELECT * FROM nodes ORDER BY random() LIMIT 1;
 
@@ -62,8 +61,7 @@ SELECT c.*, f.*, v.*, vf.*, u.* FROM chunks c
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
     LEFT JOIN users u ON u.id = c.owner_id
-ORDER BY c.id
-;
+ORDER BY c.id;
 
 
 -- name: ChunkOwnerByChunkID :one
@@ -124,9 +122,9 @@ SELECT * FROM flavor_version_files WHERE flavor_version_id = $1;
 
 -- name: CreateFlavorVersion :exec
 INSERT INTO flavor_versions
-    (id, flavor_id, hash, version, prev_version_id, minecraft_version, created_at)
+    (id, flavor_id, hash, version, prev_version_id, minecraft_version, created_at, min_players, max_players)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7);
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: BulkInsertFlavorFileHashes :batchexec
 INSERT INTO flavor_version_files

@@ -147,6 +147,9 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (resourc
 			Version:    latest.Version,
 			Hash:       latest.Hash,
 			FileHashes: hashes,
+			CreatedAt:  latest.CreatedAt,
+			MinPlayers: uint32(latest.MinPlayers),
+			MaxPlayers: uint32(latest.MaxPlayers),
 		}
 
 		return nil
@@ -178,6 +181,8 @@ func (db *DB) CreateFlavorVersion(
 			Version:          version.Version,
 			MinecraftVersion: version.MinecraftVersion,
 			CreatedAt:        now,
+			MinPlayers:       int32(version.MinPlayers),
+			MaxPlayers:       int32(version.MaxPlayers),
 		}
 
 		if prevVersionID != "" {
@@ -259,6 +264,8 @@ func (db *DB) FlavorVersionByID(ctx context.Context, id string) (resource.Flavor
 			BuildStatus:      resource.FlavorVersionBuildStatus(row.BuildStatus),
 			FilesUploaded:    row.FilesUploaded,
 			CreatedAt:        row.CreatedAt,
+			MinPlayers:       uint32(row.MinPlayers),
+			MaxPlayers:       uint32(row.MaxPlayers),
 		}
 
 		var expiryDate *time.Time
@@ -425,6 +432,8 @@ func (db *DB) FlavorByID(ctx context.Context, id string) (resource.Flavor, error
 				CreatedAt:              r.CreatedAt_2.Time.UTC(),
 				PresignedURLExpiryDate: expiryDate,
 				PresignedURL:           presignedURL,
+				MinPlayers:             uint32(r.MinPlayers.Int32),
+				MaxPlayers:             uint32(r.MaxPlayers.Int32),
 			})
 		}
 

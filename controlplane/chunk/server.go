@@ -167,6 +167,8 @@ func (s *Server) CreateFlavorVersion(
 		MinecraftVersion: req.GetMinecraftVersion(),
 		Hash:             req.GetHash(),
 		FileHashes:       codec.FileHashSliceToDomain(req.GetFileHashes()),
+		MinPlayers:       req.MinPlayers,
+		MaxPlayers:       req.MaxPlayers,
 	}
 
 	version, diff, err := s.service.CreateFlavorVersion(ctx, req.GetFlavorId(), domain)

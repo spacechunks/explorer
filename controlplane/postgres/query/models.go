@@ -207,6 +207,8 @@ type FlavorVersion struct {
 	PresignedUrlExpiryDate pgtype.Timestamptz
 	PresignedUrl           pgtype.Text
 	MinecraftVersion       string
+	MinPlayers             int32
+	MaxPlayers             int32
 }
 
 type FlavorVersionArchive struct {

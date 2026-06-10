@@ -176,7 +176,9 @@ CREATE TABLE public.flavor_versions (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     presigned_url_expiry_date timestamp with time zone,
     presigned_url character varying,
-    minecraft_version character varying NOT NULL
+    minecraft_version character varying NOT NULL,
+    min_players integer DEFAULT 1 NOT NULL,
+    max_players integer DEFAULT 1 NOT NULL
 );
 
 
@@ -724,4 +726,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260417174036'),
     ('20260429200153'),
     ('20260507140844'),
-    ('20260525101218');
+    ('20260525101218'),
+    ('20260610165709');

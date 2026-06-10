@@ -126,6 +126,8 @@ func FlavorVersion(mod ...func(v *resource.FlavorVersion)) resource.FlavorVersio
 		BuildStatus:      resource.FlavorVersionBuildStatusPending,
 		FilesUploaded:    false,
 		CreatedAt:        time.Time{},
+		MinPlayers:       2,
+		MaxPlayers:       10,
 	}
 
 	for _, fn := range mod {

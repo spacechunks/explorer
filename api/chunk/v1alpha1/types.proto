@@ -85,6 +85,8 @@ message FlavorVersion {
   bool files_uploaded = 8;
   string minecraft_version = 9;
   google.protobuf.Timestamp created_at = 10;
+  uint32 minPlayers = 11;
+  uint32 maxPlayers = 12;
 }
 
 message FileHashes {
