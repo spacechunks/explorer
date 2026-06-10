@@ -51,7 +51,6 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 		// TODO: find flavor
 
 		resp, err := cliCtx.InstanceClient.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
-			ChunkId:         c.Chunk.Id,
 			FlavorVersionId: flavorVersionID,
 		})
 		if err != nil {
