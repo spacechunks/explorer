@@ -129,8 +129,8 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 					FilesUploaded: row.FlavorVersion.FilesUploaded,
 					BuildStatus:   resource.FlavorVersionBuildStatus(row.FlavorVersion.BuildStatus),
 					CreatedAt:     row.FlavorVersion.CreatedAt.UTC(),
-					MinPlayers:       uint32(row.FlavorVersion.MinPlayers),
-					MaxPlayers:       uint32(row.FlavorVersion.MaxPlayers),
+					MinPlayers:    uint32(row.FlavorVersion.MinPlayers),
+					MaxPlayers:    uint32(row.FlavorVersion.MaxPlayers),
 				},
 				Owner: resource.User{
 					ID:        row.User.ID,
