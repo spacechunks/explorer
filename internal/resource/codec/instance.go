@@ -56,6 +56,8 @@ func InstanceToTransport(ins resource.Instance) *instancev1alpha1.Instance {
 			FileHashes:       FileHashSliceToTransport(ins.FlavorVersion.FileHashes),
 			BuildStatus:      chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(ins.FlavorVersion.BuildStatus)]),
 			CreatedAt:        timestamppb.New(ins.FlavorVersion.CreatedAt),
+			MinPlayers:       ins.FlavorVersion.MinPlayers,
+			MaxPlayers:       ins.FlavorVersion.MaxPlayers,
 		},
 		Owner: &userv1alpha1.User{
 			Id:        ins.Owner.ID,

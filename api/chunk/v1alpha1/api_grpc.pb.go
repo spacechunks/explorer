@@ -200,6 +200,11 @@ type ChunkServiceClient interface {
 	// - INVALID_ARGUMENT:
 	//   - chunk id is invalid
 	DeleteChunk(ctx context.Context, in *DeleteChunkRequest, opts ...grpc.CallOption) (*DeleteChunkResponse, error)
+	// GetFlavor returns the flavor specified by the provided id. Note that the file hashes of flavor
+	// versions are not being populated as of now.
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted flavor does not exist
 	GetFlavor(ctx context.Context, in *GetFlavorRequest, opts ...grpc.CallOption) (*GetFlavorResponse, error)
 }
 
@@ -492,6 +497,11 @@ type ChunkServiceServer interface {
 	// - INVALID_ARGUMENT:
 	//   - chunk id is invalid
 	DeleteChunk(context.Context, *DeleteChunkRequest) (*DeleteChunkResponse, error)
+	// GetFlavor returns the flavor specified by the provided id. Note that the file hashes of flavor
+	// versions are not being populated as of now.
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted flavor does not exist
 	GetFlavor(context.Context, *GetFlavorRequest) (*GetFlavorResponse, error)
 	mustEmbedUnimplementedChunkServiceServer()
 }

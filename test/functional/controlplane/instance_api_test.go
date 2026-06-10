@@ -31,7 +31,6 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/controlplane/postgres"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/internal/resource/codec"
@@ -202,17 +201,12 @@ func TestRunFlavorVersion(t *testing.T) {
 		err             error
 	}{
 		{
-			name: "can run chunk",
+			name: "can run",
 		},
 		{
-			name:    "chunk not found",
-			chunkID: "93a3ee8a-4a6d-4f4f-b282-dcce199033c8",
-			err:     postgres.ErrNotFound,
-		},
-		{
-			name:            "flavor not found",
+			name:            "flavor version not found",
 			flavorVersionID: "NOTFOUND",
-			err:             apierrs.ErrFlavorVersionNotFound.GRPCStatus().Err(),
+			err:             apierrs.ErrNotFound.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -256,6 +250,8 @@ func TestRunFlavorVersion(t *testing.T) {
 					FileHashes:       nil, // not returned atm
 					BuildStatus:      chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(v.BuildStatus)]),
 					CreatedAt:        timestamppb.New(v.CreatedAt),
+					MinPlayers:       v.MinPlayers,
+					MaxPlayers:       v.MaxPlayers,
 				},
 				Owner: &userv1alpha1.User{
 					Id:        c.Owner.ID,
@@ -280,7 +276,6 @@ func TestRunFlavorVersion(t *testing.T) {
 			client := cp.InstanceClient(t)
 
 			resp, err := client.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
-				ChunkId:         tt.chunkID,
 				FlavorVersionId: tt.flavorVersionID,
 				OrderedBy:       "orderer",
 			})

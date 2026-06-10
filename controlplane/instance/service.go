@@ -39,7 +39,6 @@ type Service interface {
 	ListInstances(ctx context.Context, pageSize int, afterID *string) ([]resource.Instance, error)
 	RunFlavorVersion(
 		ctx context.Context,
-		chunkID string,
 		flavorVersionID string,
 		ownerID string,
 		orderedBy string,
@@ -49,18 +48,18 @@ type Service interface {
 }
 
 type svc struct {
-	logger       *slog.Logger
-	insRepo      Repository
-	nodeRepo     node.Repository
-	chunkService chunk.Service
+	logger    *slog.Logger
+	insRepo   Repository
+	nodeRepo  node.Repository
+	chunkRepo chunk.Repository
 }
 
-func NewService(logger *slog.Logger, insRepo Repository, nodeRepo node.Repository, chunkService chunk.Service) Service {
+func NewService(logger *slog.Logger, insRepo Repository, nodeRepo node.Repository, chunkRepo chunk.Repository) Service {
 	return &svc{
-		logger:       logger,
-		insRepo:      insRepo,
-		nodeRepo:     nodeRepo,
-		chunkService: chunkService,
+		logger:    logger,
+		insRepo:   insRepo,
+		nodeRepo:  nodeRepo,
+		chunkRepo: chunkRepo,
 	}
 }
 
@@ -82,7 +81,6 @@ func (s *svc) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 
 func (s *svc) RunFlavorVersion(
 	ctx context.Context,
-	chunkID string,
 	flavorVersionID string,
 	ownerID string,
 	orderedBy string,
@@ -92,33 +90,25 @@ func (s *svc) RunFlavorVersion(
 		return resource.Instance{}, fmt.Errorf("best node: %w", err)
 	}
 
-	c, err := s.chunkService.GetChunk(ctx, chunkID)
+	flavorID, err := s.chunkRepo.FlavorIDByFlavorVersionID(ctx, flavorVersionID)
 	if err != nil {
-		return resource.Instance{}, fmt.Errorf("chunk by id: %w", err)
+		return resource.Instance{}, fmt.Errorf("flavor version id: %w", err)
 	}
 
-	var (
-		flavor  *resource.Flavor
-		version *resource.FlavorVersion
-	)
-
-	for _, f := range c.Flavors {
-		idx := slices.IndexFunc(f.Versions, func(v resource.FlavorVersion) bool {
-			return v.ID == flavorVersionID
-		})
-		if idx == -1 {
-			continue
-		}
-		flavor = &f
-		version = &f.Versions[idx]
+	flavor, err := s.chunkRepo.FlavorByID(ctx, flavorID)
+	if err != nil {
+		return resource.Instance{}, fmt.Errorf("flavor version: %w", err)
 	}
 
-	if version == nil {
-		return resource.Instance{}, apierrs.ErrFlavorVersionNotFound
+	if flavor.DeletedAt != nil {
+		return resource.Instance{}, apierrs.ErrNotFound
 	}
 
-	if flavor != nil && flavor.DeletedAt != nil {
-		return resource.Instance{}, apierrs.ErrFlavorVersionNotFound
+	idx := slices.IndexFunc(flavor.Versions, func(version resource.FlavorVersion) bool {
+		return version.ID == flavorVersionID
+	})
+	if idx == -1 {
+		return resource.Instance{}, apierrs.ErrNotFound
 	}
 
 	instanceID, err := uuid.NewV7()
@@ -128,8 +118,7 @@ func (s *svc) RunFlavorVersion(
 
 	ins, err := s.insRepo.CreateInstance(ctx, resource.Instance{
 		ID:            instanceID.String(),
-		Chunk:         c,
-		FlavorVersion: *version,
+		FlavorVersion: flavor.Versions[idx],
 		State:         resource.InstanceStatePending,
 		Owner: resource.User{
 			ID: ownerID,

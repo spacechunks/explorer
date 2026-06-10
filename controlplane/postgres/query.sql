@@ -201,17 +201,9 @@ SELECT * FROM blobs WHERE hash = $1;
 
 -- name: CreateInstance :exec
 INSERT INTO instances
-    (id, chunk_id, flavor_version_id, node_id, state, owner_id, created_at, updated_at, ordered_by)
+    (id, flavor_version_id, node_id, state, owner_id, created_at, updated_at, ordered_by)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8, $9);
-
--- name: ListInstances :many
-SELECT * FROM instances i
-    JOIN flavor_versions v ON i.flavor_version_id = v.id
-    JOIN chunks c ON i.chunk_id = c.id
-    JOIN flavors f ON f.chunk_id = c.id
-    JOIN nodes n ON i.node_id = n.id
-    JOIN users u ON u.id = i.owner_id;
+    ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: ListInstancesWithPagination :many
 WITH paged_instances AS (
@@ -230,8 +222,8 @@ SELECT
 FROM instances i
     JOIN paged_instances pi ON pi.id = i.id
     JOIN flavor_versions v ON i.flavor_version_id = v.id
-    JOIN chunks c ON i.chunk_id = c.id
-    JOIN flavors f ON f.chunk_id = c.id
+    JOIN flavors f ON f.id = v.flavor_id
+    JOIN chunks c ON c.id = f.chunk_id
     JOIN nodes n ON i.node_id = n.id
     JOIN users u ON u.id = i.owner_id
 ORDER BY i.id;
@@ -246,8 +238,8 @@ SELECT
     sqlc.embed(i)
 FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
-    JOIN chunks c ON i.chunk_id = c.id
-    JOIN flavors f ON f.chunk_id = c.id
+    JOIN flavors f ON f.id = v.flavor_id
+    JOIN chunks c ON c.id = f.chunk_id
     JOIN nodes n ON i.node_id = n.id
     JOIN users u ON u.id = i.owner_id
 WHERE i.id = $1;
@@ -262,8 +254,8 @@ SELECT
     sqlc.embed(i)
 FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
-    JOIN chunks c ON i.chunk_id = c.id
     JOIN flavors f ON f.id = v.flavor_id
+    JOIN chunks c ON c.id = f.chunk_id
     JOIN nodes n ON i.node_id = n.id
     JOIN users u ON u.id = i.owner_id
 WHERE i.node_id = $1;

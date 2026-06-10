@@ -364,6 +364,9 @@ func (db *DB) FlavorIDByFlavorVersionID(ctx context.Context, id string) (string,
 	var ret string
 	err := db.do(ctx, func(q *query.Queries) error {
 		flavorID, err := q.FlavorIDByFlavorVersionID(ctx, id)
+		if err != nil && errors.Is(err, pgx.ErrNoRows) {
+			return apierrs.ErrNotFound
+		}
 		ret = flavorID
 		return err
 	})

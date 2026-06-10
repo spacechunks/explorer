@@ -131,6 +131,7 @@ func (db *DB) ListChunks(ctx context.Context, pageSize int, afterID *string) ([]
 		m := make(map[string][]chunkRelationsRow)
 		order := make([]string, 0)
 		for _, r := range rows {
+			// TODO: add min and max players
 			rel := chunkRelationsRow{
 				ChunkID:        r.ID,
 				ChunkName:      r.Name,
@@ -152,6 +153,8 @@ func (db *DB) ListChunks(ctx context.Context, pageSize int, afterID *string) ([]
 				BuildStatus:            string(r.BuildStatus.BuildStatus),
 				FilesUploaded:          r.FilesUploaded.Bool,
 				FlavorVersionCreatedAt: r.CreatedAt_3.Time,
+				MinPlayers:             uint32(r.MinPlayers.Int32),
+				MaxPlayers:             uint32(r.MaxPlayers.Int32),
 
 				FilePath: r.FilePath.String,
 				FileHash: r.FileHash.String,
@@ -341,6 +344,8 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (re
 			BuildStatus:            string(r.BuildStatus.BuildStatus),
 			FilesUploaded:          r.FilesUploaded.Bool,
 			FlavorVersionCreatedAt: r.CreatedAt_3.Time.UTC(),
+			MinPlayers:             uint32(r.MinPlayers.Int32),
+			MaxPlayers:             uint32(r.MaxPlayers.Int32),
 
 			FilePath: r.FilePath.String,
 			FileHash: r.FileHash.String,
@@ -416,6 +421,8 @@ type chunkRelationsRow struct {
 	FlavorVersionCreatedAt time.Time
 	PresingedURLExpiryDate *time.Time
 	PresignedURL           *string
+	MinPlayers             uint32
+	MaxPlayers             uint32
 
 	FilePath string
 	FileHash string
@@ -492,6 +499,8 @@ func collectChunks(rows []chunkRelationsRow) resource.Chunk {
 					CreatedAt:              r.FlavorVersionCreatedAt,
 					PresignedURLExpiryDate: r.PresingedURLExpiryDate,
 					PresignedURL:           r.PresignedURL,
+					MinPlayers:             r.MinPlayers,
+					MaxPlayers:             r.MaxPlayers,
 				}
 			}
 		}

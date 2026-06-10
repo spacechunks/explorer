@@ -219,7 +219,7 @@ func (s *Server) Run(ctx context.Context) error {
 				ChangesetTarballMaxSizeBytes: s.cfg.ChangeSetTarballMaxSizeBytes,
 			})
 		chunkServer = chunk.NewServer(chunkService)
-		insService  = instance.NewService(s.logger, db, db, chunkService)
+		insService  = instance.NewService(s.logger, db, db, db)
 		insServer   = instance.NewServer(insService)
 	)
 

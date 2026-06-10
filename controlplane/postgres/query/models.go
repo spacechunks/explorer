@@ -227,7 +227,6 @@ type FlavorVersionFile struct {
 
 type Instance struct {
 	ID              string
-	ChunkID         string
 	FlavorVersionID string
 	NodeID          string
 	Port            *int32

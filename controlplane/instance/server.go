@@ -95,7 +95,7 @@ func (s *Server) RunFlavorVersion(
 	req *instancev1alpha1.RunFlavorVersionRequest,
 ) (*instancev1alpha1.RunFlavorVersionResponse, error) {
 	userID := ctx.Value(contextkey.ActorID).(string)
-	ins, err := s.service.RunFlavorVersion(ctx, req.GetChunkId(), req.GetFlavorVersionId(), userID, req.OrderedBy)
+	ins, err := s.service.RunFlavorVersion(ctx, req.GetFlavorVersionId(), userID, req.OrderedBy)
 	if err != nil {
 		return nil, fmt.Errorf("run chunk: %w", err)
 	}
