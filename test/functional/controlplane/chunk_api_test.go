@@ -2016,7 +2016,7 @@ func TestAPIDeleteChunk(t *testing.T) {
 		_, err = insClient.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
 			FlavorVersionId: f.Versions[0].ID,
 		})
-		require.ErrorIsf(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err(), "run flavor version (%s)", f.Name)
+		require.ErrorIsf(t, err, apierrs.ErrNotFound.GRPCStatus().Err(), "run flavor version (%s)", f.Name)
 	}
 }
 

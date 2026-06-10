@@ -250,6 +250,8 @@ func TestRunFlavorVersion(t *testing.T) {
 					FileHashes:       nil, // not returned atm
 					BuildStatus:      chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(v.BuildStatus)]),
 					CreatedAt:        timestamppb.New(v.CreatedAt),
+					MinPlayers:       v.MinPlayers,
+					MaxPlayers:       v.MaxPlayers,
 				},
 				Owner: &userv1alpha1.User{
 					Id:        c.Owner.ID,
