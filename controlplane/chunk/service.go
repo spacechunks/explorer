@@ -51,6 +51,7 @@ type Service interface {
 	UpdateThumbnail(ctx context.Context, chunkID string, imageData []byte) error
 	DeleteFlavor(ctx context.Context, id string) error
 	DeleteChunk(ctx context.Context, id string) error
+	GetFlavor(ctx context.Context, id string) (resource.Flavor, error)
 }
 
 type Config struct {
