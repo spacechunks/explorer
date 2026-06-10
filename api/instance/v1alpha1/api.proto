@@ -71,8 +71,7 @@ message ListInstancesResponse {
 }
 
 message RunFlavorVersionRequest {
-  string chunk_id = 1 [(buf.validate.field).string.uuid = true];
-  string flavor_version_id = 2 [(buf.validate.field).string.uuid = true];
+  string flavor_version_id = 1 [(buf.validate.field).string.uuid = true];
 
   // contains an opaque identifier representing the player
   // that ordered the creation this instance.

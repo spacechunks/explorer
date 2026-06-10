@@ -33,7 +33,6 @@ import (
 func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID string) (resource.Instance, error) {
 	params := query.CreateInstanceParams{
 		ID:              ins.ID,
-		ChunkID:         ins.Chunk.ID,
 		FlavorVersionID: ins.FlavorVersion.ID,
 		NodeID:          nodeID,
 		State:           query.InstanceState(ins.State),

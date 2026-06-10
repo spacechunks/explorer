@@ -202,7 +202,6 @@ CREATE TABLE public.flavors (
 
 CREATE TABLE public.instances (
     id uuid NOT NULL,
-    chunk_id uuid NOT NULL,
     flavor_version_id uuid NOT NULL,
     node_id uuid NOT NULL,
     port integer,
@@ -657,14 +656,6 @@ ALTER TABLE ONLY public.flavors
 
 
 --
--- Name: instances instances_chunk_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.instances
-    ADD CONSTRAINT instances_chunk_id_fkey FOREIGN KEY (chunk_id) REFERENCES public.chunks(id);
-
-
---
 -- Name: instances instances_flavor_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -727,4 +718,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260429200153'),
     ('20260507140844'),
     ('20260525101218'),
-    ('20260610165709');
+    ('20260610165709'),
+    ('20260610211305');

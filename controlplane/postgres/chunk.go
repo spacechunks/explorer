@@ -131,6 +131,7 @@ func (db *DB) ListChunks(ctx context.Context, pageSize int, afterID *string) ([]
 		m := make(map[string][]chunkRelationsRow)
 		order := make([]string, 0)
 		for _, r := range rows {
+			// TODO: add min and max players
 			rel := chunkRelationsRow{
 				ChunkID:        r.ID,
 				ChunkName:      r.Name,

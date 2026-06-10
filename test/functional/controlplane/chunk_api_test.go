@@ -1878,12 +1878,11 @@ func TestFlavorInteractionsDontWorkAfterDelete(t *testing.T) {
 				flavor resource.Flavor,
 			) error {
 				_, err := c.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
-					ChunkId:         chunk.ID,
 					FlavorVersionId: flavor.Versions[0].ID,
 				})
 				return err
 			},
-			err: apierrs.ErrFlavorVersionNotFound.GRPCStatus().Err(),
+			err: apierrs.ErrNotFound.GRPCStatus().Err(),
 		},
 		{
 			name: "build flavor versions",
@@ -2009,7 +2008,6 @@ func TestAPIDeleteChunk(t *testing.T) {
 		require.ErrorIsf(t, err, apierrs.ErrNotFound.GRPCStatus().Err(), "create flavor version (%s)", f.Name)
 
 		_, err = insClient.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
-			ChunkId:         c.ID,
 			FlavorVersionId: f.Versions[0].ID,
 		})
 		require.ErrorIsf(t, err, apierrs.ErrChunkNotFound.GRPCStatus().Err(), "run flavor version (%s)", f.Name)
@@ -2106,7 +2104,6 @@ func TestRunFlavorVersionNoSlotsAvailable(t *testing.T) {
 	insClient := cp.InstanceClient(t)
 
 	_, err := insClient.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
-		ChunkId:         c.ID,
 		FlavorVersionId: c.Flavors[0].Versions[0].ID,
 	})
 
