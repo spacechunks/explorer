@@ -175,6 +175,8 @@ service ChunkService {
   // - INVALID_ARGUMENT:
   //   - chunk id is invalid
   rpc DeleteChunk(DeleteChunkRequest) returns (DeleteChunkResponse);
+
+  rpc GetFlavor(GetFlavorRequest) returns (GetFlavorResponse);
 }
 
 message CreateChunkRequest {
@@ -338,4 +340,12 @@ message DeleteChunkRequest {
 }
 
 message DeleteChunkResponse {
+}
+
+message GetFlavorRequest {
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetFlavorResponse {
+  Flavor flavor = 1;
 }

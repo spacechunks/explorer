@@ -2114,6 +2114,11 @@ func TestFlavorArchived(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
+	_, err = client.GetFlavor(ctx, &chunkv1alpha1.GetFlavorRequest{
+		Id: f.ID,
+	})
+	require.ErrorIs(t, err, apierrs.ErrNotFound.GRPCStatus().Err())
+
 	var tmp int
 
 	flavorRow := cp.Postgres.Pool.QueryRow(ctx, `SELECT 1 FROM flavors WHERE id = $1`, f.ID)
@@ -2130,4 +2135,78 @@ func TestFlavorArchived(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 1, tmp, "chunk should not be archived")
+}
+
+func TestGetFlavor(t *testing.T) {
+	tests := []struct {
+		name           string
+		flavorID       string
+		errCode        codes.Code
+		errMsgContains string
+		err            error
+	}{
+		{
+			name: "works",
+		},
+		{
+			name:           "not found",
+			flavorID:       test.NewUUIDv7(t),
+			errCode:        codes.NotFound,
+			errMsgContains: "resource does not exist",
+		},
+		{
+			name:           "invalid id",
+			flavorID:       "invalid",
+			errCode:        codes.InvalidArgument,
+			errMsgContains: "id: must be a valid UUID",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				cp  = fixture.NewControlPlane(t)
+				c   = fixture.Chunk()
+			)
+
+			cp.Run(t)
+
+			if tt.flavorID == "" {
+				cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+				tt.flavorID = c.Flavors[0].ID
+			} else {
+				cp.Postgres.CreateUser(t, &c.Owner)
+			}
+
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			client := cp.ChunkClient(t)
+
+			resp, err := client.GetFlavor(ctx, &chunkv1alpha1.GetFlavorRequest{
+				Id: tt.flavorID,
+			})
+
+			if tt.errCode != 0 {
+				st, ok := status.FromError(err)
+				require.True(t, ok)
+
+				require.Equal(t, tt.errCode, st.Code())
+				require.Contains(t, st.Message(), tt.errMsgContains)
+				return
+			}
+
+			require.NoError(t, err)
+
+			if d := cmp.Diff(
+				codec.FlavorToTransport(c.Flavors[0]),
+				resp.GetFlavor(),
+				protocmp.Transform(),
+				test.IgnoredProtoChunkFields,
+				test.IgnoredProtoFlavorFields,
+				test.IgnoredProtoFlavorVersionFields,
+				test.IgnoredProtoUserFields,
+			); d != "" {
+				t.Fatalf("diff (-want +got):\n%s", d)
+			}
+		})
+	}
 }

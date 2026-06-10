@@ -382,3 +382,20 @@ func (s *svc) DeleteFlavor(ctx context.Context, id string) error {
 
 	return nil
 }
+
+func (s *svc) GetFlavor(ctx context.Context, id string) (resource.Flavor, error) {
+	_, ok := ctx.Value(contextkey.ActorID).(string)
+	if !ok {
+		return resource.Flavor{}, errors.New("actor_id not found in context")
+	}
+
+	f, err := s.repo.FlavorByID(ctx, id)
+	if err != nil {
+		return resource.Flavor{}, fmt.Errorf("flavor by id: %w", err)
+	}
+	if f.DeletedAt != nil {
+		return resource.Flavor{}, apierrs.ErrNotFound
+	}
+
+	return f, nil
+}

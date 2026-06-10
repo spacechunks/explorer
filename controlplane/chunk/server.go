@@ -247,3 +247,17 @@ func (s *Server) DeleteChunk(
 
 	return &chunkv1alpha1.DeleteChunkResponse{}, nil
 }
+
+func (s *Server) GetFlavor(
+	ctx context.Context,
+	req *chunkv1alpha1.GetFlavorRequest,
+) (*chunkv1alpha1.GetFlavorResponse, error) {
+	f, err := s.service.GetFlavor(ctx, req.Id)
+	if err != nil {
+		return nil, fmt.Errorf("get flavor: %w", err)
+	}
+
+	return &chunkv1alpha1.GetFlavorResponse{
+		Flavor: codec.FlavorToTransport(f),
+	}, nil
+}
