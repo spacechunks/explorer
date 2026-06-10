@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"time"
 
-	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
 	"github.com/spf13/cobra"
@@ -37,16 +36,8 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 		}
 
 		var (
-			chunkID         = args[0]
-			flavorVersionID = args[1]
+			flavorVersionID = args[0]
 		)
-
-		c, err := cliCtx.Client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{
-			Id: chunkID,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to get chunk: %w", err)
-		}
 
 		// TODO: find flavor
 
