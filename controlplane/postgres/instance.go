@@ -129,6 +129,8 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 					FilesUploaded: row.FlavorVersion.FilesUploaded,
 					BuildStatus:   resource.FlavorVersionBuildStatus(row.FlavorVersion.BuildStatus),
 					CreatedAt:     row.FlavorVersion.CreatedAt.UTC(),
+					MinPlayers:       uint32(row.FlavorVersion.MinPlayers),
+					MaxPlayers:       uint32(row.FlavorVersion.MaxPlayers),
 				},
 				Owner: resource.User{
 					ID:        row.User.ID,
@@ -202,7 +204,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 		for _, row := range rows {
 			var port *uint16
 			if row.Instance.Port != nil {
-				port = ptr.Pointer(uint16(*row.Instance.Port))
+				port = new(uint16(*row.Instance.Port))
 			}
 
 			ret = append(ret, resource.Instance{
@@ -233,6 +235,8 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 					FilesUploaded:    row.FlavorVersion.FilesUploaded,
 					BuildStatus:      resource.FlavorVersionBuildStatus(row.FlavorVersion.BuildStatus),
 					CreatedAt:        row.FlavorVersion.CreatedAt.UTC(),
+					MinPlayers:       uint32(row.FlavorVersion.MinPlayers),
+					MaxPlayers:       uint32(row.FlavorVersion.MaxPlayers),
 				},
 				Owner: resource.User{
 					ID:        row.User.ID,
@@ -363,6 +367,8 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 			FilesUploaded:    row.FlavorVersion.FilesUploaded,
 			BuildStatus:      resource.FlavorVersionBuildStatus(row.FlavorVersion.BuildStatus),
 			CreatedAt:        row.FlavorVersion.CreatedAt.UTC(),
+			MinPlayers:       uint32(row.FlavorVersion.MinPlayers),
+			MaxPlayers:       uint32(row.FlavorVersion.MaxPlayers),
 		},
 		Owner: resource.User{
 			ID:        row.User.ID,
