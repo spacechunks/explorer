@@ -107,13 +107,14 @@ type actionable struct {
 }
 
 type plan struct {
-	addedFlavors       []localFlavor
-	changedFlavors     []changedFlavor
-	deletedFlavors     []deletedFlavor
-	actionables        []actionable
-	conflicts          []conflict
-	updateThumbnail    bool
-	chunkWillBeRemoved bool
+	addedFlavors           []localFlavor
+	changedFlavors         []changedFlavor
+	deletedFlavors         []deletedFlavor
+	actionables            []actionable
+	conflicts              []conflict
+	updateThumbnail        bool
+	chunkWillBeRemoved     bool
+	minOrMaxPlayersChanged bool
 }
 
 func newPlan(logger *slog.Logger, cfg config.Config, supportedVersions []string, chunk *chunkv1alpha1.Chunk) plan {
@@ -140,6 +141,8 @@ func newPlan(logger *slog.Logger, cfg config.Config, supportedVersions []string,
 			version:          f.Version,
 			path:             f.Path,
 			minecraftVersion: f.MinecraftVersion,
+			minPlayers:       uint32(f.MinPlayers),
+			maxPlayers:       uint32(f.MaxPlayers),
 		}
 
 		if !slices.Contains(supportedVersions, local.minecraftVersion) {
@@ -198,12 +201,18 @@ func newPlan(logger *slog.Logger, cfg config.Config, supportedVersions []string,
 					added, changed, removed = local.fileDiff(prevVersion.FileHashes)
 				)
 
+				if prevVersion.MinPlayers != local.minPlayers || prevVersion.MaxPlayers != local.maxPlayers {
+					p.minOrMaxPlayersChanged = true
+				}
+
 				p.changedFlavors = append(p.changedFlavors, changedFlavor{
-					onDisk:        local,
-					prevVersion:   prevVersion.Version,
-					addedFiles:    added,
-					modifiedFiles: changed,
-					removedFiles:  removed,
+					onDisk:         local,
+					prevVersion:    prevVersion.Version,
+					prevMinPlayers: prevVersion.MinPlayers,
+					prevMaxPlayers: prevVersion.MaxPlayers,
+					addedFiles:     added,
+					modifiedFiles:  changed,
+					removedFiles:   removed,
 				})
 				continue
 			}
@@ -344,6 +353,8 @@ func (p plan) print() {
 			sec.AddRow(cli.ColorGreen+indent1+fl.name+":", "")
 			sec.AddRow(indent2+addPrefix+"Version:", fl.version)
 			sec.AddRow(indent2+addPrefix+"Path:", fl.path)
+			sec.AddRow(indent2+addPrefix+"Min Players:", fl.minPlayers)
+			sec.AddRow(indent2+addPrefix+"Max Players:", fl.maxPlayers)
 			sec.AddRow(indent2+addPrefix+"Files:", "")
 			sec.Print()
 			for _, fi := range fl.files {
@@ -359,8 +370,15 @@ func (p plan) print() {
 			sec.AddRow(cli.ColorYellow+indent1+fl.onDisk.name+":", "")
 			sec.AddRow(indent2+modPrefix+"Version:", fmt.Sprintf("%s -> %s", fl.prevVersion, fl.onDisk.version))
 			sec.AddRow(indent2+modPrefix+"Path:", fl.onDisk.path)
-			sec.AddRow(indent2+modPrefix+"Files:", "")
+			sec.AddRow(indent2+modPrefix+"Min Players:", fmt.Sprintf("%d -> %d", fl.prevMinPlayers, fl.onDisk.minPlayers))
+			sec.AddRow(indent2+modPrefix+"Max Players:", fmt.Sprintf("%d -> %d", fl.prevMaxPlayers, fl.onDisk.maxPlayers))
+
+			if len(fl.addedFiles)+len(fl.modifiedFiles)+len(fl.removedFiles) > 0 {
+				sec.AddRow(indent2+modPrefix+"Files:", "")
+			}
+
 			sec.Print()
+
 			for _, fh := range fl.addedFiles {
 				fmt.Println(indent3, addPrefix, fh.Path)
 			}

@@ -39,11 +39,13 @@ import (
 )
 
 type changedFlavor struct {
-	onDisk        localFlavor
-	prevVersion   string
-	addedFiles    []file.Hash
-	modifiedFiles []file.Hash
-	removedFiles  []file.Hash
+	onDisk         localFlavor
+	prevVersion    string
+	prevMinPlayers uint32
+	prevMaxPlayers uint32
+	addedFiles     []file.Hash
+	modifiedFiles  []file.Hash
+	removedFiles   []file.Hash
 }
 
 type localFlavor struct {
@@ -53,6 +55,8 @@ type localFlavor struct {
 	path             string
 	hash             string
 	files            []file.Hash
+	minPlayers       uint32
+	maxPlayers       uint32
 }
 
 type deletedFlavor struct {
@@ -196,7 +200,8 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 			len(plan.changedFlavors)+
 			len(plan.actionables)+
 			len(plan.deletedFlavors) == 0 &&
-			!plan.updateThumbnail {
+			!plan.updateThumbnail &&
+			!plan.minOrMaxPlayersChanged {
 			fmt.Println("Nothing to publish.")
 			return nil
 		}
