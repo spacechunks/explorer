@@ -28,8 +28,8 @@ type Flavor struct {
 	Version          string `json:"version"`
 	MinecraftVersion string `json:"minecraftVersion"`
 	Path             string `json:"path"`
-	MinPlayers       int `json:"minPlayers"`
-	MaxPlayers       int `json:"maxPlayers"`
+	MinPlayers       int    `json:"minPlayers"`
+	MaxPlayers       int    `json:"maxPlayers"`
 }
 
 var schemaV1Alpha1 = zog.Struct(zog.Shape{
