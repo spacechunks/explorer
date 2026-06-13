@@ -216,6 +216,8 @@ func (b builder) handlePrerequisites(ctx context.Context, data *buildData) error
 		Hash:             data.local.hash,
 		FileHashes:       hashes,
 		MinecraftVersion: data.local.minecraftVersion,
+		MinPlayers:       data.local.minPlayers,
+		MaxPlayers:       data.local.maxPlayers,
 	})
 	if err != nil {
 		return fmt.Errorf("error while creating flavor version: %w", err)
