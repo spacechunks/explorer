@@ -806,7 +806,7 @@ github.com/riverqueue/river/rivershared/util/valutil
 # github.com/riverqueue/river/rivertype v0.38.0
 ## explicit; go 1.25.0
 github.com/riverqueue/river/rivertype
-# github.com/riverqueue/rivercontrib/otelriver v0.8.0
+# github.com/riverqueue/rivercontrib/otelriver v0.10.0
 ## explicit; go 1.25.0
 github.com/riverqueue/rivercontrib/otelriver
 # github.com/rodaine/table v1.3.1
