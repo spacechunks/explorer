@@ -7,7 +7,7 @@ COPY .. .
 RUN mkdir bin
 RUN go build -mod vendor -o bin ./cmd/servermon
 
-FROM alpine:3.23
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates curl
 WORKDIR /bin
 COPY --from=builder /build/bin/servermon servermon

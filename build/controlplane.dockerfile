@@ -8,7 +8,7 @@ RUN mkdir bin
 # GOEXPERIMENT=jsonv2 required by github.com/lestrrat-go/jwx/v4
 RUN GOEXPERIMENT=jsonv2 go build -mod vendor -o bin ./cmd/controlplane
 
-FROM alpine:3.23
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates musl-locales musl-locales-lang
 # we deal with files and we just want to make sure that no strange shit
 # happens because LANG does not support utf8
