@@ -481,7 +481,7 @@ github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/hetznercloud/hcloud-go/v2 v2.43.0
+# github.com/hetznercloud/hcloud-go/v2 v2.44.0
 ## explicit; go 1.25.0
 github.com/hetznercloud/hcloud-go/v2/hcloud
 github.com/hetznercloud/hcloud-go/v2/hcloud/exp/ctxutil
