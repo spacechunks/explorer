@@ -289,6 +289,8 @@ func WithBase64Encoder(v jws.Base64Encoder) SignParseOption {
 
 // WithClock specifies the `Clock` to be used when verifying
 // exp, iat and nbf claims.
+//
+// If v is nil, the default clock (the system clock, time.Now) is used.
 func WithClock(v Clock) ValidateOption {
 	return &validateOption{option.New(identClock{}, v)}
 }
@@ -409,7 +411,10 @@ func WithNumericDateParsePrecision(v int) GlobalOption {
 }
 
 // WithPedantic enables pedantic mode for parsing JWTs. Currently this only
-// applies to checking for the correct `typ` and/or `cty` when necessary.
+// applies to detecting nested JWTs via the `cty` (content type) header and
+// rejecting payloads that are not recognizable as a JWT. The `typ` header is
+// not inspected: it is OPTIONAL per RFC 7519 §5.1, so its absence or value is
+// not treated as an error.
 func WithPedantic(v bool) ParseOption {
 	return &parseOption{option.New(identPedantic{}, v)}
 }
@@ -475,7 +480,8 @@ func WithStrictStringClaims(v bool) ParseOption {
 }
 
 // WithToken specifies the token instance in which the resulting JWT is stored
-// when parsing JWT tokens
+// when parsing JWT tokens. The supplied token is fully reset (all claims,
+// including private claims, are cleared) before the parsed token is stored into it.
 func WithToken(v Token) ParseOption {
 	return &parseOption{option.New(identToken{}, v)}
 }
@@ -507,6 +513,8 @@ func WithValidate(v bool) ParseOption {
 }
 
 // WithValidator validates the token with the given Validator.
+//
+// Passing a nil Validator causes Validate to return an error.
 //
 // For example, in order to validate tokens that are only valid during August, you would write
 //
