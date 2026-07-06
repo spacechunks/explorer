@@ -3,14 +3,17 @@ package otelriver
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"time"
 
+	"github.com/tidwall/sjson"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/riverqueue/river"
@@ -44,6 +47,11 @@ type MiddlewareConfig struct {
 	// This has the effect of having all messaging systems share the same common
 	// metric names, with attributes differentiating them.
 	EnableSemanticMetrics bool
+
+	// EnableTracePropagation injects W3C trace context (traceparent/tracestate)
+	// into job metadata on insert and extracts it on work, adding a span link
+	// from the work span back to the span that enqueued the job.
+	EnableTracePropagation bool
 
 	// EnableWorkSpanJobKindSuffix appends the job kind a suffix to work spans
 	// so they look like `river.work/my_job` instead of `river.work`.
@@ -208,6 +216,12 @@ func (m *Middleware) InsertMany(ctx context.Context, manyParams []*rivertype.Job
 		}
 	}()
 
+	if m.config.EnableTracePropagation {
+		for i := range manyParams {
+			manyParams[i].Metadata = injectTraceContext(ctx, manyParams[i].Metadata)
+		}
+	}
+
 	insertRes, err = doInner(ctx)
 	panicked = false
 	return insertRes, err
@@ -219,8 +233,18 @@ func (m *Middleware) Work(ctx context.Context, job *rivertype.JobRow, doInner fu
 		spanName += "/" + job.Kind
 	}
 
+	var startOpts []trace.SpanStartOption
+	if m.config.EnableTracePropagation {
+		//nolint:contextcheck
+		if sc := extractSpanContext(job.Metadata); sc.IsValid() {
+			// We use a *link* to the span that enqueued this value, because river jobs are async by nature, so they may happen
+			// minutes, hours, or even days after they're enqueued, which can lead to really weird span contexts if a direct parent
+			// relationship is used.
+			startOpts = append(startOpts, trace.WithLinks(trace.Link{SpanContext: sc}))
+		}
+	}
 	ctx, span := m.tracer.Start(ctx, spanName,
-		trace.WithSpanKind(trace.SpanKindConsumer))
+		append(startOpts, trace.WithSpanKind(trace.SpanKindConsumer))...)
 	defer span.End()
 
 	attrs := []attribute.KeyValue{
@@ -334,6 +358,54 @@ func mustInt64Counter(meter metric.Meter, name string, options ...metric.Int64Co
 		panic(err)
 	}
 	return metric
+}
+
+// injectTraceContext injects the current span context from ctx into metadata
+// JSON under the W3C "traceparent" (and optionally "tracestate") key. If
+// injection fails for any reason the original metadata is returned unchanged.
+func injectTraceContext(ctx context.Context, metadata []byte) []byte {
+	carrier := make(propagation.MapCarrier)
+	propagation.TraceContext{}.Inject(ctx, carrier)
+	if len(carrier) == 0 {
+		return metadata
+	}
+	if len(metadata) == 0 {
+		metadata = []byte("{}")
+	}
+	original := metadata
+	for k, v := range carrier {
+		var err error
+		metadata, err = sjson.SetBytes(metadata, k, v)
+		if err != nil {
+			return original
+		}
+	}
+	return metadata
+}
+
+// extractSpanContext reads W3C trace context from metadata JSON and returns the
+// remote SpanContext it encodes. Returns a zero SpanContext (IsValid() == false)
+// if no traceparent is present or the metadata cannot be parsed.
+func extractSpanContext(metadata []byte) trace.SpanContext {
+	if len(metadata) == 0 {
+		return trace.SpanContext{}
+	}
+	var meta map[string]any
+	if err := json.Unmarshal(metadata, &meta); err != nil {
+		return trace.SpanContext{}
+	}
+	carrier := make(propagation.MapCarrier)
+	for k, v := range meta {
+		if s, ok := v.(string); ok {
+			carrier[k] = s
+		}
+	}
+	// We use context.Background here because the only purpose of this function is to return
+	// a span context for *linking*. If one doesn't exist, we don't want to extract anything -
+	// and we certainly don't want to extract the span from `ctx`, which would most often lead to us
+	// linking to ourselves, which is pretty obviously incorrect!
+	extracted := propagation.TraceContext{}.Extract(context.Background(), carrier)
+	return trace.SpanFromContext(extracted).SpanContext()
 }
 
 // Sets success status on the given span and within the set of attributes. The
