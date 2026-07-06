@@ -549,7 +549,7 @@ github.com/klauspost/cpuid/v2
 ## explicit; go 1.23.0
 github.com/lestrrat-go/dsig
 github.com/lestrrat-go/dsig/internal/ecutil
-# github.com/lestrrat-go/jwx/v4 v4.0.2
+# github.com/lestrrat-go/jwx/v4 v4.1.0
 ## explicit; go 1.26.0
 github.com/lestrrat-go/jwx/v4
 github.com/lestrrat-go/jwx/v4/cert
@@ -572,6 +572,7 @@ github.com/lestrrat-go/jwx/v4/jwk/ecdsa
 github.com/lestrrat-go/jwx/v4/jwk/internal/registry
 github.com/lestrrat-go/jwx/v4/jwk/jwkbb
 github.com/lestrrat-go/jwx/v4/jws
+github.com/lestrrat-go/jwx/v4/jws/internal/jwsbb
 github.com/lestrrat-go/jwx/v4/jws/jwsbb
 github.com/lestrrat-go/jwx/v4/jwt
 github.com/lestrrat-go/jwx/v4/jwt/internal/types

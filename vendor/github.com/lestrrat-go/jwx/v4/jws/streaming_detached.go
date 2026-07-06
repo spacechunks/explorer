@@ -255,11 +255,32 @@ func (vc *verifyContext) verifyStreaming(buf []byte) ([]byte, error) {
 	if len(msg.signatures) != 1 {
 		return nil, makeVerifyError(`jws.WithDetachedPayloadReader() supports only single-signature JWS, got %d`, len(msg.signatures))
 	}
-	if len(msg.payload) != 0 {
+	if msg.payloadPresent {
+		// As with the non-streaming detached path, a present-but-empty
+		// JSON "payload":"" member counts as an embedded (in-band)
+		// payload and must be rejected; only a truly omitted member is a
+		// detached JWS.
 		return nil, makeVerifyError(`JWS must not have an embedded payload when jws.WithDetachedPayloadReader() is used`)
 	}
 
 	sig := msg.signatures[0]
+
+	// Enforce that the algorithm we are about to verify under exactly matches
+	// the "alg" advertised in this signature's protected header. The streaming
+	// path bypasses verifyContext.tryKey (it talks to dsig directly for
+	// incremental hashing), so without this guard a detached JWS whose
+	// protected header advertises one algorithm would still verify under the
+	// single pinned WithKey algorithm — the same algorithm-confusion the
+	// tryKey guard prevents on the non-streaming path. The single staticKP
+	// alg above is the verification algorithm, and the match is plain string
+	// equality. The check fires only when the protected header carries an
+	// "alg"; use WithSkipAlgorithmMatch to bypass it for non-conforming
+	// producers.
+	if !vc.skipAlgorithmMatch && sig.protected != nil {
+		if hdrAlg, ok := sig.protected.Algorithm(); ok && hdrAlg.String() != alg.String() {
+			return nil, verifyError{verificationError{fmt.Errorf(`protected header %q %q does not match verification algorithm %q`, AlgorithmKey, hdrAlg, alg)}}
+		}
+	}
 
 	var rawHeaders []byte
 	if rbp, ok := sig.protected.(interface{ rawBuffer() []byte }); ok {

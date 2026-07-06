@@ -80,6 +80,8 @@ options:
     comment: |
       WithClock specifies the `Clock` to be used when verifying
       exp, iat and nbf claims.
+
+      If v is nil, the default clock (the system clock, time.Now) is used.
   - ident: Context
     interface: ValidateOption
     argument_type: context.Context
@@ -173,7 +175,8 @@ options:
     argument_type: Token
     comment: |
       WithToken specifies the token instance in which the resulting JWT is stored
-      when parsing JWT tokens
+      when parsing JWT tokens. The supplied token is fully reset (all claims,
+      including private claims, are cleared) before the parsed token is stored into it.
   - ident: Validate
     interface: ParseOption
     argument_type: bool
@@ -213,7 +216,10 @@ options:
     argument_type: bool
     comment: |
       WithPedantic enables pedantic mode for parsing JWTs. Currently this only
-      applies to checking for the correct `typ` and/or `cty` when necessary.
+      applies to detecting nested JWTs via the `cty` (content type) header and
+      rejecting payloads that are not recognizable as a JWT. The `typ` header is
+      not inspected: it is OPTIONAL per RFC 7519 §5.1, so its absence or value is
+      not treated as an error.
   - ident: EncryptOption
     interface: EncryptOption
     argument_type: jwe.EncryptOption
@@ -233,7 +239,9 @@ options:
     argument_type: Validator
     comment: |
      WithValidator validates the token with the given Validator.
-      
+
+     Passing a nil Validator causes Validate to return an error.
+
      For example, in order to validate tokens that are only valid during August, you would write
       
       validator := jwt.ValidatorFunc(func(_ context.Context, t jwt.Token) error {

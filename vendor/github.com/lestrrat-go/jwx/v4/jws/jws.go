@@ -56,6 +56,7 @@ import (
 	"github.com/lestrrat-go/jwx/v4/internal/tokens"
 	"github.com/lestrrat-go/jwx/v4/jwa"
 	"github.com/lestrrat-go/jwx/v4/jwk"
+	jwsbbi "github.com/lestrrat-go/jwx/v4/jws/internal/jwsbb"
 	"github.com/lestrrat-go/jwx/v4/jws/jwsbb"
 )
 
@@ -239,6 +240,21 @@ func Sign(payload []byte, options ...SignOption) ([]byte, error) {
 // it _verified_ something when in fact it did no such thing). If you want to
 // accept messages with "none" signature algorithm, use `jws.Parse` to get the
 // raw JWS message.
+//
+// By default, Verify rejects a JWS whose protected header "alg" does not
+// exactly equal the algorithm actually used to verify it. The verification
+// algorithm is resolved from the key or provider you supply (jws.WithKey,
+// jws.WithKeySet, jws.WithVerifyAuto, or a custom jws.WithKeyProvider); if the
+// protected header advertises a different "alg", verification fails even when
+// the signature would otherwise be cryptographically valid. The match is plain
+// string equality, with no aliasing: the deprecated polymorphic "EdDSA" and the
+// fully-specified "Ed25519"/"Ed448" identifiers are distinct per RFC 9864 and
+// are not interchangeable. This check fires only when the protected header
+// carries an "alg" — messages that place "alg" only in the unprotected header
+// (or omit it) are unaffected. Pass jws.WithSkipAlgorithmMatch(true) to bypass
+// the check for non-conforming producers. The compact fast path
+// [VerifyCompactFast] performs an equivalent cross-check against its explicitly
+// supplied algorithm.
 //
 // The error returned by this function is of type can be checked against
 // `jws.VerifyError()` and `jws.VerificationError()`. The latter is returned
@@ -430,6 +446,21 @@ func parse(protected, payload, signature []byte) (*Message, error) {
 		decodedPayload = v
 	}
 
+	// The payload decode above and the signature decode below intentionally use
+	// the auto-detecting base64 decoder, which tolerates non-standard variants
+	// (e.g. padded base64url, standard base64) in addition to RFC 7515's raw
+	// base64url. This leniency is deliberate: jws.Verify is the interop path,
+	// whereas VerifyCompactFast strictly decodes the payload and signature
+	// (RFC 4648 §5 raw base64url, no padding) and its godoc directs callers whose
+	// JWS uses non-standard encoding to use jws.Verify instead. The cost is that
+	// serialized-JWS strings are
+	// non-canonical/malleable (a signature re-encoded in a different base64
+	// variant decodes to the same bytes but yields a different compact string).
+	// This does NOT affect signature validity or enable forgery; it only matters
+	// to systems that key replay/dedup on the raw compact-JWS string, which should
+	// instead key on the verified payload/claims. This is a deliberate won't-fix:
+	// do NOT switch this to strict decoding; callers needing strict raw base64url
+	// decoding of the payload and signature should use VerifyCompactFast.
 	decodedSignature, err := base64.Decode(signature)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to decode signature: %w`, err)
@@ -443,6 +474,10 @@ func parse(protected, payload, signature []byte) (*Message, error) {
 
 	var msg Message
 	msg.payload = decodedPayload
+	// Compact serialization has no way to express "present but empty":
+	// an empty middle segment is genuinely absent (detached). Presence is
+	// therefore simply whether the middle segment carried any bytes.
+	msg.payloadPresent = len(payload) > 0
 	msg.signatures = append(msg.signatures, &Signature{
 		protected: hdr,
 		signature: decodedSignature,
@@ -632,6 +667,24 @@ func AlgorithmsForKey(key any) ([]jwa.SignatureAlgorithm, error) {
 	case ecdsa.PublicKey, *ecdsa.PublicKey, ecdsa.PrivateKey, *ecdsa.PrivateKey:
 		kty = jwa.EC()
 	case ed25519.PublicKey, ed25519.PrivateKey:
+		// AlgorithmsForKey classifies by key type to report which algorithms a
+		// key *could* be used with; it is not a key validator. Value-form
+		// ed25519 keys are []byte aliases with no length invariant, so a
+		// wrong-length key is intentionally NOT rejected here — it would still
+		// be reported as [EdDSA Ed25519]. Key validity (correct length) is
+		// enforced where it matters, at Sign/Verify time. Do NOT add a length
+		// check to this advisory classifier.
+		kty = jwa.OKP()
+		crv = jwa.Ed25519()
+		hasCrv = true
+	case *ed25519.PublicKey, *ed25519.PrivateKey:
+		// Pointer-form ed25519 keys satisfy crypto.Signer, so without an
+		// explicit case here a typed-nil or wrong-length pointer would
+		// fall through to the default branch and panic inside
+		// signer.Public(). Validate length/nil up front instead.
+		if err := validateEd25519KeyShape(key); err != nil {
+			return nil, fmt.Errorf(`%w: %w`, errUnclassifiableKey, err)
+		}
 		kty = jwa.OKP()
 		crv = jwa.Ed25519()
 		hasCrv = true
@@ -650,6 +703,13 @@ func AlgorithmsForKey(key any) ([]jwa.SignatureAlgorithm, error) {
 		var signerPubErr error
 		if signer, ok := key.(crypto.Signer); ok {
 			pub := signer.Public()
+			// A custom crypto.Signer may hand back a malformed (wrong-length or
+			// typed-nil) ed25519.PublicKey. Classifying that as OKP would let it
+			// reach the EdDSA verify path, which panics ("ed25519: bad public key
+			// length"). Reject it here instead.
+			if err := validateEd25519KeyShape(pub); err != nil {
+				return nil, fmt.Errorf(`%w: %w`, errUnclassifiableKey, err)
+			}
 			// Guard: only recurse if the public key is not itself a crypto.Signer,
 			// to prevent infinite recursion from pathological implementations.
 			if _, isSigner := pub.(crypto.Signer); !isSigner {
@@ -759,6 +819,12 @@ func validateAlgorithmForKey(alg jwa.SignatureAlgorithm, key any) error {
 		if hasCustomSigVerifier(alg) {
 			return nil
 		}
+		// A malformed ed25519 key (typed-nil or wrong-length, value or
+		// pointer form) satisfies crypto.Signer but panics in Public().
+		// Surface the classification error directly instead of probing it.
+		if shapeErr := validateEd25519KeyShape(key); shapeErr != nil {
+			return fmt.Errorf(`jws.WithKey: %w`, err)
+		}
 		if signer, ok := key.(crypto.Signer); ok {
 			if _, isSigner := signer.Public().(crypto.Signer); isSigner {
 				return nil
@@ -771,6 +837,37 @@ func validateAlgorithmForKey(alg jwa.SignatureAlgorithm, key any) error {
 			return nil
 		}
 		return fmt.Errorf(`jws.WithKey: algorithm %q is not compatible with key type %T`, alg, key)
+	}
+	return nil
+}
+
+// validateEd25519KeyShape reports whether key is a malformed ed25519 key.
+// It returns a non-nil error when key is an ed25519 private/public key (value
+// or pointer form) that is typed-nil or not the expected length, and nil for
+// everything else — including non-ed25519 keys and well-formed ed25519 keys.
+//
+// Concrete ed25519 keys (and their pointer forms) satisfy crypto.Signer, but
+// their Public() method panics ("slice bounds out of range" / nil pointer
+// dereference) when the key is not exactly the right size. Callers use this to
+// reject malformed keys with an error before any code path reaches Public().
+func validateEd25519KeyShape(key any) error {
+	switch k := key.(type) {
+	case ed25519.PrivateKey:
+		if len(k) != ed25519.PrivateKeySize {
+			return fmt.Errorf(`invalid ed25519.PrivateKey length %d, expected %d`, len(k), ed25519.PrivateKeySize)
+		}
+	case *ed25519.PrivateKey:
+		if k == nil || len(*k) != ed25519.PrivateKeySize {
+			return fmt.Errorf(`invalid *ed25519.PrivateKey, expected length %d`, ed25519.PrivateKeySize)
+		}
+	case ed25519.PublicKey:
+		if len(k) != ed25519.PublicKeySize {
+			return fmt.Errorf(`invalid ed25519.PublicKey length %d, expected %d`, len(k), ed25519.PublicKeySize)
+		}
+	case *ed25519.PublicKey:
+		if k == nil || len(*k) != ed25519.PublicKeySize {
+			return fmt.Errorf(`invalid *ed25519.PublicKey, expected length %d`, ed25519.PublicKeySize)
+		}
 	}
 	return nil
 }
@@ -829,10 +926,10 @@ func Settings(options ...GlobalOption) error {
 //
 // Returns the original payload that was signed if verification succeeds.
 //
-// Unlike jws.Verify(), this function requires you to specify the
-// algorithm explicitly rather than extracting it from the JWS headers.
-// This can be useful for performance-critical applications where the
-// algorithm is known in advance.
+// Unlike jws.Verify() — which resolves the verification algorithm from the
+// key or provider you supply (e.g. WithKey, WithKeySet) — this function takes
+// the algorithm as an explicit argument. It is useful for performance-critical
+// applications where the algorithm is known in advance.
 //
 // This function uses strict base64url encoding without padding (RFC 4648 §5)
 // for decoding the signature and payload. It does not auto-detect other
@@ -868,6 +965,35 @@ func Settings(options ...GlobalOption) error {
 // Detached-payload callers must use jws.Verify with jws.WithDetachedPayload
 // regardless, since VerifyCompactFast has no way to accept a detached
 // payload.
+//
+// VerifyCompactFast only handles a "minimal" protected header. It proceeds
+// with verification only when ALL of the following hold; otherwise it refuses
+// with jws.ErrNonMinimalHeader() and the caller should retry through
+// jws.Verify:
+//
+//   - "alg" is present exactly once (a missing "alg" is reported separately,
+//     via the cross-check described above, not as ErrNonMinimalHeader);
+//   - "typ", "kid", and "cty" each appear at most once;
+//   - "typ", "kid", and "cty", when present, have JSON string values (a
+//     non-string value, which jws.Verify rejects, is refused here too);
+//   - no other parameter is present — this excludes "crit" and "b64" (which
+//     have their own dedicated refusals, see above), key-source parameters
+//     such as "jwk"/"jku"/"x5u"/"x5c", and any unknown parameter;
+//   - the header contains no JSON escape sequences.
+//
+// The restriction exists because the fast path reads the header with a parser
+// that keeps duplicate object members and resolves them first-wins, whereas
+// jws.Verify uses encoding/json/v2, which rejects duplicate names outright.
+// Limiting the fast path to the minimal shape — and deferring everything else
+// to jws.Verify, whose strict, recursive header handling is authoritative —
+// makes the two entry points agree on duplicate-name and header-shape handling
+// (see issue #2234). It is not a byte-for-byte mirror, though: the fast parser
+// does not reproduce all of encoding/json/v2's in-string validation, so a
+// header whose "typ"/"kid"/"cty" string value contains e.g. a raw control
+// character or invalid UTF-8 is accepted here but rejected by jws.Verify. The
+// signature is always verified, so this is a parser-strictness nuance, not a
+// bypass; for byte-for-byte parity call jws.Verify. Like the crit refusal,
+// ErrNonMinimalHeader means "retry through jws.Verify".
 func VerifyCompactFast(key any, compact []byte, alg jwa.SignatureAlgorithm) ([]byte, error) {
 	if err := validateAlgorithmForKey(alg, key); err != nil {
 		return nil, makeVerifyError(`%w`, err)
@@ -881,7 +1007,30 @@ func VerifyCompactFast(key any, compact []byte, alg jwa.SignatureAlgorithm) ([]b
 		return nil, makeVerifyError("failed to split compact: %w", err)
 	}
 
-	parsedHdr := jwsbb.HeaderParseCompact(hdr)
+	// Decode the protected header ourselves (rather than via
+	// HeaderParseCompact) so we can inspect the raw JSON for escape
+	// sequences before parsing it.
+	decodedHdr, err := base64.Decode(hdr)
+	if err != nil {
+		return nil, makeVerifyError("failed to decode protected header: %w", err)
+	}
+
+	// Refuse any protected header containing a JSON escape sequence. For
+	// literal keys fastjson resolves duplicates first-wins deterministically,
+	// but for *escaped* keys its resolution becomes order/state-dependent and
+	// can diverge from encoding/json/v2 (which jws.Verify uses). Rather than
+	// reason about that, defer any escape-bearing header to jws.Verify. The
+	// header parameter names the fast path handles (alg/typ/kid/cty) never
+	// require escaping; an escape in a value (e.g. a "kid" containing a quote
+	// or a control char) is simply deferred to jws.Verify, which handles it.
+	if bytes.IndexByte(decodedHdr, '\\') >= 0 {
+		return nil, verifyError{fmt.Errorf(`%w (header contains a JSON escape sequence)`, errNonMinimalHeader)}
+	}
+
+	// Header probing uses the jwx-internal jwsbb package directly: the
+	// enumeration primitive (HeaderForEachKey) the minimal-shape gate below needs
+	// is intentionally not part of the public jwsbb facade.
+	parsedHdr := jwsbbi.HeaderParse(decodedHdr)
 
 	// Refuse crit-bearing messages: the fast path has no WithCritExtension
 	// allowlist, so accepting them would silently violate RFC 7515 §4.1.11.
@@ -890,7 +1039,7 @@ func VerifyCompactFast(key any, compact []byte, alg jwa.SignatureAlgorithm) ([]b
 	// The sentinel is wrapped in verifyError so the same error also matches
 	// errors.Is(err, jws.VerifyError()) — fast-path refusals are a verify
 	// error, just one with a more specific classification available.
-	if jwsbb.HeaderHas(parsedHdr, CriticalKey) {
+	if jwsbbi.HeaderHas(parsedHdr, CriticalKey) {
 		return nil, verifyError{errCritPresent}
 	}
 
@@ -904,8 +1053,108 @@ func VerifyCompactFast(key any, compact []byte, alg jwa.SignatureAlgorithm) ([]b
 	// / WithCritExtension machinery to handle b64=false correctly. As with
 	// the crit refusal above, the sentinel is wrapped in verifyError so the
 	// same error matches both jws.ErrB64Present() and jws.VerifyError().
-	if jwsbb.HeaderHas(parsedHdr, "b64") {
+	if jwsbbi.HeaderHas(parsedHdr, B64Key) {
 		return nil, verifyError{errB64Present}
+	}
+
+	// Minimal-shape gate. fastjson keeps duplicate object members and resolves
+	// them first-wins, whereas encoding/json/v2 (jws.Verify) rejects duplicate
+	// names — so a header with a duplicate or otherwise unusual parameter
+	// could be read differently by the two paths (issue #2234). The fast path
+	// therefore only handles the common minimal shape: "alg" exactly once, an
+	// optional single "typ"/"kid"/"cty", and nothing else. Anything outside
+	// that — a duplicate, a nested object, an unknown or key-source parameter
+	// — is deferred to jws.Verify via errNonMinimalHeader, where json/v2's
+	// strict recursive duplicate rejection and full header handling apply. A
+	// *missing* "alg" is left to the cross-check below so the caller still
+	// gets the specific diagnostic.
+	//
+	// Why gate-here-and-defer rather than teach the header parser to reject
+	// duplicates itself:
+	//   - The jwsbb header parser is deliberately spec-agnostic: it is a
+	//     generic, reusable field-probe (shared with other call sites) that
+	//     "does not care about the JWS specification". Baking RFC 7515 §4
+	//     header rules into it would break that contract and silently change
+	//     behavior for every other consumer.
+	//   - A duplicate check inside the parser runs on *every* parse and needs
+	//     a per-call set/map allocation, taxing the very hot path the fast
+	//     path exists to keep cheap. The shape gate here is a single key sweep
+	//     with fixed counters — allocation-free.
+	//   - A parser-level top-level dedup would still miss *nested* duplicate
+	//     names; deferring unusual headers to jws.Verify inherits json/v2's
+	//     strict *recursive* rejection for free, so the two paths agree on
+	//     more than just the top level.
+	// Gating on shape and handing anything unusual to the authoritative slow
+	// path is both cheaper and more complete than making the parser spec-aware.
+	var algN, typN, kidN, ctyN, others int
+	var firstOther string
+	var haveOther bool
+	if err := jwsbbi.HeaderForEachKey(parsedHdr, func(name []byte) {
+		switch string(name) {
+		case AlgorithmKey:
+			algN++
+		case TypeKey:
+			typN++
+		case KeyIDKey:
+			kidN++
+		case ContentTypeKey:
+			ctyN++
+		default:
+			if !haveOther {
+				// Capture the first unknown parameter for the diagnostic.
+				// Use a bool sentinel (not firstOther == "") so a literal
+				// empty-string key is still reported as the first one.
+				firstOther = string(name)
+				haveOther = true
+			}
+			others++
+		}
+	}); err != nil {
+		// Header failed to parse or is not a JSON object; let jws.Verify
+		// produce the authoritative error.
+		return nil, verifyError{fmt.Errorf(`%w (protected header is not a valid JSON object)`, errNonMinimalHeader)}
+	}
+	// Refuse, naming the specific trigger so the refusal is debuggable. The
+	// error still wraps errNonMinimalHeader, so errors.Is classification
+	// (ErrNonMinimalHeader / VerifyError) is unchanged.
+	if others > 0 || algN > 1 || typN > 1 || kidN > 1 || ctyN > 1 {
+		var reason string
+		switch {
+		case others > 0:
+			reason = fmt.Sprintf(`unexpected protected header parameter %q`, firstOther)
+		case algN > 1:
+			reason = `duplicate "alg"`
+		case typN > 1:
+			reason = `duplicate "typ"`
+		case kidN > 1:
+			reason = `duplicate "kid"`
+		default: // ctyN > 1
+			reason = `duplicate "cty"`
+		}
+		return nil, verifyError{fmt.Errorf(`%w (%s)`, errNonMinimalHeader, reason)}
+	}
+
+	// The optional descriptive parameters must be JSON strings, matching what
+	// jws.Verify's typed encoding/json/v2 header decode accepts. Without this,
+	// a genuinely-signed header like {"alg":"HS256","typ":123} would pass the
+	// name-count gate here yet be rejected by jws.Verify — the same fast/slow
+	// divergence the gate exists to prevent. HeaderGetStringBytes reports a
+	// non-string value without copying it, so this stays allocation-free; only
+	// headers that actually carry typ/kid/cty pay the (negligible) lookup.
+	if typN == 1 {
+		if _, err := jwsbbi.HeaderGetStringBytes(parsedHdr, TypeKey); err != nil {
+			return nil, verifyError{fmt.Errorf(`%w (non-string "typ")`, errNonMinimalHeader)}
+		}
+	}
+	if kidN == 1 {
+		if _, err := jwsbbi.HeaderGetStringBytes(parsedHdr, KeyIDKey); err != nil {
+			return nil, verifyError{fmt.Errorf(`%w (non-string "kid")`, errNonMinimalHeader)}
+		}
+	}
+	if ctyN == 1 {
+		if _, err := jwsbbi.HeaderGetStringBytes(parsedHdr, ContentTypeKey); err != nil {
+			return nil, verifyError{fmt.Errorf(`%w (non-string "cty")`, errNonMinimalHeader)}
+		}
 	}
 
 	// Cross-check the protected header "alg" against the caller-supplied
@@ -914,7 +1163,7 @@ func VerifyCompactFast(key any, compact []byte, alg jwa.SignatureAlgorithm) ([]b
 	// advertises and the discipline under which we verify is the sort of
 	// silent divergence that downstream code (e.g. JWT consumers) should
 	// not be asked to re-discover on its own.
-	hdrAlg, err := jwsbb.HeaderGetString(parsedHdr, AlgorithmKey)
+	hdrAlg, err := jwsbbi.HeaderGetString(parsedHdr, AlgorithmKey)
 	if err != nil {
 		return nil, verifyError{verificationError{fmt.Errorf(`jws.Verify: failed to extract %q from protected header: %w`, AlgorithmKey, err)}}
 	}
