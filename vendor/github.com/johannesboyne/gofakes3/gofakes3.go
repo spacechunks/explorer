@@ -495,12 +495,24 @@ func (g *GoFakeS3) getObject(
 
 	// Writes Content-Length, and Content-Range if applicable:
 	obj.Range.writeHeader(obj.Size, w)
+	if obj.Range != nil {
+		w.WriteHeader(http.StatusPartialContent)
+	}
 
 	if _, err := io.Copy(w, obj.Contents); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+var responseHeaderOverridesMap = map[string]string{
+	"response-content-type":        "Content-Type",
+	"response-content-language":    "Content-Language",
+	"response-expires":             "Expires",
+	"response-cache-control":       "Cache-Control",
+	"response-content-disposition": "Content-Disposition",
+	"response-content-encoding":    "Content-Encoding",
 }
 
 // writeGetOrHeadObjectResponse contains shared logic for constructing headers for
@@ -538,6 +550,15 @@ func (g *GoFakeS3) writeGetOrHeadObjectResponse(obj *Object, w http.ResponseWrit
 
 	w.Header().Set("Accept-Ranges", "bytes")
 
+	// Handle response-* query parameters to override response headers
+	// https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
+	query := r.URL.Query()
+	for queryParam, headerName := range responseHeaderOverridesMap {
+		if v := query.Get(queryParam); v != "" {
+			w.Header().Set(headerName, v)
+		}
+	}
+
 	return nil
 }
 
@@ -569,7 +590,23 @@ func (g *GoFakeS3) headObject(
 		return err
 	}
 
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", obj.Size))
+	// HeadObject does not fetch a ranged body, but S3 still honours the Range
+	// header on HEAD: it responds with 206 and a Content-Range/Content-Length
+	// scoped to the requested range. Resolve the range against the object size.
+	rngeReq, err := parseRangeHeader(r.Header.Get("Range"))
+	if err != nil {
+		return err
+	}
+	rnge, err := rngeReq.Range(obj.Size)
+	if err != nil {
+		return err
+	}
+
+	// Writes Content-Length, and Content-Range if a range applies:
+	rnge.writeHeader(obj.Size, w)
+	if rnge != nil {
+		w.WriteHeader(http.StatusPartialContent)
+	}
 
 	return nil
 }
@@ -733,12 +770,30 @@ func (g *GoFakeS3) copyObject(bucket, object string, meta map[string]string, w h
 
 	// XXX No support for versionId subresource
 	parts := strings.SplitN(strings.TrimPrefix(source, "/"), "/", 2)
+	sourceDecoded := false
+	if len(parts) < 2 {
+		// The source may be fully URL-encoded (including "/" as "%2F").
+		// Try decoding and splitting again.
+		decoded, err := url.QueryUnescape(source)
+		if err != nil {
+			return err
+		}
+		parts = strings.SplitN(strings.TrimPrefix(decoded, "/"), "/", 2)
+		sourceDecoded = true
+	}
+	if len(parts) < 2 {
+		return ErrorMessage(ErrInvalidArgument, "X-Amz-Copy-Source must contain bucket and key separated by '/'")
+	}
 	srcBucket := parts[0]
 	srcKey := strings.SplitN(parts[1], "?", 2)[0]
 
-	srcKey, err = url.QueryUnescape(srcKey)
-	if err != nil {
-		return err
+	// Only decode the key if we didn't already decode the entire source,
+	// to avoid double-decoding (which corrupts "+" characters).
+	if !sourceDecoded {
+		srcKey, err = url.QueryUnescape(srcKey)
+		if err != nil {
+			return err
+		}
 	}
 	srcObj, err := g.storage.HeadObject(srcBucket, srcKey)
 	if err != nil {
@@ -1218,8 +1273,6 @@ func parsePutConditions(headers http.Header) (*PutConditions, error) {
 		}
 		conditions.IfNoneMatch = &ifNoneMatch
 	}
-
-
 
 	return conditions, nil
 }

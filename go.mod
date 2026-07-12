@@ -32,7 +32,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hetznercloud/hcloud-go/v2 v2.44.0
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/johannesboyne/gofakes3 v0.0.0-20260208201424-4c385a1f6a73
+	github.com/johannesboyne/gofakes3 v1.2.0
 	github.com/lestrrat-go/jwx/v4 v4.1.0
 	github.com/magiconair/properties v1.8.10
 	github.com/moby/moby/api v1.55.0
