@@ -31,7 +31,7 @@ github.com/Oudwins/zog/pkgs/internals
 github.com/Oudwins/zog/pkgs/internals/is
 github.com/Oudwins/zog/pkgs/zss/core
 github.com/Oudwins/zog/zconst
-# github.com/amacneil/dbmate/v2 v2.33.0
+# github.com/amacneil/dbmate/v2 v2.34.1
 ## explicit; go 1.25.0
 github.com/amacneil/dbmate/v2/pkg/dbmate
 github.com/amacneil/dbmate/v2/pkg/dbutil
