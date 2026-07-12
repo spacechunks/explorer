@@ -97,8 +97,8 @@ func TestRegisterUser(t *testing.T) {
 			client := cp.UserClient(t)
 
 			_, err := client.Register(ctx, &userv1alpha1.RegisterRequest{
-				Nickname: tt.user.Nickname,
-				IdToken:  idTok,
+				Nickname:            tt.user.Nickname,
+				IdToken:             idTok,
 				AcceptPrivacyPolicy: tt.acceptPrivacyPolicy,
 			})
 
