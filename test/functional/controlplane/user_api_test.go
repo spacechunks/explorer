@@ -25,7 +25,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
-	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
@@ -36,30 +35,47 @@ import (
 
 func TestRegisterUser(t *testing.T) {
 	tests := []struct {
-		name        string
-		createdUser *resource.User
-		user        resource.User
-		err         error
+		name                string
+		createdUser         *resource.User
+		user                resource.User
+		acceptPrivacyPolicy bool
+		err                 error
 	}{
 		{
-			name: "user does not exist",
-			user: fixture.User(),
+			name:                "user does not exist",
+			user:                fixture.User(),
+			acceptPrivacyPolicy: true,
 		},
 		{
 			name: "user with nickname already exists",
-			createdUser: ptr.Pointer(fixture.User(func(tmp *resource.User) {
+			createdUser: new(fixture.User(func(tmp *resource.User) {
 				tmp.Email = "different@email.com"
 			})),
-			user: fixture.User(),
-			err:  apierrs.ErrAlreadyExists.GRPCStatus().Err(),
+			user:                fixture.User(),
+			err:                 apierrs.ErrAlreadyExists.GRPCStatus().Err(),
+			acceptPrivacyPolicy: true,
 		},
 		{
 			name: "user with email already exists",
-			createdUser: ptr.Pointer(fixture.User(func(tmp *resource.User) {
+			createdUser: new(fixture.User(func(tmp *resource.User) {
 				tmp.Nickname = "different-nickname"
 			})),
-			user: fixture.User(),
-			err:  apierrs.ErrAlreadyExists.GRPCStatus().Err(),
+			user:                fixture.User(),
+			err:                 apierrs.ErrAlreadyExists.GRPCStatus().Err(),
+			acceptPrivacyPolicy: true,
+		},
+		{
+			name: "does not accept privacy policy",
+			createdUser: new(fixture.User(func(tmp *resource.User) {
+				tmp.Nickname = "different-nickname"
+				tmp.Email = "different@example.com"
+			})),
+			user: fixture.User(func(tmp *resource.User) {
+				tmp.Nickname = "different"
+				tmp.Email = "different@example.com"
+			}),
+			acceptPrivacyPolicy: false,
+			err:                 apierrs.ErrPrivacyPolicyNotAccepted.GRPCStatus().Err(),
 		},
 	}
 
@@ -83,6 +99,7 @@ func TestRegisterUser(t *testing.T) {
 			_, err := client.Register(ctx, &userv1alpha1.RegisterRequest{
 				Nickname: tt.user.Nickname,
 				IdToken:  idTok,
+				AcceptPrivacyPolicy: tt.acceptPrivacyPolicy,
 			})
 
 			if tt.err != nil {

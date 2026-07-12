@@ -37,10 +37,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_Register_FullMethodName      = "/user.v1alpha1.UserService/Register"
-	UserService_Login_FullMethodName         = "/user.v1alpha1.UserService/Login"
-	UserService_GetProfile_FullMethodName    = "/user.v1alpha1.UserService/GetProfile"
-	UserService_UpdateProfile_FullMethodName = "/user.v1alpha1.UserService/UpdateProfile"
+	UserService_Register_FullMethodName = "/user.v1alpha1.UserService/Register"
+	UserService_Login_FullMethodName    = "/user.v1alpha1.UserService/Login"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -54,16 +52,6 @@ type UserServiceClient interface {
 	//   - a user with the provided email or nickname does already exist
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
-	// GetProfile returns the user account profile.
-	// Defined error codes:
-	// - NOT_FOUND:
-	//   - the user could not be found
-	GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error)
-	// UpdateProfile updates the profile of a user.
-	// Defined error codes:
-	// - NOT_FOUND:
-	//   - the user could not be found
-	UpdateProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error)
 }
 
 type userServiceClient struct {
@@ -94,26 +82,6 @@ func (c *userServiceClient) Login(ctx context.Context, in *LoginRequest, opts ..
 	return out, nil
 }
 
-func (c *userServiceClient) GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetProfileResponse)
-	err := c.cc.Invoke(ctx, UserService_GetProfile_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *userServiceClient) UpdateProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateProfileResponse)
-	err := c.cc.Invoke(ctx, UserService_UpdateProfile_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -125,16 +93,6 @@ type UserServiceServer interface {
 	//   - a user with the provided email or nickname does already exist
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
-	// GetProfile returns the user account profile.
-	// Defined error codes:
-	// - NOT_FOUND:
-	//   - the user could not be found
-	GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error)
-	// UpdateProfile updates the profile of a user.
-	// Defined error codes:
-	// - NOT_FOUND:
-	//   - the user could not be found
-	UpdateProfile(context.Context, *GetProfileRequest) (*UpdateProfileResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -150,12 +108,6 @@ func (UnimplementedUserServiceServer) Register(context.Context, *RegisterRequest
 }
 func (UnimplementedUserServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
-}
-func (UnimplementedUserServiceServer) GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetProfile not implemented")
-}
-func (UnimplementedUserServiceServer) UpdateProfile(context.Context, *GetProfileRequest) (*UpdateProfileResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateProfile not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -214,42 +166,6 @@ func _UserService_Login_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserService_GetProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetProfileRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).GetProfile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_GetProfile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).GetProfile(ctx, req.(*GetProfileRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _UserService_UpdateProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetProfileRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).UpdateProfile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_UpdateProfile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).UpdateProfile(ctx, req.(*GetProfileRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -264,14 +180,6 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _UserService_Login_Handler,
-		},
-		{
-			MethodName: "GetProfile",
-			Handler:    _UserService_GetProfile_Handler,
-		},
-		{
-			MethodName: "UpdateProfile",
-			Handler:    _UserService_UpdateProfile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

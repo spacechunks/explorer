@@ -27,11 +27,12 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/lestrrat-go/jwx/v4/jwa"
 	"github.com/lestrrat-go/jwx/v4/jwt"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/internal/resource"
 )
 
 type Service interface {
-	Register(ctx context.Context, nickname string, rawIDToken string) error
+	Register(ctx context.Context, nickname string, rawIDToken string, acceptPrivacyPolicy bool) error
 	Login(ctx context.Context, rawIDToken string) (resource.User, []byte, error)
 }
 
@@ -66,7 +67,11 @@ func NewService(
 	}
 }
 
-func (s *service) Register(ctx context.Context, nickname string, rawIDToken string) error {
+func (s *service) Register(ctx context.Context, nickname string, rawIDToken string, acceptPrivacyPolicy bool) error {
+	if !acceptPrivacyPolicy {
+		return apierrs.ErrPrivacyPolicyNotAccepted
+	}
+
 	verifier := s.provider.Verifier(&oidc.Config{
 		ClientID: s.clientID,
 	})

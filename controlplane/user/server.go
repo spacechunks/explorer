@@ -40,7 +40,7 @@ func (s Server) Register(
 	ctx context.Context,
 	req *userv1alpha1.RegisterRequest,
 ) (*userv1alpha1.RegisterResponse, error) {
-	if err := s.service.Register(ctx, req.Nickname, req.IdToken); err != nil {
+	if err := s.service.Register(ctx, req.Nickname, req.IdToken, req.AcceptPrivacyPolicy); err != nil {
 		return nil, err
 	}
 	return &userv1alpha1.RegisterResponse{}, nil
