@@ -34,9 +34,18 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 			return fmt.Errorf("login failed: %w", err)
 		}
 
+		fmt.Println("Before you proceed, make sure to read and accept our privacy policy.")
+		fmt.Println("Visit: https://chunks.space/privacy")
+
+		if !cli.Prompt("I have read and accepted the privacy policy (y/n):") {
+			fmt.Println("You have to accept our privacy policy to register!")
+			return nil
+		}
+
 		if _, err := cliCtx.UserClient.Register(ctx, &userv1alpha1.RegisterRequest{
-			Nickname: args[0],
-			IdToken:  tok,
+			Nickname:            args[0],
+			IdToken:             tok,
+			AcceptPrivacyPolicy: true,
 		}); err != nil {
 			return fmt.Errorf("register failed: %w", err)
 		}
