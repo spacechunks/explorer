@@ -35,7 +35,22 @@ service UserService {
   // - ALREADY_EXISTS:
   //   - a user with the provided email or nickname does already exist
   rpc Register(RegisterRequest) returns (RegisterResponse);
+
   rpc Login(LoginRequest) returns (LoginResponse);
+
+  // GetProfile returns the user account profile.
+  //
+  // Defined error codes:
+  // - NOT_FOUND:
+  //   - the user could not be found
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+
+  // UpdateProfile updates the profile of a user.
+  //
+  // Defined error codes:
+  // - NOT_FOUND:
+  //   - the user could not be found
+  rpc UpdateProfile(GetProfileRequest) returns (UpdateProfileResponse);
 }
 
 message RegisterRequest {
@@ -53,4 +68,23 @@ message LoginRequest {
 message LoginResponse {
   User user = 1;
   string api_token = 2;
+}
+
+message GetProfileRequest {
+  string user_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetProfileResponse {
+  Profile profile = 1;
+}
+
+message UpdateProfileRequest {
+  string user_id = 1 [(buf.validate.field).string.uuid = true];
+
+  // privacy_policy_accepted can only be set once. if it's already set, new values will be ignored.
+  bool privacy_policy_accepted = 2;
+}
+
+message UpdateProfileResponse {
+  Profile profile = 1;
 }
