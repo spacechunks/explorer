@@ -80,6 +80,13 @@ var (
 	ErrChangeSetTarballTooBig       = New(codes.InvalidArgument, "tarball size exceeds maximum allowed")
 )
 
+/*
+ * user related errors
+ */
+var (
+	ErrPrivacyPolicyNotAccepted = New(codes.FailedPrecondition, "privacy policy not accepted")
+)
+
 type InvalidPathViolation struct {
 	Field string
 	Path  string
