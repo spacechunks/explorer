@@ -224,7 +224,6 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, riverJob *river.Job
 	slices.Sort(paths)
 
 	for _, p := range paths {
-		fmt.Println(p)
 		relPath, err := filepath.Rel(outDirPath, p)
 		if err != nil {
 			return err
@@ -235,7 +234,7 @@ func (w *CreateResourcePackWorker) Work(ctx context.Context, riverJob *river.Job
 			Method: zip.Deflate,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("create zip header: %w", err)
 		}
 
 		file, err := os.Open(p)
