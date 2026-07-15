@@ -59,6 +59,10 @@ chunk:
       # The path to the directory where your Minecraft server
       # configuration lives. Currently, only Paper is supported.
       path: ./my_chunk/flavor1
+      # The minimum amount of players required to play.
+      minPlayers: 2
+      # The maximum amount of players supported by your game.
+      maxPlayers: 10
 ```
 
 ### Sample project directory layout
