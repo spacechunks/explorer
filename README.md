@@ -9,17 +9,18 @@ on limited hardware like small cloud VMs.
 
 ## What is the current state of the project?
 
-We are approaching an early alpha phase with big steps! This is what is still missing for a working alpha:
-* Working Minecraft UI implementation
-* Resource pack updates when Chunk thumbnail changes
+The project is currently in an alpha state. The basic functions are implemented and working™. You can try it out by opening Minecraft (Java Edition) and joining chunks.space.
+The next steps are fixing bugs, that come up and investing time into stability and observability. 
 
-What's missing for a working beta:
+Here are some examples of things, that are still missing:
 * Configurable user limits
 * Feature flags
 * Improvements on the platformd side (component responsible for actually running the containers)
   * Image GC
   * TBD
 * TBD
+
+If there is a concrete roadmap it will be posted on our [Discord](http://discord.chunks.space/).
 
 **Requirements**
 * Linux kernel >= 6.6, tcx not supported (caused by `link.AttachTCX`)
