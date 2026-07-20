@@ -69,6 +69,7 @@ type svc struct {
 	s3Store   blob.S3Store
 	cfg       Config
 	access    authz.AccessEvaluator
+	metrics   metrics
 }
 
 func NewService(
@@ -78,7 +79,12 @@ func NewService(
 	s3Store blob.S3Store,
 	access authz.AccessEvaluator,
 	cfg Config,
-) Service {
+) (Service, error) {
+	m, err := initMetrics()
+	if err != nil {
+		return nil, err
+	}
+
 	return &svc{
 		logger:    logger,
 		repo:      repo,
@@ -86,5 +92,6 @@ func NewService(
 		s3Store:   s3Store,
 		access:    access,
 		cfg:       cfg,
-	}
+		metrics:   m,
+	}, nil
 }

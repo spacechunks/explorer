@@ -184,6 +184,40 @@ func (s *Server) Run(ctx context.Context) error {
 		return fmt.Errorf("create validator: %w", err)
 	}
 
+	insService, err := instance.NewService(s.logger, db, db, db)
+	if err != nil {
+		return fmt.Errorf("instance service: %w", err)
+	}
+
+	userService, err := user.NewService(
+		db,
+		oidcProvider,
+		s.cfg.OAuthClientID,
+		s.cfg.APITokenIssuer,
+		s.cfg.APITokenExpiry,
+		key,
+	)
+	if err != nil {
+		return fmt.Errorf("user service: %w", err)
+	}
+
+	chunkService, err := chunk.NewService(
+		s.logger.With("component", "chunk-service"),
+		db,
+		db,
+		blobStore,
+		authz.NewRuleEvaluator(db),
+		chunk.Config{
+			Registry:                     s.cfg.OCIRegistry,
+			Bucket:                       s.cfg.Bucket,
+			PresignedURLExpiry:           s.cfg.PresignedURLExpiry,
+			ThumbnailMaxSizeKB:           s.cfg.ThumbnailMaxSizeKB,
+			ChangesetTarballMaxSizeBytes: s.cfg.ChangeSetTarballMaxSizeBytes,
+		})
+	if err != nil {
+		return fmt.Errorf("chunk service: %w", err)
+	}
+
 	var (
 		grpcServer = grpc.NewServer(
 			grpc.Creds(insecure.NewCredentials()),
@@ -196,30 +230,8 @@ func (s *Server) Run(ctx context.Context) error {
 			),
 		)
 
-		userService = user.NewService(
-			db,
-			oidcProvider,
-			s.cfg.OAuthClientID,
-			s.cfg.APITokenIssuer,
-			s.cfg.APITokenExpiry,
-			key,
-		)
-		userServer   = user.NewServer(userService)
-		chunkService = chunk.NewService(
-			s.logger.With("component", "chunk-service"),
-			db,
-			db,
-			blobStore,
-			authz.NewRuleEvaluator(db),
-			chunk.Config{
-				Registry:                     s.cfg.OCIRegistry,
-				Bucket:                       s.cfg.Bucket,
-				PresignedURLExpiry:           s.cfg.PresignedURLExpiry,
-				ThumbnailMaxSizeKB:           s.cfg.ThumbnailMaxSizeKB,
-				ChangesetTarballMaxSizeBytes: s.cfg.ChangeSetTarballMaxSizeBytes,
-			})
+		userServer  = user.NewServer(userService)
 		chunkServer = chunk.NewServer(chunkService)
-		insService  = instance.NewService(s.logger, db, db, db)
 		insServer   = instance.NewServer(insService)
 	)
 

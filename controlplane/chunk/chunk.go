@@ -34,6 +34,8 @@ import (
 	"github.com/spacechunks/explorer/controlplane/contextkey"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/internal/resource"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 func (s *svc) CreateChunk(ctx context.Context, chunk resource.Chunk) (resource.Chunk, error) {
@@ -52,6 +54,15 @@ func (s *svc) CreateChunk(ctx context.Context, chunk resource.Chunk) (resource.C
 	if err != nil {
 		return resource.Chunk{}, err
 	}
+
+	s.metrics.createdChunksCount.Add(
+		ctx,
+		1,
+		metric.WithAttributes(
+			attribute.String("name", chunk.Name),
+			attribute.String("owner_name", chunk.Owner.Nickname),
+		),
+	)
 	return ret, nil
 }
 

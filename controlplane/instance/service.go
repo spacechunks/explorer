@@ -32,6 +32,8 @@ import (
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/internal/resource"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type Service interface {
@@ -52,15 +54,27 @@ type svc struct {
 	insRepo   Repository
 	nodeRepo  node.Repository
 	chunkRepo chunk.Repository
+	metrics   metrics
 }
 
-func NewService(logger *slog.Logger, insRepo Repository, nodeRepo node.Repository, chunkRepo chunk.Repository) Service {
+func NewService(
+	logger *slog.Logger,
+	insRepo Repository,
+	nodeRepo node.Repository,
+	chunkRepo chunk.Repository,
+) (Service, error) {
+	m, err := initMetrics()
+	if err != nil {
+		return nil, err
+	}
+
 	return &svc{
 		logger:    logger,
 		insRepo:   insRepo,
 		nodeRepo:  nodeRepo,
 		chunkRepo: chunkRepo,
-	}
+		metrics:   m,
+	}, nil
 }
 
 func (s *svc) GetInstance(ctx context.Context, id string) (resource.Instance, error) {
@@ -116,6 +130,8 @@ func (s *svc) RunFlavorVersion(
 		return resource.Instance{}, fmt.Errorf("instance id: %w", err)
 	}
 
+	version := flavor.Versions[idx]
+
 	ins, err := s.insRepo.CreateInstance(ctx, resource.Instance{
 		ID:            instanceID.String(),
 		FlavorVersion: flavor.Versions[idx],
@@ -130,6 +146,16 @@ func (s *svc) RunFlavorVersion(
 	if err != nil {
 		return resource.Instance{}, fmt.Errorf("create instance: %w", err)
 	}
+
+	s.metrics.instanceCreatedCount.Add(
+		ctx,
+		1,
+		metric.WithAttributes(
+			attribute.String("flavor_name", flavor.Name),
+			attribute.String("flavor_version", version.Version),
+			attribute.String("chunk_name", ins.Chunk.Name),
+		),
+	)
 
 	return ins, nil
 }

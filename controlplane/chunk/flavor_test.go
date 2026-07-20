@@ -95,15 +95,17 @@ func TestCreateFlavor(t *testing.T) {
 				ctx        = context.Background()
 				mockRepo   = mock.NewMockChunkRepository(t)
 				mockAccess = mock.NewMockAuthzAccessEvaluator(t)
-				svc        = chunk.NewService(
-					slog.New(slog.NewTextHandler(os.Stdout, nil)),
-					mockRepo,
-					nil,
-					nil,
-					mockAccess,
-					chunk.Config{},
-				)
 			)
+
+			svc, err := chunk.NewService(
+				slog.New(slog.NewTextHandler(os.Stdout, nil)),
+				mockRepo,
+				nil,
+				nil,
+				mockAccess,
+				chunk.Config{},
+			)
+			require.NoError(t, err)
 
 			ctx = context.WithValue(ctx, contextkey.ActorID, "blabla")
 
@@ -584,15 +586,17 @@ func TestCreateFlavorVersion(t *testing.T) {
 				ctx        = context.Background()
 				mockAccess = mock.NewMockAuthzAccessEvaluator(t)
 				mockRepo   = mock.NewMockChunkRepository(t)
-				svc        = chunk.NewService(
-					slog.New(slog.NewTextHandler(os.Stdout, nil)),
-					mockRepo,
-					nil,
-					nil,
-					mockAccess,
-					chunk.Config{},
-				)
 			)
+
+			svc, err := chunk.NewService(
+				slog.New(slog.NewTextHandler(os.Stdout, nil)),
+				mockRepo,
+				nil,
+				nil,
+				mockAccess,
+				chunk.Config{},
+			)
+			require.NoError(t, err)
 
 			ctx = context.WithValue(ctx, contextkey.ActorID, "blabla")
 

@@ -43,6 +43,7 @@ type service struct {
 	issuer         string
 	apiTokenExpiry time.Duration
 	signingKey     *ecdsa.PrivateKey
+	metrics        metrics
 }
 
 type idTokenClaims struct {
@@ -56,7 +57,12 @@ func NewService(
 	issuer string,
 	apiTokenExpiry time.Duration,
 	signingKey *ecdsa.PrivateKey,
-) Service {
+) (Service, error) {
+	m, err := initMetrics()
+	if err != nil {
+		return nil, err
+	}
+
 	return &service{
 		repo:           repo,
 		provider:       provider,
@@ -64,7 +70,8 @@ func NewService(
 		issuer:         issuer,
 		apiTokenExpiry: apiTokenExpiry,
 		signingKey:     signingKey,
-	}
+		metrics:        m,
+	}, nil
 }
 
 func (s *service) Register(ctx context.Context, nickname string, rawIDToken string, acceptPrivacyPolicy bool) error {
@@ -93,6 +100,7 @@ func (s *service) Register(ctx context.Context, nickname string, rawIDToken stri
 		return fmt.Errorf("create user: %w", err)
 	}
 
+	s.metrics.registeredCount.Add(ctx, 1)
 	return nil
 }
 
