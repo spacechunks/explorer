@@ -4,12 +4,23 @@ Here, we will cover the basics on how to get started with the Chunk Explorer. Ha
 
 ## Table of Contents
 
+- [CLI installation](#cli-installation)
+- [Create your account](#create-your-account)
 - [Concepts](#concepts)
 - [Project setup](#project-setup)
     - [Configuration](#configuration)
     - [Sample project directory layout](#sample-project-directory-layout)
 - [Publishing your Chunk](#publishing-your-chunk)
     - [Retry publishing on errors](#retry-publishing-on-errors)
+
+## CLI installation
+
+In order to interact with the Explorer, you need our CLI tool. To install it head over to the [releases page](https://github.com/spacechunks/explorer/releases),
+and download the binary that is compatible with your system. The CLI is available for the following operating systems and architectures:
+
+- Linux (arm64/amd64)
+- MacOS (arm64/amd64)
+- Windows (arm64/amd64)
 
 ## Concepts
 
@@ -26,6 +37,18 @@ A Chunk is the primary object that you will be interacting with. It represents a
 that we call Flavors. For example, if you have a BedWars Chunk, possible flavors could be 8x1 or 8x4. Instances on the other
 hand, are running replicas of a specific Chunk Flavor. So, when you select a Flavor an Instance will be created, that you can
 connect to once it's ready.
+
+## Create your account
+
+Before you start setting up your project, make sure you create your account first. This is done by executing the folliwing
+command:
+
+```
+explorer register <your-username>
+```
+
+After executing, a browser window will pop up asking you to login with your Microsoft account. Once this is done, you can close
+the browser and continue with your project setup.
 
 ## Project setup
 
