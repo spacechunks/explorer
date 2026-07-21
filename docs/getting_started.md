@@ -12,6 +12,7 @@ Here, we will cover the basics on how to get started with the Chunk Explorer. Ha
     - [Sample project directory layout](#sample-project-directory-layout)
 - [Publishing your Chunk](#publishing-your-chunk)
     - [Retry publishing on errors](#retry-publishing-on-errors)
+- [Limitations](#limitations)
 
 ## CLI installation
 
@@ -217,3 +218,25 @@ The following actions can be retried:
 - File upload failed
 - Image building failed
 - Checkpoint building failed
+
+## Limitations
+
+There are a limitations and things to consider when releasing your creation. 
+
+### Servers are not persistent
+
+This means that everything will be gone after a server restarts.
+
+### Servers are being checkpointed
+
+During the build process the server will be started and once the server is ready, it will be checkpointed In practice, that means everything that you determine once the server starts 
+(e.g. generating maps, choosing items to use) will **always** be the same for every subsequent server start. A way to work around this is to do these kind of things once a player
+has joined the server. Another workaround is to listen to the `SIGCONT` signal. We send this to the Minecraft server process, once the container has been restored.
+
+Here is how you can do it in Java:
+```java
+Signal.handle(new Signal("SIGCONT"), signal -> {
+    System.out.println("RECEIVED SIGNAL SIGCONT");
+    // your onEnable() logic
+});
+```
