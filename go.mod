@@ -33,7 +33,7 @@ require (
 	github.com/hetznercloud/hcloud-go/v2 v2.44.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/johannesboyne/gofakes3 v1.2.0
-	github.com/lestrrat-go/jwx/v4 v4.1.0
+	github.com/lestrrat-go/jwx/v4 v4.2.0
 	github.com/magiconair/properties v1.18.11
 	github.com/moby/moby/api v1.55.0
 	github.com/peterbourgon/ff/v3 v3.4.0
