@@ -66,10 +66,10 @@ type MiddlewareConfig struct {
 	TracerProvider trace.TracerProvider
 }
 
-// Middleware is a River middleware that emits OpenTelemetry metrics when jobs
-// are inserted or worked.
+// Middleware is a River middleware and hook that emits OpenTelemetry traces and
+// metrics.
 type Middleware struct {
-	river.MiddlewareDefaults
+	river.PluginDefaults
 
 	config  *MiddlewareConfig
 	meter   metric.Meter
@@ -83,6 +83,8 @@ type middlewareMetrics struct {
 	insertManyCount                  metric.Int64Counter
 	insertManyDuration               metric.Float64Gauge
 	insertManyDurationHistogram      metric.Float64Histogram
+	jobGetAvailableDuration          metric.Float64Histogram
+	jobGetAvailableCount             metric.Int64Histogram
 	messagingClientConsumedMessages  metric.Int64Counter
 	messagingClientOperationDuration metric.Float64Histogram
 	messagingClientSentMessages      metric.Int64Counter
@@ -125,6 +127,8 @@ func NewMiddleware(config *MiddlewareConfig) *Middleware {
 		insertManyCount:             mustInt64Counter(meter, prefix+"insert_many_count", metric.WithDescription("Number of job batches inserted (all jobs are inserted in a batch, but batches may be one job)"), metric.WithUnit("{job_batch}")),
 		insertManyDuration:          mustFloat64Gauge(meter, prefix+"insert_many_duration", metric.WithDescription("Duration of job batch insertion"), metric.WithUnit(durationUnit)),
 		insertManyDurationHistogram: mustFloat64Histogram(meter, prefix+"insert_many_duration_histogram", metric.WithDescription("Duration of job batch insertion (histogram)"), metric.WithUnit(durationUnit)),
+		jobGetAvailableDuration:     mustFloat64Histogram(meter, prefix+"job_get_available_duration", metric.WithDescription("Duration of successful JobGetAvailable calls"), metric.WithUnit(durationUnit)),
+		jobGetAvailableCount:        mustInt64Histogram(meter, prefix+"job_get_available_count", metric.WithDescription("Number of jobs locked by successful JobGetAvailable calls"), metric.WithUnit("{job}")),
 		workCount:                   mustInt64Counter(meter, prefix+"work_count", metric.WithDescription("Number of jobs worked"), metric.WithUnit("{job}")),
 		workDuration:                mustFloat64Gauge(meter, prefix+"work_duration", metric.WithDescription("Duration of job being worked"), metric.WithUnit(durationUnit)),
 		workDurationHistogram:       mustFloat64Histogram(meter, prefix+"work_duration_histogram", metric.WithDescription("Duration of job being worked (histogram)"), metric.WithUnit(durationUnit)),
@@ -225,6 +229,21 @@ func (m *Middleware) InsertMany(ctx context.Context, manyParams []*rivertype.Job
 	insertRes, err = doInner(ctx)
 	panicked = false
 	return insertRes, err
+}
+
+func (m *Middleware) MetricEmit(ctx context.Context, params *rivertype.HookMetricEmitParams) {
+	if params == nil {
+		return
+	}
+
+	switch riverMetric := params.Metric.(type) {
+	case *rivertype.JobGetAvailableDurationMetric:
+		m.metrics.jobGetAvailableDuration.Record(ctx, m.durationInPreferredUnit(riverMetric.Duration),
+			metric.WithAttributes(attribute.String("queue", riverMetric.Queue)))
+	case *rivertype.JobGetAvailableCountMetric:
+		m.metrics.jobGetAvailableCount.Record(ctx, int64(riverMetric.Count),
+			metric.WithAttributes(attribute.String("queue", riverMetric.Queue)))
+	}
 }
 
 func (m *Middleware) Work(ctx context.Context, job *rivertype.JobRow, doInner func(context.Context) error) error {
@@ -346,6 +365,14 @@ func mustFloat64Gauge(meter metric.Meter, name string, options ...metric.Float64
 
 func mustFloat64Histogram(meter metric.Meter, name string, options ...metric.Float64HistogramOption) metric.Float64Histogram {
 	metric, err := meter.Float64Histogram(name, options...)
+	if err != nil {
+		panic(err)
+	}
+	return metric
+}
+
+func mustInt64Histogram(meter metric.Meter, name string, options ...metric.Int64HistogramOption) metric.Int64Histogram {
+	metric, err := meter.Int64Histogram(name, options...)
 	if err != nil {
 		panic(err)
 	}

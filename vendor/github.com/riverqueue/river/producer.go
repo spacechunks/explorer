@@ -13,11 +13,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/riverqueue/river/internal/hooklookup"
 	"github.com/riverqueue/river/internal/jobcompleter"
 	"github.com/riverqueue/river/internal/jobexecutor"
-	"github.com/riverqueue/river/internal/middlewarelookup"
 	"github.com/riverqueue/river/internal/notifier"
+	"github.com/riverqueue/river/internal/pluginlookup"
 	"github.com/riverqueue/river/internal/rivercommon"
 	"github.com/riverqueue/river/internal/util/chanutil"
 	"github.com/riverqueue/river/internal/workunit"
@@ -29,12 +28,13 @@ import (
 	"github.com/riverqueue/river/rivershared/util/randutil"
 	"github.com/riverqueue/river/rivershared/util/serviceutil"
 	"github.com/riverqueue/river/rivershared/util/testutil"
+	"github.com/riverqueue/river/rivershared/util/timeoututil"
 	"github.com/riverqueue/river/rivershared/util/timeutil"
 	"github.com/riverqueue/river/rivertype"
 )
 
 const (
-	producerReportIntervalDefault = time.Minute
+	producerReportIntervalDefault = 30 * time.Second
 	queuePollIntervalDefault      = 2 * time.Second
 	queueReportIntervalDefault    = 10 * time.Minute
 )
@@ -82,11 +82,13 @@ type producerConfig struct {
 	// LISTEN/NOTIFY, but this provides a fallback.
 	FetchPollInterval time.Duration
 
-	HookLookupByJob        *hooklookup.JobHookLookup
-	HookLookupGlobal       hooklookup.HookLookupInterface
-	JobTimeout             time.Duration
-	MaxWorkers             int
-	MiddlewareLookupGlobal middlewarelookup.MiddlewareLookupInterface
+	PluginLookupByJob  *pluginlookup.JobPluginLookup
+	PluginLookupGlobal pluginlookup.PluginLookupInterface
+	JobStuckHandler    JobStuckHandler
+	JobStuckCount      *atomic.Int32
+	JobStuckThreshold  time.Duration
+	JobTimeout         time.Duration
+	MaxWorkers         int
 
 	// Notifier is a notifier for subscribing to new job inserts and job
 	// control. If nil, the producer will operate in poll-only mode.
@@ -126,6 +128,15 @@ func (c *producerConfig) mustValidate() *producerConfig {
 	}
 	if c.FetchPollInterval <= 0 {
 		panic("producerConfig.FetchPollInterval must be greater than zero")
+	}
+	if c.JobStuckCount == nil {
+		c.JobStuckCount = &atomic.Int32{}
+	}
+	if c.JobStuckThreshold == 0 {
+		c.JobStuckThreshold = JobStuckThresholdDefault
+	}
+	if c.JobStuckThreshold < 0 {
+		panic("producerConfig.JobStuckThreshold must be greater or equal to zero")
 	}
 	if c.JobTimeout < -1 {
 		panic("producerConfig.JobTimeout must be greater or equal to zero")
@@ -181,15 +192,16 @@ type producer struct {
 	// Jobs which are currently being worked. Only used by main goroutine.
 	activeJobs map[int64]*jobexecutor.JobExecutor
 
-	completer    jobcompleter.JobCompleter
-	config       *producerConfig
-	id           atomic.Int64 // atomic because it's written at startup and read during shutdown
-	exec         riverdriver.Executor
-	errorHandler jobexecutor.ErrorHandler
-	fetchLimiter *chanutil.DebouncedChan
-	state        riverpilot.ProducerState
-	pilot        riverpilot.Pilot
-	workers      *Workers
+	completer       jobcompleter.JobCompleter
+	config          *producerConfig
+	id              atomic.Int64 // atomic because it's written at startup and read during shutdown
+	exec            riverdriver.Executor
+	errorHandler    jobexecutor.ErrorHandler
+	fetchLimiter    *chanutil.DebouncedChan
+	metricEmitHooks []rivertype.HookMetricEmit // memoized hooks of type HookMetricEmit for reuse in dispatchWork
+	state           riverpilot.ProducerState
+	pilot           riverpilot.Pilot
+	workers         *Workers
 
 	// Receives job IDs to cancel. Written by notifier goroutine, only read from
 	// main goroutine.
@@ -233,7 +245,7 @@ func newProducer(archetype *baseservice.Archetype, exec riverdriver.Executor, pi
 		errorHandler = &errorHandlerAdapter{config.ErrorHandler}
 	}
 
-	return baseservice.Init(archetype, &producer{
+	producer := baseservice.Init(archetype, &producer{
 		activeJobs:     make(map[int64]*jobexecutor.JobExecutor),
 		cancelCh:       make(chan int64, 1000),
 		completer:      config.Completer,
@@ -247,6 +259,10 @@ func newProducer(archetype *baseservice.Archetype, exec riverdriver.Executor, pi
 		retryPolicy:    config.RetryPolicy,
 		workers:        config.Workers,
 	})
+
+	producer.metricEmitHooks = producer.metricEmitHooksFromLookup()
+
+	return producer
 }
 
 // Start starts the producer. It backgrounds a goroutine which is stopped when
@@ -283,10 +299,7 @@ func (p *producer) StartWorkContext(fetchCtx, workCtx context.Context) error {
 		return errors.Is(err, startstop.ErrStop) || strings.HasSuffix(err.Error(), "conn closed") || fetchCtx.Err() != nil
 	}
 
-	fetchedQueue, err := func() (*rivertype.Queue, error) {
-		ctx, cancel := context.WithTimeout(fetchCtx, 10*time.Second)
-		defer cancel()
-
+	fetchedQueue, err := timeoututil.WithTimeoutV(fetchCtx, 10*time.Second, p.Name+".StartWorkContext", func(ctx context.Context) (*rivertype.Queue, error) {
 		p.Logger.DebugContext(ctx, p.Name+": Fetching initial queue settings", slog.String("queue", p.config.Queue))
 		return p.exec.QueueCreateOrSetUpdatedAt(ctx, &riverdriver.QueueCreateOrSetUpdatedAtParams{
 			Metadata: []byte("{}"),
@@ -294,7 +307,7 @@ func (p *producer) StartWorkContext(fetchCtx, workCtx context.Context) error {
 			Now:      p.Time.NowOrNil(),
 			Schema:   p.config.Schema,
 		})
-	}()
+	})
 	if err != nil {
 		stopped()
 		if isExpectedShutdownError(err) {
@@ -528,8 +541,10 @@ func (p *producer) fetchAndRunLoop(fetchCtx, workCtx context.Context) {
 		case msg := <-p.queueControlCh:
 			switch msg.Action {
 			case controlActionCancel:
-				// Separate this case to make linter happy:
-				p.Logger.DebugContext(workCtx, p.Name+": Unhandled queue control action", "action", msg.Action)
+				// This path is only expected to take effect in poll-only mode, and
+				// only works for the case of a single process. Multi-process setups
+				// will have to wait for the next poll event for a cancel to take effect.
+				p.maybeCancelJob(workCtx, msg.JobID)
 			case controlActionMetadataChanged:
 				p.Logger.DebugContext(workCtx, p.Name+": Queue metadata changed", slog.String("queue", p.config.Queue), slog.String("queue_in_message", msg.Queue))
 				p.testSignals.MetadataChanged.Signal(struct{}{})
@@ -679,23 +694,22 @@ func (p *producer) finalizeShutdown(ctx context.Context) {
 	)
 
 	attemptShutdown := func(timeout time.Duration) error {
-		ctx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
-
-		if err := p.pilot.ProducerShutdown(ctx, p.exec, &riverpilot.ProducerShutdownParams{
-			ProducerID: p.id.Load(),
-			Queue:      p.config.Queue,
-			Schema:     p.config.Schema,
-		}); err != nil {
-			// Don't retry on these errors:
-			// - context.Canceled: parent context is canceled, so retrying with a new timeout won't help
-			// - ErrClosedPool: the database connection pool is closed, so retrying won't succeed
-			if errors.Is(err, context.Canceled) || errors.Is(err, riverdriver.ErrClosedPool) {
-				return nil
+		return timeoututil.WithTimeout(ctx, timeout, p.Name+".finalizeShutdown", func(ctx context.Context) error {
+			if err := p.pilot.ProducerShutdown(ctx, p.exec, &riverpilot.ProducerShutdownParams{
+				ProducerID: p.id.Load(),
+				Queue:      p.config.Queue,
+				Schema:     p.config.Schema,
+			}); err != nil {
+				// Don't retry on these errors:
+				// - context.Canceled: parent context is canceled, so retrying with a new timeout won't help
+				// - ErrClosedPool: the database connection pool is closed, so retrying won't succeed
+				if errors.Is(err, context.Canceled) || errors.Is(err, riverdriver.ErrClosedPool) {
+					return nil
+				}
+				return err
 			}
-			return err
-		}
-		return nil
+			return nil
+		})
 	}
 
 	// Progressive retry with increasing timeouts:
@@ -727,10 +741,42 @@ func (p *producer) addActiveJob(id int64, executor *jobexecutor.JobExecutor) {
 }
 
 func (p *producer) removeActiveJob(job *rivertype.JobRow) {
+	executor := p.activeJobs[job.ID]
 	delete(p.activeJobs, job.ID)
-	p.numJobsActive.Add(-1)
+	if executor == nil || executor.TryCloseSlot() {
+		p.numJobsActive.Add(-1)
+	}
 	p.numJobsRan.Add(1)
 	p.state.JobFinish(job)
+}
+
+func (p *producer) handleWorkerStuck(ctx context.Context, executor *jobexecutor.JobExecutor, job *rivertype.JobRow) {
+	p.numJobsStuck.Add(1)
+	totalStuckJobs := int(p.config.JobStuckCount.Add(1))
+
+	if p.config.JobStuckHandler == nil {
+		return
+	}
+
+	result := p.config.JobStuckHandler(ctx, JobStuckHandlerParams{
+		ID:             job.ID,
+		Kind:           job.Kind,
+		Queue:          job.Queue,
+		TotalStuckJobs: totalStuckJobs,
+	})
+	if !result.AddWorkerSlot || !executor.TryCloseSlot() {
+		return
+	}
+
+	p.numJobsActive.Add(-1)
+	if p.fetchLimiter != nil {
+		p.fetchLimiter.Call()
+	}
+}
+
+func (p *producer) handleWorkerUnstuck() {
+	p.numJobsStuck.Add(-1)
+	p.config.JobStuckCount.Add(-1)
 }
 
 func (p *producer) maybeCancelJob(ctx context.Context, id int64) {
@@ -741,7 +787,33 @@ func (p *producer) maybeCancelJob(ctx context.Context, id int64) {
 	executor.Cancel(ctx)
 }
 
+func (p *producer) metricEmitHooksFromLookup() []rivertype.HookMetricEmit {
+	pluginLookup := p.config.PluginLookupGlobal
+	if pluginLookup == nil {
+		return nil
+	}
+
+	plugins := pluginLookup.ByKind(pluginlookup.PluginKindHookMetricEmit)
+	if len(plugins) < 1 {
+		return nil
+	}
+
+	metricEmitHooks := make([]rivertype.HookMetricEmit, len(plugins))
+	for i, plugin := range plugins {
+		metricEmitHooks[i] = plugin.(rivertype.HookMetricEmit) //nolint:forcetypeassert
+	}
+
+	return metricEmitHooks
+}
+
 func (p *producer) dispatchWork(workCtx context.Context, count int, fetchResultCh chan<- producerFetchResult) {
+	// When a queue is paused, innerFetchLoop dispatches with count zero so it can
+	// continue servicing state changes without attempting to lock jobs or emit metrics.
+	if count <= 0 {
+		fetchResultCh <- producerFetchResult{}
+		return
+	}
+
 	// This intentionally removes any deadlines or cancellation from the parent
 	// context because we don't want it to get cancelled if the producer is asked
 	// to shut down. In that situation, we want to finish fetching any jobs we are
@@ -754,6 +826,11 @@ func (p *producer) dispatchWork(workCtx context.Context, count int, fetchResultC
 	// Maximum size of the `attempted_by` array on each job row. This maximum is
 	// rarely hit, but exists to protect against degenerate cases.
 	const maxAttemptedBy = 100
+
+	var startedAt time.Time
+	if len(p.metricEmitHooks) > 0 {
+		startedAt = time.Now()
+	}
 
 	jobs, err := p.pilot.JobGetAvailable(ctx, p.exec, p.state, &riverdriver.JobGetAvailableParams{
 		ClientID:       p.config.ClientID,
@@ -769,7 +846,28 @@ func (p *producer) dispatchWork(workCtx context.Context, count int, fetchResultC
 		return
 	}
 
+	if len(p.metricEmitHooks) > 0 {
+		p.emitMetric(ctx, &rivertype.HookMetricEmitParams{
+			Metric: &rivertype.JobGetAvailableDurationMetric{
+				Duration: time.Since(startedAt),
+				Queue:    p.config.Queue,
+			},
+		})
+		p.emitMetric(ctx, &rivertype.HookMetricEmitParams{
+			Metric: &rivertype.JobGetAvailableCountMetric{
+				Count: len(jobs),
+				Queue: p.config.Queue,
+			},
+		})
+	}
+
 	fetchResultCh <- producerFetchResult{jobs: jobs}
+}
+
+func (p *producer) emitMetric(ctx context.Context, params *rivertype.HookMetricEmitParams) {
+	for _, hook := range p.metricEmitHooks {
+		hook.MetricEmit(ctx, params)
+	}
 }
 
 // Periodically logs an informational log line giving some insight into the
@@ -820,28 +918,29 @@ func (p *producer) startNewExecutors(workCtx context.Context, jobs []*rivertype.
 		// jobCancel will always be called by the executor to prevent leaks.
 		jobCtx, jobCancel := context.WithCancelCause(workCtx)
 
-		executor := baseservice.Init(&p.Archetype, &jobexecutor.JobExecutor{
+		var executor *jobexecutor.JobExecutor
+		executor = baseservice.Init(&p.Archetype, &jobexecutor.JobExecutor{
 			CancelFunc:               jobCancel,
 			ClientJobTimeout:         p.jobTimeout,
 			ClientRetryPolicy:        p.retryPolicy,
 			Completer:                p.completer,
 			DefaultClientRetryPolicy: &DefaultClientRetryPolicy{},
 			ErrorHandler:             p.errorHandler,
-			HookLookupByJob:          p.config.HookLookupByJob,
-			HookLookupGlobal:         p.config.HookLookupGlobal,
-			MiddlewareLookupGlobal:   p.config.MiddlewareLookupGlobal,
+			PluginLookupByJob:        p.config.PluginLookupByJob,
+			PluginLookupGlobal:       p.config.PluginLookupGlobal,
 			JobRow:                   job,
 			ProducerCallbacks: struct {
 				JobDone func(jobRow *rivertype.JobRow)
-				Stuck   func()
+				Stuck   func(ctx context.Context, jobRow *rivertype.JobRow)
 				Unstuck func()
 			}{
 				JobDone: p.handleWorkerDone,
-				Stuck:   func() { p.numJobsStuck.Add(1) },
-				Unstuck: func() { p.numJobsStuck.Add(-1) },
+				Stuck:   func(ctx context.Context, jobRow *rivertype.JobRow) { p.handleWorkerStuck(ctx, executor, jobRow) },
+				Unstuck: p.handleWorkerUnstuck,
 			},
-			SchedulerInterval: p.config.SchedulerInterval,
-			WorkUnit:          workUnit,
+			SchedulerInterval:      p.config.SchedulerInterval,
+			StuckThresholdOverride: p.config.JobStuckThreshold,
+			WorkUnit:               workUnit,
 		})
 		p.addActiveJob(job.ID, executor)
 
@@ -871,15 +970,12 @@ func (p *producer) pollForSettingChanges(ctx context.Context, wg *sync.WaitGroup
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			updatedQueue, err := func() (*rivertype.Queue, error) {
-				ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-				defer cancel()
-
+			updatedQueue, err := timeoututil.WithTimeoutV(ctx, 10*time.Second, p.Name+".pollForSettingChanges", func(ctx context.Context) (*rivertype.Queue, error) {
 				return p.exec.QueueGet(ctx, &riverdriver.QueueGetParams{
 					Name:   p.config.Queue,
 					Schema: p.config.Schema,
 				})
-			}()
+			})
 			if err != nil {
 				// Don't log if this is part of a standard shutdown.
 				if !errors.Is(context.Cause(ctx), startstop.ErrStop) {
@@ -958,15 +1054,14 @@ func (p *producer) reportProducerStatusLoop(ctx context.Context, wg *sync.WaitGr
 }
 
 func (p *producer) reportProducerStatusOnce(ctx context.Context) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	p.Logger.DebugContext(ctx, p.Name+": Reporting producer status", slog.Int64("id", p.id.Load()), slog.String("queue", p.config.Queue))
-	err := p.pilot.ProducerKeepAlive(ctx, p.exec, &riverdriver.ProducerKeepAliveParams{
-		ID:                    p.id.Load(),
-		QueueName:             p.config.Queue,
-		Schema:                p.config.Schema,
-		StaleUpdatedAtHorizon: p.Time.Now().Add(-p.config.StaleProducerRetentionPeriod),
+	err := timeoututil.WithTimeout(ctx, 10*time.Second, p.Name+".reportProducerStatusOnce", func(ctx context.Context) error {
+		p.Logger.DebugContext(ctx, p.Name+": Reporting producer status", slog.Int64("id", p.id.Load()), slog.String("queue", p.config.Queue))
+		return p.pilot.ProducerKeepAlive(ctx, p.exec, &riverdriver.ProducerKeepAliveParams{
+			ID:                    p.id.Load(),
+			QueueName:             p.config.Queue,
+			Schema:                p.config.Schema,
+			StaleUpdatedAtHorizon: p.Time.Now().Add(-p.config.StaleProducerRetentionPeriod),
+		})
 	})
 	if err != nil && errors.Is(context.Cause(ctx), startstop.ErrStop) {
 		return
@@ -999,15 +1094,15 @@ func (p *producer) reportQueueStatusLoop(ctx context.Context, wg *sync.WaitGroup
 }
 
 func (p *producer) reportQueueStatusOnce(ctx context.Context) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	p.Logger.DebugContext(ctx, p.Name+": Reporting queue status", slog.String("queue", p.config.Queue))
-	_, err := p.exec.QueueCreateOrSetUpdatedAt(ctx, &riverdriver.QueueCreateOrSetUpdatedAtParams{
-		Metadata: []byte("{}"),
-		Name:     p.config.Queue,
-		Now:      p.Time.NowOrNil(),
-		Schema:   p.config.Schema,
+	err := timeoututil.WithTimeout(ctx, 10*time.Second, p.Name+".reportQueueStatusOnce", func(ctx context.Context) error {
+		p.Logger.DebugContext(ctx, p.Name+": Reporting queue status", slog.String("queue", p.config.Queue))
+		_, err := p.exec.QueueCreateOrSetUpdatedAt(ctx, &riverdriver.QueueCreateOrSetUpdatedAtParams{
+			Metadata: []byte("{}"),
+			Name:     p.config.Queue,
+			Now:      p.Time.NowOrNil(),
+			Schema:   p.config.Schema,
+		})
+		return err
 	})
 	if err != nil && errors.Is(context.Cause(ctx), startstop.ErrStop) {
 		return

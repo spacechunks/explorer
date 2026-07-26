@@ -8,12 +8,12 @@ import (
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/internal/execution"
-	"github.com/riverqueue/river/internal/hooklookup"
 	"github.com/riverqueue/river/internal/jobcompleter"
 	"github.com/riverqueue/river/internal/jobexecutor"
 	"github.com/riverqueue/river/internal/maintenance"
-	"github.com/riverqueue/river/internal/middlewarelookup"
-	"github.com/riverqueue/river/internal/rivermiddleware"
+	"github.com/riverqueue/river/internal/pluginconfig"
+	"github.com/riverqueue/river/internal/pluginlookup"
+	"github.com/riverqueue/river/internal/riverplugin"
 	"github.com/riverqueue/river/riverdriver"
 	"github.com/riverqueue/river/rivershared/baseservice"
 	"github.com/riverqueue/river/rivershared/riversharedtest"
@@ -147,16 +147,14 @@ func (w *Worker[T, TTx]) workJob(ctx context.Context, tb testing.TB, tx TTx, job
 	}
 	completer := jobcompleter.NewInlineCompleter(archetype, w.config.Schema, exec, w.client.Pilot(), subscribeCh)
 
-	for _, hook := range w.config.Hooks {
-		if withBaseService, ok := hook.(baseservice.WithBaseService); ok {
-			baseservice.Init(archetype, withBaseService)
-		}
-	}
-	for _, middleware := range w.config.Middleware {
-		if withBaseService, ok := middleware.(baseservice.WithBaseService); ok {
-			baseservice.Init(archetype, withBaseService)
-		}
-	}
+	var (
+		hooks      = w.config.Hooks
+		middleware = pluginconfig.CombinedMiddleware(w.config.Middleware, w.config.JobInsertMiddleware, w.config.WorkerMiddleware) //nolint:staticcheck
+		plugins    = append(riverplugin.DefaultPlugins(), w.config.Plugins...)
+	)
+	pluginlookup.InitBaseServices(archetype, hooks)
+	pluginlookup.InitBaseServices(archetype, middleware)
+	pluginlookup.InitBaseServices(archetype, plugins)
 
 	updatedJobRow, err := exec.JobUpdateFull(ctx, &riverdriver.JobUpdateFullParams{
 		ID:                  job.ID,
@@ -166,6 +164,7 @@ func (w *Worker[T, TTx]) workJob(ctx context.Context, tb testing.TB, tx TTx, job
 		AttemptedAtDoUpdate: true,
 		AttemptedBy:         append(job.AttemptedBy, w.config.ID),
 		AttemptedByDoUpdate: true,
+		Schema:              w.config.Schema,
 		StateDoUpdate:       true,
 		State:               rivertype.JobStateRunning,
 	})
@@ -204,17 +203,16 @@ func (w *Worker[T, TTx]) workJob(ctx context.Context, tb testing.TB, tx TTx, job
 				return nil
 			},
 		},
-		HookLookupGlobal:       hooklookup.NewHookLookup(w.config.Hooks),
-		HookLookupByJob:        hooklookup.NewJobHookLookup(),
-		JobRow:                 job,
-		MiddlewareLookupGlobal: middlewarelookup.NewMiddlewareLookup(append(rivermiddleware.DefaultMiddleware(), w.config.Middleware...)),
+		PluginLookupByJob:  pluginlookup.NewJobPluginLookup(),
+		PluginLookupGlobal: pluginlookup.NewPluginLookupFromConfig(hooks, middleware, plugins),
+		JobRow:             job,
 		ProducerCallbacks: struct {
 			JobDone func(jobRow *rivertype.JobRow)
-			Stuck   func()
+			Stuck   func(ctx context.Context, jobRow *rivertype.JobRow)
 			Unstuck func()
 		}{
 			JobDone: func(job *rivertype.JobRow) { close(executionDone) },
-			Stuck:   func() {},
+			Stuck:   func(ctx context.Context, jobRow *rivertype.JobRow) {},
 			Unstuck: func() {},
 		},
 		SchedulerInterval: maintenance.JobSchedulerIntervalDefault,

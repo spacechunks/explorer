@@ -14,12 +14,14 @@ import (
 	"github.com/riverqueue/river/riverdriver"
 	"github.com/riverqueue/river/rivershared/baseservice"
 	"github.com/riverqueue/river/rivershared/circuitbreaker"
+	"github.com/riverqueue/river/rivershared/riverpilot"
 	"github.com/riverqueue/river/rivershared/riversharedmaintenance"
 	"github.com/riverqueue/river/rivershared/startstop"
 	"github.com/riverqueue/river/rivershared/testsignal"
 	"github.com/riverqueue/river/rivershared/util/randutil"
 	"github.com/riverqueue/river/rivershared/util/serviceutil"
 	"github.com/riverqueue/river/rivershared/util/testutil"
+	"github.com/riverqueue/river/rivershared/util/timeoututil"
 	"github.com/riverqueue/river/rivershared/util/timeutil"
 	"github.com/riverqueue/river/rivertype"
 )
@@ -50,6 +52,9 @@ type JobRescuerConfig struct {
 	// Interval is the amount of time to wait between runs of the rescuer.
 	Interval time.Duration
 
+	// Pilot controls driver-level behavior that can be customized by plugins.
+	Pilot riverpilot.Pilot
+
 	// RescueAfter is the amount of time for a job to be active before it is
 	// considered stuck and should be rescued.
 	RescueAfter time.Duration
@@ -69,6 +74,9 @@ func (c *JobRescuerConfig) mustValidate() *JobRescuerConfig {
 	}
 	if c.Interval <= 0 {
 		panic("RescuerConfig.Interval must be above zero")
+	}
+	if c.Pilot == nil {
+		panic("RescuerConfig.Pilot must be set")
 	}
 	if c.RescueAfter <= 0 {
 		panic("RescuerConfig.JobDuration must be above zero")
@@ -103,12 +111,17 @@ type JobRescuer struct {
 
 func NewRescuer(archetype *baseservice.Archetype, config *JobRescuerConfig, exec riverdriver.Executor) *JobRescuer {
 	batchSizes := config.WithDefaults()
+	pilot := config.Pilot
+	if pilot == nil {
+		pilot = &riverpilot.StandardPilot{}
+	}
 
 	return baseservice.Init(archetype, &JobRescuer{
 		Config: (&JobRescuerConfig{
 			BatchSizes:          batchSizes,
 			ClientRetryPolicy:   config.ClientRetryPolicy,
 			Interval:            cmp.Or(config.Interval, JobRescuerIntervalDefault),
+			Pilot:               pilot,
 			RescueAfter:         cmp.Or(config.RescueAfter, JobRescuerRescueAfterDefault),
 			Schema:              config.Schema,
 			WorkUnitFactoryFunc: config.WorkUnitFactoryFunc,
@@ -179,10 +192,14 @@ type metadataWithCancelAttemptedAt struct {
 }
 
 func (s *JobRescuer) runOnce(ctx context.Context) (*rescuerRunOnceResult, error) {
+	var afterID int64
+
 	res := &rescuerRunOnceResult{}
+	stuckHorizon := time.Now().Add(-s.Config.RescueAfter)
 
 	for {
-		stuckJobs, err := s.getStuckJobs(ctx)
+		batchSize := s.batchSize()
+		stuckJobs, err := s.getStuckJobs(ctx, afterID, batchSize, stuckHorizon)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				s.reducedBatchSizeBreaker.Trip()
@@ -194,16 +211,20 @@ func (s *JobRescuer) runOnce(ctx context.Context) (*rescuerRunOnceResult, error)
 		s.reducedBatchSizeBreaker.ResetIfNotOpen()
 
 		s.TestSignals.FetchedBatch.Signal(struct{}{})
+		if len(stuckJobs) > 0 {
+			afterID = stuckJobs[len(stuckJobs)-1].ID
+		}
 
 		now := time.Now().UTC()
 
 		rescueManyParams := riverdriver.JobRescueManyParams{
-			ID:          make([]int64, 0, len(stuckJobs)),
-			Error:       make([][]byte, 0, len(stuckJobs)),
-			FinalizedAt: make([]*time.Time, 0, len(stuckJobs)),
-			ScheduledAt: make([]time.Time, 0, len(stuckJobs)),
-			Schema:      s.Config.Schema,
-			State:       make([]string, 0, len(stuckJobs)),
+			ID:           make([]int64, 0, len(stuckJobs)),
+			Error:        make([][]byte, 0, len(stuckJobs)),
+			FinalizedAt:  make([]*time.Time, 0, len(stuckJobs)),
+			ScheduledAt:  make([]time.Time, 0, len(stuckJobs)),
+			Schema:       s.Config.Schema,
+			State:        make([]string, 0, len(stuckJobs)),
+			StuckHorizon: stuckHorizon,
 		}
 
 		for _, job := range stuckJobs {
@@ -253,7 +274,7 @@ func (s *JobRescuer) runOnce(ctx context.Context) (*rescuerRunOnceResult, error)
 		}
 
 		if len(rescueManyParams.ID) > 0 {
-			_, err = s.exec.JobRescueMany(ctx, &rescueManyParams)
+			_, err = s.rescueMany(ctx, &rescueManyParams)
 			if err != nil {
 				return nil, fmt.Errorf("error rescuing stuck jobs: %w", err)
 			}
@@ -263,7 +284,7 @@ func (s *JobRescuer) runOnce(ctx context.Context) (*rescuerRunOnceResult, error)
 
 		// Number of rows fetched was less than query `LIMIT` which means work is
 		// done for this round:
-		if len(stuckJobs) < s.batchSize() {
+		if len(stuckJobs) < batchSize {
 			break
 		}
 
@@ -273,16 +294,23 @@ func (s *JobRescuer) runOnce(ctx context.Context) (*rescuerRunOnceResult, error)
 	return res, nil
 }
 
-func (s *JobRescuer) getStuckJobs(ctx context.Context) ([]*rivertype.JobRow, error) {
-	ctx, cancelFunc := context.WithTimeout(ctx, riversharedmaintenance.TimeoutDefault)
-	defer cancelFunc()
-
-	stuckHorizon := time.Now().Add(-s.Config.RescueAfter)
-
-	return s.exec.JobGetStuck(ctx, &riverdriver.JobGetStuckParams{
-		Max:          s.batchSize(),
+func (s *JobRescuer) getStuckJobs(ctx context.Context, afterID int64, batchSize int, stuckHorizon time.Time) ([]*rivertype.JobRow, error) {
+	params := &riverdriver.JobGetStuckParams{
+		AfterID:      afterID,
+		Max:          batchSize,
 		Schema:       s.Config.Schema,
 		StuckHorizon: stuckHorizon,
+	}
+
+	return timeoututil.WithTimeoutV(ctx, riversharedmaintenance.TimeoutDefault, s.Name+".getStuckJobs", func(ctx context.Context) ([]*rivertype.JobRow, error) {
+		if pilot, ok := s.Config.Pilot.(riverpilot.PilotJobRescuer); ok {
+			return pilot.JobGetStuck(ctx, s.exec, params)
+		}
+
+		// Compatibility fallback for Pilot implementations from before
+		// PilotJobRescuer. Once Pilot embeds PilotJobRescuer, replace the assertion
+		// above and this fallback with a direct call to s.Config.Pilot.JobGetStuck.
+		return s.exec.JobGetStuck(ctx, params)
 	})
 }
 
@@ -308,11 +336,21 @@ func (s *JobRescuer) makeRetryDecision(ctx context.Context, job *rivertype.JobRo
 
 	workUnit := workUnitFactory.MakeUnit(job)
 	if err := workUnit.UnmarshalJob(); err != nil {
-		s.Logger.ErrorContext(ctx, s.Name+": Error unmarshaling job args: %s"+err.Error(),
-			slog.String("job_kind", job.Kind), slog.Int64("job_id", job.ID))
+		s.Logger.ErrorContext(ctx, s.Name+": Error unmarshaling job args",
+			slog.String("error", err.Error()),
+			slog.String("job_kind", job.Kind),
+			slog.Int64("job_id", job.ID),
+		)
+
+		if job.Attempt < max(job.MaxAttempts, 0) {
+			return jobRetryDecisionRetry, s.Config.ClientRetryPolicy.NextRetry(job)
+		}
+
+		return jobRetryDecisionDiscard, time.Time{}
 	}
 
-	if workUnit.Timeout() != 0 && now.Sub(*job.AttemptedAt) < workUnit.Timeout() {
+	timeout := workUnit.Timeout()
+	if timeout < 0 || timeout > 0 && now.Sub(*job.AttemptedAt) < timeout {
 		return jobRetryDecisionIgnore, time.Time{}
 	}
 
@@ -326,4 +364,15 @@ func (s *JobRescuer) makeRetryDecision(ctx context.Context, job *rivertype.JobRo
 	}
 
 	return jobRetryDecisionDiscard, time.Time{}
+}
+
+func (s *JobRescuer) rescueMany(ctx context.Context, params *riverdriver.JobRescueManyParams) (*struct{}, error) {
+	if pilot, ok := s.Config.Pilot.(riverpilot.PilotJobRescuer); ok {
+		return pilot.JobRescueMany(ctx, s.exec, params)
+	}
+
+	// Compatibility fallback for Pilot implementations from before
+	// PilotJobRescuer. Once Pilot embeds PilotJobRescuer, replace the assertion
+	// above and this fallback with a direct call to s.Config.Pilot.JobRescueMany.
+	return s.exec.JobRescueMany(ctx, params)
 }
