@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.30
 	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.3.5
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.106.0
-	github.com/aws/smithy-go v1.27.4
+	github.com/aws/smithy-go v1.27.5
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cilium/ebpf v0.22.0
 	github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2
