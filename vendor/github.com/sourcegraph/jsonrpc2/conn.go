@@ -27,6 +27,7 @@ type Conn struct {
 
 	sending sync.Mutex
 
+	cancelCtx  context.CancelFunc
 	disconnect chan struct{}
 
 	logger Logger
@@ -43,13 +44,19 @@ var _ JSONRPC2 = (*Conn)(nil)
 // JSON-RPC protocol is symmetric, so a Conn runs on both ends of a
 // client-server connection.
 //
-// NewClient consumes conn, so you should call Close on the returned
-// client not on the given conn.
+// NewConn consumes stream, so you should call Close on the returned
+// Conn not on the given stream or its underlying connection.
+//
+// Conn is closed when the given context's Done channel is closed.
 func NewConn(ctx context.Context, stream ObjectStream, h Handler, opts ...ConnOpt) *Conn {
+
+	ctx, cancel := context.WithCancel(ctx)
+
 	c := &Conn{
 		stream:     stream,
 		h:          h,
 		pending:    map[ID]*call{},
+		cancelCtx:  cancel,
 		disconnect: make(chan struct{}),
 		logger:     log.New(os.Stderr, "", log.LstdFlags),
 	}
@@ -60,6 +67,12 @@ func NewConn(ctx context.Context, stream ObjectStream, h Handler, opts ...ConnOp
 		opt(c)
 	}
 	go c.readMessages(ctx)
+
+	go func() {
+		<-ctx.Done()
+		c.close(nil)
+	}()
+
 	return c
 }
 
@@ -167,23 +180,29 @@ func (c *Conn) SendResponse(ctx context.Context, resp *Response) error {
 
 func (c *Conn) close(cause error) error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	if c.closed {
+		c.mu.Unlock()
 		return ErrClosed
 	}
+	c.closed = true
 
 	for _, call := range c.pending {
 		close(call.done)
 	}
 
+	close(c.disconnect)
+	c.mu.Unlock()
+
+	c.cancelCtx()
+	err := c.stream.Close()
+
+	// The logger may call back into c, so invoke it only after shutdown is
+	// complete and c.mu is unlocked.
 	if cause != nil && cause != io.EOF && cause != io.ErrUnexpectedEOF {
 		c.logger.Printf("jsonrpc2: protocol error: %v\n", cause)
 	}
 
-	close(c.disconnect)
-	c.closed = true
-	return c.stream.Close()
+	return err
 }
 
 func (c *Conn) readMessages(ctx context.Context) {

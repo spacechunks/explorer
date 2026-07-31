@@ -845,7 +845,7 @@ github.com/shirou/gopsutil/v4/process
 # github.com/sirupsen/logrus v1.9.4
 ## explicit; go 1.17
 github.com/sirupsen/logrus
-# github.com/sourcegraph/jsonrpc2 v0.2.1
+# github.com/sourcegraph/jsonrpc2 v0.2.2
 ## explicit; go 1.12
 github.com/sourcegraph/jsonrpc2
 github.com/sourcegraph/jsonrpc2/websocket
