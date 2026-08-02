@@ -81,7 +81,7 @@ func main() {
 				&stateData,
 				cfg.IDPClientID,
 				cfg.IDPIssuerEndpoint,
-				userv1alpha1.NewUserServiceClient(conn),
+				cfg.IDPOrgID,
 			),
 			State: stateData,
 		}

@@ -29,19 +29,20 @@ import (
 
 var DefaultConfig = Config{
 	ControlPlaneEndpoint: "api.explorer.chunks.space:443",
-	IDPIssuerEndpoint:    "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-	IDPClientID:          "c740e883-16dd-4c0c-a50b-b19de508b70a",
+	IDPIssuerEndpoint:    "https://iam.chunks.space",
+	IDPClientID:          "384477465310986287",
+	IDPOrgID:             "384477461854814255",
 }
 
 type Config struct {
 	ControlPlaneEndpoint string `json:"controlPlaneEndpoint"`
 	IDPIssuerEndpoint    string `json:"idpIssuerEndpoint"`
 	IDPClientID          string `json:"idpClientId"`
+	IDPOrgID             string `json:"idpOrgId"`
 }
 
 type Data struct {
-	IDToken              string `json:"idToken"`
-	ControlPlaneAPIToken string `json:"controlPlaneApiToken"`
+	AccessToken string `json:"accessToken"`
 }
 
 func New() (Data, error) {
@@ -67,12 +68,8 @@ func New() (Data, error) {
 }
 
 func (d *Data) Update(new Data) {
-	if new.ControlPlaneAPIToken != "" {
-		d.ControlPlaneAPIToken = new.ControlPlaneAPIToken
-	}
-
-	if new.IDToken != "" {
-		d.IDToken = new.IDToken
+	if new.AccessToken != "" {
+		d.AccessToken = new.AccessToken
 	}
 
 	// only log it, because we can still work with it in memory.

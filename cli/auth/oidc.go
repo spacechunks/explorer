@@ -29,14 +29,12 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/pkg/browser"
-	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/cli/state"
 	"golang.org/x/oauth2"
 )
 
 type Service interface {
-	APIToken(ctx context.Context) (string, error)
-	IDToken(ctx context.Context) (string, error)
+	AccessToken(ctx context.Context) (string, error)
 }
 
 func NewOIDC(
@@ -44,49 +42,35 @@ func NewOIDC(
 	state *state.Data,
 	clientID string,
 	issuerEndpoint string,
-	client userv1alpha1.UserServiceClient,
+	orgID string,
+
 ) *OIDC {
 	return &OIDC{
 		logger:         logger,
 		issuerEndpoint: issuerEndpoint,
 		clientID:       clientID,
 		state:          state,
-		userClient:     client,
+		orgID:          orgID,
 	}
 }
 
 type OIDC struct {
 	logger         *slog.Logger
 	issuerEndpoint string
-	userClient     userv1alpha1.UserServiceClient
 	clientID       string
 	state          *state.Data
+	orgID          string
 }
 
-func (svc OIDC) APIToken(ctx context.Context) (string, error) {
-	if err := svc.validateToken(svc.state.ControlPlaneAPIToken); err != nil {
-		// the api token is not valid, so we need a new one.
-		// now first check if our id token is still valid.
-		var idTok string
-		if err := svc.validateToken(svc.state.IDToken); err != nil {
-			idTok, err = svc.getIDToken(ctx)
-			if err != nil {
-				return "", fmt.Errorf("id token: %w", err)
-			}
-		}
-
-		svc.state.Update(state.Data{
-			IDToken: idTok,
-		})
-
-		// get our api token with the still valid or recently renewed id token
-		apiTok, err := svc.getAPIToken(ctx, svc.state.IDToken)
+func (svc OIDC) AccessToken(ctx context.Context) (string, error) {
+	if err := svc.validateToken(svc.state.AccessToken); err != nil {
+		tok, err := svc.getAccessToken(ctx, svc.orgID)
 		if err != nil {
-			return "", fmt.Errorf("api token: %w", err)
+			return "", fmt.Errorf("unable to get access token: %w", err)
 		}
 
 		svc.state.Update(state.Data{
-			ControlPlaneAPIToken: apiTok,
+			AccessToken: tok,
 		})
 	}
 
@@ -95,20 +79,7 @@ func (svc OIDC) APIToken(ctx context.Context) (string, error) {
 	// valid, because the only thing we need to the control plane
 	// is the api token. once it's expired we'll check the id token
 	// again and possibly renew it.
-	return svc.state.ControlPlaneAPIToken, nil
-}
-
-func (svc OIDC) IDToken(ctx context.Context) (string, error) {
-	tok, err := svc.getIDToken(ctx)
-	if err != nil {
-		return "", fmt.Errorf("id token: %w", err)
-	}
-
-	svc.state.Update(state.Data{
-		IDToken: tok,
-	})
-
-	return tok, nil
+	return svc.state.AccessToken, nil
 }
 
 type expireEarlier struct {
@@ -147,17 +118,7 @@ func (svc OIDC) validateToken(token string) error {
 	return nil
 }
 
-func (svc OIDC) getAPIToken(ctx context.Context, idToken string) (string, error) {
-	resp, err := svc.userClient.Login(ctx, &userv1alpha1.LoginRequest{
-		IdToken: idToken,
-	})
-	if err != nil {
-		return "", err
-	}
-	return resp.ApiToken, nil
-}
-
-func (svc OIDC) getIDToken(ctx context.Context) (string, error) {
+func (svc OIDC) getAccessToken(ctx context.Context, orgID string) (string, error) {
 	provider, err := oidc.NewProvider(ctx, svc.issuerEndpoint)
 	if err != nil {
 		return "", fmt.Errorf("provider: %w", err)
@@ -166,21 +127,23 @@ func (svc OIDC) getIDToken(ctx context.Context) (string, error) {
 	var (
 		cfg = oauth2.Config{
 			ClientID:    svc.clientID,
-			RedirectURL: "http://localhost:8556",
+			RedirectURL: "http://localhost:64554",
 			Endpoint:    provider.Endpoint(),
-			Scopes:      []string{oidc.ScopeOpenID, "profile", "email", "offline_access"},
+			Scopes: []string{
+				oidc.ScopeOpenID,
+				"profile",
+				"email",
+				fmt.Sprintf("urn:zitadel:iam:org:id:%s", orgID),
+			},
 		}
-		verifier      = oauth2.GenerateVerifier()
-		stateParam    = oauth2.GenerateVerifier()
-		tokenVerifier = provider.Verifier(&oidc.Config{
-			ClientID: svc.clientID,
-		})
+		verifier   = oauth2.GenerateVerifier()
+		stateParam = oauth2.GenerateVerifier()
 	)
 
 	recv := make(chan callback)
 
 	go func() {
-		if err := svc.runHTTPCallbackServer(ctx, cfg, stateParam, verifier, tokenVerifier, recv); err != nil {
+		if err := svc.runHTTPCallbackServer(ctx, cfg, stateParam, verifier, recv); err != nil {
 			fmt.Println("Error running http callback server:", err)
 		}
 	}()
@@ -195,12 +158,12 @@ func (svc OIDC) getIDToken(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("id token callback: %v", cb.err)
 	}
 
-	return cb.idToken, nil
+	return cb.accessToken, nil
 }
 
 type callback struct {
-	idToken string
-	err     error
+	accessToken string
+	err         error
 }
 
 func (svc OIDC) runHTTPCallbackServer(
@@ -208,12 +171,11 @@ func (svc OIDC) runHTTPCallbackServer(
 	cfg oauth2.Config,
 	state string,
 	verifier string,
-	tokenVerifier *oidc.IDTokenVerifier,
 	recv chan callback,
 ) error {
 	var (
 		s = http.Server{
-			Addr: "localhost:8556",
+			Addr: "localhost:64554",
 		}
 		mux = http.NewServeMux()
 	)
@@ -244,25 +206,17 @@ func (svc OIDC) runHTTPCallbackServer(
 			return
 		}
 
-		idToken, ok := oauth2Token.Extra("id_token").(string)
+		accessToken, ok := oauth2Token.Extra("access_token").(string)
 		if !ok {
 			recv <- callback{
-				err: fmt.Errorf("no id_token field in oauth2 token"),
-			}
-			return
-		}
-
-		_, err = tokenVerifier.Verify(ctx, idToken)
-		if err != nil {
-			recv <- callback{
-				err: fmt.Errorf("failed to verify id token: %v", err),
+				err: fmt.Errorf("no access_token field in oauth2 token"),
 			}
 			return
 		}
 
 		_, _ = w.Write([]byte("Success! You can now close this browser window and return to the terminal."))
 		recv <- callback{
-			idToken: idToken,
+			accessToken: accessToken,
 		}
 	})
 

@@ -38,27 +38,27 @@ func newChunkCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 		Short: "Commands related to working with Chunks.",
 	}
 
-	publishCmd := requireAPIToken(ctx, cliCtx, publish.NewCommand)
+	publishCmd := requireAccessToken(ctx, cliCtx, publish.NewCommand)
 	publishCmd.Flags().StringP("file", "f", "", "Path to the chunk config file")
 
 	c.AddCommand(
 		publishCmd,
-		requireAPIToken(ctx, cliCtx, run.NewCommand),
-		requireAPIToken(ctx, cliCtx, list.NewCommand),
-		requireAPIToken(ctx, cliCtx, inspect.NewCommand),
-		requireAPIToken(ctx, cliCtx, deletechunk.NewCommand),
+		requireAccessToken(ctx, cliCtx, run.NewCommand),
+		requireAccessToken(ctx, cliCtx, list.NewCommand),
+		requireAccessToken(ctx, cliCtx, inspect.NewCommand),
+		requireAccessToken(ctx, cliCtx, deletechunk.NewCommand),
 	)
 	return c
 }
 
-func requireAPIToken(
+func requireAccessToken(
 	ctx context.Context,
 	cliCtx cli.Context,
 	fn func(context.Context, cli.Context) *cobra.Command,
 ) *cobra.Command {
 	cmd := fn(ctx, cliCtx)
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		tok, err := cliCtx.Auth.APIToken(ctx)
+		tok, err := cliCtx.Auth.AccessToken(ctx)
 		if err != nil {
 			return fmt.Errorf("authentication failed: %w", err)
 		}
