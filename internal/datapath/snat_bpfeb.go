@@ -40,6 +40,16 @@ type snatPtpSnatEntry struct {
 	_        [3]byte
 }
 
+// Names of all BPF objects in the ELF.
+//
+// Used for safe lookups in a Collection or CollectionSpec.
+const (
+	snatMapNetDataMap    = "net_data_map"
+	snatMapPtpSnatConfig = "ptp_snat_config"
+	snatProgSnat         = "snat"
+	snatVarHostPeerMac   = "host_peer_mac"
+)
+
 // loadSnat returns the embedded CollectionSpec for snat.
 func loadSnat() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_SnatBytes)
@@ -60,7 +70,7 @@ func loadSnat() (*ebpf.CollectionSpec, error) {
 //	*snatMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func loadSnatObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+func loadSnatObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := loadSnat()
 	if err != nil {
 		return err

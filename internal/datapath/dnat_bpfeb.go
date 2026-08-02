@@ -41,6 +41,16 @@ type dnatNetData struct {
 	_        [2]byte
 }
 
+// Names of all BPF objects in the ELF.
+//
+// Used for safe lookups in a Collection or CollectionSpec.
+const (
+	dnatMapNetDataMap     = "net_data_map"
+	dnatMapPtpDnatTargets = "ptp_dnat_targets"
+	dnatProgDnat          = "dnat"
+	dnatVarHostPeerMac    = "host_peer_mac"
+)
+
 // loadDnat returns the embedded CollectionSpec for dnat.
 func loadDnat() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_DnatBytes)
@@ -61,7 +71,7 @@ func loadDnat() (*ebpf.CollectionSpec, error) {
 //	*dnatMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func loadDnatObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+func loadDnatObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := loadDnat()
 	if err != nil {
 		return err

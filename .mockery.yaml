@@ -64,3 +64,6 @@ packages:
   github.com/envoyproxy/go-control-plane/pkg/cache/v3:
     interfaces:
       SnapshotCache:
+  github.com/spacechunks/explorer/controlplane/user:
+    interfaces:
+      Repository:
