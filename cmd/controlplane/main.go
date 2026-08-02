@@ -58,7 +58,7 @@ func main() {
 		secretKey                = fs.String("secret-key", "", "secret key to use for accessing the bucket")                                                                                                      //nolint:lll
 		presignedURLExpiry       = fs.Duration("presigned-url-expiry", 5*time.Minute, "when to expire the presigned URL")                                                                                         //nolint:lll
 		usePathStyle             = fs.Bool("use-path-style", true, "whether to use path style to access the bucket")                                                                                              //nolint:lll
-		idpOAuthIssuer           = fs.String("idp-oauth-issuer", "", "issuer to use for token verification") //nolint:lll
+		idpOAuthIssuer           = fs.String("idp-oauth-issuer", "", "issuer to use for token verification")                                                                                                      //nolint:lll
 		idpOAuthAllowedAudience  = fs.String("idp-oauth-allowed-audience", "", "audience to use for token verification")
 		idpOAuthJWKSURL          = fs.String("idp-oauth-jwks-url", "", "url to fetch keys from for token verification")                                                                             //nolint:lll
 		thumbnailMaxSizeKB       = fs.Int("thumbnail-max-size-kb", 1000, "max size a thumbnail can be in kilobytes")                                                                                //nolint:lll

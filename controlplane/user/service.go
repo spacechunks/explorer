@@ -54,7 +54,6 @@ func (s *service) Register(ctx context.Context, nickname string, acceptPrivacyPo
 		return apierrs.ErrPrivacyPolicyNotAccepted
 	}
 
-
 	// TODO: Get email from ctx
 
 	if _, err := s.repo.CreateUser(ctx, resource.User{
