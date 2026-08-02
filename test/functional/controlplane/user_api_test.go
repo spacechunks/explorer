@@ -22,15 +22,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/internal/resource"
-	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/testing/protocmp"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRegisterUser(t *testing.T) {
@@ -88,7 +84,7 @@ func TestRegisterUser(t *testing.T) {
 
 			cp.Run(t)
 
-			idTok := cp.IDP.IDToken(t)
+			idTok := cp.IDP.AccessToken(t)
 
 			if tt.createdUser != nil {
 				cp.Postgres.CreateUser(t, &tt.user)
@@ -108,67 +104,6 @@ func TestRegisterUser(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-		})
-	}
-}
-
-func TestLoginUser(t *testing.T) {
-	tests := []struct {
-		name       string
-		user       resource.User
-		createUser bool
-		err        error
-	}{
-		{
-			name:       "user can login",
-			user:       fixture.User(),
-			createUser: true,
-		},
-		{
-			name: "user doesnt exist",
-			user: fixture.User(),
-			err:  apierrs.ErrNotFound.GRPCStatus().Err(),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var (
-				ctx = context.Background()
-				cp  = fixture.NewControlPlane(t)
-			)
-
-			cp.Run(t)
-
-			idTok := cp.IDP.IDToken(t)
-
-			if tt.createUser {
-				cp.Postgres.CreateUser(t, &tt.user)
-			}
-
-			client := cp.UserClient(t)
-
-			resp, err := client.Login(ctx, &userv1alpha1.LoginRequest{
-				IdToken: idTok,
-			})
-
-			if tt.err != nil {
-				require.ErrorIs(t, err, tt.err)
-				return
-			}
-
-			require.NoError(t, err)
-
-			expected := &userv1alpha1.User{
-				Id:        tt.user.ID,
-				Nickname:  tt.user.Nickname,
-				CreatedAt: timestamppb.New(tt.user.CreatedAt),
-				UpdatedAt: timestamppb.New(tt.user.UpdatedAt),
-			}
-
-			if d := cmp.Diff(expected, resp.User, protocmp.Transform(), test.IgnoredProtoUserFields); d != "" {
-				t.Fatalf("mismatch (-want +got):\n%s", d)
-			}
 		})
 	}
 }

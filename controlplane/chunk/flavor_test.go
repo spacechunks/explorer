@@ -104,10 +104,11 @@ func TestCreateFlavor(t *testing.T) {
 				nil,
 				mockAccess,
 				chunk.Config{},
+				mock.NewMockUserRepository(t),
 			)
 			require.NoError(t, err)
 
-			ctx = context.WithValue(ctx, contextkey.ActorID, "blabla")
+			ctx = context.WithValue(ctx, contextkey.ActorEmail, "blabla")
 
 			tt.prep(mockRepo, mockAccess)
 
@@ -595,10 +596,11 @@ func TestCreateFlavorVersion(t *testing.T) {
 				nil,
 				mockAccess,
 				chunk.Config{},
+				mock.NewMockUserRepository(t),
 			)
 			require.NoError(t, err)
 
-			ctx = context.WithValue(ctx, contextkey.ActorID, "blabla")
+			ctx = context.WithValue(ctx, contextkey.ActorEmail, "blabla")
 
 			tt.prep(mockRepo, tt.newVersion, tt.prevVersion, mockAccess)
 

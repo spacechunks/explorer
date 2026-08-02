@@ -32,8 +32,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v4/jwa"
-	"github.com/lestrrat-go/jwx/v4/jwt"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
@@ -49,8 +47,8 @@ import (
 const (
 	ControlPlaneAddr        = "localhost:9012"
 	BaseImage               = "base-image:latest"
-	OAuthClientID           = "public-functest-client"
-	APITokenIssuer          = "functest-issuer.explorer.chunks.cloud"
+	OAuthAllowedAudience    = "public-functest-client"
+	OAuthTokenIssuer        = "http://localhost:3081"
 	ResourcePackTemplateKey = "explorer/pack_template.zip"
 	MaxChangeSetTarballSize = 1024
 )
@@ -157,9 +155,10 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 				// should stay at 2 seconds so TestGetUploadURLRenews passes
 				PresignedURLExpiry:            2 * time.Second,
 				UsePathStyle:                  false,
-				OAuthClientID:                 OAuthClientID,
-				OAuthIssuerURL:                c.IDP.Endpoint,
-				APITokenIssuer:                APITokenIssuer,
+				OAuthIssuer:                   c.IDP.Endpoint,
+				OAuthJWKSURL:                  OAuthTokenIssuer + "/keys",
+				OAuthAllowedAudience:          OAuthAllowedAudience,
+				APITokenIssuer:                OAuthTokenIssuer,
 				APITokenExpiry:                5 * time.Second,
 				APITokenSigningKey:            keyPem.String(),
 				ThumbnailMaxSizeKB:            100,
@@ -191,18 +190,7 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 // AddUserAPIKey generates a new signed api token for the given user id
 // and creates a grpc metadata pair that will be added to the passed context.
 func (c ControlPlane) AddUserAPIKey(t *testing.T, ctx *context.Context, u resource.User) {
-	apiKey, err := jwt.NewBuilder().
-		IssuedAt(time.Now()).
-		Issuer(APITokenIssuer).
-		Audience([]string{APITokenIssuer}).
-		Claim("user_id", u.ID).
-		Build()
-	require.NoError(t, err)
-
-	signed, err := jwt.Sign(apiKey, jwt.WithKey(jwa.ES256(), c.SigningKey))
-	require.NoError(t, err)
-
-	md := metadata.Pairs("authorization", string(signed))
+	md := metadata.Pairs("authorization", c.IDP.AccessToken(t, WithUsername(u.Email)))
 	out := metadata.NewOutgoingContext(*ctx, md)
 	*ctx = out
 }

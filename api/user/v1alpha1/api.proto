@@ -35,8 +35,6 @@ service UserService {
   // - ALREADY_EXISTS:
   //   - a user with the provided email or nickname does already exist
   rpc Register(RegisterRequest) returns (RegisterResponse);
-
-  rpc Login(LoginRequest) returns (LoginResponse);
 }
 
 message RegisterRequest {
@@ -46,13 +44,4 @@ message RegisterRequest {
 }
 
 message RegisterResponse {
-}
-
-message LoginRequest {
-  string id_token = 1;
-}
-
-message LoginResponse {
-  User user = 1;
-  string api_token = 2;
 }

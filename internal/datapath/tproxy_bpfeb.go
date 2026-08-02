@@ -26,6 +26,18 @@ type tproxyVethPair struct {
 	HostIfAddr  uint32
 }
 
+// Names of all BPF objects in the ELF.
+//
+// Used for safe lookups in a Collection or CollectionSpec.
+const (
+	tproxyMapOriginalDstMap  = "original_dst_map"
+	tproxyMapVethPairMap     = "veth_pair_map"
+	tproxyProgCtrPeerEgress  = "ctr_peer_egress"
+	tproxyProgGetsockopt     = "getsockopt"
+	tproxyProgHostPeerEgress = "host_peer_egress"
+	tproxyVarHostPeerMac     = "host_peer_mac"
+)
+
 // loadTproxy returns the embedded CollectionSpec for tproxy.
 func loadTproxy() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_TproxyBytes)
@@ -46,7 +58,7 @@ func loadTproxy() (*ebpf.CollectionSpec, error) {
 //	*tproxyMaps
 //
 // See ebpf.CollectionSpec.LoadAndAssign documentation for details.
-func loadTproxyObjects(obj interface{}, opts *ebpf.CollectionOptions) error {
+func loadTproxyObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := loadTproxy()
 	if err != nil {
 		return err

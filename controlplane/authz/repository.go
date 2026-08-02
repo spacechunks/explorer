@@ -25,7 +25,7 @@ import (
 )
 
 type Repository interface {
-	ChunkOwner(ctx context.Context, chunkID string) (resource.User, error)
-	FlavorOwner(ctx context.Context, flavorID string) (resource.User, error)
-	FlavorVersionOwner(ctx context.Context, flavorVersionID string) (resource.User, error)
+	ChunkOwner(ctx context.Context, chunkID string, email string) (resource.User, error)
+	FlavorOwner(ctx context.Context, flavorID string, email string) (resource.User, error)
+	FlavorVersionOwner(ctx context.Context, flavorVersionID string, email string) (resource.User, error)
 }

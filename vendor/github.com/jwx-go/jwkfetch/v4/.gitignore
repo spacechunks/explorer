@@ -1,0 +1,5 @@
+# Agent-tooling scratch directories and Go workspace files
+.tmp/
+.worktrees/
+go.work
+go.work.sum

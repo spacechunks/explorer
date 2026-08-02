@@ -56,6 +56,11 @@ staticPasswords:
     # bcrypt hash for password "password"
     hash: "$2a$12$FaR5JpO4Fqc5wVN/ZK1lSOxo3qFeaAfbFGMloenbNeLduQpCfDjj6"
     userID: "40d27820-b2e3-49ff-bb18-be59cda68db8"
+  - email: other-email@example.com
+    username: other-nickname
+    # bcrypt hash for password "password"
+    hash: "$2a$12$FaR5JpO4Fqc5wVN/ZK1lSOxo3qFeaAfbFGMloenbNeLduQpCfDjj6"
+    userID: "40d27820-b2e3-49ff-bb18-be59cda68db8"
 
 staticClients:
 - id: public-functest-client
@@ -118,12 +123,34 @@ func (i *IDP) Run(t *testing.T) {
 	i.Endpoint = "http://" + ip + ":3081"
 }
 
-func (i *IDP) IDToken(t *testing.T) string {
+type AccessTokenOption func(*AccessTokenOptions)
+
+type AccessTokenOptions struct {
+	Username string
+	Password string
+}
+
+func WithUsername(user string) AccessTokenOption {
+	return func(o *AccessTokenOptions) {
+		o.Username = user
+	}
+}
+
+func (i *IDP) AccessToken(t *testing.T, opts ...AccessTokenOption) string {
+	defaultOpts := AccessTokenOptions{
+		Username: "test-user@example.com",
+		Password: "password",
+	}
+
+	for _, o := range opts {
+		o(&defaultOpts)
+	}
+
 	form := url.Values{}
 	form.Set("grant_type", "password")
 	form.Set("scope", "openid profile email")
-	form.Set("username", "test-user@example.com")
-	form.Set("password", "password")
+	form.Set("username", defaultOpts.Username)
+	form.Set("password", defaultOpts.Password)
 
 	req, err := http.NewRequest(http.MethodPost, i.Endpoint+"/token", bytes.NewBufferString(form.Encode()))
 	require.NoError(t, err)
@@ -144,11 +171,11 @@ func (i *IDP) IDToken(t *testing.T) string {
 	}
 
 	data := struct {
-		IDToken string `json:"id_token"`
+		AccessToken string `json:"access_token"`
 	}{}
 
 	err = json.Unmarshal(body, &data)
 	require.NoError(t, err)
 
-	return data.IDToken
+	return data.AccessToken
 }

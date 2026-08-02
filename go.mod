@@ -33,6 +33,8 @@ require (
 	github.com/hetznercloud/hcloud-go/v2 v2.47.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/johannesboyne/gofakes3 v1.2.0
+	github.com/jwx-go/jwkfetch/v4 v4.0.4
+	github.com/lestrrat-go/httprc/v3 v3.0.6
 	github.com/lestrrat-go/jwx/v4 v4.2.0
 	github.com/magiconair/properties v1.18.11
 	github.com/moby/moby/api v1.55.0
@@ -133,7 +135,10 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.19.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
 	github.com/lestrrat-go/dsig v1.3.0 // indirect
+	github.com/lestrrat-go/httpcc v1.0.1 // indirect
+	github.com/lestrrat-go/option/v2 v2.0.0 // indirect
 	github.com/lestrrat-go/option/v3 v3.0.0-alpha1 // indirect
 	github.com/lib/pq v1.12.3 // indirect
 	github.com/lmittmann/tint v1.1.3 // indirect

@@ -21,6 +21,5 @@ package contextkey
 type Key string
 
 const (
-	APIToken Key = "api_token"
-	ActorID  Key = "actor_id"
+	ActorEmail Key = "actor_id"
 )

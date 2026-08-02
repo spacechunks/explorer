@@ -32,18 +32,18 @@ type accessRules struct {
 	OwnershipRule *OwnershipRule
 }
 
-func WithOwnershipRule(actorID string, resource ResourceDef) AccessRuleOption {
+func WithOwnershipRule(actorEmail string, resource ResourceDef) AccessRuleOption {
 	return func(rules *accessRules) {
 		rules.OwnershipRule = &OwnershipRule{
-			ActorID:  actorID,
-			Resource: resource,
+			ActorEmail: actorEmail,
+			Resource:   resource,
 		}
 	}
 }
 
 type OwnershipRule struct {
-	Resource ResourceDef
-	ActorID  string
+	Resource   ResourceDef
+	ActorEmail string
 }
 
 type AccessEvaluator interface {
@@ -81,19 +81,19 @@ func (e RuleEvaluator) evalOwnership(ctx context.Context, rule *OwnershipRule) e
 	var owner resource.User
 	switch rule.Resource.Type {
 	case ResourceTypeChunk:
-		o, err := e.repo.ChunkOwner(ctx, rule.Resource.ID)
+		o, err := e.repo.ChunkOwner(ctx, rule.Resource.ID, rule.ActorEmail)
 		if err != nil {
 			return fmt.Errorf("chunk: %w", err)
 		}
 		owner = o
 	case ResourceTypeFlavor:
-		o, err := e.repo.FlavorOwner(ctx, rule.Resource.ID)
+		o, err := e.repo.FlavorOwner(ctx, rule.Resource.ID, rule.ActorEmail)
 		if err != nil {
 			return fmt.Errorf("flavor: %w", err)
 		}
 		owner = o
 	case ResourceTypeFlavorVersion:
-		o, err := e.repo.FlavorVersionOwner(ctx, rule.Resource.ID)
+		o, err := e.repo.FlavorVersionOwner(ctx, rule.Resource.ID, rule.ActorEmail)
 		if err != nil {
 			return fmt.Errorf("flavor version: %w", err)
 		}
@@ -102,7 +102,10 @@ func (e RuleEvaluator) evalOwnership(ctx context.Context, rule *OwnershipRule) e
 		return fmt.Errorf("unknown resource type") // should not happen
 	}
 
-	if rule.ActorID != owner.ID {
+	fmt.Println("actor", rule.ActorEmail)
+	fmt.Println("o", owner.Email)
+
+	if rule.ActorEmail != owner.Email {
 		return apierrs.ErrPermissionDenied
 	}
 

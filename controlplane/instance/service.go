@@ -31,6 +31,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/chunk"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/node"
+	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/internal/resource"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -42,7 +43,7 @@ type Service interface {
 	RunFlavorVersion(
 		ctx context.Context,
 		flavorVersionID string,
-		ownerID string,
+		ownerEmail string,
 		orderedBy string,
 	) (resource.Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]resource.Instance, error)
@@ -54,6 +55,7 @@ type svc struct {
 	insRepo   Repository
 	nodeRepo  node.Repository
 	chunkRepo chunk.Repository
+	userRepo  user.Repository
 	metrics   metrics
 }
 
@@ -62,6 +64,7 @@ func NewService(
 	insRepo Repository,
 	nodeRepo node.Repository,
 	chunkRepo chunk.Repository,
+	userRepo user.Repository,
 ) (Service, error) {
 	m, err := initMetrics()
 	if err != nil {
@@ -73,6 +76,7 @@ func NewService(
 		insRepo:   insRepo,
 		nodeRepo:  nodeRepo,
 		chunkRepo: chunkRepo,
+		userRepo:  userRepo,
 		metrics:   m,
 	}, nil
 }
@@ -96,12 +100,17 @@ func (s *svc) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 func (s *svc) RunFlavorVersion(
 	ctx context.Context,
 	flavorVersionID string,
-	ownerID string,
+	ownerEmail string,
 	orderedBy string,
 ) (resource.Instance, error) {
 	n, err := s.nodeRepo.BestNode(ctx)
 	if err != nil {
 		return resource.Instance{}, fmt.Errorf("best node: %w", err)
+	}
+
+	u, err := s.userRepo.GetUserByEmail(ctx, ownerEmail)
+	if err != nil {
+		return resource.Instance{}, fmt.Errorf("get user: %w", err)
 	}
 
 	flavorID, err := s.chunkRepo.FlavorIDByFlavorVersionID(ctx, flavorVersionID)
@@ -137,7 +146,7 @@ func (s *svc) RunFlavorVersion(
 		FlavorVersion: flavor.Versions[idx],
 		State:         resource.InstanceStatePending,
 		Owner: resource.User{
-			ID: ownerID,
+			ID: u.ID,
 		},
 		OrderedBy: orderedBy,
 		CreatedAt: time.Now(),

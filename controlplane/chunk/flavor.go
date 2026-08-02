@@ -44,7 +44,7 @@ import (
  */
 
 func (s *svc) CreateFlavor(ctx context.Context, chunkID string, flavor resource.Flavor) (resource.Flavor, error) {
-	actorID, ok := ctx.Value(contextkey.ActorID).(string)
+	actorID, ok := ctx.Value(contextkey.ActorEmail).(string)
 	if !ok {
 		return resource.Flavor{}, errors.New("actor_id not found in context")
 	}
@@ -85,14 +85,14 @@ func (s *svc) CreateFlavorVersion(
 	flavorID string,
 	version resource.FlavorVersion,
 ) (resource.FlavorVersion, resource.FlavorVersionDiff, error) {
-	actorID, ok := ctx.Value(contextkey.ActorID).(string)
+	actorEmail, ok := ctx.Value(contextkey.ActorEmail).(string)
 	if !ok {
 		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, errors.New("actor_id not found in context")
 	}
 
 	if err := s.access.AccessAuthorized(
 		ctx,
-		authz.WithOwnershipRule(actorID, authz.FlavorResourceDef(flavorID)),
+		authz.WithOwnershipRule(actorEmail, authz.FlavorResourceDef(flavorID)),
 	); err != nil {
 		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("access: %w", err)
 	}
@@ -259,7 +259,7 @@ func cleanFileHashPaths(hashes []file.Hash) error {
 }
 
 func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
-	actorID, ok := ctx.Value(contextkey.ActorID).(string)
+	actorID, ok := ctx.Value(contextkey.ActorEmail).(string)
 	if !ok {
 		return errors.New("actor_id not found in context")
 	}
@@ -355,14 +355,14 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 }
 
 func (s *svc) DeleteFlavor(ctx context.Context, id string) error {
-	actorID, ok := ctx.Value(contextkey.ActorID).(string)
+	actorEmail, ok := ctx.Value(contextkey.ActorEmail).(string)
 	if !ok {
 		return errors.New("actor_id not found in context")
 	}
 
 	if err := s.access.AccessAuthorized(
 		ctx,
-		authz.WithOwnershipRule(actorID, authz.FlavorResourceDef(id)),
+		authz.WithOwnershipRule(actorEmail, authz.FlavorResourceDef(id)),
 	); err != nil {
 		return fmt.Errorf("access: %w", err)
 	}
@@ -384,7 +384,7 @@ func (s *svc) DeleteFlavor(ctx context.Context, id string) error {
 }
 
 func (s *svc) GetFlavor(ctx context.Context, id string) (resource.Flavor, error) {
-	_, ok := ctx.Value(contextkey.ActorID).(string)
+	_, ok := ctx.Value(contextkey.ActorEmail).(string)
 	if !ok {
 		return resource.Flavor{}, errors.New("actor_id not found in context")
 	}
