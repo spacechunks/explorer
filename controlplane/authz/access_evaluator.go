@@ -102,6 +102,9 @@ func (e RuleEvaluator) evalOwnership(ctx context.Context, rule *OwnershipRule) e
 		return fmt.Errorf("unknown resource type") // should not happen
 	}
 
+	fmt.Println("actor", rule.ActorEmail)
+	fmt.Println("o", owner.Email)
+
 	if rule.ActorEmail != owner.Email {
 		return apierrs.ErrPermissionDenied
 	}

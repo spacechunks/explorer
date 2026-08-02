@@ -190,18 +190,7 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 // AddUserAPIKey generates a new signed api token for the given user id
 // and creates a grpc metadata pair that will be added to the passed context.
 func (c ControlPlane) AddUserAPIKey(t *testing.T, ctx *context.Context, u resource.User) {
-	//apiKey, err := jwt.NewBuilder().
-	//	IssuedAt(time.Now()).
-	//	Issuer(APITokenIssuer).
-	//	Audience([]string{APITokenIssuer}).
-	//	Claim("user_id", u.ID).
-	//	Build()
-	//require.NoError(t, err)
-	//
-	//signed, err := jwt.Sign(apiKey, jwt.WithKey(jwa.ES256(), c.SigningKey))
-	//require.NoError(t, err)
-
-	md := metadata.Pairs("authorization", c.IDP.AccessToken(t))
+	md := metadata.Pairs("authorization", c.IDP.AccessToken(t, WithUsername(u.Email)))
 	out := metadata.NewOutgoingContext(*ctx, md)
 	*ctx = out
 }

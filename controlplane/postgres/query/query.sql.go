@@ -236,7 +236,7 @@ func (q *Queries) ChunkOwnerByChunkID(ctx context.Context, arg ChunkOwnerByChunk
 
 const chunkOwnerByFlavorID = `-- name: ChunkOwnerByFlavorID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
-    JOIN flavors f ON f.id = $1
+    JOIN flavors f ON f.id = $1 AND u.email = $2
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
 WHERE u.email = $2
