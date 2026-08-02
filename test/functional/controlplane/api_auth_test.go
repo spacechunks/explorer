@@ -20,14 +20,8 @@ package controlplane
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/rand"
-	"crypto/rsa"
 	"testing"
-	"time"
 
-	"github.com/lestrrat-go/jwx/v4/jwa"
-	"github.com/lestrrat-go/jwx/v4/jwt"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/internal/resource"
@@ -39,93 +33,25 @@ import (
 func TestToken(t *testing.T) {
 	tests := []struct {
 		name     string
-		metadata func(resource.User, *ecdsa.PrivateKey) metadata.MD
+		metadata func(resource.User, *fixture.IDP) metadata.MD
 		err      error
 	}{
 		{
 			name: "valid token",
-			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
-				apiKey, err := jwt.NewBuilder().
-					IssuedAt(time.Now()).
-					Issuer(fixture.APITokenIssuer).
-					Audience([]string{fixture.APITokenIssuer}).
-					Claim("user_id", u.ID).
-					Build()
-				require.NoError(t, err)
-
-				signed, err := jwt.Sign(apiKey, jwt.WithKey(jwa.ES256(), signingKey))
-				require.NoError(t, err)
-
-				return metadata.Pairs("authorization", string(signed))
+			metadata: func(u resource.User, idp *fixture.IDP) metadata.MD {
+				return metadata.Pairs("authorization", idp.AccessToken(t))
 			},
-		},
-		{
-			name: "invalid token wrong issuer",
-			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
-				apiKey, err := jwt.NewBuilder().
-					IssuedAt(time.Now()).
-					Issuer("WRONG ISSUER").
-					Audience([]string{fixture.APITokenIssuer}).
-					Claim("user_id", u.ID).
-					Build()
-				require.NoError(t, err)
-
-				signed, err := jwt.Sign(apiKey, jwt.WithKey(jwa.ES256(), signingKey))
-				require.NoError(t, err)
-
-				return metadata.Pairs("authorization", string(signed))
-			},
-			err: cperrs.ErrInvalidToken.GRPCStatus().Err(),
-		},
-		{
-			name: "invalid token wrong audience",
-			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
-				apiKey, err := jwt.NewBuilder().
-					IssuedAt(time.Now()).
-					Issuer(fixture.APITokenIssuer).
-					Audience([]string{"WRONG AUDIENCE"}).
-					Claim("user_id", u.ID).
-					Build()
-				require.NoError(t, err)
-
-				signed, err := jwt.Sign(apiKey, jwt.WithKey(jwa.ES256(), signingKey))
-				require.NoError(t, err)
-
-				return metadata.Pairs("authorization", string(signed))
-			},
-			err: cperrs.ErrInvalidToken.GRPCStatus().Err(),
-		},
-		{
-			name: "invalid token signed with wrong key",
-			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
-				apiKey, err := jwt.NewBuilder().
-					IssuedAt(time.Now()).
-					Issuer(fixture.APITokenIssuer).
-					Audience([]string{fixture.APITokenIssuer}).
-					Claim("user_id", u.ID).
-					Build()
-				require.NoError(t, err)
-
-				key, err := rsa.GenerateKey(rand.Reader, 2048)
-				require.NoError(t, err)
-
-				signed, err := jwt.Sign(apiKey, jwt.WithKey(jwa.RS256(), key))
-				require.NoError(t, err)
-
-				return metadata.Pairs("authorization", string(signed))
-			},
-			err: cperrs.ErrInvalidToken.GRPCStatus().Err(),
 		},
 		{
 			name: "invalid token no jwt",
-			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
+			metadata: func(u resource.User, idp *fixture.IDP) metadata.MD {
 				return metadata.Pairs("authorization", "some-non-jwt-string")
 			},
 			err: cperrs.ErrInvalidToken.GRPCStatus().Err(),
 		},
 		{
 			name: "auth header missing",
-			metadata: func(u resource.User, signingKey *ecdsa.PrivateKey) metadata.MD {
+			metadata: func(u resource.User, idp *fixture.IDP) metadata.MD {
 				return metadata.Pairs("lole", "blabla")
 			},
 			err: cperrs.ErrAuthHeaderMissing.GRPCStatus().Err(),
@@ -146,7 +72,7 @@ func TestToken(t *testing.T) {
 
 			cp.Postgres.CreateUser(t, &u)
 
-			out := metadata.NewOutgoingContext(ctx, tt.metadata(u, cp.SigningKey))
+			out := metadata.NewOutgoingContext(ctx, tt.metadata(u, cp.IDP))
 
 			_, err := client.CreateChunk(out, &chunkv1alpha1.CreateChunkRequest{
 				Name:        c.Name,

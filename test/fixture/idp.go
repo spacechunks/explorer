@@ -118,7 +118,7 @@ func (i *IDP) Run(t *testing.T) {
 	i.Endpoint = "http://" + ip + ":3081"
 }
 
-func (i *IDP) IDToken(t *testing.T) string {
+func (i *IDP) AccessToken(t *testing.T) string {
 	form := url.Values{}
 	form.Set("grant_type", "password")
 	form.Set("scope", "openid profile email")
@@ -144,11 +144,11 @@ func (i *IDP) IDToken(t *testing.T) string {
 	}
 
 	data := struct {
-		IDToken string `json:"id_token"`
+		AccessToken string `json:"access_token"`
 	}{}
 
 	err = json.Unmarshal(body, &data)
 	require.NoError(t, err)
 
-	return data.IDToken
+	return data.AccessToken
 }

@@ -39,7 +39,7 @@ func TestChunkOwner(t *testing.T) {
 	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
-	actual, err := pg.DB.ChunkOwner(ctx, c.ID)
+	actual, err := pg.DB.ChunkOwner(ctx, c.ID, c.Owner.Email)
 	require.NoError(t, err)
 
 	if d := cmp.Diff(c.Owner, actual, test.IgnoreFields(test.IgnoredUserFields...)); d != "" {
@@ -58,7 +58,7 @@ func TestFlavorOwner(t *testing.T) {
 	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
-	actual, err := pg.DB.FlavorOwner(ctx, c.Flavors[0].ID)
+	actual, err := pg.DB.FlavorOwner(ctx, c.Flavors[0].ID, c.Owner.Email)
 	require.NoError(t, err)
 
 	if d := cmp.Diff(c.Owner, actual, test.IgnoreFields(test.IgnoredUserFields...)); d != "" {
@@ -77,7 +77,7 @@ func TestFlavorVersionOwner(t *testing.T) {
 	pg.InsertMinecraftVersion(t)
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
-	actual, err := pg.DB.FlavorVersionOwner(ctx, c.Flavors[0].Versions[0].ID)
+	actual, err := pg.DB.FlavorVersionOwner(ctx, c.Flavors[0].Versions[0].ID, c.Owner.Email)
 	require.NoError(t, err)
 
 	if d := cmp.Diff(c.Owner, actual, test.IgnoreFields(test.IgnoredUserFields...)); d != "" {
