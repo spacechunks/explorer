@@ -29,7 +29,7 @@ import (
 
 func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	run := func(cmd *cobra.Command, args []string) error {
-		tok, err := cliCtx.Auth.IDToken(ctx)
+		tok, err := cliCtx.Auth.AccessToken(ctx)
 		if err != nil {
 			return fmt.Errorf("login failed: %w", err)
 		}
