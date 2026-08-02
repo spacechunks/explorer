@@ -47,7 +47,6 @@ import (
 const (
 	ControlPlaneAddr        = "localhost:9012"
 	BaseImage               = "base-image:latest"
-	OAuthClientID           = "public-functest-client"
 	OAuthAllowedAudience    = "public-functest-client"
 	OAuthTokenIssuer        = "http://localhost:3081"
 	ResourcePackTemplateKey = "explorer/pack_template.zip"
@@ -156,7 +155,6 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 				// should stay at 2 seconds so TestGetUploadURLRenews passes
 				PresignedURLExpiry:            2 * time.Second,
 				UsePathStyle:                  false,
-				OAuthClientID:                 OAuthClientID,
 				OAuthIssuer:                   c.IDP.Endpoint,
 				OAuthJWKSURL:                  OAuthTokenIssuer + "/keys",
 				OAuthAllowedAudience:          OAuthAllowedAudience,
