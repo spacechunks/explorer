@@ -20,43 +20,23 @@ package user
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
-	"time"
 
-	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/lestrrat-go/jwx/v4/jwa"
-	"github.com/lestrrat-go/jwx/v4/jwt"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/internal/resource"
 )
 
 type Service interface {
-	Register(ctx context.Context, nickname string, rawIDToken string, acceptPrivacyPolicy bool) error
-	Login(ctx context.Context, rawIDToken string) (resource.User, []byte, error)
+	Register(ctx context.Context, nickname string, acceptPrivacyPolicy bool) error
 }
 
 type service struct {
-	repo           Repository
-	provider       *oidc.Provider
-	clientID       string
-	issuer         string
-	apiTokenExpiry time.Duration
-	signingKey     *ecdsa.PrivateKey
-	metrics        metrics
-}
-
-type idTokenClaims struct {
-	Email string `json:"email"`
+	repo    Repository
+	metrics metrics
 }
 
 func NewService(
 	repo Repository,
-	provider *oidc.Provider,
-	oauthClientID string,
-	issuer string,
-	apiTokenExpiry time.Duration,
-	signingKey *ecdsa.PrivateKey,
 ) (Service, error) {
 	m, err := initMetrics()
 	if err != nil {
@@ -64,83 +44,26 @@ func NewService(
 	}
 
 	return &service{
-		repo:           repo,
-		provider:       provider,
-		clientID:       oauthClientID,
-		issuer:         issuer,
-		apiTokenExpiry: apiTokenExpiry,
-		signingKey:     signingKey,
-		metrics:        m,
+		repo:    repo,
+		metrics: m,
 	}, nil
 }
 
-func (s *service) Register(ctx context.Context, nickname string, rawIDToken string, acceptPrivacyPolicy bool) error {
+func (s *service) Register(ctx context.Context, nickname string, acceptPrivacyPolicy bool) error {
 	if !acceptPrivacyPolicy {
 		return apierrs.ErrPrivacyPolicyNotAccepted
 	}
 
-	verifier := s.provider.Verifier(&oidc.Config{
-		ClientID: s.clientID,
-	})
 
-	idTok, err := verifier.Verify(ctx, rawIDToken)
-	if err != nil {
-		return fmt.Errorf("verify token: %w", err)
-	}
-
-	var claims idTokenClaims
-	if err := idTok.Claims(&claims); err != nil {
-		return fmt.Errorf("parse token claims: %w", err)
-	}
+	// TODO: Get email from ctx
 
 	if _, err := s.repo.CreateUser(ctx, resource.User{
 		Nickname: nickname,
-		Email:    claims.Email,
+		Email:    "claims.Email",
 	}); err != nil {
 		return fmt.Errorf("create user: %w", err)
 	}
 
 	s.metrics.registeredCount.Add(ctx, 1)
 	return nil
-}
-
-func (s *service) Login(ctx context.Context, rawIDToken string) (resource.User, []byte, error) {
-	verifier := s.provider.Verifier(&oidc.Config{
-		ClientID: s.clientID,
-	})
-
-	idTok, err := verifier.Verify(ctx, rawIDToken)
-	if err != nil {
-		return resource.User{}, nil, fmt.Errorf("verify token: %w", err)
-	}
-
-	var claims idTokenClaims
-	if err := idTok.Claims(&claims); err != nil {
-		return resource.User{}, nil, fmt.Errorf("parse token claims: %w", err)
-	}
-
-	u, err := s.repo.GetUserByEmail(ctx, claims.Email)
-	if err != nil {
-		return resource.User{}, nil, fmt.Errorf("get user: %w", err)
-	}
-
-	iss := time.Now()
-	apiTok, err := jwt.NewBuilder().
-		IssuedAt(iss).
-		Issuer(s.issuer).
-		Audience([]string{s.issuer}).
-		Expiration(iss.Add(s.apiTokenExpiry)).
-		Claim("user_id", u.ID).
-		Claim("email", claims.Email).
-		Build()
-	if err != nil {
-		return resource.User{}, nil, fmt.Errorf("create token: %w", err)
-	}
-
-	signed, err := jwt.Sign(apiTok, jwt.WithKey(jwa.ES256(), s.signingKey))
-	if err != nil {
-		return resource.User{}, nil, fmt.Errorf("sign token: %w", err)
-	}
-
-	return u, signed, nil
 }

@@ -67,7 +67,7 @@ ORDER BY c.id;
 -- name: ChunkOwnerByChunkID :one
 SELECT u.* FROM users u
     LEFT JOIN chunks c ON c.owner_id = u.id
-WHERE c.id = $1;
+WHERE c.id = $1 AND u.email = $2;
 
 -- name: UpdateChunkThumbnail :exec
 UPDATE chunks SET
@@ -152,6 +152,7 @@ SELECT u.* FROM users u
     JOIN flavors f ON f.id = $1
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
+WHERE u.email = $2
 LIMIT 1;
 
 -- name: ChunkOwnerByFlavorVersionID :one
@@ -160,6 +161,7 @@ SELECT u.* FROM users u
     JOIN flavors f ON f.id = fv.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
+WHERE u.email = $2
 LIMIT 1;
 
 -- name: MarkFlavorDeleted :exec

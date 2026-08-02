@@ -20,9 +20,6 @@ package controlplane
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -33,11 +30,10 @@ import (
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/hashicorp/go-multierror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/lestrrat-go/jwx/v4/jwa"
+	"github.com/lestrrat-go/httprc/v3"
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
@@ -72,6 +68,8 @@ import (
 
 	"buf.build/go/protovalidate"
 
+	"github.com/jwx-go/jwkfetch/v4"
+
 	protovalidatemw "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
 )
 
@@ -101,9 +99,14 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 	}()
 
-	oidcProvider, err := oidc.NewProvider(ctx, s.cfg.OAuthIssuerURL)
+	jwksCache, err := jwkfetch.NewCache(ctx, httprc.NewClient())
 	if err != nil {
-		return fmt.Errorf("oidc provider: %w", err)
+		return fmt.Errorf("new jwks cache: %w", err)
+	}
+	defer jwksCache.Shutdown(ctx)
+
+	if err := jwksCache.Register(ctx, s.cfg.OAuthJWKSURL, jwkfetch.WithMinInterval(5*time.Minute)); err != nil {
+		return fmt.Errorf("register jwks url: %w", err)
 	}
 
 	pgxCfg, err := pgxpool.ParseConfig(s.cfg.DBConnString)
@@ -172,13 +175,6 @@ func (s *Server) Run(ctx context.Context) error {
 
 	db.SetRiverClient(riverClient)
 
-	pemBlock, _ := pem.Decode([]byte(s.cfg.APITokenSigningKey))
-
-	key, err := x509.ParseECPrivateKey(pemBlock.Bytes)
-	if err != nil {
-		return fmt.Errorf("parse ec private key: %w", err)
-	}
-
 	validator, err := protovalidate.New()
 	if err != nil {
 		return fmt.Errorf("create validator: %w", err)
@@ -189,14 +185,7 @@ func (s *Server) Run(ctx context.Context) error {
 		return fmt.Errorf("instance service: %w", err)
 	}
 
-	userService, err := user.NewService(
-		db,
-		oidcProvider,
-		s.cfg.OAuthClientID,
-		s.cfg.APITokenIssuer,
-		s.cfg.APITokenExpiry,
-		key,
-	)
+	userService, err := user.NewService(db)
 	if err != nil {
 		return fmt.Errorf("user service: %w", err)
 	}
@@ -213,7 +202,9 @@ func (s *Server) Run(ctx context.Context) error {
 			PresignedURLExpiry:           s.cfg.PresignedURLExpiry,
 			ThumbnailMaxSizeKB:           s.cfg.ThumbnailMaxSizeKB,
 			ChangesetTarballMaxSizeBytes: s.cfg.ChangeSetTarballMaxSizeBytes,
-		})
+		},
+		db,
+	)
 	if err != nil {
 		return fmt.Errorf("chunk service: %w", err)
 	}
@@ -225,7 +216,7 @@ func (s *Server) Run(ctx context.Context) error {
 			grpc.ChainUnaryInterceptor(
 				protovalidatemw.UnaryServerInterceptor(validator),
 				errorInterceptor(s.logger),
-				authInterceptor(s.logger, key, s.cfg.APITokenIssuer),
+				authInterceptor(s.logger, s.cfg.OAuthIssuer, s.cfg.OAuthAllowedAudience, s.cfg.OAuthJWKSURL, jwksCache),
 				traceParentInterceptor(s.logger),
 			),
 		)
@@ -274,7 +265,13 @@ func (s *Server) Stop() {
 	s.stopCh <- struct{}{}
 }
 
-func authInterceptor(logger *slog.Logger, signingKey *ecdsa.PrivateKey, issuer string) grpc.UnaryServerInterceptor {
+func authInterceptor(
+	logger *slog.Logger,
+	issuer string,
+	allowedAudience string,
+	jwksURL string,
+	jwksCache *jwkfetch.Cache,
+) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		// these endpoints do not need authn/authz (as of now)
 		if strings.HasSuffix(info.FullMethod, "UserService/Register") ||
@@ -296,25 +293,31 @@ func authInterceptor(logger *slog.Logger, signingKey *ecdsa.PrivateKey, issuer s
 			return nil, cperrs.ErrAuthHeaderMissing
 		}
 
-		tok, err := jwt.Parse([]byte(vals[0]), jwt.WithKey(jwa.ES256(), signingKey))
+		set, err := jwksCache.CachedSet(jwksURL)
 		if err != nil {
-			logger.Error("failed to parse token", "err", err)
-			return nil, cperrs.ErrInvalidToken
+			return nil, fmt.Errorf("looking up set: %w", err)
 		}
 
-		if err := jwt.Validate(tok, jwt.WithIssuer(issuer), jwt.WithAudience(issuer)); err != nil {
+		tok, err := jwt.Parse(
+			[]byte(vals[0]),
+			jwt.WithKeySet(set),
+			jwt.WithValidate(true),
+			jwt.WithIssuer(issuer),
+			jwt.WithAudience(allowedAudience),
+		)
+		if err != nil {
 			logger.Error("failed to validate token", "err", err)
 			return nil, cperrs.ErrInvalidToken
 		}
 
-		var userID string
-		userID, err = jwt.Get[string](tok, "user_id")
+		var email string
+		email, err = jwt.Get[string](tok, "email")
 		if err != nil {
 			logger.Error("failed to get user id", "err", err)
 			return nil, cperrs.ErrInvalidToken
 		}
 
-		ctx = context.WithValue(ctx, contextkey.ActorID, userID)
+		ctx = context.WithValue(ctx, contextkey.ActorEmail, email)
 
 		return handler(ctx, req)
 	}

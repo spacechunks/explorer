@@ -213,11 +213,16 @@ func (q *Queries) BestNode(ctx context.Context) (BestNodeRow, error) {
 const chunkOwnerByChunkID = `-- name: ChunkOwnerByChunkID :one
 SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
     LEFT JOIN chunks c ON c.owner_id = u.id
-WHERE c.id = $1
+WHERE c.id = $1 AND u.email = $2
 `
 
-func (q *Queries) ChunkOwnerByChunkID(ctx context.Context, id string) (User, error) {
-	row := q.db.QueryRow(ctx, chunkOwnerByChunkID, id)
+type ChunkOwnerByChunkIDParams struct {
+	ID    string
+	Email string
+}
+
+func (q *Queries) ChunkOwnerByChunkID(ctx context.Context, arg ChunkOwnerByChunkIDParams) (User, error) {
+	row := q.db.QueryRow(ctx, chunkOwnerByChunkID, arg.ID, arg.Email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -234,11 +239,17 @@ SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
     JOIN flavors f ON f.id = $1
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
+WHERE u.email = $2
 LIMIT 1
 `
 
-func (q *Queries) ChunkOwnerByFlavorID(ctx context.Context, id string) (User, error) {
-	row := q.db.QueryRow(ctx, chunkOwnerByFlavorID, id)
+type ChunkOwnerByFlavorIDParams struct {
+	ID    string
+	Email string
+}
+
+func (q *Queries) ChunkOwnerByFlavorID(ctx context.Context, arg ChunkOwnerByFlavorIDParams) (User, error) {
+	row := q.db.QueryRow(ctx, chunkOwnerByFlavorID, arg.ID, arg.Email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -256,11 +267,17 @@ SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
     JOIN flavors f ON f.id = fv.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
+WHERE u.email = $2
 LIMIT 1
 `
 
-func (q *Queries) ChunkOwnerByFlavorVersionID(ctx context.Context, id string) (User, error) {
-	row := q.db.QueryRow(ctx, chunkOwnerByFlavorVersionID, id)
+type ChunkOwnerByFlavorVersionIDParams struct {
+	ID    string
+	Email string
+}
+
+func (q *Queries) ChunkOwnerByFlavorVersionID(ctx context.Context, arg ChunkOwnerByFlavorVersionIDParams) (User, error) {
+	row := q.db.QueryRow(ctx, chunkOwnerByFlavorVersionID, arg.ID, arg.Email)
 	var i User
 	err := row.Scan(
 		&i.ID,

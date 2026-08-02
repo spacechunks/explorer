@@ -25,21 +25,30 @@ import (
 	"github.com/spacechunks/explorer/internal/resource"
 )
 
-func (db *DB) ChunkOwner(ctx context.Context, chunkID string) (resource.User, error) {
+func (db *DB) ChunkOwner(ctx context.Context, chunkID string, email string) (resource.User, error) {
 	return getOwner(ctx, db, func(ctx context.Context, q *query.Queries) (query.User, error) {
-		return q.ChunkOwnerByChunkID(ctx, chunkID)
+		return q.ChunkOwnerByChunkID(ctx, query.ChunkOwnerByChunkIDParams{
+			ID:    chunkID,
+			Email: email,
+		})
 	})
 }
 
-func (db *DB) FlavorOwner(ctx context.Context, flavorID string) (resource.User, error) {
+func (db *DB) FlavorOwner(ctx context.Context, flavorID string, email string) (resource.User, error) {
 	return getOwner(ctx, db, func(ctx context.Context, q *query.Queries) (query.User, error) {
-		return q.ChunkOwnerByFlavorID(ctx, flavorID)
+		return q.ChunkOwnerByFlavorID(ctx, query.ChunkOwnerByFlavorIDParams{
+			ID:    flavorID,
+			Email: email,
+		})
 	})
 }
 
-func (db *DB) FlavorVersionOwner(ctx context.Context, flavorVersionID string) (resource.User, error) {
+func (db *DB) FlavorVersionOwner(ctx context.Context, flavorVersionID string, email string) (resource.User, error) {
 	return getOwner(ctx, db, func(ctx context.Context, q *query.Queries) (query.User, error) {
-		return q.ChunkOwnerByFlavorVersionID(ctx, flavorVersionID)
+		return q.ChunkOwnerByFlavorVersionID(ctx, query.ChunkOwnerByFlavorVersionIDParams{
+			ID:    flavorVersionID,
+			Email: email,
+		})
 	})
 }
 

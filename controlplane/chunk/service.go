@@ -26,6 +26,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/authz"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/job"
+	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/internal/resource"
 )
 
@@ -70,6 +71,7 @@ type svc struct {
 	cfg       Config
 	access    authz.AccessEvaluator
 	metrics   metrics
+	userRepo  user.Repository
 }
 
 func NewService(
@@ -79,6 +81,7 @@ func NewService(
 	s3Store blob.S3Store,
 	access authz.AccessEvaluator,
 	cfg Config,
+	userRepo user.Repository,
 ) (Service, error) {
 	m, err := initMetrics()
 	if err != nil {
@@ -93,5 +96,6 @@ func NewService(
 		access:    access,
 		cfg:       cfg,
 		metrics:   m,
+		userRepo:  userRepo,
 	}, nil
 }
