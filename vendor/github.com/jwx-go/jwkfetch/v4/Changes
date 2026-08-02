@@ -1,0 +1,50 @@
+Changes
+=======
+
+v4.0.4 24 July 2026
+  * Bump `github.com/lestrrat-go/jwx/v4` to v4.2.0.
+
+v4.0.3 1 July 2026
+  * Bump `github.com/lestrrat-go/jwx/v4` to v4.1.0.
+
+v4.0.2 7 May 2026
+  * `Cache` refresh path now returns `BodyTooLargeError`,
+    `ParseError`, and `TransportError` (matching `Client.Fetch`)
+    instead of plain `fmt.Errorf` strings. Operators following the
+    documented `errors.Is(err, BodyTooLargeError{})` pattern now
+    match errors surfaced through the cache's `ErrorSink`, closing
+    a gap where Client and Cache disagreed on the typed-error
+    contract.
+  * Document the `WithHTTPClient` trade-off: a caller-supplied
+    `*http.Client` is used as-is when no `Whitelist` is set; the
+    library does not silently impose its redirect cap or
+    HTTPS-downgrade block. Compose
+    `WithHTTPClient(WrapHTTPClientDefaults(yourClient))` to opt
+    back in.
+
+v4.0.1 28 Apr 2026
+  * `WithWhitelist(nil)` now records a sticky error on the Client / Cache
+    rather than silently degrading to the default permissive whitelist.
+    `Client.Fetch` returns this error on every call, so a misconfigured
+    fetcher fails closed instead of fetching arbitrary URLs.
+  * Apply the 5-hop redirect cap even when the caller supplies a custom
+    `CheckRedirect` via `WithHTTPClient`. Previously a custom hook could
+    suppress the cap entirely.
+  * Document `Cache`'s redirect trust model: 3xx targets are followed
+    subject only to the underlying http.Client policy (host trust, not
+    URL trust). See package and `Cache` godoc.
+
+v4.0.0 19 Apr 2026
+  * First stable v4 release. Tracks github.com/lestrrat-go/jwx/v4 v4.0.0.
+  * Client.Fetch now returns typed errors for non-whitelist failures:
+    HTTPStatusError, BodyTooLargeError, TransportError, ParseError.
+    Callers can branch retry/alert policy with errors.Is / errors.As
+    instead of matching on error message strings. The underlying
+    stdlib / jwk errors remain reachable via Unwrap.
+
+v4.0.0-alpha2 13 Apr 2026
+  * Compatibility release for jwx/v4 v4.0.0-scratch.15. No code changes.
+  * Doc fix: package example now shows side-effect import.
+
+v4.0.0-alpha1 8 Apr 2026
+  * Initial version, extracted from github.com/lestrrat-go/jwx/v4/jwk.
