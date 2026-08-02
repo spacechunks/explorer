@@ -180,7 +180,7 @@ func (s *Server) Run(ctx context.Context) error {
 		return fmt.Errorf("create validator: %w", err)
 	}
 
-	insService, err := instance.NewService(s.logger, db, db, db)
+	insService, err := instance.NewService(s.logger, db, db, db, db)
 	if err != nil {
 		return fmt.Errorf("instance service: %w", err)
 	}

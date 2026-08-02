@@ -1811,7 +1811,7 @@ func TestOnlyOwnerCanDeleteFlavor(t *testing.T) {
 		c     = fixture.Chunk()
 		u     = fixture.User()
 		other = fixture.User(func(tmp *resource.User) {
-			tmp.Email = "other@example.com"
+			tmp.Email = "other-email@example.com"
 			tmp.Nickname = "other"
 		})
 	)
@@ -2027,7 +2027,7 @@ func TestOnlyOwnerCanDeleteChunk(t *testing.T) {
 		c     = fixture.Chunk()
 		u     = fixture.User()
 		other = fixture.User(func(tmp *resource.User) {
-			tmp.Email = "other@example.com"
+			tmp.Email = "other-email@example.com"
 			tmp.Nickname = "other"
 		})
 	)

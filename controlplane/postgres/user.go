@@ -80,7 +80,6 @@ func (db *DB) CreateUser(ctx context.Context, u resource.User) (resource.User, e
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
-		fmt.Println(err)
 		if pgErr.Code == "23505" {
 			return resource.User{}, apierrs.ErrAlreadyExists
 		}

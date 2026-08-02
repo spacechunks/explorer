@@ -78,7 +78,7 @@ func TestGetInstance(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			cp.AddUserAPIKey(t, &ctx, ins.Owner)
+			cp.AddUserAPIKey(t, &ctx, fixture.Chunk().Owner)
 			client := cp.InstanceClient(t)
 
 			resp, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
@@ -138,7 +138,7 @@ func TestAPIListInstances(t *testing.T) {
 		cp.Postgres.CreateInstance(t, fixture.Node().ID, &ins[idx])
 	}
 
-	cp.AddUserAPIKey(t, &ctx, ins[0].Owner)
+	cp.AddUserAPIKey(t, &ctx, fixture.Chunk().Owner)
 	client := cp.InstanceClient(t)
 
 	expected := make([]*instancev1alpha1.Instance, 0, len(ins))
@@ -386,7 +386,7 @@ func TestDiscoverInstances(t *testing.T) {
 				cp.Postgres.CreateInstance(t, fixture.Node().ID, &tt.input[idx])
 			}
 
-			cp.AddUserAPIKey(t, &ctx, tt.input[0].Owner)
+			cp.AddUserAPIKey(t, &ctx, fixture.Chunk().Owner)
 
 			var (
 				client   = cp.InstanceClient(t)
@@ -464,7 +464,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			cp.Postgres.InsertNode(t)
 			cp.Postgres.CreateInstance(t, fixture.Node().ID, &ins)
 
-			cp.AddUserAPIKey(t, &ctx, ins.Owner)
+			cp.AddUserAPIKey(t, &ctx, fixture.Chunk().Owner) // we avoid
 			client := cp.InstanceClient(t)
 
 			tt.report.InstanceID = ins.ID
