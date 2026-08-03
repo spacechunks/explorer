@@ -20,6 +20,7 @@ package instance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -110,6 +111,10 @@ func (s *svc) RunFlavorVersion(
 
 	u, err := s.userRepo.GetUserByEmail(ctx, ownerEmail)
 	if err != nil {
+		// FIXME: think of a way to automatically create users for service accounts
+		if errors.Is(err, apierrs.ErrNotFound) {
+			s.logger.Warn("user not found", "email", ownerEmail)
+		}
 		return resource.Instance{}, fmt.Errorf("get user: %w", err)
 	}
 

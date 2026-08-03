@@ -20,7 +20,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"net/netip"
 	"sort"
 	"strings"
@@ -85,11 +84,8 @@ func TestCreateInstance(t *testing.T) {
 	pg.InsertMinecraftVersion(t)
 
 	c.Flavors = []resource.Flavor{c.Flavors[0]}
-	fmt.Println("gef", c.Flavors[0].ID)
 
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
-
-	fmt.Println("af", c.Flavors[0].ID)
 
 	expected := fixture.Instance()
 	expected.Chunk = c

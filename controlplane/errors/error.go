@@ -74,7 +74,6 @@ var (
 	ErrFlavorVersionExists          = New(codes.AlreadyExists, "flavor version already exists")
 	ErrMinecraftVersionNotSupported = New(codes.FailedPrecondition, "minecraft version not found")
 	ErrHashMismatch                 = New(codes.FailedPrecondition, "hash does not match")
-	ErrInvalidHash                  = New(codes.InvalidArgument, "invalid hash")
 	ErrFlavorFilesNotUploaded       = New(codes.FailedPrecondition, "flavor files have not been uploaded")
 	ErrFlavorFilesUploaded          = New(codes.AlreadyExists, "flavor files have already been uploaded")
 	ErrChangeSetTarballTooBig       = New(codes.InvalidArgument, "tarball size exceeds maximum allowed")
