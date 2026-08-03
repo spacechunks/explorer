@@ -42,7 +42,7 @@ func NewOIDC(
 	state *state.Data,
 	clientID string,
 	issuerEndpoint string,
-	orgID string,
+	scopes []string,
 
 ) *OIDC {
 	return &OIDC{
@@ -50,7 +50,7 @@ func NewOIDC(
 		issuerEndpoint: issuerEndpoint,
 		clientID:       clientID,
 		state:          state,
-		orgID:          orgID,
+		scopes:         scopes,
 	}
 }
 
@@ -59,12 +59,12 @@ type OIDC struct {
 	issuerEndpoint string
 	clientID       string
 	state          *state.Data
-	orgID          string
+	scopes         []string
 }
 
 func (svc OIDC) AccessToken(ctx context.Context) (string, error) {
 	if err := svc.validateToken(svc.state.AccessToken); err != nil {
-		tok, err := svc.getAccessToken(ctx, svc.orgID)
+		tok, err := svc.getAccessToken(ctx, svc.scopes)
 		if err != nil {
 			return "", fmt.Errorf("unable to get access token: %w", err)
 		}
@@ -118,7 +118,7 @@ func (svc OIDC) validateToken(token string) error {
 	return nil
 }
 
-func (svc OIDC) getAccessToken(ctx context.Context, orgID string) (string, error) {
+func (svc OIDC) getAccessToken(ctx context.Context, scopes []string) (string, error) {
 	provider, err := oidc.NewProvider(ctx, svc.issuerEndpoint)
 	if err != nil {
 		return "", fmt.Errorf("provider: %w", err)
@@ -129,12 +129,7 @@ func (svc OIDC) getAccessToken(ctx context.Context, orgID string) (string, error
 			ClientID:    svc.clientID,
 			RedirectURL: "http://localhost:64554",
 			Endpoint:    provider.Endpoint(),
-			Scopes: []string{
-				oidc.ScopeOpenID,
-				"profile",
-				"email",
-				fmt.Sprintf("urn:zitadel:iam:org:id:%s", orgID),
-			},
+			Scopes:      scopes,
 		}
 		verifier   = oauth2.GenerateVerifier()
 		stateParam = oauth2.GenerateVerifier()

@@ -81,7 +81,7 @@ func main() {
 				&stateData,
 				cfg.IDPClientID,
 				cfg.IDPIssuerEndpoint,
-				cfg.IDPOrgID,
+				cfg.IDPScopes,
 			),
 			State: stateData,
 		}

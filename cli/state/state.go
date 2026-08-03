@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/spacechunks/explorer/cli/fshelper"
 )
 
@@ -31,14 +32,19 @@ var DefaultConfig = Config{
 	ControlPlaneEndpoint: "api.explorer.chunks.space:443",
 	IDPIssuerEndpoint:    "https://iam.chunks.space",
 	IDPClientID:          "384477465310986287",
-	IDPOrgID:             "384477461854814255",
+	IDPScopes: []string{
+		oidc.ScopeOpenID,
+		"profile",
+		"email",
+		"urn:zitadel:iam:org:id:384477461854814255",
+	},
 }
 
 type Config struct {
-	ControlPlaneEndpoint string `json:"controlPlaneEndpoint"`
-	IDPIssuerEndpoint    string `json:"idpIssuerEndpoint"`
-	IDPClientID          string `json:"idpClientId"`
-	IDPOrgID             string `json:"idpOrgId"`
+	ControlPlaneEndpoint string   `json:"controlPlaneEndpoint"`
+	IDPIssuerEndpoint    string   `json:"idpIssuerEndpoint"`
+	IDPClientID          string   `json:"idpClientId"`
+	IDPScopes            []string `json:"idpScopes"`
 }
 
 type Data struct {
