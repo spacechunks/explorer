@@ -9,7 +9,7 @@ on limited hardware like small cloud VMs.
 
 ## What is the current state of the project?
 
-The project is currently in an alpha state. The basic functions are implemented and working™. You can try it out by opening Minecraft (Java Edition) and joining chunks.space.
+The project is currently in an alpha state. The basic functions are implemented and working™. You can try it out by opening Minecraft (Java Edition) and joining [chunks.space](https://chunks.space).
 The next steps are fixing bugs, that come up and investing time into stability and observability. 
 
 Here are some examples of things, that are still missing:
