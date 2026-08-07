@@ -41,9 +41,9 @@ require (
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
-	github.com/riverqueue/river v0.41.0
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.41.0
-	github.com/riverqueue/river/rivertype v0.41.0
+	github.com/riverqueue/river v0.43.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.43.0
+	github.com/riverqueue/river/rivertype v0.43.0
 	github.com/riverqueue/rivercontrib/otelriver v0.12.0
 	github.com/rodaine/table v1.3.1
 	github.com/sourcegraph/jsonrpc2 v0.2.2
@@ -171,7 +171,7 @@ require (
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/riverqueue/river/cmd/river v0.38.0 // indirect
+	github.com/riverqueue/river/cmd/river v0.43.0 // indirect
 	github.com/riverqueue/river/riverdriver v0.41.0 // indirect
 	github.com/riverqueue/river/riverdriver/riversqlite v0.38.0 // indirect
 	github.com/riverqueue/river/rivershared v0.41.0 // indirect
