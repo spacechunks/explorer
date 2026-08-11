@@ -31,12 +31,12 @@ import (
 var DefaultConfig = Config{
 	ControlPlaneEndpoint: "api.explorer.chunks.space:443",
 	IDPIssuerEndpoint:    "https://iam.chunks.space",
-	IDPClientID:          "384477465310986287",
+	IDPClientID:          "385828015612952672",
 	IDPScopes: []string{
 		oidc.ScopeOpenID,
 		"profile",
 		"email",
-		"urn:zitadel:iam:org:id:384477461854814255",
+		"urn:zitadel:iam:org:id:385828012106448992",
 	},
 }
 
