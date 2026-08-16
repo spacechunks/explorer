@@ -20,7 +20,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spacechunks/explorer/cli"
 	deletechunk "github.com/spacechunks/explorer/cli/cmd/delete"
@@ -29,7 +28,6 @@ import (
 	"github.com/spacechunks/explorer/cli/cmd/publish"
 	"github.com/spacechunks/explorer/cli/cmd/run"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
 )
 
 func newChunkCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
@@ -49,24 +47,4 @@ func newChunkCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 		requireAccessToken(ctx, cliCtx, deletechunk.NewCommand),
 	)
 	return c
-}
-
-func requireAccessToken(
-	ctx context.Context,
-	cliCtx cli.Context,
-	fn func(context.Context, cli.Context) *cobra.Command,
-) *cobra.Command {
-	cmd := fn(ctx, cliCtx)
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		tok, err := cliCtx.Auth.AccessToken(ctx)
-		if err != nil {
-			return fmt.Errorf("authentication failed: %w", err)
-		}
-
-		md := metadata.Pairs("authorization", tok)
-		ctx = metadata.NewOutgoingContext(ctx, md)
-
-		return fn(ctx, cliCtx).RunE(cmd, args)
-	}
-	return cmd
 }
