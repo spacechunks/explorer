@@ -314,7 +314,7 @@ type SchemaMigration struct {
 type User struct {
 	ID        string
 	Nickname  string
-	Email     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	IdpID     string
 }

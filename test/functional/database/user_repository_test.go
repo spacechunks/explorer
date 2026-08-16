@@ -60,7 +60,7 @@ func TestGetUserByEmail(t *testing.T) {
 	_, err := pg.DB.CreateUser(ctx, expected)
 	require.NoError(t, err)
 
-	actual, err := pg.DB.GetUserByEmail(ctx, expected.Email)
+	actual, err := pg.DB.GetUserByIDPID(ctx, expected.IDPID)
 	require.NoError(t, err)
 
 	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredUserFields...)); d != "" {

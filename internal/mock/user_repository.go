@@ -80,7 +80,7 @@ func (_c *MockUserRepository_CreateUser_Call) RunAndReturn(run func(context.Cont
 }
 
 // GetUserByEmail provides a mock function with given fields: ctx, id
-func (_m *MockUserRepository) GetUserByEmail(ctx context.Context, id string) (resource.User, error) {
+func (_m *MockUserRepository) GetUserByIDPID(ctx context.Context, id string) (resource.User, error) {
 	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {

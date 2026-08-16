@@ -67,7 +67,7 @@ ORDER BY c.id;
 -- name: ChunkOwnerByChunkID :one
 SELECT u.* FROM users u
     LEFT JOIN chunks c ON c.owner_id = u.id
-WHERE c.id = $1 AND u.email = $2;
+WHERE c.id = $1 AND u.idp_id = $2;
 
 -- name: UpdateChunkThumbnail :exec
 UPDATE chunks SET
@@ -152,7 +152,7 @@ SELECT u.* FROM users u
     JOIN flavors f ON f.id = $1
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
-WHERE u.email = $2
+WHERE u.idp_id = $2
 LIMIT 1;
 
 -- name: ChunkOwnerByFlavorVersionID :one
@@ -161,7 +161,7 @@ SELECT u.* FROM users u
     JOIN flavors f ON f.id = fv.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
-WHERE u.email = $2
+WHERE u.idp_id = $2
 LIMIT 1;
 
 -- name: MarkFlavorDeleted :exec
@@ -289,12 +289,12 @@ SELECT * FROM minecraft_versions WHERE version = $1;
  * USERS
  */
 
--- name: UserByEmail :one
-SELECT * FROM users WHERE email = $1;
+-- name: UserByIDPID :one
+SELECT * FROM users WHERE idp_id = $1;
 
 -- name: CreateUser :exec
 INSERT INTO users
-    (id, nickname, email, created_at, updated_at)
+    (id, nickname, created_at, updated_at, idp_id)
 VALUES
     ($1, $2, $3, $4, $5);
 

@@ -19,13 +19,10 @@
 package fixture
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"log/slog"
 	"os"
@@ -120,20 +117,10 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 	// bug went undiscovered until later manual testing.
 	_, err = c.Postgres.Pool.Exec(ctx, `
 		INSERT INTO users
-		    (id, nickname, email, created_at, updated_at)
+		    (id, nickname, idp_id, created_at, updated_at)
 		VALUES
 		    ('019a88ab-3240-7f61-b560-cc755d5572a0', 'default', 'default@example.com', now(), now())`,
 	)
-	require.NoError(t, err)
-
-	der, err := x509.MarshalECPrivateKey(c.SigningKey)
-	require.NoError(t, err)
-
-	var keyPem bytes.Buffer
-	err = pem.Encode(&keyPem, &pem.Block{
-		Type:  "EC PRIVATE KEY",
-		Bytes: der,
-	})
 	require.NoError(t, err)
 
 	var (
@@ -160,7 +147,6 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 				OAuthAllowedAudience:          OAuthAllowedAudience,
 				APITokenIssuer:                OAuthTokenIssuer,
 				APITokenExpiry:                5 * time.Second,
-				APITokenSigningKey:            keyPem.String(),
 				ThumbnailMaxSizeKB:            100,
 				ResourcePackBuildInterval:     2 * time.Second,
 				ResourcePackWorkingDir:        t.TempDir(),
@@ -190,7 +176,7 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 // AddUserAPIKey generates a new signed api token for the given user id
 // and creates a grpc metadata pair that will be added to the passed context.
 func (c ControlPlane) AddUserAPIKey(t *testing.T, ctx *context.Context, u resource.User) {
-	md := metadata.Pairs("authorization", c.IDP.AccessToken(t, WithUsername(u.Email)))
+	md := metadata.Pairs("authorization", c.IDP.AccessToken(t, WithUsername(u.Nickname)))
 	out := metadata.NewOutgoingContext(*ctx, md)
 	*ctx = out
 }

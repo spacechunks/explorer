@@ -108,7 +108,7 @@ func TestCreateFlavor(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			ctx = context.WithValue(ctx, contextkey.ActorEmail, "blabla")
+			ctx = context.WithValue(ctx, contextkey.ActorIDPID, "blabla")
 
 			tt.prep(mockRepo, mockAccess)
 
@@ -600,7 +600,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			ctx = context.WithValue(ctx, contextkey.ActorEmail, "blabla")
+			ctx = context.WithValue(ctx, contextkey.ActorIDPID, "blabla")
 
 			tt.prep(mockRepo, tt.newVersion, tt.prevVersion, mockAccess)
 

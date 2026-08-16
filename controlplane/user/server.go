@@ -22,6 +22,7 @@ import (
 	"context"
 
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
+	"github.com/spacechunks/explorer/controlplane/contextkey"
 )
 
 type Server struct {
@@ -39,7 +40,8 @@ func (s Server) Register(
 	ctx context.Context,
 	req *userv1alpha1.RegisterRequest,
 ) (*userv1alpha1.RegisterResponse, error) {
-	if err := s.service.Register(ctx, req.Nickname, req.AcceptPrivacyPolicy); err != nil {
+	actorID := ctx.Value(contextkey.ActorIDPID).(string)
+	if err := s.service.Register(ctx, req.Nickname, req.AcceptPrivacyPolicy, actorID); err != nil {
 		return nil, err
 	}
 	return &userv1alpha1.RegisterResponse{}, nil

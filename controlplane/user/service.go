@@ -27,7 +27,7 @@ import (
 )
 
 type Service interface {
-	Register(ctx context.Context, nickname string, acceptPrivacyPolicy bool) error
+	Register(ctx context.Context, nickname string, acceptPrivacyPolicy bool, idpID string) error
 }
 
 type service struct {
@@ -49,16 +49,14 @@ func NewService(
 	}, nil
 }
 
-func (s *service) Register(ctx context.Context, nickname string, acceptPrivacyPolicy bool) error {
+func (s *service) Register(ctx context.Context, nickname string, acceptPrivacyPolicy bool, idpID string) error {
 	if !acceptPrivacyPolicy {
 		return apierrs.ErrPrivacyPolicyNotAccepted
 	}
 
-	// TODO: Get email from ctx
-
 	if _, err := s.repo.CreateUser(ctx, resource.User{
 		Nickname: nickname,
-		Email:    "claims.Email",
+		IDPID:    idpID,
 	}); err != nil {
 		return fmt.Errorf("create user: %w", err)
 	}

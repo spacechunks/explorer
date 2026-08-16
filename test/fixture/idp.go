@@ -30,6 +30,7 @@ import (
 
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
+	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -55,8 +56,8 @@ staticPasswords:
     username: test-user
     # bcrypt hash for password "password"
     hash: "$2a$12$FaR5JpO4Fqc5wVN/ZK1lSOxo3qFeaAfbFGMloenbNeLduQpCfDjj6"
-    userID: "40d27820-b2e3-49ff-bb18-be59cda68db8"
-  - email: other-email@example.com
+    userID: "50d27820-b2e3-49ff-bb18-be59cda68db8"
+  - email: other-nickname@example.com
     username: other-nickname
     # bcrypt hash for password "password"
     hash: "$2a$12$FaR5JpO4Fqc5wVN/ZK1lSOxo3qFeaAfbFGMloenbNeLduQpCfDjj6"
@@ -77,6 +78,17 @@ type IDP struct {
 func NewIDP() *IDP {
 	return &IDP{}
 }
+
+var (
+	IDPUser = User(func(tmp *resource.User) {
+		tmp.Nickname = "test-user"
+		tmp.IDPID = "CiQ1MGQyNzgyMC1iMmUzLTQ5ZmYtYmIxOC1iZTU5Y2RhNjhkYjgSBWxvY2Fs"
+	})
+	OtherIDPUser = User(func(tmp *resource.User) {
+		tmp.Nickname = "other-nickname"
+		tmp.IDPID = "CiQ0MGQyNzgyMC1iMmUzLTQ5ZmYtYmIxOC1iZTU5Y2RhNjhkYjgSBWxvY2Fs"
+	})
+)
 
 func (i *IDP) Run(t *testing.T) {
 	ctx := context.Background()
@@ -138,7 +150,7 @@ func WithUsername(user string) AccessTokenOption {
 
 func (i *IDP) AccessToken(t *testing.T, opts ...AccessTokenOption) string {
 	defaultOpts := AccessTokenOptions{
-		Username: "test-user@example.com",
+		Username: IDPUser.Nickname,
 		Password: "password",
 	}
 
@@ -149,7 +161,7 @@ func (i *IDP) AccessToken(t *testing.T, opts ...AccessTokenOption) string {
 	form := url.Values{}
 	form.Set("grant_type", "password")
 	form.Set("scope", "openid profile email")
-	form.Set("username", defaultOpts.Username)
+	form.Set("username", defaultOpts.Username+"@example.com")
 	form.Set("password", defaultOpts.Password)
 
 	req, err := http.NewRequest(http.MethodPost, i.Endpoint+"/token", bytes.NewBufferString(form.Encode()))
@@ -167,7 +179,7 @@ func (i *IDP) AccessToken(t *testing.T, opts ...AccessTokenOption) string {
 	require.NoError(t, err)
 
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected 200 OK, got %d", resp.StatusCode)
+		t.Fatalf("expected 200 OK, got %d", resp.StatusCode)
 	}
 
 	data := struct {

@@ -135,7 +135,7 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 				Owner: resource.User{
 					ID:        row.User.ID,
 					Nickname:  row.User.Nickname,
-					Email:     "", // do not return
+					IDPID:     row.User.IdpID,
 					CreatedAt: row.User.CreatedAt,
 					UpdatedAt: row.User.UpdatedAt,
 				},
@@ -241,7 +241,7 @@ func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resour
 				Owner: resource.User{
 					ID:        row.User.ID,
 					Nickname:  row.User.Nickname,
-					Email:     "", // we don't want to leak emails in calls everyone can do
+					IDPID:     row.User.IdpID,
 					CreatedAt: row.User.CreatedAt,
 					UpdatedAt: row.User.UpdatedAt,
 				},
@@ -373,7 +373,7 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 		Owner: resource.User{
 			ID:        row.User.ID,
 			Nickname:  row.User.Nickname,
-			Email:     "", // dont return email
+			IDPID:     row.User.IdpID,
 			CreatedAt: row.User.CreatedAt,
 			UpdatedAt: row.User.UpdatedAt,
 		},

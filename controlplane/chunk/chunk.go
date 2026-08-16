@@ -43,12 +43,12 @@ func (s *svc) CreateChunk(ctx context.Context, chunk resource.Chunk) (resource.C
 		return resource.Chunk{}, err
 	}
 
-	actorEmail, ok := ctx.Value(contextkey.ActorEmail).(string)
+	actorID, ok := ctx.Value(contextkey.ActorIDPID).(string)
 	if !ok {
-		return resource.Chunk{}, errors.New("actor_email not found in context")
+		return resource.Chunk{}, errors.New("actor_idp_id not found in context")
 	}
 
-	u, err := s.userRepo.GetUserByEmail(ctx, actorEmail)
+	u, err := s.userRepo.GetUserByIDPID(ctx, actorID)
 	if err != nil {
 		return resource.Chunk{}, fmt.Errorf("user by email: %w", err)
 	}
@@ -231,7 +231,7 @@ func validateChunkFields(chunk resource.Chunk) error {
 }
 
 func (s *svc) authorized(ctx context.Context, chunkID string) error {
-	actorEmail, ok := ctx.Value(contextkey.ActorEmail).(string)
+	actorEmail, ok := ctx.Value(contextkey.ActorIDPID).(string)
 	if !ok {
 		return errors.New("actor_id not found in context")
 	}

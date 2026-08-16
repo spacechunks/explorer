@@ -274,9 +274,7 @@ func authInterceptor(
 ) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		// these endpoints do not need authn/authz (as of now)
-		if strings.HasSuffix(info.FullMethod, "UserService/Register") ||
-			strings.HasSuffix(info.FullMethod, "UserService/Login") ||
-			strings.HasSuffix(info.FullMethod, "InstanceService/GetInstance") ||
+		if strings.HasSuffix(info.FullMethod, "InstanceService/GetInstance") ||
 			strings.HasSuffix(info.FullMethod, "InstanceService/ListInstances") ||
 			strings.HasSuffix(info.FullMethod, "InstanceService/DiscoverInstances") ||
 			strings.HasSuffix(info.FullMethod, "InstanceService/ReceiveInstanceStatusReports") {
@@ -298,6 +296,8 @@ func authInterceptor(
 			return nil, fmt.Errorf("looking up set: %w", err)
 		}
 
+		//fmt.Println(vals[0])
+
 		tok, err := jwt.Parse(
 			[]byte(vals[0]),
 			jwt.WithKeySet(set),
@@ -310,14 +310,13 @@ func authInterceptor(
 			return nil, cperrs.ErrInvalidToken
 		}
 
-		var email string
-		email, err = jwt.Get[string](tok, "email")
+		sub, err := jwt.Get[string](tok, jwt.SubjectKey)
 		if err != nil {
 			logger.Error("failed to get user id", "err", err)
 			return nil, cperrs.ErrInvalidToken
 		}
 
-		ctx = context.WithValue(ctx, contextkey.ActorEmail, email)
+		ctx = context.WithValue(ctx, contextkey.ActorIDPID, sub)
 
 		return handler(ctx, req)
 	}

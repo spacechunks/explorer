@@ -97,7 +97,6 @@ func TestCreateInstance(t *testing.T) {
 	expected.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 	expected.Flavor.Versions = nil                  // will not be returned atm
 	expected.Owner = c.Owner
-	expected.Owner.Email = "" // will not be returned atm
 
 	actual, err := pg.DB.CreateInstance(ctx, expected, fixture.Node().ID)
 	require.NoError(t, err)
@@ -145,7 +144,6 @@ func TestDBListInstances(t *testing.T) {
 			i.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 			i.Flavor.Versions = nil                  // will not be returned atm
 			i.Owner = c.Owner
-			i.Owner.Email = "" // will not be returned atm
 		}),
 		fixture.Instance(func(i *resource.Instance) {
 			c := fixture.Chunk(func(tmpC *resource.Chunk) {
@@ -161,7 +159,6 @@ func TestDBListInstances(t *testing.T) {
 			i.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 			i.Flavor.Versions = nil                  // will not be returned atm
 			i.Owner = c.Owner
-			i.Owner.Email = "" // will not be returned atm
 		}),
 	}
 
@@ -276,7 +273,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 			c.ID = "01953e54-8ac5-7c1a-b468-dffdc26d2087"
 			c.Name = "chunk1"
 			c.Owner.Nickname = "user1"
-			c.Owner.Email = "user1@example.com"
+			c.Owner.IDPID = "1"
 			c.Flavors = []resource.Flavor{
 				fixture.Flavor(func(f *resource.Flavor) {
 					f.ID = test.NewUUIDv7(t)
@@ -288,7 +285,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 			c.ID = "01953e54-b686-764a-874f-dbc45b67152c"
 			c.Name = "chunk2"
 			c.Owner.Nickname = "user2"
-			c.Owner.Email = "user2@example.com"
+			c.Owner.IDPID = "2"
 			c.Flavors = []resource.Flavor{
 				fixture.Flavor(func(f *resource.Flavor) {
 					f.ID = test.NewUUIDv7(t)
@@ -322,7 +319,6 @@ func TestGetInstancesByNodeID(t *testing.T) {
 		ins.Chunk.Owner = resource.User{}          // will not be returned atm
 		ins.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 		ins.Chunk.DeletedAt = nil                  // will not be returned atm
-		ins.Owner.Email = ""                       // will not be returned atm
 		ins.Flavor.Versions = nil                  // will not be returned atm
 
 		// see FIXME in GetInstancesByNodeID

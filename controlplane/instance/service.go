@@ -44,7 +44,7 @@ type Service interface {
 	RunFlavorVersion(
 		ctx context.Context,
 		flavorVersionID string,
-		ownerEmail string,
+		ownerIDPID string,
 		orderedBy string,
 	) (resource.Instance, error)
 	DiscoverInstances(ctx context.Context, nodeID string) ([]resource.Instance, error)
@@ -101,7 +101,7 @@ func (s *svc) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 func (s *svc) RunFlavorVersion(
 	ctx context.Context,
 	flavorVersionID string,
-	ownerEmail string,
+	ownerIDPID string,
 	orderedBy string,
 ) (resource.Instance, error) {
 	n, err := s.nodeRepo.BestNode(ctx)
@@ -109,11 +109,11 @@ func (s *svc) RunFlavorVersion(
 		return resource.Instance{}, fmt.Errorf("best node: %w", err)
 	}
 
-	u, err := s.userRepo.GetUserByEmail(ctx, ownerEmail)
+	u, err := s.userRepo.GetUserByIDPID(ctx, ownerIDPID)
 	if err != nil {
 		// FIXME: think of a way to automatically create users for service accounts
 		if errors.Is(err, apierrs.ErrNotFound) {
-			s.logger.Warn("user not found", "email", ownerEmail)
+			s.logger.Warn("user not found", "idp_id", ownerIDPID)
 		}
 		return resource.Instance{}, fmt.Errorf("get user: %w", err)
 	}

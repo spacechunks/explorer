@@ -211,80 +211,80 @@ func (q *Queries) BestNode(ctx context.Context) (BestNodeRow, error) {
 }
 
 const chunkOwnerByChunkID = `-- name: ChunkOwnerByChunkID :one
-SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
+SELECT u.id, u.nickname, u.created_at, u.updated_at, u.idp_id FROM users u
     LEFT JOIN chunks c ON c.owner_id = u.id
-WHERE c.id = $1 AND u.email = $2
+WHERE c.id = $1 AND u.idp_id = $2
 `
 
 type ChunkOwnerByChunkIDParams struct {
 	ID    string
-	Email string
+	IdpID string
 }
 
 func (q *Queries) ChunkOwnerByChunkID(ctx context.Context, arg ChunkOwnerByChunkIDParams) (User, error) {
-	row := q.db.QueryRow(ctx, chunkOwnerByChunkID, arg.ID, arg.Email)
+	row := q.db.QueryRow(ctx, chunkOwnerByChunkID, arg.ID, arg.IdpID)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Nickname,
-		&i.Email,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IdpID,
 	)
 	return i, err
 }
 
 const chunkOwnerByFlavorID = `-- name: ChunkOwnerByFlavorID :one
-SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
-    JOIN flavors f ON f.id = $1 AND u.email = $2
+SELECT u.id, u.nickname, u.created_at, u.updated_at, u.idp_id FROM users u
+    JOIN flavors f ON f.id = $1
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
-WHERE u.email = $2
+WHERE u.idp_id = $2
 LIMIT 1
 `
 
 type ChunkOwnerByFlavorIDParams struct {
 	ID    string
-	Email string
+	IdpID string
 }
 
 func (q *Queries) ChunkOwnerByFlavorID(ctx context.Context, arg ChunkOwnerByFlavorIDParams) (User, error) {
-	row := q.db.QueryRow(ctx, chunkOwnerByFlavorID, arg.ID, arg.Email)
+	row := q.db.QueryRow(ctx, chunkOwnerByFlavorID, arg.ID, arg.IdpID)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Nickname,
-		&i.Email,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IdpID,
 	)
 	return i, err
 }
 
 const chunkOwnerByFlavorVersionID = `-- name: ChunkOwnerByFlavorVersionID :one
-SELECT u.id, u.nickname, u.email, u.created_at, u.updated_at FROM users u
+SELECT u.id, u.nickname, u.created_at, u.updated_at, u.idp_id FROM users u
     JOIN flavor_versions fv ON fv.id = $1
     JOIN flavors f ON f.id = fv.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
     JOIN users ON u.id = c.owner_id
-WHERE u.email = $2
+WHERE u.idp_id = $2
 LIMIT 1
 `
 
 type ChunkOwnerByFlavorVersionIDParams struct {
 	ID    string
-	Email string
+	IdpID string
 }
 
 func (q *Queries) ChunkOwnerByFlavorVersionID(ctx context.Context, arg ChunkOwnerByFlavorVersionIDParams) (User, error) {
-	row := q.db.QueryRow(ctx, chunkOwnerByFlavorVersionID, arg.ID, arg.Email)
+	row := q.db.QueryRow(ctx, chunkOwnerByFlavorVersionID, arg.ID, arg.IdpID)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Nickname,
-		&i.Email,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IdpID,
 	)
 	return i, err
 }
@@ -437,7 +437,7 @@ func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) 
 
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users
-    (id, nickname, email, created_at, updated_at)
+    (id, nickname, created_at, updated_at, idp_id)
 VALUES
     ($1, $2, $3, $4, $5)
 `
@@ -445,18 +445,18 @@ VALUES
 type CreateUserParams struct {
 	ID        string
 	Nickname  string
-	Email     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	IdpID     string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	_, err := q.db.Exec(ctx, createUser,
 		arg.ID,
 		arg.Nickname,
-		arg.Email,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.IdpID,
 	)
 	return err
 }
@@ -642,7 +642,7 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 }
 
 const getChunkByID = `-- name: GetChunkByID :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, min_players, max_players, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, min_players, max_players, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, u.created_at, u.updated_at, idp_id FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
@@ -686,9 +686,9 @@ type GetChunkByIDRow struct {
 	CreatedAt_4            pgtype.Timestamptz
 	ID_4                   *string
 	Nickname               pgtype.Text
-	Email                  pgtype.Text
 	CreatedAt_5            pgtype.Timestamptz
 	UpdatedAt_3            pgtype.Timestamptz
+	IdpID                  pgtype.Text
 }
 
 // TODO: read multiple
@@ -737,9 +737,9 @@ func (q *Queries) GetChunkByID(ctx context.Context, id string) ([]GetChunkByIDRo
 			&i.CreatedAt_4,
 			&i.ID_4,
 			&i.Nickname,
-			&i.Email,
 			&i.CreatedAt_5,
 			&i.UpdatedAt_3,
+			&i.IdpID,
 		); err != nil {
 			return nil, err
 		}
@@ -825,7 +825,7 @@ SELECT
     c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at,
     f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at,
     n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots,
-    u.id, u.nickname, u.email, u.created_at, u.updated_at,
+    u.id, u.nickname, u.created_at, u.updated_at, u.idp_id,
     i.id, i.flavor_version_id, i.node_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, i.ordered_by
 FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
@@ -892,9 +892,9 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.Node.Slots,
 			&i.User.ID,
 			&i.User.Nickname,
-			&i.User.Email,
 			&i.User.CreatedAt,
 			&i.User.UpdatedAt,
+			&i.User.IdpID,
 			&i.Instance.ID,
 			&i.Instance.FlavorVersionID,
 			&i.Instance.NodeID,
@@ -921,7 +921,7 @@ SELECT
     c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at,
     f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at,
     n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots,
-    u.id, u.nickname, u.email, u.created_at, u.updated_at,
+    u.id, u.nickname, u.created_at, u.updated_at, u.idp_id,
     i.id, i.flavor_version_id, i.node_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, i.ordered_by
 FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
@@ -988,9 +988,9 @@ func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]Ge
 			&i.Node.Slots,
 			&i.User.ID,
 			&i.User.Nickname,
-			&i.User.Email,
 			&i.User.CreatedAt,
 			&i.User.UpdatedAt,
+			&i.User.IdpID,
 			&i.Instance.ID,
 			&i.Instance.FlavorVersionID,
 			&i.Instance.NodeID,
@@ -1049,7 +1049,7 @@ func (q *Queries) LatestFlavorVersionByFlavorID(ctx context.Context, flavorID st
 }
 
 const listChunks = `-- name: ListChunks :many
-SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, min_players, max_players, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, email, u.created_at, u.updated_at FROM chunks c
+SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, min_players, max_players, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, u.created_at, u.updated_at, idp_id FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
     LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
@@ -1092,9 +1092,9 @@ type ListChunksRow struct {
 	CreatedAt_4            pgtype.Timestamptz
 	ID_4                   *string
 	Nickname               pgtype.Text
-	Email                  pgtype.Text
 	CreatedAt_5            pgtype.Timestamptz
 	UpdatedAt_3            pgtype.Timestamptz
+	IdpID                  pgtype.Text
 }
 
 func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
@@ -1142,9 +1142,9 @@ func (q *Queries) ListChunks(ctx context.Context) ([]ListChunksRow, error) {
 			&i.CreatedAt_4,
 			&i.ID_4,
 			&i.Nickname,
-			&i.Email,
 			&i.CreatedAt_5,
 			&i.UpdatedAt_3,
+			&i.IdpID,
 		); err != nil {
 			return nil, err
 		}
@@ -1164,7 +1164,7 @@ WITH paged_chunks AS (
     ORDER BY id
     LIMIT $2
 )
-SELECT c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, v.flavor_id, v.hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, v.min_players, v.max_players, vf.flavor_version_id, vf.file_hash, vf.file_path, vf.created_at, u.id, u.nickname, u.email, u.created_at, u.updated_at FROM chunks c
+SELECT c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at, f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, v.flavor_id, v.hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, v.min_players, v.max_players, vf.flavor_version_id, vf.file_hash, vf.file_path, vf.created_at, u.id, u.nickname, u.created_at, u.updated_at, u.idp_id FROM chunks c
     JOIN paged_chunks pc ON pc.id = c.id
     LEFT JOIN flavors f ON f.chunk_id = c.id AND f.deleted_at IS NULL
     LEFT JOIN flavor_versions v ON v.flavor_id = f.id
@@ -1214,9 +1214,9 @@ type ListChunksWithPaginationIgnoreDeletedRow struct {
 	CreatedAt_4            pgtype.Timestamptz
 	ID_4                   *string
 	Nickname               pgtype.Text
-	Email                  pgtype.Text
 	CreatedAt_5            pgtype.Timestamptz
 	UpdatedAt_3            pgtype.Timestamptz
+	IdpID                  pgtype.Text
 }
 
 func (q *Queries) ListChunksWithPaginationIgnoreDeleted(ctx context.Context, arg ListChunksWithPaginationIgnoreDeletedParams) ([]ListChunksWithPaginationIgnoreDeletedRow, error) {
@@ -1264,9 +1264,9 @@ func (q *Queries) ListChunksWithPaginationIgnoreDeleted(ctx context.Context, arg
 			&i.CreatedAt_4,
 			&i.ID_4,
 			&i.Nickname,
-			&i.Email,
 			&i.CreatedAt_5,
 			&i.UpdatedAt_3,
+			&i.IdpID,
 		); err != nil {
 			return nil, err
 		}
@@ -1290,7 +1290,7 @@ SELECT
     c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at,
     f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at,
     n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots,
-    u.id, u.nickname, u.email, u.created_at, u.updated_at,
+    u.id, u.nickname, u.created_at, u.updated_at, u.idp_id,
     i.id, i.flavor_version_id, i.node_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, i.ordered_by
 FROM instances i
     JOIN paged_instances pi ON pi.id = i.id
@@ -1363,9 +1363,9 @@ func (q *Queries) ListInstancesWithPagination(ctx context.Context, arg ListInsta
 			&i.Node.Slots,
 			&i.User.ID,
 			&i.User.Nickname,
-			&i.User.Email,
 			&i.User.CreatedAt,
 			&i.User.UpdatedAt,
+			&i.User.IdpID,
 			&i.Instance.ID,
 			&i.Instance.FlavorVersionID,
 			&i.Instance.NodeID,
@@ -1510,23 +1510,23 @@ func (q *Queries) UpdateFlavorVersionPresignedURLData(ctx context.Context, arg U
 	return err
 }
 
-const userByEmail = `-- name: UserByEmail :one
+const userByIDPID = `-- name: UserByIDPID :one
 /*
  * USERS
  */
 
-SELECT id, nickname, email, created_at, updated_at FROM users WHERE email = $1
+SELECT id, nickname, created_at, updated_at, idp_id FROM users WHERE idp_id = $1
 `
 
-func (q *Queries) UserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRow(ctx, userByEmail, email)
+func (q *Queries) UserByIDPID(ctx context.Context, idpID string) (User, error) {
+	row := q.db.QueryRow(ctx, userByIDPID, idpID)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Nickname,
-		&i.Email,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IdpID,
 	)
 	return i, err
 }

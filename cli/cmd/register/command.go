@@ -25,15 +25,11 @@ import (
 	userv1alpha1 "github.com/spacechunks/explorer/api/user/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 )
 
 func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	run := func(cmd *cobra.Command, args []string) error {
-		tok, err := cliCtx.Auth.AccessToken(ctx)
-		if err != nil {
-			return fmt.Errorf("login failed: %w", err)
-		}
-
 		fmt.Println("Before you proceed, make sure to read and accept our privacy policy.")
 		fmt.Println("Visit: https://chunks.space/privacy")
 
@@ -42,9 +38,16 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 			return nil
 		}
 
+		tok, err := cliCtx.Auth.AccessToken(ctx)
+		if err != nil {
+			return fmt.Errorf("authentication failed: %w", err)
+		}
+
+		md := metadata.Pairs("authorization", tok)
+		ctx = metadata.NewOutgoingContext(ctx, md)
+
 		if _, err := cliCtx.UserClient.Register(ctx, &userv1alpha1.RegisterRequest{
 			Nickname:            args[0],
-			IdToken:             tok,
 			AcceptPrivacyPolicy: true,
 		}); err != nil {
 			return fmt.Errorf("register failed: %w", err)

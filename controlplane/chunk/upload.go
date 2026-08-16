@@ -36,7 +36,7 @@ func (s *svc) GetUploadURL(
 	tarballHash string,
 	tarballSizeBytes uint64,
 ) (string, error) {
-	actorID, ok := ctx.Value(contextkey.ActorEmail).(string)
+	actorID, ok := ctx.Value(contextkey.ActorIDPID).(string)
 	if !ok {
 		return "", errors.New("actor_id not found in context")
 	}
