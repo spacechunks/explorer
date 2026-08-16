@@ -522,14 +522,6 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
--- Name: users users_idp_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_idp_id_key UNIQUE (idp_id);
-
-
---
 -- Name: users users_nickname_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -571,6 +563,13 @@ CREATE INDEX archived_flavor_version_flavor_id_idx ON public.flavor_version_arch
 --
 
 CREATE INDEX flavor_version_idx ON public.flavor_versions USING btree (version);
+
+
+--
+-- Name: idp_id_unique_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idp_id_unique_idx ON public.users USING btree (idp_id);
 
 
 --
@@ -720,4 +719,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260525101218'),
     ('20260610165709'),
     ('20260610211305'),
-    ('20260816162059');
+    ('20260816162059'),
+    ('20260816181957');
