@@ -25,7 +25,6 @@ option go_package = "github.com/spacechunks/explorer/api/user/v1alpha1";
 option java_package = "chunks.space.api.explorer.user.v1alpha1";
 
 import "user/v1alpha1/types.proto";
-import "google/protobuf/timestamp.proto";
 import "buf/validate/validate.proto";
 
 service UserService {
@@ -33,14 +32,13 @@ service UserService {
   //
   // Defined error codes:
   // - ALREADY_EXISTS:
-  //   - a user with the provided email or nickname does already exist
+  //   - a user with the provided nickname does already exist
   rpc Register(RegisterRequest) returns (RegisterResponse);
 }
 
 message RegisterRequest {
   string nickname = 1 [(buf.validate.field).string.max_len = 16];
-  string id_token = 2;
-  bool accept_privacy_policy = 3;
+  bool accept_privacy_policy = 2;
 }
 
 message RegisterResponse {

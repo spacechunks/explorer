@@ -48,7 +48,7 @@ type UserServiceClient interface {
 	//
 	// Defined error codes:
 	// - ALREADY_EXISTS:
-	//   - a user with the provided email or nickname does already exist
+	//   - a user with the provided nickname does already exist
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 }
 
@@ -78,7 +78,7 @@ type UserServiceServer interface {
 	//
 	// Defined error codes:
 	// - ALREADY_EXISTS:
-	//   - a user with the provided email or nickname does already exist
+	//   - a user with the provided nickname does already exist
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
