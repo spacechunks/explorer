@@ -46,7 +46,6 @@ func NewCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 		md := metadata.Pairs("authorization", tok)
 		ctx = metadata.NewOutgoingContext(ctx, md)
 
-
 		if _, err := cliCtx.UserClient.Register(ctx, &userv1alpha1.RegisterRequest{
 			Nickname:            args[0],
 			AcceptPrivacyPolicy: true,
