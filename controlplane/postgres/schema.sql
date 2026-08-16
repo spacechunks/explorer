@@ -1,7 +1,7 @@
 \restrict dbmate
 
 -- Dumped from database version 17.2 (Debian 17.2-1.pgdg120+1)
--- Dumped by pg_dump version 17.9
+-- Dumped by pg_dump version 18.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -364,9 +364,9 @@ CREATE TABLE public.schema_migrations (
 CREATE TABLE public.users (
     id uuid NOT NULL,
     nickname character varying(16) NOT NULL,
-    email character varying NOT NULL,
     created_at timestamp with time zone NOT NULL,
-    updated_at timestamp with time zone NOT NULL
+    updated_at timestamp with time zone NOT NULL,
+    idp_id character varying(256) DEFAULT ''::character varying NOT NULL
 );
 
 
@@ -522,11 +522,11 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
--- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: users users_idp_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_email_key UNIQUE (email);
+    ADD CONSTRAINT users_idp_id_key UNIQUE (idp_id);
 
 
 --
@@ -719,4 +719,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260507140844'),
     ('20260525101218'),
     ('20260610165709'),
-    ('20260610211305');
+    ('20260610211305'),
+    ('20260816162059');

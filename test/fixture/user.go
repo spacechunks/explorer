@@ -28,7 +28,7 @@ func User(mod ...func(c *resource.User)) resource.User {
 	u := resource.User{
 		ID:        "019a5637-289e-74ad-b3fb-7534de25e0a9",
 		Nickname:  "test-user",
-		Email:     "test-user@example.com",
+		IDPID:     "CiQ1MGQyNzgyMC1iMmUzLTQ5ZmYtYmIxOC1iZTU5Y2RhNjhkYjgSBWxvY2Fs",
 		CreatedAt: time.Date(2025, 11, 5, 13, 12, 15, 0, time.UTC),
 		UpdatedAt: time.Date(2025, 11, 11, 10, 26, 0, 0, time.UTC),
 	}

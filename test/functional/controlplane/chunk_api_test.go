@@ -1518,10 +1518,7 @@ func TestUserCannotCreateFlavorVersionForFlavorHeIsNotOwnerOf(t *testing.T) {
 		ctx       = context.Background()
 		cp        = fixture.NewControlPlane(t)
 		c         = fixture.Chunk()
-		otherUser = fixture.User(func(tmp *resource.User) {
-			tmp.Nickname = "other-nickname"
-			tmp.Email = "other-email@example.com"
-		})
+		otherUser = fixture.OtherIDPUser
 	)
 
 	cp.Run(t)
@@ -1549,10 +1546,7 @@ func TestUserThatIsNotOwnerCannotUpdateChunk(t *testing.T) {
 		ctx       = context.Background()
 		cp        = fixture.NewControlPlane(t)
 		c         = fixture.Chunk()
-		otherUser = fixture.User(func(tmp *resource.User) {
-			tmp.Nickname = "other-nickname"
-			tmp.Email = "other-email@example.com"
-		})
+		otherUser = fixture.OtherIDPUser
 	)
 
 	cp.Run(t)
@@ -1577,10 +1571,7 @@ func TestUserCannotCreateFlavorInChunkWhereHeIsNotOwner(t *testing.T) {
 		ctx       = context.Background()
 		cp        = fixture.NewControlPlane(t)
 		c         = fixture.Chunk()
-		otherUser = fixture.User(func(tmp *resource.User) {
-			tmp.Nickname = "other-nickname"
-			tmp.Email = "other-email@example.com"
-		})
+		otherUser = fixture.OtherIDPUser
 	)
 
 	cp.Run(t)
@@ -1603,10 +1594,7 @@ func TestUserCannotBuildFlavorVersionInFlavorHeIsNotOwnerOf(t *testing.T) {
 		ctx       = context.Background()
 		cp        = fixture.NewControlPlane(t)
 		c         = fixture.Chunk()
-		otherUser = fixture.User(func(tmp *resource.User) {
-			tmp.Nickname = "other-nickname"
-			tmp.Email = "other-email@example.com"
-		})
+		otherUser = fixture.OtherIDPUser
 	)
 
 	cp.Run(t)
@@ -1628,10 +1616,7 @@ func TestUserCannotGetUploadURLForFlavorVersionWhereHeIsNotOwnerOf(t *testing.T)
 		ctx       = context.Background()
 		cp        = fixture.NewControlPlane(t)
 		c         = fixture.Chunk()
-		otherUser = fixture.User(func(tmp *resource.User) {
-			tmp.Nickname = "other-nickname"
-			tmp.Email = "other-email@example.com"
-		})
+		otherUser = fixture.OtherIDPUser
 	)
 
 	cp.Run(t)
@@ -1810,10 +1795,7 @@ func TestOnlyOwnerCanDeleteFlavor(t *testing.T) {
 		cp    = fixture.NewControlPlane(t)
 		c     = fixture.Chunk()
 		u     = fixture.User()
-		other = fixture.User(func(tmp *resource.User) {
-			tmp.Email = "other-email@example.com"
-			tmp.Nickname = "other"
-		})
+		other = fixture.OtherIDPUser
 	)
 
 	cp.Run(t)
@@ -2026,10 +2008,7 @@ func TestOnlyOwnerCanDeleteChunk(t *testing.T) {
 		cp    = fixture.NewControlPlane(t)
 		c     = fixture.Chunk()
 		u     = fixture.User()
-		other = fixture.User(func(tmp *resource.User) {
-			tmp.Email = "other-email@example.com"
-			tmp.Nickname = "other"
-		})
+		other = fixture.OtherIDPUser
 	)
 
 	cp.Run(t)

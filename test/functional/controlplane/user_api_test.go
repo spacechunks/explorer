@@ -39,37 +39,27 @@ func TestRegisterUser(t *testing.T) {
 	}{
 		{
 			name:                "user does not exist",
-			user:                fixture.User(),
+			user:                fixture.IDPUser,
 			acceptPrivacyPolicy: true,
 		},
 		{
-			name: "user with nickname already exists",
-			createdUser: new(fixture.User(func(tmp *resource.User) {
-				tmp.Email = "different@email.com"
-			})),
-			user:                fixture.User(),
+			name:                "user with nickname already exists",
+			createdUser:         new(fixture.IDPUser),
+			user:                fixture.IDPUser,
 			err:                 apierrs.ErrAlreadyExists.GRPCStatus().Err(),
 			acceptPrivacyPolicy: true,
 		},
 		{
-			name: "user with email already exists",
-			createdUser: new(fixture.User(func(tmp *resource.User) {
-				tmp.Nickname = "different-nickname"
-			})),
-			user:                fixture.User(),
+			name:                "user with same idp id already exists",
+			createdUser:         new(fixture.IDPUser),
+			user:                fixture.IDPUser,
 			err:                 apierrs.ErrAlreadyExists.GRPCStatus().Err(),
 			acceptPrivacyPolicy: true,
 		},
 		{
-			name: "does not accept privacy policy",
-			createdUser: new(fixture.User(func(tmp *resource.User) {
-				tmp.Nickname = "different-nickname"
-				tmp.Email = "different@example.com"
-			})),
-			user: fixture.User(func(tmp *resource.User) {
-				tmp.Nickname = "different"
-				tmp.Email = "different@example.com"
-			}),
+			name:                "does not accept privacy policy",
+			createdUser:         new(fixture.OtherIDPUser),
+			user:                fixture.OtherIDPUser,
 			acceptPrivacyPolicy: false,
 			err:                 apierrs.ErrPrivacyPolicyNotAccepted.GRPCStatus().Err(),
 		},
@@ -84,17 +74,16 @@ func TestRegisterUser(t *testing.T) {
 
 			cp.Run(t)
 
-			idTok := cp.IDP.AccessToken(t)
-
 			if tt.createdUser != nil {
 				cp.Postgres.CreateUser(t, &tt.user)
 			}
+
+			cp.AddUserAPIKey(t, &ctx, tt.user)
 
 			client := cp.UserClient(t)
 
 			_, err := client.Register(ctx, &userv1alpha1.RegisterRequest{
 				Nickname:            tt.user.Nickname,
-				IdToken:             idTok,
 				AcceptPrivacyPolicy: tt.acceptPrivacyPolicy,
 			})
 

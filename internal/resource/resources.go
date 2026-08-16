@@ -105,9 +105,9 @@ type FlavorVersion struct {
 type User struct {
 	ID        string    `json:"id"`
 	Nickname  string    `json:"nickname"`
-	Email     string    `json:"email"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	IDPID     string    `json:"idpID"`
 }
 
 /*

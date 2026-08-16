@@ -161,7 +161,7 @@ func (db *DB) ListChunks(ctx context.Context, pageSize int, afterID *string) ([]
 
 				UserID:        *r.ID_4,
 				UserNickname:  r.Nickname.String,
-				UserEmail:     r.Email.String,
+				UserIDPID:     r.IdpID.String,
 				UserCreatedAt: r.CreatedAt_5.Time,
 				UserUpdatedAt: r.UpdatedAt_3.Time,
 			}
@@ -352,7 +352,7 @@ func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (re
 
 			UserID:        *r.ID_4,
 			UserNickname:  r.Nickname.String,
-			UserEmail:     r.Email.String,
+			UserIDPID:     r.IdpID.String,
 			UserCreatedAt: r.CreatedAt_5.Time.UTC(),
 			UserUpdatedAt: r.UpdatedAt_3.Time.UTC(),
 		}
@@ -429,7 +429,7 @@ type chunkRelationsRow struct {
 
 	UserID        string
 	UserNickname  string
-	UserEmail     string
+	UserIDPID     string
 	UserCreatedAt time.Time
 	UserUpdatedAt time.Time
 }
@@ -458,7 +458,7 @@ func collectChunks(rows []chunkRelationsRow) resource.Chunk {
 			Owner: resource.User{
 				ID:        row.UserID,
 				Nickname:  row.UserNickname,
-				Email:     row.UserEmail,
+				IDPID:     row.UserIDPID,
 				CreatedAt: row.UserCreatedAt,
 				UpdatedAt: row.UserUpdatedAt,
 			},

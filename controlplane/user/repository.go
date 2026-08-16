@@ -25,6 +25,6 @@ import (
 )
 
 type Repository interface {
-	GetUserByEmail(ctx context.Context, id string) (resource.User, error)
+	GetUserByIDPID(ctx context.Context, id string) (resource.User, error)
 	CreateUser(ctx context.Context, user resource.User) (resource.User, error)
 }

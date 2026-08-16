@@ -301,7 +301,7 @@ func (p *Postgres) CreateUser(t *testing.T, u *resource.User) {
 	// in some tests we create multiple resource with the same user,
 	// so we should not fail if the user is already present, and instead
 	// return the already created user.
-	present, err := p.DB.GetUserByEmail(ctx, u.Email)
+	present, err := p.DB.GetUserByIDPID(ctx, u.IDPID)
 	if errors.Is(err, cperrs.ErrNotFound) {
 		created, err := p.DB.CreateUser(ctx, *u)
 		require.NoError(t, err)

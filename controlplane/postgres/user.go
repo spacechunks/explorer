@@ -32,10 +32,10 @@ import (
 	"github.com/spacechunks/explorer/internal/resource"
 )
 
-func (db *DB) GetUserByEmail(ctx context.Context, email string) (resource.User, error) {
+func (db *DB) GetUserByIDPID(ctx context.Context, email string) (resource.User, error) {
 	var ret resource.User
 	if err := db.do(ctx, func(q *query.Queries) error {
-		u, err := q.UserByEmail(ctx, email)
+		u, err := q.UserByIDPID(ctx, email)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apierrs.ErrNotFound
 		}
@@ -47,7 +47,7 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string) (resource.User, 
 		ret = resource.User{
 			ID:        u.ID,
 			Nickname:  u.Nickname,
-			Email:     u.Email,
+			IDPID:     u.IdpID,
 			CreatedAt: u.CreatedAt,
 			UpdatedAt: u.UpdatedAt,
 		}
@@ -72,9 +72,9 @@ func (db *DB) CreateUser(ctx context.Context, u resource.User) (resource.User, e
 		return q.CreateUser(ctx, query.CreateUserParams{
 			ID:        id.String(),
 			Nickname:  u.Nickname,
-			Email:     u.Email,
 			CreatedAt: now,
 			UpdatedAt: now,
+			IdpID:     u.IDPID,
 		})
 	})
 
