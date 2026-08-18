@@ -181,8 +181,8 @@ github.com/aws/smithy-go/waiter
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
-# github.com/cbergoon/merkletree v0.2.0
-## explicit; go 1.12
+# github.com/cbergoon/merkletree v0.5.0
+## explicit; go 1.21
 github.com/cbergoon/merkletree
 # github.com/cenkalti/backoff/v4 v4.3.0
 ## explicit; go 1.18
