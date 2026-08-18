@@ -210,6 +210,8 @@ github.com/envoyproxy/go-control-plane v0.14.0 h1:hbG2kr4RuFj222B6+7T83thSPqLjwB
 github.com/envoyproxy/go-control-plane v0.14.0/go.mod h1:NcS5X47pLl/hfqxU70yPwL9ZMkUlwlKxtAohpi2wBEU=
 github.com/envoyproxy/go-control-plane/envoy v1.37.0 h1:u3riX6BoYRfF4Dr7dwSOroNfdSbEPe9Yyl09/B6wBrQ=
 github.com/envoyproxy/go-control-plane/envoy v1.37.0/go.mod h1:DReE9MMrmecPy+YvQOAOHNYMALuowAnbjjEMkkWOi6A=
+github.com/envoyproxy/go-control-plane/envoy v1.39.0 h1:1uwRDYPYG8BIBU9Mj1sUAebNmlM6beu/ZKKweSLDxk8=
+github.com/envoyproxy/go-control-plane/envoy v1.39.0/go.mod h1:5e4ylfTZO723MEEFsCpSW4ZEBWR8mwkEyXfwJBTCZ9c=
 github.com/envoyproxy/go-control-plane/ratelimit v0.1.0 h1:/G9QYbddjL25KvtKTv3an9lx6VBE2cnb8wp1vEGNYGI=
 github.com/envoyproxy/go-control-plane/ratelimit v0.1.0/go.mod h1:Wk+tMFAFbCXaJPzVVHnPgRKdUdwW/KdbRt94AzgRee4=
 github.com/envoyproxy/protoc-gen-validate v1.3.3 h1:MVQghNeW+LZcmXe7SY1V36Z+WFMDjpqGAGacLe2T0ds=
@@ -450,6 +452,7 @@ github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/riverqueue/river v0.41.0 h1:E7Yfyhn74IgVaCBKsBpTHoC0LxWJvoG0jKt7Tb+lJZg=
 github.com/riverqueue/river v0.41.0/go.mod h1:WXiAF1/2gfUPj3H+WqQG3Q5NW5w9JmRXRTe7U9zybNc=
+github.com/riverqueue/river v0.44.0/go.mod h1:ZpbxOPFScc8kkslE2rwMW6ZLZHAvK7F0KDom+3WdnL8=
 github.com/riverqueue/river/cmd/river v0.38.0 h1:0nD4OS9rMkR+I45dg5vJK3r91X0zmCG/kW2LXokUi9I=
 github.com/riverqueue/river/cmd/river v0.38.0/go.mod h1:CvffdlKGSTyoPeJ02zwOtkCypfWJRkIzaL1hmo1jyWA=
 github.com/riverqueue/river/riverdriver v0.41.0 h1:A5g80n6fCGu9Bp4hSq7gys7mvfOiuWkbQHuFx3iPp7w=
