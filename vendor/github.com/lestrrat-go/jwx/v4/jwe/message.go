@@ -228,31 +228,29 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		fields = append(fields, jsonKV{Key: InitializationVectorKey, Value: v})
 	}
 
-	var encodedProtectedHeaders []byte
 	if h := m.ProtectedHeaders(); h != nil {
 		v, err := h.Encode()
 		if err != nil {
 			return nil, fmt.Errorf(`failed to encode protected headers: %w`, err)
 		}
 
-		encodedProtectedHeaders = v
-		if len(encodedProtectedHeaders) <= 2 { // '{}'
-			encodedProtectedHeaders = nil
-		} else {
+		if len(v) > 2 { // '{}'
 			fields = append(fields, jsonKV{
 				Key:   ProtectedHeadersKey,
-				Value: fmt.Sprintf("%q", encodedProtectedHeaders),
+				Value: fmt.Sprintf("%q", v),
 			})
 		}
 	}
 
 	if aad := m.AuthenticatedData(); len(aad) > 0 {
-		aad = base64.Encode(aad)
-		if encodedProtectedHeaders != nil {
-			aad = concatAAD(encodedProtectedHeaders, aad)
-		}
-
-		v, err := marshalField(aad)
+		// RFC 7516 §7.2.1: the "aad" member is BASE64URL(JWE AAD) — the
+		// external Additional Authenticated Data on its own. The protected
+		// header is prepended to the AAD only when building the AEAD input
+		// (concatAAD, in the encrypt/decrypt paths), never in the serialized
+		// member. Encode to a base64url string like the ciphertext/iv/tag
+		// members above so marshalField does not base64-encode the raw bytes
+		// a second time (which also used the padded std alphabet).
+		v, err := marshalField(base64.EncodeToString(aad))
 		if err != nil {
 			return nil, fmt.Errorf(`failed to encode %s field: %w`, AuthenticatedDataKey, err)
 		}

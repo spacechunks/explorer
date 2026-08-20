@@ -1,6 +1,29 @@
-.PHONY: generate realclean cover viewcover test lint check_diffs imports tidy jwx fuzz fuzz-jwt fuzz-jws fuzz-jwe fuzz-jwk companion-test
+.PHONY: generate realclean cover viewcover test lint check_diffs imports tidy jwx fuzz fuzz-jwt fuzz-jws fuzz-jwe fuzz-jwk companion-test print-goexperiment
 
-export GOEXPERIMENT := jsonv2
+# encoding/json/v2 sits behind GOEXPERIMENT=jsonv2 on Go 1.26 and is part of
+# the standard library from Go 1.27 on. Probe the toolchain rather than
+# hardcoding a version, and do not name the experiment when the toolchain
+# already ships it for real: that forces the standard library to be rebuilt
+# under a non-default configuration.
+#
+# Both branches rewrite GOEXPERIMENT instead of only setting it, because the
+# caller may have exported it. On Go 1.27 an inherited jsonv2 would otherwise
+# survive and trigger the very rebuild this probe exists to avoid. Experiments
+# other than jsonv2 are always preserved, and the result is idempotent, so a
+# recursive $(MAKE) that inherits it lands on the same value. GOEXPERIMENT is
+# cleared for the probe itself so that recursion re-probes the toolchain
+# honestly instead of reading back what this file exported.
+GOEXPERIMENT_COMMA := ,
+GOEXPERIMENT_EMPTY :=
+GOEXPERIMENT_SPACE := $(GOEXPERIMENT_EMPTY) $(GOEXPERIMENT_EMPTY)
+GOEXPERIMENT_OTHERS := $(strip $(filter-out jsonv2,$(subst $(GOEXPERIMENT_COMMA),$(GOEXPERIMENT_SPACE),$(GOEXPERIMENT))))
+GOEXPERIMENT_REST := $(subst $(GOEXPERIMENT_SPACE),$(GOEXPERIMENT_COMMA),$(GOEXPERIMENT_OTHERS))
+
+ifneq ($(shell GOEXPERIMENT= go list encoding/json/v2 >/dev/null 2>&1 || echo needed),)
+export GOEXPERIMENT := $(if $(GOEXPERIMENT_REST),$(GOEXPERIMENT_REST)$(GOEXPERIMENT_COMMA))jsonv2
+else
+export GOEXPERIMENT := $(GOEXPERIMENT_REST)
+endif
 
 generate:
 	@go generate
@@ -39,6 +62,11 @@ lint:
 
 check_diffs:
 	./scripts/check-diff.sh
+
+# Reports the GOEXPERIMENT this Makefile settled on for the current toolchain.
+# CI uses it to assert that the Go 1.27 job does not name the jsonv2 experiment.
+print-goexperiment:
+	@echo "$(GOEXPERIMENT)"
 
 imports:
 	goimports -w ./
