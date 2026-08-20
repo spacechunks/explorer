@@ -19,14 +19,18 @@ This project requires **Go 1.26.0** or later. Check `go.mod` for the exact versi
 
 ## GOEXPERIMENT
 
-v4 depends on `encoding/json/v2` which requires `GOEXPERIMENT=jsonv2`. The Makefile exports this automatically, but any direct `go build`, `go test`, or `go run` invocation **must** set it:
+v4 depends on `encoding/json/v2`, which is behind `GOEXPERIMENT=jsonv2` on Go 1.26 and part of the standard library from Go 1.27 on. The Makefile probes the toolchain and rewrites `GOEXPERIMENT` to match it, adding `jsonv2` on Go 1.26 and removing it on Go 1.27, so `make` targets work on both even when your shell already exports the variable. Experiments other than `jsonv2` are left alone. `scripts/test-companion.sh` carries the same probe.
+
+A direct `go build`, `go test`, or `go run` invocation on **Go 1.26** must set it:
 
 ```bash
 GOEXPERIMENT=jsonv2 go test ./...
 GOEXPERIMENT=jsonv2 go build ./...
 ```
 
-Without this, builds fail with `build constraints exclude all Go files` errors.
+Without this, Go 1.26 builds fail with `build constraints exclude all Go files` errors.
+
+On **Go 1.27** do not set it. Naming an experiment the toolchain already ships for real rebuilds the standard library under a non-default configuration for no benefit.
 
 ## Module Path vs Physical Layout
 
@@ -199,7 +203,12 @@ Use `github.com/stretchr/testify/require` for assertions (not `assert`).
 
 ## Build Tags
 
-No build tags in v4. Optional features (signature algorithms, backend replacements) are provided as extension modules under [`github.com/jwx-go`](https://github.com/jwx-go). See [Extension Modules](docs/10-extensions.md) for the full list.
+No feature build tags in v4. Optional features (signature algorithms, backend replacements) are provided as extension modules under [`github.com/jwx-go`](https://github.com/jwx-go). See [Extension Modules](docs/10-extensions.md) for the full list.
+
+Two exceptions exist, both keyed on the Go version rather than on a feature. Do not add feature build tags alongside them.
+
+1. A json/v2 compatibility shim. `internal/json/skipfunc_pre_go127.go` and `internal/json/skipfunc_go127.go` pick the "skip this value" sentinel, which Go 1.27 renamed from `json/v2.SkipFunc` to `errors.ErrUnsupported`.
+2. Native ML-DSA. `jwa/signature_go127_gen.go` (generated from `jwa/objects.yml`), `jwk/mldsa.go`, and `jws/mldsa.go` are all `//go:build go1.27`, because `crypto/mldsa` joins the standard library in Go 1.27. On Go 1.26 the algorithms are not registered at all, so `jws.Sign` and `jws.Verify` report them as unsupported instead of failing later with a confusing key error. ML-DSA on Go 1.26 still needs [`github.com/jwx-go/mldsa/v4`](https://github.com/jwx-go/mldsa).
 
 ## Quick Reference: Common Modifications
 
