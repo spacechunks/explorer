@@ -214,7 +214,9 @@ func TestRunFlavorVersion(t *testing.T) {
 			var (
 				ctx = context.Background()
 				cp  = fixture.NewControlPlane(t)
-				c   = fixture.Chunk()
+				c   = fixture.Chunk(func(tmp *resource.Chunk) {
+					tmp.Flavors[0].Versions[0].BuildStatus = resource.FlavorVersionBuildStatusCompleted
+				})
 			)
 
 			cp.Run(t)
@@ -277,6 +279,131 @@ func TestRunFlavorVersion(t *testing.T) {
 
 			resp, err := client.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
 				FlavorVersionId: tt.flavorVersionID,
+				OrderedBy:       "orderer",
+			})
+
+			if tt.err != nil {
+				require.ErrorAs(t, err, &tt.err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			if d := cmp.Diff(
+				expected,
+				resp.GetInstance(),
+				protocmp.Transform(),
+				test.IgnoredProtoInstanceFields,
+				test.IgnoredProtoFlavorVersionFields,
+				test.IgnoredProtoChunkFields,
+				test.IgnoredProtoUserFields,
+			); d != "" {
+				t.Fatalf("diff (-want +got):\n%s", d)
+			}
+		})
+	}
+}
+
+func TestRunFlavorVersionFailsIfFlavorVersionIsNotCompleted(t *testing.T) {
+	tests := []struct {
+		name   string
+		status resource.FlavorVersionBuildStatus
+		err    error
+	}{
+		{
+			name:   "COMPLETE runs",
+			status: resource.FlavorVersionBuildStatusCompleted,
+		},
+		{
+			name:   "CHECKPOINT_BUILD fails",
+			status: resource.FlavorVersionBuildStatusBuildCheckpoint,
+			err:    apierrs.ErrFlavorVersionInvalidBuildStatus.GRPCStatus().Err(),
+		},
+		{
+			name:   "IMAGE_BUILD fails",
+			status: resource.FlavorVersionBuildStatusBuildImage,
+			err:    apierrs.ErrFlavorVersionInvalidBuildStatus.GRPCStatus().Err(),
+		},
+		{
+			name:   "PENDING fails",
+			status: resource.FlavorVersionBuildStatusPending,
+			err:    apierrs.ErrFlavorVersionInvalidBuildStatus.GRPCStatus().Err(),
+		},
+		{
+			name:   "CHECKPOINT_BUILD_FAILED fails",
+			status: resource.FlavorVersionBuildStatusBuildCheckpointFailed,
+			err:    apierrs.ErrFlavorVersionInvalidBuildStatus.GRPCStatus().Err(),
+		},
+		{
+			name:   "IMAGE_BUILD_FAILED fails",
+			status: resource.FlavorVersionBuildStatusBuildImageFailed,
+			err:    apierrs.ErrFlavorVersionInvalidBuildStatus.GRPCStatus().Err(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx = context.Background()
+				cp  = fixture.NewControlPlane(t)
+				c   = fixture.Chunk(func(tmp *resource.Chunk) {
+					tmp.Flavors[0].Versions[0].BuildStatus = tt.status
+				})
+			)
+
+			cp.Run(t)
+
+			cp.Postgres.InsertNode(t)
+			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+			f := c.Flavors[0]
+			v := c.Flavors[0].Versions[0]
+
+			fmt.Println(c.Flavors[0].Versions[0])
+
+			expected := &instancev1alpha1.Instance{
+				Id: "",
+				Chunk: &chunkv1alpha1.Chunk{
+					Id:          c.ID,
+					Name:        c.Name,
+					Description: c.Description,
+					Tags:        c.Tags,
+					CreatedAt:   timestamppb.New(c.CreatedAt),
+					UpdatedAt:   timestamppb.New(c.UpdatedAt),
+				},
+				Flavor: &chunkv1alpha1.Flavor{
+					Id:        f.ID,
+					Name:      f.Name,
+					CreatedAt: timestamppb.New(f.CreatedAt),
+					UpdatedAt: timestamppb.New(f.UpdatedAt),
+					Versions:  nil, // not returned atm
+				},
+				FlavorVersion: &chunkv1alpha1.FlavorVersion{
+					Id:               v.ID,
+					Version:          v.Version,
+					MinecraftVersion: fixture.MinecraftVersion,
+					Hash:             v.Hash,
+					FileHashes:       nil, // not returned atm
+					BuildStatus:      chunkv1alpha1.BuildStatus(chunkv1alpha1.BuildStatus_value[string(v.BuildStatus)]),
+					CreatedAt:        timestamppb.New(v.CreatedAt),
+					MinPlayers:       v.MinPlayers,
+					MaxPlayers:       v.MaxPlayers,
+				},
+				Owner: &userv1alpha1.User{
+					Id:        c.Owner.ID,
+					Nickname:  c.Owner.Nickname,
+					CreatedAt: timestamppb.New(c.Owner.CreatedAt),
+					UpdatedAt: timestamppb.New(c.Owner.UpdatedAt),
+				},
+				Ip:        fixture.Node().Addr.String(),
+				State:     instancev1alpha1.InstanceState_PENDING,
+				OrderedBy: "orderer",
+			}
+
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			client := cp.InstanceClient(t)
+
+			resp, err := client.RunFlavorVersion(ctx, &instancev1alpha1.RunFlavorVersionRequest{
+				FlavorVersionId: v.ID,
 				OrderedBy:       "orderer",
 			})
 

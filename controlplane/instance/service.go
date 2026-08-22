@@ -146,9 +146,13 @@ func (s *svc) RunFlavorVersion(
 
 	version := flavor.Versions[idx]
 
+	if version.BuildStatus != resource.FlavorVersionBuildStatusCompleted {
+		return resource.Instance{}, apierrs.ErrFlavorVersionInvalidBuildStatus
+	}
+
 	ins, err := s.insRepo.CreateInstance(ctx, resource.Instance{
 		ID:            instanceID.String(),
-		FlavorVersion: flavor.Versions[idx],
+		FlavorVersion: version,
 		State:         resource.InstanceStatePending,
 		Owner: resource.User{
 			ID: u.ID,
