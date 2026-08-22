@@ -28,7 +28,21 @@ If there is a concrete roadmap it will be posted on our [Discord](http://discord
 **Limitations**
 * Only single-platform OCI images can be built, so setups containing both `linux/arm64` and `linux/amd64` hosts is not possible as of now.
 
+## Install the CLI
+
+On macOS or Linux:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/spacechunks/explorer/main/scripts/install.sh | sh
+```
+
+On Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/spacechunks/explorer/main/scripts/install.ps1 | iex
+```
+
+This installs the latest version of the CLI.
+
 ## License
 This project uses two different licenses: AGPLv3 and LGPLv3. Everything found under under the `api/` folder is licensed under LGPLv3 while everything else is covered by AGPLv3, if not stated otherwise.
-
-

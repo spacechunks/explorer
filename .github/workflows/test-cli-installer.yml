@@ -1,0 +1,48 @@
+name: test-cli-installer
+
+on:
+  push:
+    paths:
+      - "scripts/install.sh"
+      - "scripts/install.ps1"
+      - ".github/workflows/test-cli-installer.yml"
+  pull_request:
+    paths:
+      - "scripts/install.sh"
+      - "scripts/install.ps1"
+      - ".github/workflows/test-cli-installer.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  unix:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: install the latest Explorer CLI
+        env:
+          EXPLORER_INSTALL_DIR: ${{ runner.temp }}/explorer-bin
+          NO_COLOR: 1
+        run: ./scripts/install.sh
+      - name: run the installed CLI
+        run: $RUNNER_TEMP/explorer-bin/explorer version
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: install the latest Explorer CLI
+        shell: pwsh
+        env:
+          EXPLORER_INSTALL_DIR: ${{ runner.temp }}\explorer-bin
+          NO_COLOR: 1
+        run: ./scripts/install.ps1
+      - name: run the installed CLI
+        shell: pwsh
+        run: '& "$env:RUNNER_TEMP\explorer-bin\explorer.exe" version'
