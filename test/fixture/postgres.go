@@ -293,6 +293,13 @@ func (p *Postgres) CreateFlavorVersion(t *testing.T, flavorID string, version *r
 	ctx := context.Background()
 	created, err := p.DB.CreateFlavorVersion(ctx, flavorID, *version, "")
 	require.NoError(t, err)
+
+	q := `UPDATE flavor_versions SET build_status = $1 WHERE id = $2`
+	_, err = p.Pool.Exec(ctx, q, version.BuildStatus, created.ID)
+	require.NoError(t, err)
+
+	created.BuildStatus = version.BuildStatus
+
 	*version = created
 }
 

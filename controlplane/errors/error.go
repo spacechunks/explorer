@@ -86,6 +86,13 @@ var (
 	ErrPrivacyPolicyNotAccepted = New(codes.FailedPrecondition, "privacy policy not accepted")
 )
 
+/*
+ * instance related errors
+ */
+var (
+	ErrFlavorVersionInvalidBuildStatus = New(codes.FailedPrecondition, "flavor version build state must be COMPLETED")
+)
+
 type InvalidPathViolation struct {
 	Field string
 	Path  string
