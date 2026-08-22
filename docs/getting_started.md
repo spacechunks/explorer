@@ -29,6 +29,7 @@ irm https://raw.githubusercontent.com/spacechunks/explorer/main/scripts/install.
 ```
 
 The installer downloads the latest version of the CLI.
+On Windows, use `explorerctl` instead of `explorer`.
 
 ## Concepts
 
