@@ -16,12 +16,19 @@ Here, we will cover the basics on how to get started with the Chunk Explorer. Ha
 
 ## CLI installation
 
-In order to interact with the Explorer, you need our CLI tool. To install it head over to the [releases page](https://github.com/spacechunks/explorer/releases),
-and download the binary that is compatible with your system. The CLI is available for the following operating systems and architectures:
+On macOS or Linux:
 
-- Linux (arm64/amd64)
-- MacOS (arm64/amd64)
-- Windows (arm64/amd64)
+```sh
+curl -fsSL https://raw.githubusercontent.com/spacechunks/explorer/main/scripts/install.sh | sh
+```
+
+On Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/spacechunks/explorer/main/scripts/install.ps1 | iex
+```
+
+The installer downloads the latest version of the CLI.
 
 ## Concepts
 
