@@ -214,7 +214,9 @@ func TestRunFlavorVersion(t *testing.T) {
 			var (
 				ctx = context.Background()
 				cp  = fixture.NewControlPlane(t)
-				c   = fixture.Chunk()
+				c   = fixture.Chunk(func(tmp *resource.Chunk) {
+					tmp.Flavors[0].Versions[0].BuildStatus = resource.FlavorVersionBuildStatusCompleted
+				})
 			)
 
 			cp.Run(t)
