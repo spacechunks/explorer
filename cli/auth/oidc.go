@@ -28,7 +28,6 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/lestrrat-go/jwx/v4/jwt"
-	"github.com/pkg/browser"
 	"github.com/spacechunks/explorer/cli/state"
 	"golang.org/x/oauth2"
 )
@@ -131,29 +130,59 @@ func (svc OIDC) getAccessToken(ctx context.Context, scopes []string) (string, er
 			Endpoint:    provider.Endpoint(),
 			Scopes:      scopes,
 		}
-		verifier   = oauth2.GenerateVerifier()
-		stateParam = oauth2.GenerateVerifier()
+		//verifier   = oauth2.GenerateVerifier()
+		//stateParam = oauth2.GenerateVerifier()
 	)
 
-	recv := make(chan callback)
-
-	go func() {
-		if err := svc.runHTTPCallbackServer(ctx, cfg, stateParam, verifier, recv); err != nil {
-			fmt.Println("Error running http callback server:", err)
-		}
-	}()
-
-	if err := browser.OpenURL(cfg.AuthCodeURL(stateParam, oauth2.S256ChallengeOption(verifier))); err != nil {
-		return "", fmt.Errorf("could not open browser: %v", err)
+	resp, err := cfg.DeviceAuth(ctx)
+	if err != nil {
+		return "", fmt.Errorf("device auth: %w", err)
 	}
 
-	cb := <-recv
+	svc.logger.Debug(
+		"device auth data",
+		"interval", resp.Interval,
+		"verification_uri", resp.VerificationURI,
+		"verification_uri_complete", resp.VerificationURIComplete,
+		"user_code", resp.UserCode,
+		"device_code", resp.DeviceCode,
+		"expiry", resp.Expiry,
+	)
 
-	if cb.err != nil {
-		return "", fmt.Errorf("id token callback: %v", cb.err)
+	fmt.Println("Authentication requried:")
+	if resp.VerificationURIComplete == "" {
+		fmt.Printf("Visit: %s\n", resp.VerificationURI)
+		fmt.Printf("Enter code: %d\n", resp.UserCode)
+	} else {
+		fmt.Printf("Visit: %s\n", resp.VerificationURIComplete)
 	}
 
-	return cb.accessToken, nil
+	tok, err := cfg.DeviceAccessToken(ctx, resp)
+	if err != nil {
+		return "", fmt.Errorf("device token: %w", err)
+	}
+
+	return tok.AccessToken, nil
+
+	//recv := make(chan callback)
+	//
+	//go func() {
+	//	if err := svc.runHTTPCallbackServer(ctx, cfg, stateParam, verifier, recv); err != nil {
+	//		fmt.Println("Error running http callback server:", err)
+	//	}
+	//}()
+	//
+	//if err := browser.OpenURL(cfg.AuthCodeURL(stateParam, oauth2.S256ChallengeOption(verifier))); err != nil {
+	//	return "", fmt.Errorf("could not open browser: %v", err)
+	//}
+	//
+	//cb := <-recv
+	//
+	//if cb.err != nil {
+	//	return "", fmt.Errorf("id token callback: %v", cb.err)
+	//}
+	//
+	//return cb.accessToken, nil
 }
 
 type callback struct {
