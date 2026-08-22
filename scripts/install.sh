@@ -82,6 +82,7 @@ case "$kernel" in
 	MINGW* | MSYS* | CYGWIN*)
 		operating_system="windows"
 		operating_system_label="Windows"
+		binary_name="explorerctl"
 		binary_extension=".exe"
 		;;
 	*)
@@ -176,7 +177,7 @@ step "Installed $binary_name to $installed_binary"
 printf '\n%sExplorer CLI is ready.%s\n' "$bold" "$reset"
 case ":${PATH:-}:" in
 	*":$install_dir:"*)
-		printf 'Run %sexplorer --help%s to get started.\n\n' "$bold" "$reset"
+		printf 'Run %s%s --help%s to get started.\n\n' "$bold" "$binary_name" "$reset"
 		;;
 	*)
 		printf 'Add the installation directory to your PATH:\n\n'

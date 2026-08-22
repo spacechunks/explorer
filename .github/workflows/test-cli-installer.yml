@@ -29,9 +29,11 @@ jobs:
         env:
           EXPLORER_INSTALL_DIR: ${{ runner.temp }}/explorer-bin
           NO_COLOR: 1
-        run: ./scripts/install.sh
+        run: |
+          ./scripts/install.sh
+          echo "$EXPLORER_INSTALL_DIR" >> "$GITHUB_PATH"
       - name: run the installed CLI
-        run: $RUNNER_TEMP/explorer-bin/explorer version
+        run: explorer version
 
   windows:
     runs-on: windows-latest
@@ -42,7 +44,9 @@ jobs:
         env:
           EXPLORER_INSTALL_DIR: ${{ runner.temp }}\explorer-bin
           NO_COLOR: 1
-        run: ./scripts/install.ps1
+        run: |
+          ./scripts/install.ps1
+          $env:EXPLORER_INSTALL_DIR | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: run the installed CLI
         shell: pwsh
-        run: '& "$env:RUNNER_TEMP\explorer-bin\explorer.exe" version'
+        run: explorerctl version

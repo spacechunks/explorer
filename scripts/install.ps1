@@ -3,7 +3,7 @@
     $ErrorActionPreference = "Stop"
 
     $repositoryUrl = "https://github.com/spacechunks/explorer"
-    $binaryName = "explorer.exe"
+    $binaryName = "explorerctl.exe"
     $tempDirectory = $null
 
     function Write-Brand {
@@ -127,7 +127,7 @@
         New-Item -ItemType Directory -Path $installDirectory -Force | Out-Null
         $installedBinary = Join-Path $installDirectory $binaryName
         Copy-Item -LiteralPath $sourceBinary -Destination $installedBinary -Force
-        Write-Step "Installed explorer to $installedBinary"
+        Write-Step "Installed explorerctl to $installedBinary"
 
         $pathEntries = @($env:Path -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         if (-not ($pathEntries | Where-Object { $_.TrimEnd("\") -ieq $installDirectory.TrimEnd("\") })) {
@@ -148,7 +148,7 @@
         Write-Host ""
         Write-Host "Explorer CLI is ready."
         Write-Host "Run " -NoNewline
-        Write-Host "explorer --help" -NoNewline
+        Write-Host "explorerctl --help" -NoNewline
         Write-Host " to get started."
         Write-Host ""
     } catch {

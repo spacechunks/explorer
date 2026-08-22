@@ -43,6 +43,7 @@ irm https://raw.githubusercontent.com/spacechunks/explorer/main/scripts/install.
 ```
 
 This installs the latest version of the CLI.
+On Windows, use `explorerctl` instead of `explorer`.
 
 ## License
 This project uses two different licenses: AGPLv3 and LGPLv3. Everything found under under the `api/` folder is licensed under LGPLv3 while everything else is covered by AGPLv3, if not stated otherwise.
