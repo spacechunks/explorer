@@ -29,7 +29,7 @@ import (
 )
 
 var DefaultConfig = Config{
-	ControlPlaneEndpoint: "api.explorer.chunks.space:443",
+	ControlPlaneEndpoint: "explorer.api.chunks.space:443",
 	IDPIssuerEndpoint:    "https://iam.chunks.space",
 	IDPClientID:          "385828015612952672",
 	IDPScopes: []string{
