@@ -126,10 +126,7 @@ func TestWorkloadResourceGroupConfig(t *testing.T) {
                   "@type": "type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog",
                   "logFormat": {
                     "jsonFormat": {},
-                    "omitEmptyValues": true,
-                    "jsonFormatOptions": {
-                      "sortProperties": true
-                    }
+                    "omitEmptyValues": true
                   }
                 }
               }

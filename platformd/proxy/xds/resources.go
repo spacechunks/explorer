@@ -88,7 +88,7 @@ func JSONStdoutAccessLog(format map[string]any) (*accesslogv3.AccessLog, error) 
 				Format: &corev3.SubstitutionFormatString_JsonFormat{
 					JsonFormat: jsonFormat,
 				},
-				OmitEmptyValues: true,
+				OmitEmptyValues:   true,
 			},
 		},
 	}
