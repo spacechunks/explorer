@@ -28,6 +28,8 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/lestrrat-go/jwx/v4/jwt"
+	"github.com/pkg/browser"
+	"github.com/skip2/go-qrcode"
 	"github.com/spacechunks/explorer/cli/state"
 	"golang.org/x/oauth2"
 )
@@ -126,12 +128,10 @@ func (svc OIDC) getAccessToken(ctx context.Context, scopes []string) (string, er
 	var (
 		cfg = oauth2.Config{
 			ClientID:    svc.clientID,
-			RedirectURL: "http://localhost:64554",
+			//RedirectURL: "http://localhost:64554",
 			Endpoint:    provider.Endpoint(),
 			Scopes:      scopes,
 		}
-		//verifier   = oauth2.GenerateVerifier()
-		//stateParam = oauth2.GenerateVerifier()
 	)
 
 	resp, err := cfg.DeviceAuth(ctx)
@@ -150,11 +150,24 @@ func (svc OIDC) getAccessToken(ctx context.Context, scopes []string) (string, er
 	)
 
 	fmt.Println("Authentication requried:")
+
+	var url string
 	if resp.VerificationURIComplete == "" {
 		fmt.Printf("Visit: %s\n", resp.VerificationURI)
 		fmt.Printf("Enter code: %d\n", resp.UserCode)
+		url = resp.VerificationURI
 	} else {
 		fmt.Printf("Visit: %s\n", resp.VerificationURIComplete)
+		url = resp.VerificationURIComplete
+	}
+
+	if err := browser.OpenURL(url); err != nil {
+		svc.logger.Warn("error opening browser, printing QR code instead", "err", err)
+		qr, err := qrcode.New(url, qrcode.Medium)
+		if err != nil {
+			return "", fmt.Errorf("qrcode: %w", err)
+		}
+		fmt.Println(qr.ToSmallString(true))
 	}
 
 	tok, err := cfg.DeviceAccessToken(ctx, resp)
@@ -163,26 +176,6 @@ func (svc OIDC) getAccessToken(ctx context.Context, scopes []string) (string, er
 	}
 
 	return tok.AccessToken, nil
-
-	//recv := make(chan callback)
-	//
-	//go func() {
-	//	if err := svc.runHTTPCallbackServer(ctx, cfg, stateParam, verifier, recv); err != nil {
-	//		fmt.Println("Error running http callback server:", err)
-	//	}
-	//}()
-	//
-	//if err := browser.OpenURL(cfg.AuthCodeURL(stateParam, oauth2.S256ChallengeOption(verifier))); err != nil {
-	//	return "", fmt.Errorf("could not open browser: %v", err)
-	//}
-	//
-	//cb := <-recv
-	//
-	//if cb.err != nil {
-	//	return "", fmt.Errorf("id token callback: %v", cb.err)
-	//}
-	//
-	//return cb.accessToken, nil
 }
 
 type callback struct {
