@@ -127,10 +127,9 @@ func (svc OIDC) getAccessToken(ctx context.Context, scopes []string) (string, er
 
 	var (
 		cfg = oauth2.Config{
-			ClientID:    svc.clientID,
-			//RedirectURL: "http://localhost:64554",
-			Endpoint:    provider.Endpoint(),
-			Scopes:      scopes,
+			ClientID: svc.clientID,
+			Endpoint: provider.Endpoint(),
+			Scopes:   scopes,
 		}
 	)
 
@@ -154,7 +153,7 @@ func (svc OIDC) getAccessToken(ctx context.Context, scopes []string) (string, er
 	var url string
 	if resp.VerificationURIComplete == "" {
 		fmt.Printf("Visit: %s\n", resp.VerificationURI)
-		fmt.Printf("Enter code: %d\n", resp.UserCode)
+		fmt.Printf("Enter code: %s\n", resp.UserCode)
 		url = resp.VerificationURI
 	} else {
 		fmt.Printf("Visit: %s\n", resp.VerificationURIComplete)
