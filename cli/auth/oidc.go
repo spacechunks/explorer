@@ -42,7 +42,6 @@ func NewOIDC(
 	clientID string,
 	issuerEndpoint string,
 	scopes []string,
-
 ) *OIDC {
 	return &OIDC{
 		logger:         logger,
