@@ -20,10 +20,8 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -175,75 +173,4 @@ func (svc OIDC) getAccessToken(ctx context.Context, scopes []string) (string, er
 	}
 
 	return tok.AccessToken, nil
-}
-
-type callback struct {
-	accessToken string
-	err         error
-}
-
-func (svc OIDC) runHTTPCallbackServer(
-	ctx context.Context,
-	cfg oauth2.Config,
-	state string,
-	verifier string,
-	recv chan callback,
-) error {
-	var (
-		s = http.Server{
-			Addr: "localhost:64554",
-		}
-		mux = http.NewServeMux()
-	)
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		var err error
-
-		defer func() {
-			time.AfterFunc(1*time.Second, func() {
-				s.Close()
-			})
-		}()
-
-		if r.URL.Query().Get("state") != state {
-			recv <- callback{
-				err: fmt.Errorf("state mismatch"),
-			}
-			return
-		}
-
-		code := r.URL.Query().Get("code")
-
-		oauth2Token, err := cfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
-		if err != nil {
-			recv <- callback{
-				err: fmt.Errorf("failed to exchange code for token: %v", err),
-			}
-			return
-		}
-
-		accessToken, ok := oauth2Token.Extra("access_token").(string)
-		if !ok {
-			recv <- callback{
-				err: fmt.Errorf("no access_token field in oauth2 token"),
-			}
-			return
-		}
-
-		_, _ = w.Write([]byte("Success! You can now close this browser window and return to the terminal."))
-		recv <- callback{
-			accessToken: accessToken,
-		}
-	})
-
-	s.Handler = mux
-
-	if err := s.ListenAndServe(); err != nil {
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-		return err
-	}
-
-	return nil
 }
