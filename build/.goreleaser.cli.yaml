@@ -9,7 +9,6 @@ builds:
     flags:
       - -trimpath
     env:
-      - GOEXPERIMENT=jsonv2
       - CGO_ENABLED=0
     goos:
       - linux
