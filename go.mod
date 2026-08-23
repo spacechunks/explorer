@@ -35,7 +35,7 @@ require (
 	github.com/johannesboyne/gofakes3 v1.2.0
 	github.com/jwx-go/jwkfetch/v4 v4.0.4
 	github.com/lestrrat-go/httprc/v3 v3.0.6
-	github.com/lestrrat-go/jwx/v4 v4.2.0
+	github.com/lestrrat-go/jwx/v4 v4.4.0
 	github.com/magiconair/properties v1.18.11
 	github.com/moby/moby/api v1.55.0
 	github.com/peterbourgon/ff/v3 v3.4.0
@@ -49,7 +49,7 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/sourcegraph/jsonrpc2 v0.2.2
 	github.com/spf13/cobra v1.10.2
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/vektra/mockery/v2 v2.53.6
 	github.com/vishvananda/netlink v1.3.1
@@ -137,7 +137,7 @@ require (
 	github.com/klauspost/compress v1.19.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
-	github.com/lestrrat-go/dsig v1.3.0 // indirect
+	github.com/lestrrat-go/dsig v1.4.0 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/option/v2 v2.0.0 // indirect
 	github.com/lestrrat-go/option/v3 v3.0.0-alpha1 // indirect
