@@ -20,15 +20,14 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/lestrrat-go/jwx/v4/jwt"
 	"github.com/pkg/browser"
+	"github.com/skip2/go-qrcode"
 	"github.com/spacechunks/explorer/cli/state"
 	"golang.org/x/oauth2"
 )
@@ -43,7 +42,6 @@ func NewOIDC(
 	clientID string,
 	issuerEndpoint string,
 	scopes []string,
-
 ) *OIDC {
 	return &OIDC{
 		logger:         logger,
@@ -126,103 +124,52 @@ func (svc OIDC) getAccessToken(ctx context.Context, scopes []string) (string, er
 
 	var (
 		cfg = oauth2.Config{
-			ClientID:    svc.clientID,
-			RedirectURL: "http://localhost:64554",
-			Endpoint:    provider.Endpoint(),
-			Scopes:      scopes,
+			ClientID: svc.clientID,
+			Endpoint: provider.Endpoint(),
+			Scopes:   scopes,
 		}
-		verifier   = oauth2.GenerateVerifier()
-		stateParam = oauth2.GenerateVerifier()
 	)
 
-	recv := make(chan callback)
-
-	go func() {
-		if err := svc.runHTTPCallbackServer(ctx, cfg, stateParam, verifier, recv); err != nil {
-			fmt.Println("Error running http callback server:", err)
-		}
-	}()
-
-	if err := browser.OpenURL(cfg.AuthCodeURL(stateParam, oauth2.S256ChallengeOption(verifier))); err != nil {
-		return "", fmt.Errorf("could not open browser: %v", err)
+	resp, err := cfg.DeviceAuth(ctx)
+	if err != nil {
+		return "", fmt.Errorf("device auth: %w", err)
 	}
 
-	cb := <-recv
-
-	if cb.err != nil {
-		return "", fmt.Errorf("id token callback: %v", cb.err)
-	}
-
-	return cb.accessToken, nil
-}
-
-type callback struct {
-	accessToken string
-	err         error
-}
-
-func (svc OIDC) runHTTPCallbackServer(
-	ctx context.Context,
-	cfg oauth2.Config,
-	state string,
-	verifier string,
-	recv chan callback,
-) error {
-	var (
-		s = http.Server{
-			Addr: "localhost:64554",
-		}
-		mux = http.NewServeMux()
+	svc.logger.Debug(
+		"device auth data",
+		"interval", resp.Interval,
+		"verification_uri", resp.VerificationURI,
+		"verification_uri_complete", resp.VerificationURIComplete,
+		"user_code", resp.UserCode,
+		"device_code", resp.DeviceCode,
+		"expiry", resp.Expiry,
 	)
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		var err error
+	fmt.Println("Authentication requried:")
 
-		defer func() {
-			time.AfterFunc(1*time.Second, func() {
-				s.Close()
-			})
-		}()
+	var url string
+	if resp.VerificationURIComplete == "" {
+		fmt.Printf("Visit: %s\n", resp.VerificationURI)
+		fmt.Printf("Enter code: %s\n", resp.UserCode)
+		url = resp.VerificationURI
+	} else {
+		fmt.Printf("Visit: %s\n", resp.VerificationURIComplete)
+		url = resp.VerificationURIComplete
+	}
 
-		if r.URL.Query().Get("state") != state {
-			recv <- callback{
-				err: fmt.Errorf("state mismatch"),
-			}
-			return
-		}
-
-		code := r.URL.Query().Get("code")
-
-		oauth2Token, err := cfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
+	if err := browser.OpenURL(url); err != nil {
+		svc.logger.Warn("error opening browser, printing QR code instead", "err", err)
+		qr, err := qrcode.New(url, qrcode.Medium)
 		if err != nil {
-			recv <- callback{
-				err: fmt.Errorf("failed to exchange code for token: %v", err),
-			}
-			return
+			return "", fmt.Errorf("qrcode: %w", err)
 		}
-
-		accessToken, ok := oauth2Token.Extra("access_token").(string)
-		if !ok {
-			recv <- callback{
-				err: fmt.Errorf("no access_token field in oauth2 token"),
-			}
-			return
-		}
-
-		_, _ = w.Write([]byte("Success! You can now close this browser window and return to the terminal."))
-		recv <- callback{
-			accessToken: accessToken,
-		}
-	})
-
-	s.Handler = mux
-
-	if err := s.ListenAndServe(); err != nil {
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-		return err
+		fmt.Println(qr.ToSmallString(true))
 	}
 
-	return nil
+	tok, err := cfg.DeviceAccessToken(ctx, resp)
+	if err != nil {
+		return "", fmt.Errorf("device token: %w", err)
+	}
+
+	return tok.AccessToken, nil
 }
