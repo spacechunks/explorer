@@ -248,3 +248,9 @@ Signal.handle(new Signal("SIGCONT"), signal -> {
     // your onEnable() logic
 });
 ```
+
+### Plugins that might break your server
+
+The plugins listed here cause problems or have buggy interactions during the build process, which leads to your Flavor most likely not being playable.
+If you do not have a hard requirement to a plugin listed here, try to avoid it or search for alternatives.
+- ProtocolLib
