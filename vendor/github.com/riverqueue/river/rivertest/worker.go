@@ -13,6 +13,7 @@ import (
 	"github.com/riverqueue/river/internal/maintenance"
 	"github.com/riverqueue/river/internal/pluginconfig"
 	"github.com/riverqueue/river/internal/pluginlookup"
+	"github.com/riverqueue/river/internal/retrypolicy"
 	"github.com/riverqueue/river/internal/riverplugin"
 	"github.com/riverqueue/river/riverdriver"
 	"github.com/riverqueue/river/rivershared/baseservice"
@@ -152,9 +153,10 @@ func (w *Worker[T, TTx]) workJob(ctx context.Context, tb testing.TB, tx TTx, job
 		middleware = pluginconfig.CombinedMiddleware(w.config.Middleware, w.config.JobInsertMiddleware, w.config.WorkerMiddleware) //nolint:staticcheck
 		plugins    = append(riverplugin.DefaultPlugins(), w.config.Plugins...)
 	)
-	pluginlookup.InitBaseServices(archetype, hooks)
-	pluginlookup.InitBaseServices(archetype, middleware)
-	pluginlookup.InitBaseServices(archetype, plugins)
+	clientRetryPolicy := w.config.RetryPolicy
+	if _, ok := clientRetryPolicy.(*river.DefaultClientRetryPolicy); ok {
+		clientRetryPolicy = retrypolicy.NewDefault(archetype.Time)
+	}
 
 	updatedJobRow, err := exec.JobUpdateFull(ctx, &riverdriver.JobUpdateFullParams{
 		ID:                  job.ID,
@@ -190,9 +192,9 @@ func (w *Worker[T, TTx]) workJob(ctx context.Context, tb testing.TB, tx TTx, job
 	executor := baseservice.Init(archetype, &jobexecutor.JobExecutor{
 		CancelFunc:               jobCancel,
 		ClientJobTimeout:         w.config.JobTimeout,
-		ClientRetryPolicy:        w.config.RetryPolicy,
+		ClientRetryPolicy:        clientRetryPolicy,
 		Completer:                completer,
-		DefaultClientRetryPolicy: &river.DefaultClientRetryPolicy{},
+		DefaultClientRetryPolicy: retrypolicy.NewDefault(archetype.Time),
 		ErrorHandler: &errorHandlerWrapper{
 			HandleErrorFunc: func(ctx context.Context, job *rivertype.JobRow, err error) *jobexecutor.ErrorHandlerResult {
 				resultErr = err
@@ -203,8 +205,8 @@ func (w *Worker[T, TTx]) workJob(ctx context.Context, tb testing.TB, tx TTx, job
 				return nil
 			},
 		},
-		PluginLookupByJob:  pluginlookup.NewJobPluginLookup(),
-		PluginLookupGlobal: pluginlookup.NewPluginLookupFromConfig(hooks, middleware, plugins),
+		PluginLookupByJob:  pluginlookup.NewJobPluginLookup(archetype),
+		PluginLookupGlobal: pluginlookup.NewPluginLookupFromConfig(archetype, hooks, middleware, plugins),
 		JobRow:             job,
 		ProducerCallbacks: struct {
 			JobDone func(jobRow *rivertype.JobRow)
@@ -250,24 +252,19 @@ func completerResultToWorkResult(tb testing.TB, completerResult jobcompleter.Com
 	tb.Helper()
 
 	var kind river.EventKind
-	if completerResult.Snoozed {
+	switch completerResult.Reason {
+	case riverdriver.JobSetStateReasonCancelled:
+		kind = river.EventKindJobCancelled
+	case riverdriver.JobSetStateReasonCompleted:
+		kind = river.EventKindJobCompleted
+	case riverdriver.JobSetStateReasonFailed:
+		kind = river.EventKindJobFailed
+	case riverdriver.JobSetStateReasonInterrupted:
+		kind = river.EventKindJobInterrupted
+	case riverdriver.JobSetStateReasonSnoozed:
 		kind = river.EventKindJobSnoozed
-	} else {
-		switch completerResult.Job.State {
-		case rivertype.JobStateCancelled:
-			kind = river.EventKindJobCancelled
-		case rivertype.JobStateCompleted:
-			kind = river.EventKindJobCompleted
-		case rivertype.JobStateScheduled:
-			kind = river.EventKindJobSnoozed
-		case rivertype.JobStateAvailable, rivertype.JobStateDiscarded, rivertype.JobStateRetryable, rivertype.JobStateRunning:
-			kind = river.EventKindJobFailed
-		case rivertype.JobStatePending:
-			panic("test worker internal error: completion subscriber unexpectedly received job in pending state, river bug")
-		default:
-			// linter exhaustive rule prevents this from being reached
-			panic("test worker internal error: unreachable state to distribute, river bug")
-		}
+	default:
+		panic(fmt.Sprintf("test worker internal error: completion subscriber unexpectedly received reason %q, river bug", completerResult.Reason))
 	}
 
 	return &WorkResult{

@@ -45,7 +45,52 @@ type SubscribeFunc func(update CompleterJobUpdated)
 type CompleterJobUpdated struct {
 	Job      *rivertype.JobRow
 	JobStats *jobstats.JobStatistics
-	Snoozed  bool
+	Reason   riverdriver.JobSetStateReason
+}
+
+func completerJobUpdatedFromStateAndReason(job *rivertype.JobRow, stats *jobstats.JobStatistics, requestedReason riverdriver.JobSetStateReason) CompleterJobUpdated {
+	var reason riverdriver.JobSetStateReason
+	switch job.State {
+	case rivertype.JobStateAvailable:
+		// Available is ambiguous: failed jobs being retried immediately, short
+		// snoozes, and jobs interrupted by client shutdown all use it. Preserve
+		// the requested reason when it describes one of those transitions.
+		switch requestedReason {
+		case riverdriver.JobSetStateReasonFailed, riverdriver.JobSetStateReasonInterrupted, riverdriver.JobSetStateReasonSnoozed:
+			reason = requestedReason
+		case riverdriver.JobSetStateReasonCancelled, riverdriver.JobSetStateReasonCompleted:
+			reason = riverdriver.JobSetStateReasonFailed
+		default:
+			panic("completion subscriber received an unknown reason, river bug")
+		}
+	case rivertype.JobStateCancelled:
+		reason = riverdriver.JobSetStateReasonCancelled
+
+	case rivertype.JobStateCompleted:
+		reason = riverdriver.JobSetStateReasonCompleted
+
+	case rivertype.JobStateDiscarded, rivertype.JobStateRetryable:
+		reason = riverdriver.JobSetStateReasonFailed
+
+	case rivertype.JobStateScheduled:
+		reason = riverdriver.JobSetStateReasonSnoozed
+
+	case rivertype.JobStatePending, rivertype.JobStateRunning:
+		// Neither state represents a finalized job, so emitting a completion
+		// event would be misleading. Reaching this case indicates a River bug or
+		// that the job's state was changed out of band during finalization.
+		panic("completion subscriber received a job that wasn't finalized, river bug")
+
+	default:
+		// linter exhaustive rule prevents this from being reached.
+		panic("completion subscriber received a job with an unknown state, river bug")
+	}
+
+	return CompleterJobUpdated{
+		Job:      job,
+		JobStats: stats,
+		Reason:   reason,
+	}
 }
 
 type InlineCompleter struct {
@@ -101,11 +146,7 @@ func (c *InlineCompleter) JobSetStateIfRunning(ctx context.Context, stats *jobst
 	}
 
 	stats.CompleteDuration = c.Time.Now().Sub(start)
-	c.subscribeCh <- []CompleterJobUpdated{{
-		Job:      jobs[0],
-		JobStats: stats,
-		Snoozed:  params.Snoozed,
-	}}
+	c.subscribeCh <- []CompleterJobUpdated{completerJobUpdatedFromStateAndReason(jobs[0], stats, params.Reason)}
 
 	return nil
 }
@@ -216,11 +257,7 @@ func (c *AsyncCompleter) JobSetStateIfRunning(ctx context.Context, stats *jobsta
 		}
 
 		stats.CompleteDuration = c.Time.Now().Sub(start)
-		c.subscribeCh <- []CompleterJobUpdated{{
-			Job:      jobs[0],
-			JobStats: stats,
-			Snoozed:  params.Snoozed,
-		}}
+		c.subscribeCh <- []CompleterJobUpdated{completerJobUpdatedFromStateAndReason(jobs[0], stats, params.Reason)}
 
 		return nil
 	})
@@ -503,19 +540,17 @@ func (c *BatchCompleter) handleBatch(ctx context.Context) error {
 
 	var (
 		completeTime = c.Time.Now()
-		events       = make([]CompleterJobUpdated, len(jobRows))
+		events       = make([]CompleterJobUpdated, 0, len(jobRows))
 	)
-	for i, jobRow := range jobRows {
+	for _, jobRow := range jobRows {
 		setState := setStateBatch[jobRow.ID]
 		setState.Stats.CompleteDuration = completeTime.Sub(setState.StartTime)
-		events[i] = CompleterJobUpdated{
-			Job:      jobRow,
-			JobStats: setState.Stats,
-			Snoozed:  setState.Params.Snoozed,
-		}
+		events = append(events, completerJobUpdatedFromStateAndReason(jobRow, setState.Stats, setState.Params.Reason))
 	}
 
-	c.subscribeCh <- events
+	if len(events) > 0 {
+		c.subscribeCh <- events
+	}
 
 	func() {
 		c.setStateParamsMu.Lock()

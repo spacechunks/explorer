@@ -614,7 +614,7 @@ github.com/lib/pq/internal/proto
 github.com/lib/pq/oid
 github.com/lib/pq/pqerror
 github.com/lib/pq/scram
-# github.com/lmittmann/tint v1.1.3
+# github.com/lmittmann/tint v1.2.0
 ## explicit; go 1.21
 github.com/lmittmann/tint
 # github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e
@@ -626,8 +626,8 @@ github.com/magiconair/properties
 # github.com/mattn/go-colorable v0.1.14
 ## explicit; go 1.18
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.20
-## explicit; go 1.15
+# github.com/mattn/go-isatty v0.0.24
+## explicit; go 1.20
 github.com/mattn/go-isatty
 # github.com/mitchellh/go-homedir v1.1.0
 ## explicit
@@ -764,7 +764,7 @@ github.com/prometheus/procfs/internal/util
 # github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec
 ## explicit; go 1.12
 github.com/remyoudompheng/bigfft
-# github.com/riverqueue/river v0.41.0
+# github.com/riverqueue/river v0.44.1
 ## explicit; go 1.25.0
 github.com/riverqueue/river
 github.com/riverqueue/river/internal/dblist
@@ -779,29 +779,30 @@ github.com/riverqueue/river/internal/notifier
 github.com/riverqueue/river/internal/notifylimiter
 github.com/riverqueue/river/internal/pluginconfig
 github.com/riverqueue/river/internal/pluginlookup
+github.com/riverqueue/river/internal/retrypolicy
 github.com/riverqueue/river/internal/rivercommon
 github.com/riverqueue/river/internal/riverplugin
 github.com/riverqueue/river/internal/util/chanutil
 github.com/riverqueue/river/internal/workunit
 github.com/riverqueue/river/rivermigrate
 github.com/riverqueue/river/rivertest
-# github.com/riverqueue/river/cmd/river v0.38.0
+# github.com/riverqueue/river/cmd/river v0.44.1
 ## explicit; go 1.25.0
 github.com/riverqueue/river/cmd/river
 github.com/riverqueue/river/cmd/river/riverbench
 github.com/riverqueue/river/cmd/river/rivercli
-# github.com/riverqueue/river/riverdriver v0.41.0
+# github.com/riverqueue/river/riverdriver v0.44.1
 ## explicit; go 1.25.0
 github.com/riverqueue/river/riverdriver
-# github.com/riverqueue/river/riverdriver/riverpgxv5 v0.41.0
+# github.com/riverqueue/river/riverdriver/riverpgxv5 v0.44.1
 ## explicit; go 1.25.0
 github.com/riverqueue/river/riverdriver/riverpgxv5
 github.com/riverqueue/river/riverdriver/riverpgxv5/internal/dbsqlc
-# github.com/riverqueue/river/riverdriver/riversqlite v0.38.0
+# github.com/riverqueue/river/riverdriver/riversqlite v0.44.1
 ## explicit; go 1.25.0
 github.com/riverqueue/river/riverdriver/riversqlite
 github.com/riverqueue/river/riverdriver/riversqlite/internal/dbsqlc
-# github.com/riverqueue/river/rivershared v0.41.0
+# github.com/riverqueue/river/rivershared v0.44.1
 ## explicit; go 1.25.0
 github.com/riverqueue/river/rivershared/baseservice
 github.com/riverqueue/river/rivershared/circuitbreaker
@@ -826,7 +827,7 @@ github.com/riverqueue/river/rivershared/util/testutil
 github.com/riverqueue/river/rivershared/util/timeoututil
 github.com/riverqueue/river/rivershared/util/timeutil
 github.com/riverqueue/river/rivershared/util/valutil
-# github.com/riverqueue/river/rivertype v0.41.0
+# github.com/riverqueue/river/rivertype v0.44.1
 ## explicit; go 1.25.0
 github.com/riverqueue/river/rivertype
 # github.com/riverqueue/rivercontrib/otelriver v0.12.0
@@ -1095,12 +1096,12 @@ golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 ## explicit; go 1.25.0
 golang.org/x/exp/constraints
 golang.org/x/exp/slices
-# golang.org/x/mod v0.38.0
+# golang.org/x/mod v0.40.0
 ## explicit; go 1.25.0
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.57.0
+# golang.org/x/net v0.58.0
 ## explicit; go 1.25.0
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
@@ -1161,7 +1162,7 @@ golang.org/x/text/width
 # golang.org/x/time v0.15.0
 ## explicit; go 1.25.0
 golang.org/x/time/rate
-# golang.org/x/tools v0.48.0
+# golang.org/x/tools v0.49.0
 ## explicit; go 1.25.0
 golang.org/x/tools/cover
 golang.org/x/tools/go/ast/astutil
@@ -1170,7 +1171,6 @@ golang.org/x/tools/go/ast/inspector
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/packages
 golang.org/x/tools/go/types/objectpath
-golang.org/x/tools/go/types/typeutil
 golang.org/x/tools/imports
 golang.org/x/tools/internal/aliases
 golang.org/x/tools/internal/event
@@ -1182,10 +1182,10 @@ golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/imports
 golang.org/x/tools/internal/modindex
+golang.org/x/tools/internal/moremaps
 golang.org/x/tools/internal/packagesinternal
 golang.org/x/tools/internal/pkgbits
 golang.org/x/tools/internal/stdlib
-golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
 golang.org/x/tools/internal/versions
 # google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d
@@ -1422,7 +1422,7 @@ k8s.io/utils/dump
 k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
 k8s.io/utils/ptr
-# modernc.org/libc v1.72.0
+# modernc.org/libc v1.74.4
 ## explicit; go 1.25.0
 modernc.org/libc
 modernc.org/libc/errno
@@ -1456,7 +1456,7 @@ modernc.org/mathutil
 # modernc.org/memory v1.11.0
 ## explicit; go 1.23.0
 modernc.org/memory
-# modernc.org/sqlite v1.50.0
+# modernc.org/sqlite v1.56.0
 ## explicit; go 1.25.0
 modernc.org/sqlite
 modernc.org/sqlite/lib

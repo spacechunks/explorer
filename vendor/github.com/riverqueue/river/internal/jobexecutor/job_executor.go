@@ -18,6 +18,7 @@ import (
 	"github.com/riverqueue/river/internal/jobcompleter"
 	"github.com/riverqueue/river/internal/jobstats"
 	"github.com/riverqueue/river/internal/pluginlookup"
+	"github.com/riverqueue/river/internal/rivercommon"
 	"github.com/riverqueue/river/internal/workunit"
 	"github.com/riverqueue/river/riverdriver"
 	"github.com/riverqueue/river/rivershared/baseservice"
@@ -112,7 +113,7 @@ type JobExecutor struct {
 	DefaultClientRetryPolicy ClientRetryPolicy
 	ErrorHandler             ErrorHandler
 	PluginLookupByJob        *pluginlookup.JobPluginLookup
-	PluginLookupGlobal       pluginlookup.PluginLookupInterface
+	PluginLookupGlobal       *pluginlookup.PluginLookup
 	JobRow                   *rivertype.JobRow
 	ProducerCallbacks        struct {
 		JobDone func(jobRow *rivertype.JobRow)
@@ -217,12 +218,13 @@ func (e *JobExecutor) execute(ctx context.Context) (res *jobExecutorResult) {
 		)
 		return &jobExecutorResult{Err: &rivertype.UnknownJobKindError{Kind: e.JobRow.Kind}, MetadataUpdates: metadataUpdates}
 	}
+	pluginLookupByJob := e.WorkUnit.PluginLookup(e.PluginLookupByJob)
 
 	doInner := execution.Func(func(ctx context.Context) error {
 		{
 			for _, hook := range append(
 				e.PluginLookupGlobal.ByKind(pluginlookup.PluginKindHookWorkBegin),
-				e.WorkUnit.PluginLookup(e.PluginLookupByJob).ByKind(pluginlookup.PluginKindHookWorkBegin)...,
+				pluginLookupByJob.ByKind(pluginlookup.PluginKindHookWorkBegin)...,
 			) {
 				if err := hook.(rivertype.HookWorkBegin).WorkBegin(ctx, e.JobRow); err != nil { //nolint:forcetypeassert
 					return err
@@ -251,7 +253,7 @@ func (e *JobExecutor) execute(ctx context.Context) (res *jobExecutorResult) {
 		{
 			for _, hook := range append(
 				e.PluginLookupGlobal.ByKind(pluginlookup.PluginKindHookWorkEnd),
-				e.WorkUnit.PluginLookup(e.PluginLookupByJob).ByKind(pluginlookup.PluginKindHookWorkEnd)...,
+				pluginLookupByJob.ByKind(pluginlookup.PluginKindHookWorkEnd)...,
 			) {
 				err = hook.(rivertype.HookWorkEnd).WorkEnd(ctx, e.JobRow, err) //nolint:forcetypeassert
 			}
@@ -260,13 +262,19 @@ func (e *JobExecutor) execute(ctx context.Context) (res *jobExecutorResult) {
 		return err
 	})
 
-	globalMiddleware := make([]rivertype.Middleware, 0, len(e.PluginLookupGlobal.ByKind(pluginlookup.PluginKindMiddlewareWorker)))
+	pluginMiddleware := make([]rivertype.Middleware, 0,
+		len(e.PluginLookupGlobal.ByKind(pluginlookup.PluginKindMiddlewareWorker))+
+			len(pluginLookupByJob.ByKind(pluginlookup.PluginKindMiddlewareWorker)),
+	)
 	for _, plugin := range e.PluginLookupGlobal.ByKind(pluginlookup.PluginKindMiddlewareWorker) {
-		globalMiddleware = append(globalMiddleware, plugin.(rivertype.Middleware)) //nolint:forcetypeassert
+		pluginMiddleware = append(pluginMiddleware, plugin.(rivertype.Middleware)) //nolint:forcetypeassert
+	}
+	for _, plugin := range pluginLookupByJob.ByKind(pluginlookup.PluginKindMiddlewareWorker) {
+		pluginMiddleware = append(pluginMiddleware, plugin.(rivertype.Middleware)) //nolint:forcetypeassert
 	}
 
 	executeFunc := execution.MiddlewareChain(
-		globalMiddleware,
+		pluginMiddleware,
 		e.WorkUnit.Middleware(),
 		doInner,
 		e.JobRow,
@@ -383,7 +391,7 @@ func (e *JobExecutor) reportResult(ctx context.Context, jobRow *rivertype.JobRow
 			slog.String("job_kind", jobRow.Kind),
 			slog.Duration("duration", snoozeErr.Duration),
 		)
-		nextAttemptScheduledAt := time.Now().Add(snoozeErr.Duration)
+		nextAttemptScheduledAt := e.Time.Now().Add(snoozeErr.Duration)
 
 		snoozesValue := gjson.GetBytes(jobRow.Metadata, "snoozes").Int()
 		if res.MetadataUpdates == nil {
@@ -443,6 +451,7 @@ func (e *JobExecutor) reportError(ctx context.Context, jobRow *rivertype.JobRow,
 		cancelJob bool
 		cancelErr *rivertype.JobCancelError
 	)
+	softStopped := isSoftStopCancelError(ctx, res.Err)
 
 	logAttrs := []any{
 		slog.String("error", res.ErrorStr()),
@@ -454,6 +463,8 @@ func (e *JobExecutor) reportError(ctx context.Context, jobRow *rivertype.JobRow,
 	case errors.As(res.Err, &cancelErr):
 		cancelJob = true
 		e.Logger.DebugContext(ctx, e.Name+": Job cancelled explicitly", logAttrs...)
+	case softStopped:
+		e.Logger.InfoContext(ctx, e.Name+": Job stopped due to client shutdown; retrying", logAttrs...)
 	case res.Err != nil:
 		if jobRow.Attempt >= jobRow.MaxAttempts {
 			e.Logger.InfoContext(ctx, e.Name+": Job errored", logAttrs...)
@@ -464,9 +475,19 @@ func (e *JobExecutor) reportError(ctx context.Context, jobRow *rivertype.JobRow,
 		e.Logger.InfoContext(ctx, e.Name+": Job panicked", logAttrs...)
 	}
 
-	if e.ErrorHandler != nil && !cancelJob {
+	if e.ErrorHandler != nil && !cancelJob && !softStopped {
 		// Error handlers also have an opportunity to cancel the job.
 		cancelJob = e.invokeErrorHandler(ctx, res)
+	}
+
+	now := e.Time.Now()
+
+	if softStopped {
+		params := riverdriver.JobSetStateInterrupted(jobRow.ID, now, max(jobRow.Attempt-1, 0), metadataUpdates)
+		if err := e.Completer.JobSetStateIfRunning(ctx, e.stats, params); err != nil {
+			e.Logger.ErrorContext(ctx, e.Name+": Failed to make soft-stopped job available", logAttrs...)
+		}
+		return
 	}
 
 	attemptErr := rivertype.AttemptError{
@@ -481,8 +502,6 @@ func (e *JobExecutor) reportError(ctx context.Context, jobRow *rivertype.JobRow,
 		e.Logger.ErrorContext(ctx, e.Name+": Failed to marshal attempt error", logAttrs...)
 		return
 	}
-
-	now := e.Time.Now()
 
 	if cancelJob {
 		if err := e.Completer.JobSetStateIfRunning(ctx, e.stats, riverdriver.JobSetStateCancelled(jobRow.ID, now, errData, metadataUpdates)); err != nil {
@@ -530,6 +549,15 @@ func (e *JobExecutor) reportError(ctx context.Context, jobRow *rivertype.JobRow,
 	if err := e.Completer.JobSetStateIfRunning(ctx, e.stats, params); err != nil {
 		e.Logger.ErrorContext(ctx, e.Name+": Failed to report error for job", logAttrs...)
 	}
+}
+
+// isSoftStopCancelError reports whether a worker returned because the client
+// was stopping and cancelled its job context. The context cause distinguishes
+// client stop cancellation from ordinary worker cancellation or timeouts.
+func isSoftStopCancelError(ctx context.Context, err error) bool {
+	return err != nil &&
+		errors.Is(context.Cause(ctx), rivercommon.ErrStop) &&
+		(errors.Is(err, context.Canceled) || errors.Is(err, rivercommon.ErrStop))
 }
 
 type withJobsAndErrorsByID interface {

@@ -252,25 +252,6 @@ type Node struct {
 	Slots                 int32
 }
 
-type RiverClient struct {
-	ID        string
-	CreatedAt time.Time
-	Metadata  []byte
-	PausedAt  pgtype.Timestamptz
-	UpdatedAt time.Time
-}
-
-type RiverClientQueue struct {
-	RiverClientID    string
-	Name             string
-	CreatedAt        time.Time
-	MaxWorkers       int64
-	Metadata         []byte
-	NumJobsCompleted int64
-	NumJobsRunning   int64
-	UpdatedAt        time.Time
-}
-
 type RiverJob struct {
 	ID           int64
 	State        RiverJobState
@@ -297,6 +278,13 @@ type RiverLeader struct {
 	ExpiresAt time.Time
 	LeaderID  string
 	Name      string
+}
+
+type RiverNotification struct {
+	ID        int64
+	CreatedAt time.Time
+	Payload   string
+	Topic     string
 }
 
 type RiverQueue struct {

@@ -9,7 +9,6 @@ import (
 	"context"
 	"database/sql"
 	"strings"
-	"time"
 )
 
 const jobCancel = `-- name: JobCancel :one
@@ -21,11 +20,11 @@ SET
     finalized_at = CASE WHEN state = 'running' THEN finalized_at ELSE coalesce(cast(?1 AS text), datetime('now', 'subsec')) END,
     -- Mark the job as cancelled by query so that the rescuer knows not to
     -- rescue it, even if it gets stuck in the running state:
-    metadata = json_set(metadata, '$.cancel_attempted_at', cast(?2 AS text))
+    metadata = jsonb_set(metadata, '$.cancel_attempted_at', cast(?2 AS text))
 WHERE id = ?3
     AND state NOT IN ('cancelled', 'completed', 'discarded')
     AND finalized_at IS NULL
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 type JobCancelParams struct {
@@ -179,7 +178,7 @@ FROM /* TEMPLATE: schema */river_job
 WHERE id = ?1
     -- Do not touch running jobs:
     AND river_job.state != 'running'
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 // Differs by necessity from other drivers because SQLite doesn't support
@@ -282,7 +281,7 @@ WHERE id IN (
     ORDER BY /* TEMPLATE_BEGIN: order_by_clause */ id /* TEMPLATE_END */
     LIMIT ?1
 )
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 func (q *Queries) JobDeleteMany(ctx context.Context, db DBTX, max int64) ([]*RiverJob, error) {
@@ -352,7 +351,7 @@ WHERE id IN (
         id ASC
     LIMIT ?3
 )
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 type JobGetAvailableParams struct {
@@ -407,7 +406,7 @@ func (q *Queries) JobGetAvailable(ctx context.Context, db DBTX, arg *JobGetAvail
 }
 
 const jobGetByID = `-- name: JobGetByID :one
-SELECT id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+SELECT id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 FROM /* TEMPLATE: schema */river_job
 WHERE id = ?1
 LIMIT 1
@@ -440,7 +439,7 @@ func (q *Queries) JobGetByID(ctx context.Context, db DBTX, id int64) (*RiverJob,
 }
 
 const jobGetByIDMany = `-- name: JobGetByIDMany :many
-SELECT id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+SELECT id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 FROM /* TEMPLATE: schema */river_job
 WHERE id IN (/*SLICE:id*/?)
 ORDER BY id
@@ -499,7 +498,7 @@ func (q *Queries) JobGetByIDMany(ctx context.Context, db DBTX, id []int64) ([]*R
 }
 
 const jobGetByKindMany = `-- name: JobGetByKindMany :many
-SELECT id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+SELECT id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 FROM /* TEMPLATE: schema */river_job
 WHERE kind IN (/*SLICE:kind*/?)
 ORDER BY id
@@ -558,21 +557,23 @@ func (q *Queries) JobGetByKindMany(ctx context.Context, db DBTX, kind []string) 
 }
 
 const jobGetStuck = `-- name: JobGetStuck :many
-SELECT id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+SELECT id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 FROM /* TEMPLATE: schema */river_job
 WHERE state = 'running'
-    AND attempted_at < cast(?1 AS text)
+    AND id > ?1
+    AND attempted_at < cast(?2 AS text)
 ORDER BY id
-LIMIT ?2
+LIMIT ?3
 `
 
 type JobGetStuckParams struct {
+	AfterID      int64
 	StuckHorizon string
 	Max          int64
 }
 
 func (q *Queries) JobGetStuck(ctx context.Context, db DBTX, arg *JobGetStuckParams) ([]*RiverJob, error) {
-	rows, err := db.QueryContext(ctx, jobGetStuck, arg.StuckHorizon, arg.Max)
+	rows, err := db.QueryContext(ctx, jobGetStuck, arg.AfterID, arg.StuckHorizon, arg.Max)
 	if err != nil {
 		return nil, err
 	}
@@ -630,16 +631,16 @@ INSERT INTO /* TEMPLATE: schema */river_job(
     unique_states
 ) VALUES (
     cast(?1 AS integer),
-    ?2,
+    jsonb(?2),
     coalesce(cast(?3 AS text), datetime('now', 'subsec')),
     ?4,
     ?5,
-    json(cast(?6 AS blob)),
+    jsonb(?6),
     ?7,
     ?8,
     coalesce(cast(?9 AS text), datetime('now', 'subsec')),
     ?10,
-    json(cast(?11 AS blob)),
+    jsonb(?11),
     CASE WHEN length(cast(?12 AS blob)) = 0 THEN NULL ELSE ?12 END,
     ?13
 )
@@ -659,34 +660,25 @@ ON CONFLICT (unique_key)
             END >= 1
     -- Something needs to be updated for a row to be returned on a conflict.
     DO UPDATE SET kind = EXCLUDED.kind
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 type JobInsertFastParams struct {
 	ID           *int64
-	Args         []byte
+	Args         interface{}
 	CreatedAt    *string
 	Kind         string
 	MaxAttempts  int64
-	Metadata     []byte
+	Metadata     interface{}
 	Priority     int64
 	Queue        string
 	ScheduledAt  *string
 	State        string
-	Tags         []byte
+	Tags         interface{}
 	UniqueKey    []byte
 	UniqueStates *int64
 }
 
-// Insert a job.
-//
-// This is supposed to be a batch insert, but various limitations of the
-// combined SQLite + sqlc has left me unable to find a way of injecting many
-// arguments en masse (like how we slightly abuse arrays to pull it off for the
-// Postgres drivers), so we loop over many insert operations instead, with the
-// expectation that this may be fixable in the future. Because SQLite targets
-// will often be local and therefore with a very minimal round trip compared to
-// a network, looping over operations is probably okay performance-wise.
 func (q *Queries) JobInsertFast(ctx context.Context, db DBTX, arg *JobInsertFastParams) (*RiverJob, error) {
 	row := db.QueryRowContext(ctx, jobInsertFast,
 		arg.ID,
@@ -727,6 +719,154 @@ func (q *Queries) JobInsertFast(ctx context.Context, db DBTX, arg *JobInsertFast
 	return &i, err
 }
 
+const jobInsertFastMany = `-- name: JobInsertFastMany :many
+INSERT INTO /* TEMPLATE: schema */river_job(
+    id,
+    args,
+    created_at,
+    kind,
+    max_attempts,
+    metadata,
+    priority,
+    queue,
+    scheduled_at,
+    state,
+    tags,
+    unique_key,
+    unique_states
+)
+SELECT
+    cast(json_extract(value, '$.id') AS integer),
+    jsonb(json_extract(value, '$.args')),
+    coalesce(cast(json_extract(value, '$.created_at') AS text), datetime('now', 'subsec')),
+    cast(json_extract(value, '$.kind') AS text),
+    cast(json_extract(value, '$.max_attempts') AS integer),
+    jsonb(json_extract(value, '$.metadata')),
+    cast(json_extract(value, '$.priority') AS integer),
+    cast(json_extract(value, '$.queue') AS text),
+    coalesce(cast(json_extract(value, '$.scheduled_at') AS text), datetime('now', 'subsec')),
+    cast(json_extract(value, '$.state') AS text),
+    jsonb(json_extract(value, '$.tags')),
+    CASE WHEN length(cast(json_extract(value, '$.unique_key') AS text)) = 0 THEN NULL ELSE unhex(cast(json_extract(value, '$.unique_key') AS text)) END,
+    nullif(cast(json_extract(value, '$.unique_states') AS integer), 0)
+FROM json_each(cast(?1 AS blob))
+WHERE true
+ON CONFLICT (unique_key)
+    WHERE unique_key IS NOT NULL
+        AND unique_states IS NOT NULL
+        AND CASE state
+                WHEN 'available' THEN unique_states & (1 << 0)
+                WHEN 'cancelled' THEN unique_states & (1 << 1)
+                WHEN 'completed' THEN unique_states & (1 << 2)
+                WHEN 'discarded' THEN unique_states & (1 << 3)
+                WHEN 'pending'   THEN unique_states & (1 << 4)
+                WHEN 'retryable' THEN unique_states & (1 << 5)
+                WHEN 'running'   THEN unique_states & (1 << 6)
+                WHEN 'scheduled' THEN unique_states & (1 << 7)
+                ELSE 0
+            END >= 1
+    -- Something needs to be updated for a row to be returned on a conflict.
+    DO UPDATE SET kind = EXCLUDED.kind
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
+`
+
+func (q *Queries) JobInsertFastMany(ctx context.Context, db DBTX, jobs []byte) ([]*RiverJob, error) {
+	rows, err := db.QueryContext(ctx, jobInsertFastMany, jobs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*RiverJob
+	for rows.Next() {
+		var i RiverJob
+		if err := rows.Scan(
+			&i.ID,
+			&i.Args,
+			&i.Attempt,
+			&i.AttemptedAt,
+			&i.AttemptedBy,
+			&i.CreatedAt,
+			&i.Errors,
+			&i.FinalizedAt,
+			&i.Kind,
+			&i.MaxAttempts,
+			&i.Metadata,
+			&i.Priority,
+			&i.Queue,
+			&i.State,
+			&i.ScheduledAt,
+			&i.Tags,
+			&i.UniqueKey,
+			&i.UniqueStates,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const jobInsertFastManyNoReturning = `-- name: JobInsertFastManyNoReturning :execrows
+INSERT INTO /* TEMPLATE: schema */river_job(
+    args,
+    created_at,
+    kind,
+    max_attempts,
+    metadata,
+    priority,
+    queue,
+    scheduled_at,
+    state,
+    tags,
+    unique_key,
+    unique_states
+)
+SELECT
+    jsonb(json_extract(value, '$.args')),
+    coalesce(cast(json_extract(value, '$.created_at') AS text), datetime('now', 'subsec')),
+    cast(json_extract(value, '$.kind') AS text),
+    cast(json_extract(value, '$.max_attempts') AS integer),
+    jsonb(json_extract(value, '$.metadata')),
+    cast(json_extract(value, '$.priority') AS integer),
+    cast(json_extract(value, '$.queue') AS text),
+    coalesce(cast(json_extract(value, '$.scheduled_at') AS text), datetime('now', 'subsec')),
+    cast(json_extract(value, '$.state') AS text),
+    jsonb(json_extract(value, '$.tags')),
+    CASE WHEN length(cast(json_extract(value, '$.unique_key') AS text)) = 0 THEN NULL ELSE unhex(cast(json_extract(value, '$.unique_key') AS text)) END,
+    nullif(cast(json_extract(value, '$.unique_states') AS integer), 0)
+FROM json_each(cast(?1 AS blob))
+WHERE true
+ON CONFLICT (unique_key)
+    WHERE unique_key IS NOT NULL
+        AND unique_states IS NOT NULL
+        AND CASE state
+                WHEN 'available' THEN unique_states & (1 << 0)
+                WHEN 'cancelled' THEN unique_states & (1 << 1)
+                WHEN 'completed' THEN unique_states & (1 << 2)
+                WHEN 'discarded' THEN unique_states & (1 << 3)
+                WHEN 'pending'   THEN unique_states & (1 << 4)
+                WHEN 'retryable' THEN unique_states & (1 << 5)
+                WHEN 'running'   THEN unique_states & (1 << 6)
+                WHEN 'scheduled' THEN unique_states & (1 << 7)
+                ELSE 0
+            END >= 1
+DO NOTHING
+`
+
+func (q *Queries) JobInsertFastManyNoReturning(ctx context.Context, db DBTX, jobs []byte) (int64, error) {
+	result, err := db.ExecContext(ctx, jobInsertFastManyNoReturning, jobs)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const jobInsertFastNoReturning = `-- name: JobInsertFastNoReturning :execrows
 INSERT INTO /* TEMPLATE: schema */river_job(
     args,
@@ -742,16 +882,16 @@ INSERT INTO /* TEMPLATE: schema */river_job(
     unique_key,
     unique_states
 ) VALUES (
-    ?1,
+    jsonb(?1),
     coalesce(cast(?2 AS text), datetime('now', 'subsec')),
     ?3,
     ?4,
-    json(cast(?5 AS blob)),
+    jsonb(?5),
     ?6,
     ?7,
     coalesce(cast(?8 AS text), datetime('now', 'subsec')),
     ?9,
-    json(cast(?10 AS blob)),
+    jsonb(?10),
     CASE WHEN length(cast(?11 AS blob)) = 0 THEN NULL ELSE ?11 END,
     ?12
 )
@@ -773,16 +913,16 @@ DO NOTHING
 `
 
 type JobInsertFastNoReturningParams struct {
-	Args         []byte
+	Args         interface{}
 	CreatedAt    *string
 	Kind         string
 	MaxAttempts  int64
-	Metadata     []byte
+	Metadata     interface{}
 	Priority     int64
 	Queue        string
 	ScheduledAt  *string
 	State        string
-	Tags         []byte
+	Tags         interface{}
 	UniqueKey    []byte
 	UniqueStates *int64
 }
@@ -828,28 +968,28 @@ INSERT INTO /* TEMPLATE: schema */river_job(
     unique_key,
     unique_states
 ) VALUES (
-    ?1,
+    jsonb(?1),
     ?2,
     cast(?3 as text),
-    CASE WHEN length(cast(?4 AS blob)) = 0 THEN NULL ELSE json(?4) END,
+    CASE WHEN length(cast(?4 AS blob)) = 0 THEN NULL ELSE jsonb(?4) END,
     coalesce(cast(?5 AS text), datetime('now', 'subsec')),
-    CASE WHEN length(cast(?6 AS blob)) = 0 THEN NULL ELSE ?6 END,
+    CASE WHEN length(cast(?6 AS blob)) = 0 THEN NULL ELSE jsonb(?6) END,
     cast(?7 as text),
     ?8,
     ?9,
-    json(cast(?10 AS blob)),
+    jsonb(?10),
     ?11,
     ?12,
     coalesce(cast(?13 AS text), datetime('now', 'subsec')),
     ?14,
-    json(cast(?15 AS blob)),
+    jsonb(?15),
     CASE WHEN length(cast(?16 AS blob)) = 0 THEN NULL ELSE ?16 END,
     ?17
-) RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+) RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 type JobInsertFullParams struct {
-	Args         []byte
+	Args         interface{}
 	Attempt      int64
 	AttemptedAt  *string
 	AttemptedBy  []byte
@@ -858,12 +998,12 @@ type JobInsertFullParams struct {
 	FinalizedAt  *string
 	Kind         string
 	MaxAttempts  int64
-	Metadata     []byte
+	Metadata     interface{}
 	Priority     int64
 	Queue        string
 	ScheduledAt  *string
 	State        string
-	Tags         []byte
+	Tags         interface{}
 	UniqueKey    []byte
 	UniqueStates *int64
 }
@@ -910,6 +1050,90 @@ func (q *Queries) JobInsertFull(ctx context.Context, db DBTX, arg *JobInsertFull
 		&i.UniqueStates,
 	)
 	return &i, err
+}
+
+const jobInsertFullMany = `-- name: JobInsertFullMany :many
+INSERT INTO /* TEMPLATE: schema */river_job(
+    args,
+    attempt,
+    attempted_at,
+    attempted_by,
+    created_at,
+    errors,
+    finalized_at,
+    kind,
+    max_attempts,
+    metadata,
+    priority,
+    queue,
+    scheduled_at,
+    state,
+    tags,
+    unique_key,
+    unique_states
+)
+SELECT
+    jsonb(json_extract(value, '$.args')),
+    cast(json_extract(value, '$.attempt') AS integer),
+    cast(json_extract(value, '$.attempted_at') AS text),
+    CASE WHEN json_type(value, '$.attempted_by') IS NULL THEN NULL ELSE jsonb(json_extract(value, '$.attempted_by')) END,
+    coalesce(cast(json_extract(value, '$.created_at') AS text), datetime('now', 'subsec')),
+    CASE WHEN json_type(value, '$.errors') IS NULL THEN NULL ELSE jsonb(json_extract(value, '$.errors')) END,
+    cast(json_extract(value, '$.finalized_at') AS text),
+    cast(json_extract(value, '$.kind') AS text),
+    cast(json_extract(value, '$.max_attempts') AS integer),
+    jsonb(json_extract(value, '$.metadata')),
+    cast(json_extract(value, '$.priority') AS integer),
+    cast(json_extract(value, '$.queue') AS text),
+    coalesce(cast(json_extract(value, '$.scheduled_at') AS text), datetime('now', 'subsec')),
+    cast(json_extract(value, '$.state') AS text),
+    jsonb(json_extract(value, '$.tags')),
+    CASE WHEN length(cast(json_extract(value, '$.unique_key') AS text)) = 0 THEN NULL ELSE unhex(cast(json_extract(value, '$.unique_key') AS text)) END,
+    nullif(cast(json_extract(value, '$.unique_states') AS integer), 0)
+FROM json_each(cast(?1 AS blob))
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
+`
+
+func (q *Queries) JobInsertFullMany(ctx context.Context, db DBTX, jobs []byte) ([]*RiverJob, error) {
+	rows, err := db.QueryContext(ctx, jobInsertFullMany, jobs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*RiverJob
+	for rows.Next() {
+		var i RiverJob
+		if err := rows.Scan(
+			&i.ID,
+			&i.Args,
+			&i.Attempt,
+			&i.AttemptedAt,
+			&i.AttemptedBy,
+			&i.CreatedAt,
+			&i.Errors,
+			&i.FinalizedAt,
+			&i.Kind,
+			&i.MaxAttempts,
+			&i.Metadata,
+			&i.Priority,
+			&i.Queue,
+			&i.State,
+			&i.ScheduledAt,
+			&i.Tags,
+			&i.UniqueKey,
+			&i.UniqueStates,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const jobKindList = `-- name: JobKindList :many
@@ -966,7 +1190,7 @@ func (q *Queries) JobKindList(ctx context.Context, db DBTX, arg *JobKindListPara
 }
 
 const jobList = `-- name: JobList :many
-SELECT id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+SELECT id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 FROM /* TEMPLATE: schema */river_job
 WHERE /* TEMPLATE_BEGIN: where_clause */ true /* TEMPLATE_END */
 ORDER BY /* TEMPLATE_BEGIN: order_by_clause */ id /* TEMPLATE_END */
@@ -1018,10 +1242,10 @@ func (q *Queries) JobList(ctx context.Context, db DBTX, max int64) ([]*RiverJob,
 const jobRescue = `-- name: JobRescue :exec
 UPDATE /* TEMPLATE: schema */river_job
 SET
-    errors = json_insert(coalesce(errors, json('[]')), '$[#]', json(cast(?1 AS blob))),
+    errors = jsonb(json_insert(json(coalesce(errors, jsonb('[]'))), '$[#]', json(?1))),
     finalized_at = cast(?2 as text),
-    scheduled_at = ?3,
-    metadata = json_set(
+    scheduled_at = cast(?3 AS text),
+    metadata = jsonb_set(
         metadata,
         '$."river:rescue_count"',
         coalesce(
@@ -1037,9 +1261,9 @@ WHERE id = ?5
 `
 
 type JobRescueParams struct {
-	Error       []byte
+	Error       interface{}
 	FinalizedAt *string
-	ScheduledAt time.Time
+	ScheduledAt string
 	State       string
 	ID          int64
 }
@@ -1084,7 +1308,7 @@ WHERE id = ?2
         state <> 'available'
         OR scheduled_at > coalesce(cast(?1 AS text), datetime('now', 'subsec'))
     )
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 type JobRetryParams struct {
@@ -1128,7 +1352,7 @@ func (q *Queries) JobRetry(ctx context.Context, db DBTX, arg *JobRetryParams) (*
 }
 
 const jobScheduleGetCollision = `-- name: JobScheduleGetCollision :one
-SELECT id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+SELECT id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 FROM /* TEMPLATE: schema */river_job
 WHERE id <> ?1
     AND unique_key = ?2
@@ -1178,7 +1402,7 @@ func (q *Queries) JobScheduleGetCollision(ctx context.Context, db DBTX, arg *Job
 }
 
 const jobScheduleGetEligible = `-- name: JobScheduleGetEligible :many
-SELECT id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+SELECT id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 FROM /* TEMPLATE: schema */river_job
 WHERE
     state IN ('retryable', 'scheduled')
@@ -1242,7 +1466,7 @@ UPDATE /* TEMPLATE: schema */river_job
 SET
     state = 'available'
 WHERE id IN (/*SLICE:id*/?)
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 func (q *Queries) JobScheduleSetAvailable(ctx context.Context, db DBTX, id []int64) ([]*RiverJob, error) {
@@ -1299,11 +1523,11 @@ func (q *Queries) JobScheduleSetAvailable(ctx context.Context, db DBTX, id []int
 
 const jobScheduleSetDiscarded = `-- name: JobScheduleSetDiscarded :many
 UPDATE /* TEMPLATE: schema */river_job
-SET metadata = json_patch(metadata, json('{"unique_key_conflict": "scheduler_discarded"}')),
+SET metadata = jsonb_patch(json(metadata), json('{"unique_key_conflict": "scheduler_discarded"}')),
     finalized_at = coalesce(cast(?1 AS text), datetime('now', 'subsec')),
     state = 'discarded'
 WHERE id IN (/*SLICE:id*/?)
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 type JobScheduleSetDiscardedParams struct {
@@ -1366,14 +1590,14 @@ func (q *Queries) JobScheduleSetDiscarded(ctx context.Context, db DBTX, arg *Job
 
 const jobSetMetadataIfNotRunning = `-- name: JobSetMetadataIfNotRunning :one
 UPDATE /* TEMPLATE: schema */river_job
-SET metadata = json_patch(metadata, json(cast(?1 AS blob)))
+SET metadata = jsonb_patch(json(metadata), json(?1))
 WHERE id = ?2
     AND state != 'running'
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 type JobSetMetadataIfNotRunningParams struct {
-	MetadataUpdates []byte
+	MetadataUpdates interface{}
 	ID              int64
 }
 
@@ -1408,32 +1632,32 @@ func (q *Queries) JobSetMetadataIfNotRunning(ctx context.Context, db DBTX, arg *
 const jobSetStateIfRunning = `-- name: JobSetStateIfRunning :one
 UPDATE /* TEMPLATE: schema */river_job
 SET
-    -- should_cancel: (job_input.state IN ('retryable', 'scheduled') AND river_job.metadata ? 'cancel_attempted_at')
+    -- should_cancel: (job_input.state IN ('available', 'retryable', 'scheduled') AND river_job.metadata ? 'cancel_attempted_at')
     --
-    -- or inverted:   (cast(@state AS text) <> 'retryable' AND @state <> 'scheduled' OR NOT (metadata -> 'cancel_attempted_at'))
-    attempt      = CASE WHEN /* NOT should_cancel */(cast(?1 AS text) <> 'retryable' AND ?1 <> 'scheduled' OR (metadata -> 'cancel_attempted_at') IS NULL) AND cast(?2 AS boolean)
+    -- or inverted:   (cast(@state AS text) <> 'available' AND @state <> 'retryable' AND @state <> 'scheduled' OR NOT (metadata -> 'cancel_attempted_at'))
+    attempt      = CASE WHEN /* NOT should_cancel */(cast(?1 AS text) <> 'available' AND ?1 <> 'retryable' AND ?1 <> 'scheduled' OR (metadata -> 'cancel_attempted_at') IS NULL) AND cast(?2 AS boolean)
                         THEN ?3
                         ELSE attempt END,
     errors       = CASE WHEN cast(?4 AS boolean)
-                        THEN json_insert(coalesce(errors, json('[]')), '$[#]', json(cast(?5 AS blob)))
+                        THEN jsonb(json_insert(json(coalesce(errors, jsonb('[]'))), '$[#]', json(?5)))
                         ELSE errors END,
-    finalized_at = CASE WHEN /* should_cancel */((?1 = 'retryable' OR ?1 = 'scheduled') AND (metadata -> 'cancel_attempted_at') iS NOT NULL)
+    finalized_at = CASE WHEN /* should_cancel */((?1 = 'available' OR ?1 = 'retryable' OR ?1 = 'scheduled') AND (metadata -> 'cancel_attempted_at') IS NOT NULL)
                         THEN coalesce(cast(?6 AS text), datetime('now', 'subsec'))
                         WHEN cast(?7 AS boolean)
-                        THEN ?8
+                        THEN cast(?8 AS text)
                         ELSE finalized_at END,
     metadata     = CASE WHEN cast(?9 AS boolean)
-                        THEN json_patch(metadata, json(cast(?10 AS blob)))
+                        THEN jsonb_patch(json(metadata), json(?10))
                         ELSE metadata END,
-    scheduled_at = CASE WHEN /* NOT should_cancel */(cast(?1 AS text) <> 'retryable' AND ?1 <> 'scheduled' OR (metadata -> 'cancel_attempted_at') IS NULL) AND cast(?11 AS boolean)
-                        THEN ?12
+    scheduled_at = CASE WHEN /* NOT should_cancel */(cast(?1 AS text) <> 'available' AND ?1 <> 'retryable' AND ?1 <> 'scheduled' OR (metadata -> 'cancel_attempted_at') IS NULL) AND cast(?11 AS boolean)
+                        THEN cast(?12 AS text)
                         ELSE scheduled_at END,
-    state        = CASE WHEN /* should_cancel */((?1 = 'retryable' OR ?1 = 'scheduled') AND (metadata -> 'cancel_attempted_at') IS NOT NULL)
+    state        = CASE WHEN /* should_cancel */((?1 = 'available' OR ?1 = 'retryable' OR ?1 = 'scheduled') AND (metadata -> 'cancel_attempted_at') IS NOT NULL)
                         THEN 'cancelled'
                         ELSE ?1 END
 WHERE id = ?13
     AND state = 'running'
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 type JobSetStateIfRunningParams struct {
@@ -1441,14 +1665,14 @@ type JobSetStateIfRunningParams struct {
 	AttemptDoUpdate     bool
 	Attempt             int64
 	ErrorsDoUpdate      bool
-	Error               []byte
+	Error               interface{}
 	Now                 *string
 	FinalizedAtDoUpdate bool
-	FinalizedAt         *time.Time
+	FinalizedAt         *string
 	MetadataDoMerge     bool
-	MetadataUpdates     []byte
+	MetadataUpdates     interface{}
 	ScheduledAtDoUpdate bool
-	ScheduledAt         time.Time
+	ScheduledAt         string
 	ID                  int64
 }
 
@@ -1498,14 +1722,14 @@ func (q *Queries) JobSetStateIfRunning(ctx context.Context, db DBTX, arg *JobSet
 const jobUpdate = `-- name: JobUpdate :one
 UPDATE /* TEMPLATE: schema */river_job
 SET
-    metadata = CASE WHEN cast(?1 AS boolean) THEN json_patch(metadata, json(cast(?2 AS blob))) ELSE metadata END
+    metadata = CASE WHEN cast(?1 AS boolean) THEN jsonb_patch(json(metadata), json(?2)) ELSE metadata END
 WHERE id = ?3
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 type JobUpdateParams struct {
 	MetadataDoMerge bool
-	Metadata        []byte
+	Metadata        interface{}
 	ID              int64
 }
 
@@ -1539,32 +1763,32 @@ const jobUpdateFull = `-- name: JobUpdateFull :one
 UPDATE /* TEMPLATE: schema */river_job
 SET
     attempt = CASE WHEN cast(?1 AS boolean) THEN ?2 ELSE attempt END,
-    attempted_at = CASE WHEN cast(?3 AS boolean) THEN ?4 ELSE attempted_at END,
-    attempted_by = CASE WHEN cast(?5 AS boolean) THEN ?6 ELSE attempted_by END,
-    errors = CASE WHEN cast(?7 AS boolean) THEN ?8 ELSE errors END,
-    finalized_at = CASE WHEN cast(?9 AS boolean) THEN ?10 ELSE finalized_at END,
+    attempted_at = CASE WHEN cast(?3 AS boolean) THEN cast(?4 AS text) ELSE attempted_at END,
+    attempted_by = CASE WHEN cast(?5 AS boolean) THEN jsonb(?6) ELSE attempted_by END,
+    errors = CASE WHEN cast(?7 AS boolean) THEN jsonb(?8) ELSE errors END,
+    finalized_at = CASE WHEN cast(?9 AS boolean) THEN cast(?10 AS text) ELSE finalized_at END,
     max_attempts = CASE WHEN cast(?11 AS boolean) THEN ?12 ELSE max_attempts END,
-    metadata = CASE WHEN cast(?13 AS boolean) THEN json(cast(?14 AS blob)) ELSE metadata END,
+    metadata = CASE WHEN cast(?13 AS boolean) THEN jsonb(?14) ELSE metadata END,
     state = CASE WHEN cast(?15 AS boolean) THEN ?16 ELSE state END
 WHERE id = ?17
-RETURNING id, args, attempt, attempted_at, attempted_by, created_at, errors, finalized_at, kind, max_attempts, metadata, priority, queue, state, scheduled_at, tags, unique_key, unique_states
+RETURNING id, json(args), attempt, attempted_at, json(attempted_by), created_at, json(errors), finalized_at, kind, max_attempts, json(metadata), priority, queue, state, scheduled_at, json(tags), unique_key, unique_states
 `
 
 type JobUpdateFullParams struct {
 	AttemptDoUpdate     bool
 	Attempt             int64
 	AttemptedAtDoUpdate bool
-	AttemptedAt         *time.Time
+	AttemptedAt         *string
 	AttemptedByDoUpdate bool
-	AttemptedBy         []byte
+	AttemptedBy         interface{}
 	ErrorsDoUpdate      bool
-	Errors              []byte
+	Errors              interface{}
 	FinalizedAtDoUpdate bool
-	FinalizedAt         *time.Time
+	FinalizedAt         *string
 	MaxAttemptsDoUpdate bool
 	MaxAttempts         int64
 	MetadataDoUpdate    bool
-	Metadata            []byte
+	Metadata            interface{}
 	StateDoUpdate       bool
 	State               string
 	ID                  int64

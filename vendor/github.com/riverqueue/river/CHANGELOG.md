@@ -7,7 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.40.0] - 2026-07-23
+## [0.44.1] - 2026-08-21
+
+### Fixed
+
+- SQLite job completion, rescue, and full-update paths now serialize timestamps using River's standard millisecond format instead of relying on database driver serialization, preventing inconsistent timestamp representations from being persisted. [PR #1353](https://github.com/riverqueue/river/pull/1353)
+- SQLite drivers now return a non-nil empty `JobRow.Errors` slice for jobs without errors, matching the behavior of PostgreSQL drivers and ensuring the field serializes to `[]` instead of `null`. [PR #1354](https://github.com/riverqueue/river/pull/1354).
+
+## [0.44.0] - 2026-08-18
+
+### Added
+
+- Added `EventKindJobInterrupted`, emitted when a running job is interrupted because its client is shutting down, the job was cancelled, and has been made immediately available to be worked again. [PR #1290](https://github.com/riverqueue/river/pull/1290).
+
+### Changed
+
+- Jobs that didn't finish in time organically while a client was stopping and had to have their context cancelled no longer have this cancellation counted as an error. `attempt` is reset to the number it was before the job started working, `errors` is left unchanged, and `state` is made `available` so jobs are eligible to be retried immediately. [PR #1290](https://github.com/riverqueue/river/pull/1290)
+
+### Fixed
+
+- Write timestamps in SQLite to always include three digits after the second like `.000`. Previously, they may have been truncated down to just `.0` in the case of trailing zeroes. [PR #1349](https://github.com/riverqueue/river/pull/1349)
+- Job completion events now reflect the job's persisted outcome when it differs from the transition requested by the worker. For example, a job completed with `JobCompleteTx` before its worker returns an error emits `job_completed`, and a remotely cancelled job whose worker errors or snoozes emits `job_cancelled`. Applications subscribed only to `job_failed` or `job_snoozed` should note that these events may instead be delivered to `job_completed` or `job_cancelled` subscribers. [PR #1350](https://github.com/riverqueue/river/pull/1350)
+
+## [0.43.0] - 2026-08-05
+
+### Added
+
+- Added `JobListParams.TagsAll` and `JobListParams.TagsAny` for filtering jobs that match every or any exact tag, respectively. [PR #1339](https://github.com/riverqueue/river/pull/1339).
+
+### Fixed
+
+- `testsignal` no longer imports `riversharedtest`, so testify, go-spew, goleak, and yaml are no longer linked into production binaries that use River. `WaitTimeout` moved to `rivershared/util/testutil`, with `riversharedtest.WaitTimeout` kept as a wrapper around it. [PR #1342](https://github.com/riverqueue/river/pull/1342).
+
+## [0.42.0] - 2026-07-31
+
+### Added
+
+- Added `JobArgsWithPlugins` for installing plugins that apply only to a specific job type. [PR #1337](https://github.com/riverqueue/river/pull/1337).
+
+## [0.41.1] - 2026-07-29
+
+### Fixed
+
+- Fixed `JobRescuer` incorrectly rescuing jobs whose worker timeout of zero inherits a client-level `Config.JobTimeout` of `-1` (no timeout). [PR #1331](https://github.com/riverqueue/river/pull/1331).
+
+## [0.41.0] - 2026-07-23
 
 ### Added
 
@@ -18,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `Config.Plugins` for extensions that should be installed as both hooks and middleware. `Config.Hooks` and `Config.Middleware` remain available for hook-only and middleware-only registration. [PR #1284](https://github.com/riverqueue/river/pull/1284).
 - Reduce producer keep alive interval from 1 minute to 30 seconds. [PR #1319](https://github.com/riverqueue/river/pull/1319).
+- Add context helpers that name timeouts for easy attribution on where they happened. [PR #1329](https://github.com/riverqueue/river/pull/1329).
 
 ### Fixed
 
