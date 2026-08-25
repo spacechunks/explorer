@@ -26,6 +26,7 @@ packages:
   github.com/spacechunks/explorer/controlplane/blob:
     interfaces:
       S3Store:
+      Presigner:
   github.com/spacechunks/explorer/platformd/proxy/xds:
     interfaces:
       Map:

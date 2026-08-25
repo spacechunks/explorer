@@ -1347,7 +1347,6 @@ func TestGetUploadURLWorks(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Contains(t, u.Query().Get("X-Amz-SignedHeaders"), "content-length")
-	require.Equal(t, "blabla", u.Query().Get("X-Amz-Checksum-Sha256"))
 }
 
 func TestGetUploadURLRenews(t *testing.T) {

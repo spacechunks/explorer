@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"time"
 
+	awssignerv4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
@@ -46,13 +47,21 @@ type S3Store interface {
 	SimplePut(ctx context.Context, key string, r io.Reader, metadata map[string]string) error
 }
 
+type Presigner interface {
+	PresignPutObject(
+		ctx context.Context,
+		params *s3.PutObjectInput,
+		optFns ...func(*s3.PresignOptions),
+	) (*awssignerv4.PresignedHTTPRequest, error)
+}
+
 type S3ObjectStore struct {
 	client    *s3.Client
-	presigner *s3.PresignClient
+	presigner Presigner
 	bucket    string
 }
 
-func NewS3Store(bucket string, c *s3.Client, presigner *s3.PresignClient) *S3ObjectStore {
+func NewS3Store(bucket string, c *s3.Client, presigner Presigner) *S3ObjectStore {
 	return &S3ObjectStore{
 		client:    c,
 		presigner: presigner,
@@ -67,7 +76,6 @@ func (s S3ObjectStore) PresignURL(
 	expiry time.Duration,
 	contentLength uint64,
 ) (string, time.Time, error) {
-	// TODO: add content length to prevent users from uploading too large files
 	req, err := s.presigner.PresignPutObject(ctx, &s3.PutObjectInput{
 		Bucket:            &s.bucket,
 		Key:               &key,
