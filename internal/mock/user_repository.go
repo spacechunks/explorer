@@ -79,12 +79,12 @@ func (_c *MockUserRepository_CreateUser_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// GetUserByEmail provides a mock function with given fields: ctx, id
+// GetUserByIDPID provides a mock function with given fields: ctx, id
 func (_m *MockUserRepository) GetUserByIDPID(ctx context.Context, id string) (resource.User, error) {
 	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetUserByEmail")
+		panic("no return value specified for GetUserByIDPID")
 	}
 
 	var r0 resource.User
@@ -107,31 +107,31 @@ func (_m *MockUserRepository) GetUserByIDPID(ctx context.Context, id string) (re
 	return r0, r1
 }
 
-// MockUserRepository_GetUserByEmail_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserByEmail'
-type MockUserRepository_GetUserByEmail_Call struct {
+// MockUserRepository_GetUserByIDPID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserByIDPID'
+type MockUserRepository_GetUserByIDPID_Call struct {
 	*mock.Call
 }
 
-// GetUserByEmail is a helper method to define mock.On call
+// GetUserByIDPID is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-func (_e *MockUserRepository_Expecter) GetUserByEmail(ctx interface{}, id interface{}) *MockUserRepository_GetUserByEmail_Call {
-	return &MockUserRepository_GetUserByEmail_Call{Call: _e.mock.On("GetUserByEmail", ctx, id)}
+func (_e *MockUserRepository_Expecter) GetUserByIDPID(ctx interface{}, id interface{}) *MockUserRepository_GetUserByIDPID_Call {
+	return &MockUserRepository_GetUserByIDPID_Call{Call: _e.mock.On("GetUserByIDPID", ctx, id)}
 }
 
-func (_c *MockUserRepository_GetUserByEmail_Call) Run(run func(ctx context.Context, id string)) *MockUserRepository_GetUserByEmail_Call {
+func (_c *MockUserRepository_GetUserByIDPID_Call) Run(run func(ctx context.Context, id string)) *MockUserRepository_GetUserByIDPID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockUserRepository_GetUserByEmail_Call) Return(_a0 resource.User, _a1 error) *MockUserRepository_GetUserByEmail_Call {
+func (_c *MockUserRepository_GetUserByIDPID_Call) Return(_a0 resource.User, _a1 error) *MockUserRepository_GetUserByIDPID_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockUserRepository_GetUserByEmail_Call) RunAndReturn(run func(context.Context, string) (resource.User, error)) *MockUserRepository_GetUserByEmail_Call {
+func (_c *MockUserRepository_GetUserByIDPID_Call) RunAndReturn(run func(context.Context, string) (resource.User, error)) *MockUserRepository_GetUserByIDPID_Call {
 	_c.Call.Return(run)
 	return _c
 }
