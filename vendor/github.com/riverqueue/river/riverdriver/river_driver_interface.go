@@ -128,6 +128,22 @@ type Driver[TTx any] interface {
 	// API is not stable. DO NOT USE.
 	PoolSet(dbPool any) error
 
+	// SQLFragmentColumnContainsAll generates an SQL fragment to be included as
+	// a predicate in a `WHERE` query for a collection column containing all of
+	// the given values. PostgreSQL uses array containment while SQLite compares
+	// values from a JSON array.
+	//
+	// API is not stable. DO NOT USE.
+	SQLFragmentColumnContainsAll(column, namedArg string, values []string) (string, any, error)
+
+	// SQLFragmentColumnContainsAny generates an SQL fragment to be included as
+	// a predicate in a `WHERE` query for a collection column containing at least
+	// one of the given values. PostgreSQL uses array overlap while SQLite
+	// compares values from a JSON array.
+	//
+	// API is not stable. DO NOT USE.
+	SQLFragmentColumnContainsAny(column, namedArg string, values []string) (string, any, error)
+
 	// SQLFragmentColumnIn generates an SQL fragment to be included as a
 	// predicate in a `WHERE` query for the existence of a set of values in a
 	// column like `id IN (...)`. The actual implementation depends on support
@@ -404,13 +420,7 @@ type JobDeleteBeforeParams struct {
 	Schema                      string
 }
 
-type JobDeleteManyParams struct {
-	Max           int32
-	NamedArgs     map[string]any
-	OrderByClause string
-	Schema        string
-	WhereClause   string
-}
+type JobDeleteManyParams JobListParams
 
 type JobGetAvailableParams struct {
 	ClientID       string
@@ -553,11 +563,31 @@ type JobSetStateIfRunningParams struct {
 	FinalizedAt     *time.Time
 	MetadataDoMerge bool
 	MetadataUpdates []byte
+	Reason          JobSetStateReason
 	ScheduledAt     *time.Time
 	Schema          string // added by completer
-	Snoozed         bool
 	State           rivertype.JobState
 }
+
+// JobSetStateReason describes why a running job's state was changed. It lets
+// callers distinguish transitions that result in the same state, like a failed
+// job being retried and a job interrupted by client shutdown both becoming
+// available.
+type JobSetStateReason string
+
+const (
+	// JobSetStateReasonCancelled indicates that a job was cancelled.
+	JobSetStateReasonCancelled JobSetStateReason = "cancelled"
+	// JobSetStateReasonCompleted indicates that a job completed successfully.
+	JobSetStateReasonCompleted JobSetStateReason = "completed"
+	// JobSetStateReasonFailed indicates that a job failed.
+	JobSetStateReasonFailed JobSetStateReason = "failed"
+	// JobSetStateReasonInterrupted indicates that a job was interrupted by
+	// client shutdown and made available to be worked again.
+	JobSetStateReasonInterrupted JobSetStateReason = "interrupted"
+	// JobSetStateReasonSnoozed indicates that a job was snoozed.
+	JobSetStateReasonSnoozed JobSetStateReason = "snoozed"
+)
 
 func JobSetStateCancelled(id int64, finalizedAt time.Time, errData []byte, metadataUpdates []byte) *JobSetStateIfRunningParams {
 	return &JobSetStateIfRunningParams{
@@ -566,6 +596,7 @@ func JobSetStateCancelled(id int64, finalizedAt time.Time, errData []byte, metad
 		MetadataDoMerge: len(metadataUpdates) > 0,
 		MetadataUpdates: metadataUpdates,
 		FinalizedAt:     &finalizedAt,
+		Reason:          JobSetStateReasonCancelled,
 		State:           rivertype.JobStateCancelled,
 	}
 }
@@ -576,6 +607,7 @@ func JobSetStateCompleted(id int64, finalizedAt time.Time, metadataUpdates []byt
 		ID:              id,
 		MetadataDoMerge: len(metadataUpdates) > 0,
 		MetadataUpdates: metadataUpdates,
+		Reason:          JobSetStateReasonCompleted,
 		State:           rivertype.JobStateCompleted,
 	}
 }
@@ -587,16 +619,19 @@ func JobSetStateDiscarded(id int64, finalizedAt time.Time, errData []byte, metad
 		MetadataDoMerge: len(metadataUpdates) > 0,
 		MetadataUpdates: metadataUpdates,
 		FinalizedAt:     &finalizedAt,
+		Reason:          JobSetStateReasonFailed,
 		State:           rivertype.JobStateDiscarded,
 	}
 }
 
+// JobSetStateErrorAvailable makes an errored job immediately available.
 func JobSetStateErrorAvailable(id int64, scheduledAt time.Time, errData []byte, metadataUpdates []byte) *JobSetStateIfRunningParams {
 	return &JobSetStateIfRunningParams{
 		ID:              id,
 		ErrData:         errData,
 		MetadataDoMerge: len(metadataUpdates) > 0,
 		MetadataUpdates: metadataUpdates,
+		Reason:          JobSetStateReasonFailed,
 		ScheduledAt:     &scheduledAt,
 		State:           rivertype.JobStateAvailable,
 	}
@@ -608,8 +643,23 @@ func JobSetStateErrorRetryable(id int64, scheduledAt time.Time, errData []byte, 
 		ErrData:         errData,
 		MetadataDoMerge: len(metadataUpdates) > 0,
 		MetadataUpdates: metadataUpdates,
+		Reason:          JobSetStateReasonFailed,
 		ScheduledAt:     &scheduledAt,
 		State:           rivertype.JobStateRetryable,
+	}
+}
+
+// JobSetStateInterrupted makes a job that was interrupted by client shutdown
+// immediately available without recording an error.
+func JobSetStateInterrupted(id int64, scheduledAt time.Time, attempt int, metadataUpdates []byte) *JobSetStateIfRunningParams {
+	return &JobSetStateIfRunningParams{
+		Attempt:         &attempt,
+		ID:              id,
+		MetadataDoMerge: len(metadataUpdates) > 0,
+		MetadataUpdates: metadataUpdates,
+		Reason:          JobSetStateReasonInterrupted,
+		ScheduledAt:     &scheduledAt,
+		State:           rivertype.JobStateAvailable,
 	}
 }
 
@@ -619,8 +669,8 @@ func JobSetStateSnoozed(id int64, scheduledAt time.Time, attempt int, metadataUp
 		ID:              id,
 		MetadataDoMerge: len(metadataUpdates) > 0,
 		MetadataUpdates: metadataUpdates,
+		Reason:          JobSetStateReasonSnoozed,
 		ScheduledAt:     &scheduledAt,
-		Snoozed:         true,
 		State:           rivertype.JobStateScheduled,
 	}
 }
@@ -631,8 +681,8 @@ func JobSetStateSnoozedAvailable(id int64, scheduledAt time.Time, attempt int, m
 		ID:              id,
 		MetadataDoMerge: len(metadataUpdates) > 0,
 		MetadataUpdates: metadataUpdates,
+		Reason:          JobSetStateReasonSnoozed,
 		ScheduledAt:     &scheduledAt,
-		Snoozed:         true,
 		State:           rivertype.JobStateAvailable,
 	}
 }

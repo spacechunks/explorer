@@ -1,9 +1,9 @@
 CREATE TABLE river_queue (
     name text PRIMARY KEY NOT NULL,
     created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    metadata blob NOT NULL DEFAULT (json('{}')),
+    metadata jsonb NOT NULL DEFAULT (jsonb('{}')),
     paused_at timestamp,
-    updated_at timestamp NOT NULL
+    updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- name: QueueCreateOrSetUpdatedAt :one
@@ -15,7 +15,7 @@ INSERT INTO /* TEMPLATE: schema */river_queue (
     updated_at
 ) VALUES (
     coalesce(cast(sqlc.narg('now') AS text), datetime('now', 'subsec')),
-    json(cast(@metadata AS blob)),
+    jsonb(@metadata),
     @name,
     cast(sqlc.narg('paused_at') AS text),
     coalesce(cast(sqlc.narg('updated_at') AS text), cast(sqlc.narg('now') AS text), datetime('now', 'subsec'))
@@ -29,7 +29,7 @@ DELETE FROM /* TEMPLATE: schema */river_queue
 WHERE name IN (
     SELECT name
     FROM /* TEMPLATE: schema */river_queue
-    WHERE river_queue.updated_at < @updated_at_horizon
+    WHERE river_queue.updated_at < cast(@updated_at_horizon AS text)
     ORDER BY name ASC
     LIMIT @max
 )
@@ -73,7 +73,7 @@ WHERE CASE WHEN cast(@name AS text) = '*' THEN true ELSE name = @name END;
 -- name: QueueUpdate :one
 UPDATE /* TEMPLATE: schema */river_queue
 SET
-    metadata = CASE WHEN cast(@metadata_do_update AS boolean) THEN json(cast(@metadata AS blob)) ELSE metadata END,
+    metadata = CASE WHEN cast(@metadata_do_update AS boolean) THEN jsonb(@metadata) ELSE metadata END,
     updated_at = datetime('now', 'subsec')
 WHERE name = @name
 RETURNING *;

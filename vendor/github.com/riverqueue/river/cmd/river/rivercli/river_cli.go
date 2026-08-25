@@ -69,11 +69,11 @@ func (c *CLI) BaseCommandSet() *cobra.Command {
 	makeLogger := func() *slog.Logger {
 		switch {
 		case globalOpts.Debug:
-			return slog.New(tint.NewHandler(os.Stdout, &tint.Options{Level: slog.LevelDebug}))
+			return slog.New(tint.NewTextHandler(os.Stdout, &tint.Options{Level: slog.LevelDebug}))
 		case globalOpts.Verbose:
-			return slog.New(tint.NewHandler(os.Stdout, nil))
+			return slog.New(tint.NewTextHandler(os.Stdout, nil))
 		default:
-			return slog.New(tint.NewHandler(os.Stdout, &tint.Options{Level: slog.LevelWarn}))
+			return slog.New(tint.NewTextHandler(os.Stdout, &tint.Options{Level: slog.LevelWarn}))
 		}
 	}
 
@@ -708,7 +708,7 @@ func (c *validate) Run(ctx context.Context, opts *validateOpts) (bool, error) {
 		return false, err
 	}
 
-	res, err := migrator.Validate(ctx)
+	res, err := migrator.Validate(ctx, nil)
 	if err != nil {
 		return false, err
 	}

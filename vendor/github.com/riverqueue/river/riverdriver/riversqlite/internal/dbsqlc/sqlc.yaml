@@ -2,19 +2,17 @@ version: "2"
 sql:
   - engine: "sqlite"
     queries:
-      - river_client.sql
-      - river_client_queue.sql
       - river_job.sql
       - river_leader.sql
       - river_migration.sql
+      - river_notification.sql
       - river_queue.sql
       - schema.sql
     schema:
-      - river_client.sql
-      - river_client_queue.sql
       - river_job.sql
       - river_leader.sql
       - river_migration.sql
+      - river_notification.sql
       - river_queue.sql
       - schema.sql
     gen:
@@ -32,3 +30,10 @@ sql:
           ttl: "TTL"
 
         overrides:
+          - db_type: "jsonb"
+            go_type:
+              type: "[]byte"
+          - db_type: "jsonb"
+            go_type:
+              type: "[]byte"
+            nullable: true

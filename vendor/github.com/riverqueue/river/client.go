@@ -25,6 +25,7 @@ import (
 	"github.com/riverqueue/river/internal/notifylimiter"
 	"github.com/riverqueue/river/internal/pluginconfig"
 	"github.com/riverqueue/river/internal/pluginlookup"
+	"github.com/riverqueue/river/internal/retrypolicy"
 	"github.com/riverqueue/river/internal/rivercommon"
 	"github.com/riverqueue/river/internal/riverplugin"
 	"github.com/riverqueue/river/internal/workunit"
@@ -240,7 +241,8 @@ type Config struct {
 	// and the work hook between them will not run. When a job is worked, the
 	// work hook runs and the insertion hooks on either side of it are skipped.
 	//
-	// Jobs may have their own specific hooks by implementing JobArgsWithHooks.
+	// Jobs may have their own specific hooks by implementing JobArgsWithHooks or
+	// JobArgsWithPlugins.
 	//
 	// Entries in Hooks are installed only as hooks, even if they also implement
 	// rivertype.Middleware. Use Plugins for an extension that should act as
@@ -296,6 +298,8 @@ type Config struct {
 	//
 	// Use Hooks or Middleware when an extension should be installed only as the
 	// corresponding kind. Use Plugins when it should be eligible as both.
+	// Jobs may have their own specific plugins by implementing
+	// JobArgsWithPlugins.
 	Plugins []rivertype.Plugin
 
 	// PeriodicJobs are a set of periodic jobs to run at the specified intervals
@@ -707,7 +711,7 @@ type Client[TTx any] struct {
 	driver                riverdriver.Driver[TTx]
 	elector               *leadership.Elector
 	pluginLookupByJob     *pluginlookup.JobPluginLookup
-	pluginLookupGlobal    pluginlookup.PluginLookupInterface
+	pluginLookupGlobal    *pluginlookup.PluginLookup
 	insertNotifyLimiter   *notifylimiter.Limiter
 	notifier              *notifier.Notifier // may be nil in poll-only mode
 	periodicJobs          *PeriodicJobBundle
@@ -823,14 +827,16 @@ func NewClient[TTx any](driver riverdriver.Driver[TTx], config *Config) (*Client
 			archetype.Time = &baseservice.TimeGeneratorWithStubWrapper{TimeGenerator: config.Test.Time}
 		}
 	}
+	if _, ok := config.RetryPolicy.(*DefaultClientRetryPolicy); ok {
+		config.RetryPolicy = retrypolicy.NewDefault(archetype.Time)
+	}
 
 	var (
 		middleware = pluginconfig.CombinedMiddleware(config.Middleware, config.JobInsertMiddleware, config.WorkerMiddleware)
 		plugins    = append(riverplugin.DefaultPlugins(), config.Plugins...)
 	)
-	pluginlookup.InitBaseServices(archetype, config.Hooks)
-	pluginlookup.InitBaseServices(archetype, middleware)
-	pluginlookup.InitBaseServices(archetype, plugins)
+	pluginLookupByJob := pluginlookup.NewJobPluginLookup(archetype)
+	pluginLookupGlobal := pluginlookup.NewPluginLookupFromConfig(archetype, config.Hooks, middleware, plugins)
 
 	client := &Client[TTx]{
 		clientNotifyBundle: &ClientNotifyBundle[TTx]{
@@ -839,8 +845,8 @@ func NewClient[TTx any](driver riverdriver.Driver[TTx], config *Config) (*Client
 		},
 		config:               config,
 		driver:               driver,
-		pluginLookupByJob:    pluginlookup.NewJobPluginLookup(),
-		pluginLookupGlobal:   pluginlookup.NewPluginLookupFromConfig(config.Hooks, middleware, plugins),
+		pluginLookupByJob:    pluginLookupByJob,
+		pluginLookupGlobal:   pluginLookupGlobal,
 		producersByQueueName: make(map[string]*producer),
 		testSignals:          clientTestSignals{},
 		workCancel:           func(cause error) {}, // replaced on start, but here in case StopAndCancel is called before start up
@@ -868,13 +874,8 @@ func NewClient[TTx any](driver riverdriver.Driver[TTx], config *Config) (*Client
 	if config.Workers != nil {
 		workerMetadata = make([]*rivertype.WorkerMetadata, 0, len(config.Workers.workersMap))
 		for kind, workerInfo := range config.Workers.workersMap {
-			var hooks []rivertype.Hook
-			if jobArgsWithHooks, ok := workerInfo.jobArgs.(JobArgsWithHooks); ok {
-				hooks = jobArgsWithHooks.Hooks()
-			}
-
 			workerMetadata = append(workerMetadata, &rivertype.WorkerMetadata{
-				JobArgHooks: hooks,
+				JobArgHooks: pluginLookupByJob.ByJobArgs(workerInfo.jobArgs).Hooks(),
 				Kind:        kind,
 			})
 		}
@@ -959,6 +960,7 @@ func NewClient[TTx any](driver riverdriver.Driver[TTx], config *Config) (*Client
 
 		{
 			jobRescuer := maintenance.NewRescuer(archetype, &maintenance.JobRescuerConfig{
+				ClientJobTimeout:  config.JobTimeout,
 				ClientRetryPolicy: config.RetryPolicy,
 				Pilot:             client.pilot,
 				RescueAfter:       config.RescueStuckJobsAfter,
@@ -1999,7 +2001,20 @@ func (c *Client[TTx]) insertManyShared(
 		return insertResults, nil
 	}
 
-	jobInsertMiddleware := c.pluginLookupGlobal.ByKind(pluginlookup.PluginKindMiddlewareJobInsert)
+	jobInsertMiddleware := append([]any(nil), c.pluginLookupGlobal.ByKind(pluginlookup.PluginKindMiddlewareJobInsert)...)
+	jobKindsSeen := make(map[string]struct{}, len(insertParams))
+	for _, params := range insertParams {
+		kind := params.Args.Kind()
+		if _, ok := jobKindsSeen[kind]; ok {
+			continue
+		}
+		jobKindsSeen[kind] = struct{}{}
+
+		jobInsertMiddleware = append(
+			jobInsertMiddleware,
+			c.pluginLookupByJob.ByJobArgs(params.Args).ByKind(pluginlookup.PluginKindMiddlewareJobInsert)...,
+		)
+	}
 	if len(jobInsertMiddleware) > 0 {
 		// Wrap middlewares in reverse order so the one defined first is wrapped
 		// as the outermost function and is first to receive the operation.
@@ -2383,7 +2398,7 @@ func (c *Client[TTx]) jobDeleteMany(ctx context.Context, exec riverdriver.Execut
 		return nil, errors.New("delete with no filters not allowed to prevent accidental deletion of all jobs; either specify a predicate (e.g. JobDeleteManyParams.IDs, JobDeleteManyParams.Kinds, ...) or call JobDeleteManyParams.All")
 	}
 
-	listParams, err := dblist.JobMakeDriverParams(ctx, params.toDBParams(), c.driver.SQLFragmentColumnIn)
+	listParams, err := dblist.JobMakeDriverParams(ctx, params.toDBParams(), c.driver)
 	if err != nil {
 		return nil, err
 	}
@@ -2436,7 +2451,7 @@ func (c *Client[TTx]) JobList(ctx context.Context, params *JobListParams) (*JobL
 		return nil, err
 	}
 
-	listParams, err := dblist.JobMakeDriverParams(ctx, dbParams, c.driver.SQLFragmentColumnIn)
+	listParams, err := dblist.JobMakeDriverParams(ctx, dbParams, c.driver)
 	if err != nil {
 		return nil, err
 	}
@@ -2477,7 +2492,7 @@ func (c *Client[TTx]) JobListTx(ctx context.Context, tx TTx, params *JobListPara
 		return nil, err
 	}
 
-	listParams, err := dblist.JobMakeDriverParams(ctx, dbParams, c.driver.SQLFragmentColumnIn)
+	listParams, err := dblist.JobMakeDriverParams(ctx, dbParams, c.driver)
 	if err != nil {
 		return nil, err
 	}
