@@ -26,6 +26,9 @@ dbschema: export DATABASE_URL := $(DATABASE_URL)
 testdb: export DATABASE_URL := $(DATABASE_URL)
 dbgen: dbschema sqlc
 
+.PHONY: generate
+generate: sqlc genproto mocks
+
 .PHONY: fmt
 fmt:
 	@find . -type f -name '*.go' \
@@ -128,6 +131,10 @@ ebpf:
 .PHONY: check-river-migrations
 check-river-migrations:
 	@./hack/check-river-migrations.sh
+
+.PHONY: mocks
+mocks:
+	$(RUN) go tool mockery
 
 $(TEST_IMG):
 	@docker build -t test-img -f $(IMG_TESTDATA_DIR)/Dockerfile $(IMG_TESTDATA_DIR)

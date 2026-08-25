@@ -231,4 +231,7 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-tool github.com/riverqueue/river/cmd/river
+tool (
+	github.com/riverqueue/river/cmd/river
+	github.com/vektra/mockery/v2
+)
