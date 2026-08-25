@@ -68,7 +68,7 @@ require (
 	golang.org/x/sys v0.47.0
 	golang.org/x/text v0.41.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688
-	google.golang.org/grpc v1.83.1
+	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
 	k8s.io/client-go v0.36.1
 	k8s.io/cri-api v0.36.1

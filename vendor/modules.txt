@@ -201,9 +201,6 @@ github.com/chigopher/pathlib
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
 github.com/cilium/ebpf/btf
-github.com/cilium/ebpf/cmd/bpf2go
-github.com/cilium/ebpf/cmd/bpf2go/gen
-github.com/cilium/ebpf/cmd/bpf2go/internal
 github.com/cilium/ebpf/features
 github.com/cilium/ebpf/internal
 github.com/cilium/ebpf/internal/efw
@@ -1198,7 +1195,7 @@ google.golang.org/genproto/googleapis/api/httpbody
 ## explicit; go 1.25.0
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.83.1
+# google.golang.org/grpc v1.83.2
 ## explicit; go 1.25.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
