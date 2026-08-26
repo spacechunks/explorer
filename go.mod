@@ -6,7 +6,7 @@ require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.1
 	buf.build/go/protovalidate v1.3.0
 	github.com/Oudwins/zog v0.22.2
-	github.com/amacneil/dbmate/v2 v2.35.0
+	github.com/amacneil/dbmate/v2 v2.35.1
 	github.com/aws/aws-sdk-go-v2 v1.43.7
 	github.com/aws/aws-sdk-go-v2/config v1.32.38
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.37
