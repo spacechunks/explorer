@@ -146,7 +146,7 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc/types
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
-# github.com/aws/smithy-go v1.27.10
+# github.com/aws/smithy-go v1.28.0
 ## explicit; go 1.24
 github.com/aws/smithy-go
 github.com/aws/smithy-go/auth
@@ -201,9 +201,6 @@ github.com/chigopher/pathlib
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
 github.com/cilium/ebpf/btf
-github.com/cilium/ebpf/cmd/bpf2go
-github.com/cilium/ebpf/cmd/bpf2go/gen
-github.com/cilium/ebpf/cmd/bpf2go/internal
 github.com/cilium/ebpf/features
 github.com/cilium/ebpf/internal
 github.com/cilium/ebpf/internal/efw
