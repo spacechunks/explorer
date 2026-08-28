@@ -9,6 +9,7 @@ linters:
 
     # disabled because we're not compliant, but which we should think about
     - exhaustruct # checks that properties in structs are exhaustively defined; may be a good idea
+    - exhaustruct_v5 # they actually did another one
     - testpackage # requires tests in test packages like `river_test`
 
     # disabled because it's deprecated, and `default: all` already enables its

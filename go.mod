@@ -41,9 +41,9 @@ require (
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
-	github.com/riverqueue/river v0.44.1
-	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.44.1
-	github.com/riverqueue/river/rivertype v0.44.1
+	github.com/riverqueue/river v0.45.0
+	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.45.0
+	github.com/riverqueue/river/rivertype v0.45.0
 	github.com/riverqueue/rivercontrib/otelriver v0.12.0
 	github.com/rodaine/table v1.3.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
@@ -51,7 +51,6 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
-	github.com/vektra/mockery/v2 v2.53.6
 	github.com/vishvananda/netlink v1.3.1
 	github.com/vishvananda/netns v0.0.5
 	github.com/zeebo/xxh3 v1.1.0
@@ -171,10 +170,10 @@ require (
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/riverqueue/river/cmd/river v0.44.1 // indirect
-	github.com/riverqueue/river/riverdriver v0.44.1 // indirect
-	github.com/riverqueue/river/riverdriver/riversqlite v0.44.1 // indirect
-	github.com/riverqueue/river/rivershared v0.44.1 // indirect
+	github.com/riverqueue/river/cmd/river v0.45.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.45.0 // indirect
+	github.com/riverqueue/river/riverdriver/riversqlite v0.45.0 // indirect
+	github.com/riverqueue/river/rivershared v0.45.0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/ryszard/goskiplist v0.0.0-20150312221310-2dfbae5fcf46 // indirect
 	github.com/safchain/ethtool v0.6.2 // indirect
@@ -194,6 +193,7 @@ require (
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/valyala/fastjson v1.6.10 // indirect
+	github.com/vektra/mockery/v2 v2.53.6 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
@@ -223,7 +223,7 @@ require (
 	modernc.org/libc v1.74.4 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.56.0 // indirect
+	modernc.org/sqlite v1.57.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/knftables v0.0.18 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
