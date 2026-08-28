@@ -491,7 +491,7 @@ github.com/hetznercloud/hcloud-go/v2/hcloud/internal/instrumentation
 github.com/hetznercloud/hcloud-go/v2/hcloud/internal/util
 github.com/hetznercloud/hcloud-go/v2/hcloud/internal/version
 github.com/hetznercloud/hcloud-go/v2/hcloud/schema
-# github.com/huandu/xstrings v1.4.0
+# github.com/huandu/xstrings v1.5.0
 ## explicit; go 1.12
 github.com/huandu/xstrings
 # github.com/iancoleman/strcase v0.3.0
