@@ -332,6 +332,7 @@ func (b builder) handleUpload(ctx context.Context, data *buildData) error {
 	}
 
 	req.ContentLength = int64(len(tarData))
+	req.Header.Set("x-amz-checksum-sha256", base64.StdEncoding.EncodeToString(digest[:]))
 
 	progReader.OnProgress(func(progress uint) {
 		b.updates <- buildUpdate{
