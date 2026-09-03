@@ -431,3 +431,26 @@ func TestFlavorByID(t *testing.T) {
 		})
 	}
 }
+
+func TestChunkByFlavorID(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+
+	expected := fixture.Chunk(func(tmp *resource.Chunk) {
+		tmp.DeletedAt = new(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC))
+	})
+
+	pg.CreateChunk(t, &expected, fixture.CreateOptionsAll)
+
+	actual, err := pg.DB.ChunkByFlavorID(ctx, expected.Flavors[0].ID)
+	require.NoError(t, err)
+
+	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
+		t.Errorf("chunk mismatch (-want +got):\n%s", d)
+	}
+}

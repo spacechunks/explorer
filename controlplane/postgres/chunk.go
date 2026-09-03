@@ -310,6 +310,99 @@ func (db *DB) MarkChunkAndFlavorsDeleted(ctx context.Context, id string) error {
 	})
 }
 
+func (db *DB) ChunkByFlavorID(ctx context.Context, flavorID string) (resource.Chunk, error) {
+	var ret resource.Chunk
+	if err := db.do(ctx, func(q *query.Queries) error {
+		rows, err := q.GetChunkByFlavorID(ctx, flavorID)
+		if err != nil {
+			return err
+		}
+
+		if len(rows) == 0 {
+			return apierrs.ErrChunkNotFound
+		}
+
+		relationRows := make([]chunkRelationsRow, 0, len(rows))
+
+		for _, r := range rows {
+			rel := chunkRelationsRow{
+				ChunkID:        r.Chunk.ID,
+				ChunkName:      r.Chunk.Name,
+				Description:    r.Chunk.Description,
+				Tags:           r.Chunk.Tags,
+				ChunkCreatedAt: r.Chunk.CreatedAt.UTC(),
+				ChunkUpdatedAt: r.Chunk.UpdatedAt.UTC(),
+
+				FlavorID:        &r.Flavor.ID,
+				FlavorName:      r.Flavor.Name,
+				FlavorCreatedAt: r.Flavor.CreatedAt.UTC(),
+				FlavorUpdatedAt: r.Flavor.UpdatedAt.UTC(),
+
+				FlavorVersionID:        &r.FlavorVersion.ID,
+				FlavorVersionFlavorID:  &r.FlavorVersion.FlavorID,
+				Version:                r.FlavorVersion.Version,
+				MinecraftVersion:       r.FlavorVersion.MinecraftVersion,
+				Hash:                   r.FlavorVersion.Hash,
+				BuildStatus:            string(r.FlavorVersion.BuildStatus),
+				FilesUploaded:          r.FlavorVersion.FilesUploaded,
+				FlavorVersionCreatedAt: r.FlavorVersion.CreatedAt.UTC(),
+				MinPlayers:             uint32(r.FlavorVersion.MinPlayers),
+				MaxPlayers:             uint32(r.FlavorVersion.MaxPlayers),
+
+				FilePath: r.FlavorVersionFile.FilePath,
+				FileHash: r.FlavorVersionFile.FileHash,
+
+				UserID:        r.User.ID,
+				UserNickname:  r.User.Nickname,
+				UserIDPID:     r.User.IdpID,
+				UserCreatedAt: r.User.CreatedAt.UTC(),
+				UserUpdatedAt: r.User.UpdatedAt.UTC(),
+			}
+
+			// sqlc is not able to generate a *time.Time from nullable timestamptz
+			var expiryDate *time.Time
+			if r.FlavorVersion.PresignedUrlExpiryDate.Valid {
+				expiryDate = &r.FlavorVersion.PresignedUrlExpiryDate.Time
+			}
+
+			var presignedURL *string
+			if r.FlavorVersion.PresignedUrl.Valid {
+				presignedURL = &r.FlavorVersion.PresignedUrl.String
+			}
+
+			var thumbnailHash *string
+			if r.Chunk.ThumbnailHash.Valid {
+				thumbnailHash = &r.Chunk.ThumbnailHash.String
+			}
+
+			var chunkDeletedAt *time.Time
+			if r.Chunk.DeletedAt.Valid {
+				chunkDeletedAt = &r.Chunk.DeletedAt.Time
+			}
+
+			var flavorDeletedAt *time.Time
+			if r.Flavor.DeletedAt.Valid {
+				flavorDeletedAt = &r.Flavor.DeletedAt.Time
+			}
+
+			rel.PresingedURLExpiryDate = expiryDate
+			rel.PresignedURL = presignedURL
+			rel.ThumbnailHash = thumbnailHash
+			rel.ChunkDeletedAt = chunkDeletedAt
+			rel.FlavorDeletedAt = flavorDeletedAt
+
+			relationRows = append(relationRows, rel)
+		}
+
+		ret = collectChunks(relationRows)
+		return nil
+	}); err != nil {
+		return resource.Chunk{}, err
+	}
+
+	return ret, nil
+}
+
 func (db *DB) getChunkByID(ctx context.Context, q *query.Queries, id string) (resource.Chunk, error) {
 	rows, err := q.GetChunkByID(ctx, id)
 	if err != nil {

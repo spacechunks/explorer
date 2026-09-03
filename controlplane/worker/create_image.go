@@ -82,6 +82,15 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 			return
 		}
 
+		w.logger.Error(
+			"job failed",
+			"chunk_id", riverJob.Args.ChunkID,
+			"chunk_name", riverJob.Args.ChunkName,
+			"flavor_id", riverJob.Args.FlavorID,
+			"flavor_name", riverJob.Args.FlavorName,
+			"err", ret,
+		)
+
 		// we only want to update the job to failed
 		// once we exhausted all attempts.
 		if riverJob.Attempt < riverJob.MaxAttempts {
@@ -194,6 +203,10 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 			FlavorVersionID: riverJob.Args.FlavorVersionID,
 			BaseImageURL:    ref,
 			SpanContext:     riverJob.Args.SpanContext,
+			ChunkID:         riverJob.Args.ChunkID,
+			ChunkName:       riverJob.Args.ChunkName,
+			FlavorID:        riverJob.Args.FlavorID,
+			FlavorName:      riverJob.Args.FlavorName,
 		}); err != nil {
 		return fmt.Errorf("insert create checkpoint job: %w", err)
 	}
