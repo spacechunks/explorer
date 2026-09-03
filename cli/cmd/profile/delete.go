@@ -22,13 +22,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spacechunks/explorer/cli"
 	"github.com/spacechunks/explorer/cli/fshelper"
 	"github.com/spf13/cobra"
 )
 
-func newSetCommand(_ context.Context, cliCtx cli.Context) *cobra.Command {
+func newDeleteCommand(_ context.Context, cliCtx cli.Context) *cobra.Command {
 	run := func(cmd *cobra.Command, args []string) error {
 		cfgHome, err := fshelper.ConfigHome()
 		if err != nil {
@@ -36,9 +37,8 @@ func newSetCommand(_ context.Context, cliCtx cli.Context) *cobra.Command {
 		}
 
 		profileName := args[0]
-		if profileName == "" || profileName == "default" {
-			cliCtx.State.UpdateActiveProfile(profileName)
-			return nil
+		if profileName == "default" {
+			return fmt.Errorf("default profile cannot be deleted")
 		}
 
 		entries, err := os.ReadDir(cfgHome)
@@ -51,21 +51,25 @@ func newSetCommand(_ context.Context, cliCtx cli.Context) *cobra.Command {
 				continue
 			}
 
-			if e.Name() != profileName {
-				continue
-			}
+			if profileName == e.Name() {
+				if cliCtx.State.ActiveProfile == profileName {
+					cliCtx.State.UpdateActiveProfile("default")
+				}
 
-			cliCtx.State.UpdateActiveProfile(profileName)
-			return nil
+				if err := os.RemoveAll(filepath.Join(cfgHome, profileName)); err != nil {
+					return fmt.Errorf("delete profile dir: %w", err)
+				}
+				return nil
+			}
 		}
 
-		return fmt.Errorf("profile %s not found", profileName)
+		return fmt.Errorf("profile %s does not exist", profileName)
 	}
 
 	cmd := &cobra.Command{
-		Use:          "set NAME",
+		Use:          "delete NAME",
 		Args:         cobra.ExactArgs(1),
-		Short:        "sets an active profile",
+		Short:        "Deletes a CLI profile",
 		RunE:         run,
 		SilenceUsage: true,
 	}
