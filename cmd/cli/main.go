@@ -47,7 +47,12 @@ func main() {
 		logger = newLogger()
 	)
 
-	cfg, err := createOrReadConfig()
+	stateData, err := state.New()
+	if err != nil {
+		die("Failed to read state data", err)
+	}
+
+	cfg, err := createOrReadConfig(stateData)
 	if err != nil {
 		log.Fatalf("Config error: %v", err)
 	}
@@ -60,11 +65,6 @@ func main() {
 	)
 	if err != nil {
 		die("Failed to create gRPC client", err)
-	}
-
-	stateData, err := state.New()
-	if err != nil {
-		die("Failed to read state data", err)
 	}
 
 	userClient := userv1alpha1.NewUserServiceClient(conn)
@@ -97,13 +97,16 @@ func die(msg string, err error) {
 	os.Exit(1)
 }
 
-func createOrReadConfig() (state.Config, error) {
+func createOrReadConfig(stateData state.Data) (state.Config, error) {
 	cfgHome, err := fshelper.ConfigHome()
 	if err != nil {
 		return state.Config{}, fmt.Errorf("determine home directory: %w", err)
 	}
 
 	cfgPath := filepath.Join(cfgHome, "config.yaml")
+	if stateData.ActiveProfile != "default" {
+		cfgPath = filepath.Join(cfgHome, stateData.ActiveProfile, "config.yaml")
+	}
 
 	cfg, err := cli.ReadYAMLFile[state.Config](cfgPath)
 	if err != nil {

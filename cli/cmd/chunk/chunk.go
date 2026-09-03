@@ -16,35 +16,35 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package cmd
+package chunk
 
 import (
 	"context"
 
 	"github.com/spacechunks/explorer/cli"
-	deletechunk "github.com/spacechunks/explorer/cli/cmd/delete"
-	"github.com/spacechunks/explorer/cli/cmd/inspect"
-	"github.com/spacechunks/explorer/cli/cmd/list"
-	"github.com/spacechunks/explorer/cli/cmd/publish"
-	"github.com/spacechunks/explorer/cli/cmd/run"
+	deletechunk "github.com/spacechunks/explorer/cli/cmd/chunk/delete"
+	"github.com/spacechunks/explorer/cli/cmd/chunk/inspect"
+	"github.com/spacechunks/explorer/cli/cmd/chunk/list"
+	"github.com/spacechunks/explorer/cli/cmd/chunk/publish"
+	"github.com/spacechunks/explorer/cli/cmd/chunk/run"
 	"github.com/spf13/cobra"
 )
 
-func newChunkCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
+func NewChunkCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "chunk",
 		Short: "Commands related to working with Chunks.",
 	}
 
-	publishCmd := requireAccessToken(ctx, cliCtx, publish.NewCommand)
+	publishCmd := cli.RequireAccessToken(ctx, cliCtx, publish.NewCommand)
 	publishCmd.Flags().StringP("file", "f", "", "Path to the chunk config file")
 
 	c.AddCommand(
 		publishCmd,
-		requireAccessToken(ctx, cliCtx, run.NewCommand),
-		requireAccessToken(ctx, cliCtx, list.NewCommand),
-		requireAccessToken(ctx, cliCtx, inspect.NewCommand),
-		requireAccessToken(ctx, cliCtx, deletechunk.NewCommand),
+		cli.RequireAccessToken(ctx, cliCtx, run.NewCommand),
+		cli.RequireAccessToken(ctx, cliCtx, list.NewCommand),
+		cli.RequireAccessToken(ctx, cliCtx, inspect.NewCommand),
+		cli.RequireAccessToken(ctx, cliCtx, deletechunk.NewCommand),
 	)
 	return c
 }

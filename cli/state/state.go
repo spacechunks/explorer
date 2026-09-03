@@ -47,8 +47,13 @@ type Config struct {
 	IDPScopes            []string `json:"idpScopes"`
 }
 
-type Data struct {
+type ProfileData struct {
 	AccessToken string `json:"accessToken"`
+}
+
+type Data struct {
+	ActiveProfile string                 `json:"activeProfile"`
+	Profiles      map[string]ProfileData `json:"profiles"`
 }
 
 func New() (Data, error) {
@@ -60,7 +65,10 @@ func New() (Data, error) {
 	data, err := os.ReadFile(filepath.Join(cfgHome, "state.json"))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return Data{}, nil
+			return Data{
+				ActiveProfile: "default",
+				Profiles:      map[string]ProfileData{},
+			}, nil
 		}
 		return Data{}, err
 	}
@@ -70,12 +78,40 @@ func New() (Data, error) {
 		return Data{}, err
 	}
 
+	// as introduced profiles at a later point, there could be
+	// configs out in the wild without anything set so we need to
+	// take care to establish default values
+	if state.ActiveProfile == "" {
+		state.ActiveProfile = "default"
+	}
+
+	if state.Profiles == nil {
+		state.Profiles = make(map[string]ProfileData)
+	}
+
 	return state, nil
 }
 
-func (d *Data) Update(new Data) {
-	if new.AccessToken != "" {
-		d.AccessToken = new.AccessToken
+func (d *Data) SetActiveProfile(profile string) {
+	if profile == "" {
+		d.ActiveProfile = "default"
+		return
+	}
+
+	d.ActiveProfile = profile
+
+	if err := d.persist(); err != nil {
+		fmt.Println("Failed to persist state data", err)
+	}
+}
+
+func (d *Data) ActiveProfileAccessToken() string {
+	return d.Profiles[d.ActiveProfile].AccessToken
+}
+
+func (d *Data) UpdateActiveProfile(profile string) {
+	if profile != "" {
+		d.ActiveProfile = profile
 	}
 
 	// only log it, because we can still work with it in memory.
@@ -84,7 +120,27 @@ func (d *Data) Update(new Data) {
 	}
 }
 
-func (s *Data) persist() error {
+func (d *Data) UpdateProfileData(profile string, new ProfileData) {
+	defer func() {
+		if err := d.persist(); err != nil {
+			fmt.Println("Failed to persist state data", err)
+		}
+	}()
+
+	curr, ok := d.Profiles[profile]
+	if !ok {
+		d.Profiles[profile] = new
+		return
+	}
+
+	if curr.AccessToken != "" {
+		curr.AccessToken = new.AccessToken
+	}
+
+	d.Profiles[profile] = curr
+}
+
+func (d *Data) persist() error {
 	cfgHome, err := fshelper.ConfigHome()
 	if err != nil {
 		return err
@@ -96,7 +152,7 @@ func (s *Data) persist() error {
 	}
 	defer f.Close()
 
-	data, err := json.Marshal(s)
+	data, err := json.Marshal(d)
 	if err != nil {
 		return err
 	}

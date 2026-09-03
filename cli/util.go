@@ -20,11 +20,14 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/rodaine/table"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -84,4 +87,24 @@ func Prompt(label string) bool {
 			return false
 		}
 	}
+}
+
+func RequireAccessToken(
+	ctx context.Context,
+	cliCtx Context,
+	fn func(context.Context, Context) *cobra.Command,
+) *cobra.Command {
+	cmd := fn(ctx, cliCtx)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		tok, err := cliCtx.Auth.AccessToken(ctx)
+		if err != nil {
+			return fmt.Errorf("authentication failed: %w", err)
+		}
+
+		md := metadata.Pairs("authorization", tok)
+		ctx = metadata.NewOutgoingContext(ctx, md)
+
+		return fn(ctx, cliCtx).RunE(cmd, args)
+	}
+	return cmd
 }
