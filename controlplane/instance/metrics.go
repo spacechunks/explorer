@@ -1,6 +1,6 @@
 /*
-A basic matchmaking service for the Chunk Explorer.
-Copyright (C) 2026 Yannic Rieger <oss@76k.io>
+Explorer Platform, a platform for hosting and discovering Minecraft servers.
+Copyright (C) 2024 Yannic Rieger <oss@76k.io>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -15,6 +15,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
 package instance
 
 import (

@@ -16,31 +16,26 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package cmd
+package profile
 
 import (
 	"context"
 
 	"github.com/spacechunks/explorer/cli"
-	"github.com/spacechunks/explorer/cli/cmd/chunk"
-	"github.com/spacechunks/explorer/cli/cmd/profile"
-	"github.com/spacechunks/explorer/cli/cmd/register"
-	"github.com/spacechunks/explorer/cli/cmd/version"
 	"github.com/spf13/cobra"
 )
 
-func Root(ctx context.Context, cliCtx cli.Context) *cobra.Command {
+func NewProfileCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	root := &cobra.Command{
-		Use: "explorer",
-		Long: `A library of creations, where everyone can share their projects with the world.
-A place of discovery and play. All within a single unified system.`,
+		Use:   "profile",
+		Short: "Manage CLI profiles",
 	}
 
 	root.AddCommand(
-		chunk.NewChunkCommand(ctx, cliCtx),
-		register.NewCommand(ctx, cliCtx),
-		version.NewCommand(),
-		profile.NewProfileCommand(ctx, cliCtx),
+		newCreateCommand(ctx, cliCtx),
+		newListCommand(ctx, cliCtx),
+		newSetCommand(ctx, cliCtx),
+		newDeleteCommand(ctx, cliCtx),
 	)
 
 	return root

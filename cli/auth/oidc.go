@@ -61,13 +61,13 @@ type OIDC struct {
 }
 
 func (svc OIDC) AccessToken(ctx context.Context) (string, error) {
-	if err := svc.validateToken(svc.state.AccessToken); err != nil {
+	if err := svc.validateToken(svc.state.ActiveProfileAccessToken()); err != nil {
 		tok, err := svc.getAccessToken(ctx, svc.scopes)
 		if err != nil {
 			return "", fmt.Errorf("unable to get access token: %w", err)
 		}
 
-		svc.state.Update(state.Data{
+		svc.state.UpdateProfileData(svc.state.ActiveProfile, state.ProfileData{
 			AccessToken: tok,
 		})
 	}
@@ -77,7 +77,7 @@ func (svc OIDC) AccessToken(ctx context.Context) (string, error) {
 	// valid, because the only thing we need to the control plane
 	// is the api token. once it's expired we'll check the id token
 	// again and possibly renew it.
-	return svc.state.AccessToken, nil
+	return svc.state.ActiveProfileAccessToken(), nil
 }
 
 type expireEarlier struct {
