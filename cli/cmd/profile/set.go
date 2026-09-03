@@ -27,11 +27,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newListCommand(_ context.Context, cliCtx cli.Context) *cobra.Command {
+func newSetCommand(_ context.Context, cliCtx cli.Context) *cobra.Command {
 	run := func(cmd *cobra.Command, args []string) error {
 		cfgHome, err := fshelper.ConfigHome()
 		if err != nil {
 			return fmt.Errorf("could not get config home: %w", err)
+		}
+
+		profileName := args[0]
+		if profileName == "" || profileName == "default" {
+			cliCtx.State.UpdateActiveProfile(profileName)
+			return nil
 		}
 
 		entries, err := os.ReadDir(cfgHome)
@@ -39,33 +45,26 @@ func newListCommand(_ context.Context, cliCtx cli.Context) *cobra.Command {
 			return fmt.Errorf("config dir: %w", err)
 		}
 
-		sec := cli.Section()
-		if cliCtx.State.ActiveProfile == "default" {
-			sec.AddRow("default", "(active)")
-		} else {
-			sec.AddRow("default")
-		}
-
 		for _, e := range entries {
 			if !e.IsDir() {
 				continue
 			}
 
-			if cliCtx.State.ActiveProfile == e.Name() {
-				sec.AddRow(e.Name(), "(active)")
+			if e.Name() != profileName {
 				continue
 			}
 
-			sec.AddRow(e.Name())
+			cliCtx.State.UpdateActiveProfile(profileName)
+			return nil
 		}
 
-		sec.Print()
-		return nil
+		return fmt.Errorf("profile %s not found", profileName)
 	}
 
 	cmd := &cobra.Command{
-		Use:          "list",
-		Short:        "Lists all CLI profile",
+		Use:          "set NAME",
+		Args:         cobra.ExactArgs(1),
+		Short:        "sets an active profile",
 		RunE:         run,
 		SilenceUsage: true,
 	}

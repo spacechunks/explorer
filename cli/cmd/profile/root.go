@@ -33,6 +33,7 @@ func NewProfileCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
 	root.AddCommand(
 		newCreateCommand(ctx, cliCtx),
 		newListCommand(ctx, cliCtx),
+		newSetCommand(ctx, cliCtx),
 	)
 
 	return root
