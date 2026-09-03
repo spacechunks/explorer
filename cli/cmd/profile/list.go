@@ -19,21 +19,50 @@ package profile
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/spacechunks/explorer/cli"
+	"github.com/spacechunks/explorer/cli/fshelper"
 	"github.com/spf13/cobra"
 )
 
-func NewProfileCommand(ctx context.Context, cliCtx cli.Context) *cobra.Command {
-	root := &cobra.Command{
-		Use:   "profile",
-		Short: "Manage CLI profiles",
+func newListCommand(_ context.Context, cliCtx cli.Context) *cobra.Command {
+	run := func(cmd *cobra.Command, args []string) error {
+		cfgHome, err := fshelper.ConfigHome()
+		if err != nil {
+			return fmt.Errorf("could not get config home: %w", err)
+		}
+
+		entries, err := os.ReadDir(cfgHome)
+		if err != nil {
+			return fmt.Errorf("config dir: %w", err)
+		}
+
+		sec := cli.Section()
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			if cliCtx.State.ActiveProfile == e.Name() {
+
+				sec.AddRow(e.Name(), "(active)")
+				continue
+			}
+
+			sec.AddRow(e.Name())
+		}
+
+		sec.Print()
+		return nil
 	}
 
-	root.AddCommand(
-		newCreateCommand(ctx, cliCtx),
-		newListCommand(ctx, cliCtx),
-	)
+	cmd := &cobra.Command{
+		Use:          "list",
+		Short:        "Lists all CLI profile",
+		RunE:         run,
+		SilenceUsage: true,
+	}
 
-	return root
+	return cmd
 }
