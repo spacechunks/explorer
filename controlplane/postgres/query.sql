@@ -63,7 +63,6 @@ SELECT c.*, f.*, v.*, vf.*, u.* FROM chunks c
     LEFT JOIN users u ON u.id = c.owner_id
 ORDER BY c.id;
 
-
 -- name: ChunkOwnerByChunkID :one
 SELECT u.* FROM users u
     LEFT JOIN chunks c ON c.owner_id = u.id
@@ -84,6 +83,21 @@ UPDATE chunks SET deleted_at = now() WHERE id = $1;
 
 -- name: DeleteChunk :exec
 DELETE FROM chunks WHERE id = $1;
+
+-- name: GetChunkByFlavorID :many
+SELECT
+    sqlc.embed(c),
+    sqlc.embed(fs),
+    sqlc.embed(v),
+    sqlc.embed(vf),
+    sqlc.embed(u)
+FROM flavors f
+    JOIN chunks c  ON c.id = f.chunk_id
+    JOIN flavors fs ON fs.chunk_id = c.id
+    LEFT JOIN flavor_versions v       ON v.flavor_id = fs.id
+    LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
+    LEFT JOIN users u                 ON u.id = c.owner_id
+WHERE f.id = $1;
 
 /*
  * FLAVORS

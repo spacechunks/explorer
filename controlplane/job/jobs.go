@@ -48,10 +48,17 @@ func (c SpanContext) OTel() trace.SpanContext {
 }
 
 type CreateImage struct {
-	FlavorVersionID string      `json:"flavorVersionId"`
-	BaseImage       string      `json:"baseImage"`
-	OCIRegistry     string      `json:"registry"`
-	SpanContext     SpanContext `json:"spanContext,omitempty"`
+	FlavorVersionID string `json:"flavorVersionId"`
+	BaseImage       string `json:"baseImage"`
+	OCIRegistry     string `json:"registry"`
+
+	// below used for debug proposes
+
+	SpanContext SpanContext `json:"spanContext,omitempty"`
+	ChunkID     string      `json:"chunkId"`
+	ChunkName   string      `json:"chunkName"`
+	FlavorID    string      `json:"flavorId"`
+	FlavorName  string      `json:"flavorName"`
 }
 
 func (CreateImage) Kind() string {
@@ -75,9 +82,16 @@ func (c CreateImage) Validate() error {
 }
 
 type CreateCheckpoint struct {
-	FlavorVersionID string      `json:"flavorVersionId"`
-	BaseImageURL    string      `json:"baseImageUrl"`
-	SpanContext     SpanContext `json:"spanContext,omitempty"`
+	FlavorVersionID string `json:"flavorVersionId"`
+	BaseImageURL    string `json:"baseImageUrl"`
+
+	// below used for debug proposes
+
+	SpanContext SpanContext `json:"spanContext,omitempty"`
+	ChunkID     string      `json:"chunkId"`
+	ChunkName   string      `json:"chunkName"`
+	FlavorID    string      `json:"flavorId"`
+	FlavorName  string      `json:"flavorName"`
 }
 
 func (c CreateCheckpoint) Validate() error {

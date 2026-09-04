@@ -641,6 +641,89 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 	return hash, err
 }
 
+const getChunkByFlavorID = `-- name: GetChunkByFlavorID :many
+SELECT
+    c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at,
+    fs.id, fs.chunk_id, fs.name, fs.created_at, fs.updated_at, fs.deleted_at,
+    v.id, v.flavor_id, v.hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, v.min_players, v.max_players,
+    vf.flavor_version_id, vf.file_hash, vf.file_path, vf.created_at,
+    u.id, u.nickname, u.created_at, u.updated_at, u.idp_id
+FROM flavors f
+         JOIN chunks c  ON c.id = f.chunk_id
+         JOIN flavors fs ON fs.chunk_id = c.id
+         LEFT JOIN flavor_versions v       ON v.flavor_id = fs.id
+         LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
+         LEFT JOIN users u                 ON u.id = c.owner_id
+WHERE f.id = $1
+`
+
+type GetChunkByFlavorIDRow struct {
+	Chunk             Chunk
+	Flavor            Flavor
+	FlavorVersion     FlavorVersion
+	FlavorVersionFile FlavorVersionFile
+	User              User
+}
+
+func (q *Queries) GetChunkByFlavorID(ctx context.Context, id string) ([]GetChunkByFlavorIDRow, error) {
+	rows, err := q.db.Query(ctx, getChunkByFlavorID, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetChunkByFlavorIDRow
+	for rows.Next() {
+		var i GetChunkByFlavorIDRow
+		if err := rows.Scan(
+			&i.Chunk.ID,
+			&i.Chunk.Name,
+			&i.Chunk.Description,
+			&i.Chunk.Tags,
+			&i.Chunk.CreatedAt,
+			&i.Chunk.UpdatedAt,
+			&i.Chunk.OwnerID,
+			&i.Chunk.ThumbnailHash,
+			&i.Chunk.ThumbnailUpdatedAt,
+			&i.Chunk.DeletedAt,
+			&i.Flavor.ID,
+			&i.Flavor.ChunkID,
+			&i.Flavor.Name,
+			&i.Flavor.CreatedAt,
+			&i.Flavor.UpdatedAt,
+			&i.Flavor.DeletedAt,
+			&i.FlavorVersion.ID,
+			&i.FlavorVersion.FlavorID,
+			&i.FlavorVersion.Hash,
+			&i.FlavorVersion.BuildStatus,
+			&i.FlavorVersion.Version,
+			&i.FlavorVersion.FilesUploaded,
+			&i.FlavorVersion.PrevVersionID,
+			&i.FlavorVersion.CreatedAt,
+			&i.FlavorVersion.PresignedUrlExpiryDate,
+			&i.FlavorVersion.PresignedUrl,
+			&i.FlavorVersion.MinecraftVersion,
+			&i.FlavorVersion.MinPlayers,
+			&i.FlavorVersion.MaxPlayers,
+			&i.FlavorVersionFile.FlavorVersionID,
+			&i.FlavorVersionFile.FileHash,
+			&i.FlavorVersionFile.FilePath,
+			&i.FlavorVersionFile.CreatedAt,
+			&i.User.ID,
+			&i.User.Nickname,
+			&i.User.CreatedAt,
+			&i.User.UpdatedAt,
+			&i.User.IdpID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getChunkByID = `-- name: GetChunkByID :many
 SELECT c.id, c.name, description, tags, c.created_at, c.updated_at, owner_id, thumbnail_hash, thumbnail_updated_at, c.deleted_at, f.id, chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at, v.id, flavor_id, hash, build_status, version, files_uploaded, prev_version_id, v.created_at, presigned_url_expiry_date, presigned_url, minecraft_version, min_players, max_players, flavor_version_id, file_hash, file_path, vf.created_at, u.id, nickname, u.created_at, u.updated_at, idp_id FROM chunks c
     LEFT JOIN flavors f ON f.chunk_id = c.id

@@ -320,11 +320,20 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 		SpanID:  span.SpanContext().SpanID().String(),
 	}
 
+	c, err := s.repo.ChunkByFlavorID(ctx, flavorID)
+	if err != nil {
+		return fmt.Errorf("chunk by flavor id: %w", err)
+	}
+
 	if version.BuildStatus == resource.FlavorVersionBuildStatusBuildCheckpointFailed {
 		createCheckpoint := job.CreateCheckpoint{
 			FlavorVersionID: versionID,
 			BaseImageURL:    fmt.Sprintf("%s/%s:base", s.cfg.Registry, versionID),
 			SpanContext:     spanCtx,
+			ChunkID:         c.ID,
+			ChunkName:       c.Name,
+			FlavorID:        f.ID,
+			FlavorName:      f.Name,
 		}
 		if err := s.jobClient.InsertJob(
 			ctx,
@@ -347,6 +356,10 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 		BaseImage:       mcVersion.ImageURL,
 		OCIRegistry:     s.cfg.Registry,
 		SpanContext:     spanCtx,
+		ChunkID:         c.ID,
+		ChunkName:       c.Name,
+		FlavorID:        f.ID,
+		FlavorName:      f.Name,
 	}); err != nil {
 		return fmt.Errorf("insert create image job: %w", err)
 	}
