@@ -102,6 +102,12 @@ func Untar(r io.Reader, dest string) ([]string, error) {
 		}
 
 		target := filepath.Join(dest, header.Name)
+
+		// prevent path traversal: an entry like ../../x must never escape dest
+		if !strings.HasPrefix(target, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return nil, fmt.Errorf("tar entry %q escapes destination directory", header.Name)
+		}
+
 		paths = append(paths, target)
 
 		if err := func() error {

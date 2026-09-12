@@ -210,6 +210,17 @@ func (q *Queries) BestNode(ctx context.Context) (BestNodeRow, error) {
 	return i, err
 }
 
+const chunkIDByFlavorID = `-- name: ChunkIDByFlavorID :one
+SELECT chunk_id FROM flavors WHERE id = $1
+`
+
+func (q *Queries) ChunkIDByFlavorID(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, chunkIDByFlavorID, id)
+	var chunk_id string
+	err := row.Scan(&chunk_id)
+	return chunk_id, err
+}
+
 const chunkOwnerByChunkID = `-- name: ChunkOwnerByChunkID :one
 SELECT u.id, u.nickname, u.created_at, u.updated_at, u.idp_id FROM users u
     LEFT JOIN chunks c ON c.owner_id = u.id
@@ -287,6 +298,15 @@ func (q *Queries) ChunkOwnerByFlavorVersionID(ctx context.Context, arg ChunkOwne
 		&i.IdpID,
 	)
 	return i, err
+}
+
+const clearFlavorVersionPresignedURLData = `-- name: ClearFlavorVersionPresignedURLData :exec
+UPDATE flavor_versions SET presigned_url = NULL, presigned_url_expiry_date = NULL WHERE id = $1
+`
+
+func (q *Queries) ClearFlavorVersionPresignedURLData(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, clearFlavorVersionPresignedURLData, id)
+	return err
 }
 
 const countInstancesByFlavorID = `-- name: CountInstancesByFlavorID :one
@@ -461,6 +481,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const deleteBlobs = `-- name: DeleteBlobs :exec
+DELETE FROM cas_blobs WHERE hash = ANY($1::varchar[])
+`
+
+func (q *Queries) DeleteBlobs(ctx context.Context, hashes []string) error {
+	_, err := q.db.Exec(ctx, deleteBlobs, hashes)
+	return err
+}
+
 const deleteChunk = `-- name: DeleteChunk :exec
 DELETE FROM chunks WHERE id = $1
 `
@@ -486,6 +515,30 @@ DELETE FROM flavor_versions WHERE id = $1
 func (q *Queries) DeleteFlavorVersion(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteFlavorVersion, id)
 	return err
+}
+
+const existingBlobHashes = `-- name: ExistingBlobHashes :many
+SELECT hash FROM cas_blobs WHERE hash = ANY($1::varchar[])
+`
+
+func (q *Queries) ExistingBlobHashes(ctx context.Context, hashes []string) ([]string, error) {
+	rows, err := q.db.Query(ctx, existingBlobHashes, hashes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var hash string
+		if err := rows.Scan(&hash); err != nil {
+			return nil, err
+		}
+		items = append(items, hash)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const flavorIDByFlavorVersionID = `-- name: FlavorIDByFlavorVersionID :one
@@ -639,89 +692,6 @@ func (q *Queries) FlavorVersionHashByID(ctx context.Context, id string) (string,
 	var hash string
 	err := row.Scan(&hash)
 	return hash, err
-}
-
-const getChunkByFlavorID = `-- name: GetChunkByFlavorID :many
-SELECT
-    c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at,
-    fs.id, fs.chunk_id, fs.name, fs.created_at, fs.updated_at, fs.deleted_at,
-    v.id, v.flavor_id, v.hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, v.min_players, v.max_players,
-    vf.flavor_version_id, vf.file_hash, vf.file_path, vf.created_at,
-    u.id, u.nickname, u.created_at, u.updated_at, u.idp_id
-FROM flavors f
-         JOIN chunks c  ON c.id = f.chunk_id
-         JOIN flavors fs ON fs.chunk_id = c.id
-         LEFT JOIN flavor_versions v       ON v.flavor_id = fs.id
-         LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-         LEFT JOIN users u                 ON u.id = c.owner_id
-WHERE f.id = $1
-`
-
-type GetChunkByFlavorIDRow struct {
-	Chunk             Chunk
-	Flavor            Flavor
-	FlavorVersion     FlavorVersion
-	FlavorVersionFile FlavorVersionFile
-	User              User
-}
-
-func (q *Queries) GetChunkByFlavorID(ctx context.Context, id string) ([]GetChunkByFlavorIDRow, error) {
-	rows, err := q.db.Query(ctx, getChunkByFlavorID, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetChunkByFlavorIDRow
-	for rows.Next() {
-		var i GetChunkByFlavorIDRow
-		if err := rows.Scan(
-			&i.Chunk.ID,
-			&i.Chunk.Name,
-			&i.Chunk.Description,
-			&i.Chunk.Tags,
-			&i.Chunk.CreatedAt,
-			&i.Chunk.UpdatedAt,
-			&i.Chunk.OwnerID,
-			&i.Chunk.ThumbnailHash,
-			&i.Chunk.ThumbnailUpdatedAt,
-			&i.Chunk.DeletedAt,
-			&i.Flavor.ID,
-			&i.Flavor.ChunkID,
-			&i.Flavor.Name,
-			&i.Flavor.CreatedAt,
-			&i.Flavor.UpdatedAt,
-			&i.Flavor.DeletedAt,
-			&i.FlavorVersion.ID,
-			&i.FlavorVersion.FlavorID,
-			&i.FlavorVersion.Hash,
-			&i.FlavorVersion.BuildStatus,
-			&i.FlavorVersion.Version,
-			&i.FlavorVersion.FilesUploaded,
-			&i.FlavorVersion.PrevVersionID,
-			&i.FlavorVersion.CreatedAt,
-			&i.FlavorVersion.PresignedUrlExpiryDate,
-			&i.FlavorVersion.PresignedUrl,
-			&i.FlavorVersion.MinecraftVersion,
-			&i.FlavorVersion.MinPlayers,
-			&i.FlavorVersion.MaxPlayers,
-			&i.FlavorVersionFile.FlavorVersionID,
-			&i.FlavorVersionFile.FileHash,
-			&i.FlavorVersionFile.FilePath,
-			&i.FlavorVersionFile.CreatedAt,
-			&i.User.ID,
-			&i.User.Nickname,
-			&i.User.CreatedAt,
-			&i.User.UpdatedAt,
-			&i.User.IdpID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const getChunkByID = `-- name: GetChunkByID :many
@@ -1487,15 +1457,6 @@ func (q *Queries) MarkFlavorDeleted(ctx context.Context, id string) error {
 	return err
 }
 
-const markFlavorVersionFilesUploaded = `-- name: MarkFlavorVersionFilesUploaded :exec
-UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1
-`
-
-func (q *Queries) MarkFlavorVersionFilesUploaded(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, markFlavorVersionFilesUploaded, id)
-	return err
-}
-
 const randomNode = `-- name: RandomNode :one
 /*
  * NODES
@@ -1515,6 +1476,20 @@ func (q *Queries) RandomNode(ctx context.Context) (Node, error) {
 		&i.Slots,
 	)
 	return i, err
+}
+
+const setFlavorVersionFilesUploaded = `-- name: SetFlavorVersionFilesUploaded :exec
+UPDATE flavor_versions SET files_uploaded = $2 WHERE id = $1
+`
+
+type SetFlavorVersionFilesUploadedParams struct {
+	ID            string
+	FilesUploaded bool
+}
+
+func (q *Queries) SetFlavorVersionFilesUploaded(ctx context.Context, arg SetFlavorVersionFilesUploadedParams) error {
+	_, err := q.db.Exec(ctx, setFlavorVersionFilesUploaded, arg.ID, arg.FilesUploaded)
+	return err
 }
 
 const updateChunk = `-- name: UpdateChunk :exec

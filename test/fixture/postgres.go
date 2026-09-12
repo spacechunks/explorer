@@ -107,6 +107,8 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 	require.NoError(t, err)
 
 	mate.MigrationsDir = []string{"../../../controlplane/postgres/migrations"}
+	// otherwise dbmate writes a db/schema.sql next to the test that runs it
+	mate.AutoDumpSchema = false
 	require.NoError(t, mate.Migrate())
 
 	pool, err := pgxpool.New(ctx, p.ConnString)
@@ -294,11 +296,12 @@ func (p *Postgres) CreateFlavorVersion(t *testing.T, flavorID string, version *r
 	created, err := p.DB.CreateFlavorVersion(ctx, flavorID, *version, "")
 	require.NoError(t, err)
 
-	q := `UPDATE flavor_versions SET build_status = $1 WHERE id = $2`
-	_, err = p.Pool.Exec(ctx, q, version.BuildStatus, created.ID)
+	q := `UPDATE flavor_versions SET build_status = $1, files_uploaded = $2 WHERE id = $3`
+	_, err = p.Pool.Exec(ctx, q, version.BuildStatus, version.FilesUploaded, created.ID)
 	require.NoError(t, err)
 
 	created.BuildStatus = version.BuildStatus
+	created.FilesUploaded = version.FilesUploaded
 
 	*version = created
 }
@@ -324,6 +327,34 @@ func (p *Postgres) InsertNode(t *testing.T) {
 	q := `INSERT INTO nodes (id, name, address, checkpoint_api_endpoint, slots) VALUES ($1, $2, $3, $4, $5)`
 	_, err := p.Pool.Exec(ctx, q, Node().ID, Node().Name, Node().Addr, Node().CheckpointAPIEndpoint, Node().Slots)
 	require.NoError(t, err)
+}
+
+// InsertBlobs marks the given hashes as present in the blob store,
+// without actually putting anything into s3.
+func (p *Postgres) InsertBlobs(t *testing.T, hashes ...string) {
+	ctx := context.Background()
+	for _, h := range hashes {
+		_, err := p.Pool.Exec(ctx, `INSERT INTO cas_blobs (hash) VALUES ($1) ON CONFLICT (hash) DO NOTHING`, h)
+		require.NoError(t, err)
+	}
+}
+
+func (p *Postgres) BlobHashes(t *testing.T) []string {
+	ctx := context.Background()
+	rows, err := p.Pool.Query(ctx, `SELECT hash FROM cas_blobs ORDER BY hash`)
+	require.NoError(t, err)
+
+	defer rows.Close()
+
+	hashes := make([]string, 0)
+	for rows.Next() {
+		var h string
+		require.NoError(t, rows.Scan(&h))
+		hashes = append(hashes, h)
+	}
+	require.NoError(t, rows.Err())
+
+	return hashes
 }
 
 func (p *Postgres) InsertMinecraftVersion(t *testing.T) {

@@ -30,6 +30,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 	"github.com/spacechunks/explorer/internal/file"
@@ -234,9 +235,63 @@ func (db *DB) FlavorVersionHashByID(ctx context.Context, id string) (string, err
 	return ret, nil
 }
 
-func (db *DB) MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error {
+func (db *DB) SetFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string, uploaded bool) error {
 	return db.do(ctx, func(q *query.Queries) error {
-		return q.MarkFlavorVersionFilesUploaded(ctx, flavorVersionID)
+		return q.SetFlavorVersionFilesUploaded(ctx, query.SetFlavorVersionFilesUploadedParams{
+			ID:            flavorVersionID,
+			FilesUploaded: uploaded,
+		})
+	})
+}
+
+func (db *DB) ClearFlavorVersionPresignedURLData(ctx context.Context, flavorVersionID string) error {
+	return db.do(ctx, func(q *query.Queries) error {
+		return q.ClearFlavorVersionPresignedURLData(ctx, flavorVersionID)
+	})
+}
+
+func (db *DB) ExistingBlobHashes(ctx context.Context, hashes []string) (map[string]struct{}, error) {
+	ret := make(map[string]struct{}, len(hashes))
+	if len(hashes) == 0 {
+		return ret, nil
+	}
+	if err := db.do(ctx, func(q *query.Queries) error {
+		existing, err := q.ExistingBlobHashes(ctx, hashes)
+		if err != nil {
+			return err
+		}
+		for _, h := range existing {
+			ret[h] = struct{}{}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
+func (db *DB) InsertBlobs(ctx context.Context, blobs []resource.Blob) error {
+	if len(blobs) == 0 {
+		return nil
+	}
+	params := make([]query.InsertBlobsParams, 0, len(blobs))
+	for _, b := range blobs {
+		params = append(params, query.InsertBlobsParams{
+			Hash:      b.Hash,
+			SizeBytes: b.SizeBytes,
+		})
+	}
+	return db.do(ctx, func(q *query.Queries) error {
+		return db.bulkExecAndClose(q.InsertBlobs(ctx, params))
+	})
+}
+
+func (db *DB) DeleteBlobs(ctx context.Context, hashes []string) error {
+	if len(hashes) == 0 {
+		return nil
+	}
+	return db.do(ctx, func(q *query.Queries) error {
+		return q.DeleteBlobs(ctx, hashes)
 	})
 }
 
@@ -465,6 +520,16 @@ func (db *DB) InsertJob(ctx context.Context, flavorVersionID string, status stri
 		if _, err := db.riverClient.InsertTx(ctx, tx, job, &river.InsertOpts{
 			UniqueOpts: river.UniqueOpts{
 				ByArgs: true,
+				// only dedupe against jobs that are still in flight. rivers default
+				// also includes completed jobs, which would prevent e.g. a failed
+				// files verification from ever being retried.
+				ByState: []rivertype.JobState{
+					rivertype.JobStateAvailable,
+					rivertype.JobStatePending,
+					rivertype.JobStateRetryable,
+					rivertype.JobStateRunning,
+					rivertype.JobStateScheduled,
+				},
 			},
 		}); err != nil {
 			return fmt.Errorf("insert job: %w", err)

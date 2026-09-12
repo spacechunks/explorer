@@ -45,6 +45,7 @@ type S3Store interface {
 	ObjectExists(ctx context.Context, key string) (bool, error)
 	PutBlob(ctx context.Context, keyPrefix string, objects []Object) error
 	SimplePut(ctx context.Context, key string, r io.Reader, metadata map[string]string) error
+	DeleteObject(ctx context.Context, key string) error
 }
 
 type Presigner interface {
@@ -173,6 +174,14 @@ func (s S3ObjectStore) SimplePut(ctx context.Context, key string, r io.Reader, m
 		Key:      &key,
 		Body:     r,
 		Metadata: metadata,
+	})
+	return err
+}
+
+func (s S3ObjectStore) DeleteObject(ctx context.Context, key string) error {
+	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: &s.bucket,
+		Key:    &key,
 	})
 	return err
 }

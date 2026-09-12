@@ -28,13 +28,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"slices"
 	"sync/atomic"
 	"time"
 
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
 	"github.com/spacechunks/explorer/cli"
-	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/internal/tarhelper"
 )
@@ -58,6 +56,9 @@ import (
  *              /,_/      '`-'
  *
  * This whole file is completely fucked
+ *
+ *
+ * edit: can confirm i needed therapy but i just added some junk for the thrill of it. Have fun.
  */
 
 type buildUpdate struct {
@@ -93,41 +94,67 @@ func (b builder) build(ctx context.Context, data buildData) {
 	b.buildCounter.Add(1)
 	defer b.buildCounter.Add(-1)
 
-	for {
+	// a failed files verification sends us back to the upload phase, since the
+	// server tells us which files are missing. don't loop forever though.
+	const maxVerificationRetries = 2
+
+	for retries := 0; ; retries++ {
+		if err := b.runPhases(ctx, &data); err != nil {
+			b.updates <- buildUpdate{
+				data: data,
+				err:  err,
+			}
+			return
+		}
+
+		status, ok := b.waitForBuild(ctx, data)
+		if !ok {
+			return
+		}
+
+		if status != chunkv1alpha1.BuildStatus_FILES_VERIFICATION_FAILED {
+			return
+		}
+
+		if retries >= maxVerificationRetries {
+			b.updates <- buildUpdate{
+				data: data,
+				err:  fmt.Errorf("files verification failed %d times, giving up", retries+1),
+			}
+			return
+		}
+
+		data.phase = buildPhaseUpload
+	}
+}
+
+func (b builder) runPhases(ctx context.Context, data *buildData) error {
+	for data.phase != buildPhaseBuildComplete {
 		switch data.phase {
 		case buildPhasePrerequisites:
-			if err := b.handlePrerequisites(ctx, &data); err != nil {
-				b.updates <- buildUpdate{
-					data: data,
-					err:  err,
-				}
-				return
+			if err := b.handlePrerequisites(ctx, data); err != nil {
+				return err
 			}
 		case buildPhaseUpload:
-			if err := b.handleUpload(ctx, &data); err != nil {
-				b.updates <- buildUpdate{
-					data: data,
-					err:  err,
-				}
-				return
+			if err := b.handleUpload(ctx, data); err != nil {
+				return err
 			}
 		case buildPhaseTriggerBuild:
-			if err := b.handleTriggerBuild(ctx, &data); err != nil {
-				b.updates <- buildUpdate{
-					data: data,
-					err:  err,
-				}
-				return
+			if err := b.handleTriggerBuild(ctx, data); err != nil {
+				return err
 			}
 		case buildPhaseBuildComplete:
-			break
-		}
-		if data.phase == buildPhaseBuildComplete {
-			break
+			// loop condition takes care of this
 		}
 	}
+	return nil
+}
 
+// polls until the build reached a final state. returns false if the context was canceled before that happened.
+func (b builder) waitForBuild(ctx context.Context, data buildData) (chunkv1alpha1.BuildStatus, bool) {
 	t := time.NewTicker(1 * time.Second)
+	defer t.Stop()
+
 	for {
 		select {
 		case <-t.C:
@@ -136,6 +163,7 @@ func (b builder) build(ctx context.Context, data buildData) {
 			})
 			if err != nil {
 				fmt.Println("error while getting chunk:", err)
+				continue
 			}
 
 			flavor := cli.Find(c.GetChunk().Flavors, func(f *chunkv1alpha1.Flavor) bool {
@@ -151,12 +179,13 @@ func (b builder) build(ctx context.Context, data buildData) {
 
 			if status == chunkv1alpha1.BuildStatus_COMPLETED ||
 				status == chunkv1alpha1.BuildStatus_IMAGE_BUILD_FAILED ||
-				status == chunkv1alpha1.BuildStatus_CHECKPOINT_BUILD_FAILED {
-				return
+				status == chunkv1alpha1.BuildStatus_CHECKPOINT_BUILD_FAILED ||
+				status == chunkv1alpha1.BuildStatus_FILES_VERIFICATION_FAILED {
+				return status, true
 			}
 
 		case <-ctx.Done():
-			return
+			return chunkv1alpha1.BuildStatus_PENDING, false
 		}
 	}
 }
@@ -251,43 +280,28 @@ func (b builder) handleUpload(ctx context.Context, data *buildData) error {
 		return fmt.Errorf("could not find flavor version with hash %s. reason for this could be that local files have changed since creating the flavor version", data.local.hash) // nolint:lll
 	}
 
-	var (
-		added   []file.Hash
-		changed = make([]file.Hash, 0)
-	)
-
-	// find the previous flavor version. since versions are ordered latest -> oldest
-	// we can simply add 1 from the current versions index to get the previous one
-	idx := slices.Index(remoteFlavor.Versions, remoteVersion)
-	if len(remoteFlavor.Versions) > 1 {
-		prevVersion := remoteFlavor.Versions[idx+1]
-		added, changed, _ = data.local.fileDiff(prevVersion.FileHashes)
-	} else {
-		// if there are no previous versions, this is the first version ever,
-		// so we have to assign all files to 'added'
-		added = data.local.files
+	filesResp, err := b.client.GetFilesToUpload(ctx, &chunkv1alpha1.GetFilesToUploadRequest{
+		FlavorVersionId: remoteVersion.Id,
+	})
+	if err != nil {
+		return fmt.Errorf("error while getting files to upload: %w", err)
 	}
 
-	// TODO: debug log
-	//for _, l := range added {
-	//	fmt.Println("added", l)
-	//}
-	//
-	//for _, l := range changed {
-	//	fmt.Println("changed", l)
-	//}
+	// nothing to upload means everything is already in the blob store,
+	// e.g. because a previous version consisted of the exact same files.
+	if len(filesResp.Files) == 0 {
+		data.phase = buildPhaseTriggerBuild
+		return nil
+	}
 
-	files := make([]*os.File, 0, len(data.local.files))
+	toUpload := make(map[string]struct{}, len(filesResp.Files))
+	for _, f := range filesResp.Files {
+		toUpload[f.Path] = struct{}{}
+	}
+
+	files := make([]*os.File, 0, len(filesResp.Files))
 	for _, localFile := range data.local.files {
-		isAdded := slices.ContainsFunc(added, func(added file.Hash) bool {
-			return added.Hash == localFile.Hash
-		})
-
-		isChanged := slices.ContainsFunc(changed, func(changed file.Hash) bool {
-			return changed.Hash == localFile.Hash
-		})
-
-		if !isAdded && !isChanged {
+		if _, ok := toUpload[data.local.serverRelPath(localFile.Path)]; !ok {
 			continue
 		}
 

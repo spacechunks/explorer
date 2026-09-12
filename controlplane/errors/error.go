@@ -77,6 +77,7 @@ var (
 	ErrFlavorFilesNotUploaded       = New(codes.FailedPrecondition, "flavor files have not been uploaded")
 	ErrFlavorFilesUploaded          = New(codes.AlreadyExists, "flavor files have already been uploaded")
 	ErrChangeSetTarballTooBig       = New(codes.InvalidArgument, "tarball size exceeds maximum allowed")
+	ErrFlavorVersionVerifying       = New(codes.FailedPrecondition, "flavor version files are currently being verified")
 )
 
 /*

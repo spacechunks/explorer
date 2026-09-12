@@ -166,13 +166,12 @@ func TestCreateFlavorVersion(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		prevVersion  resource.FlavorVersion
-		newVersion   resource.FlavorVersion
-		expected     *resource.FlavorVersion
-		expectedDiff resource.FlavorVersionDiff
-		badRequest   *errdetails.BadRequest
-		prep         func(
+		name        string
+		prevVersion resource.FlavorVersion
+		newVersion  resource.FlavorVersion
+		expected    *resource.FlavorVersion
+		badRequest  *errdetails.BadRequest
+		prep        func(
 			*mock.MockChunkRepository,
 			resource.FlavorVersion,
 			resource.FlavorVersion,
@@ -186,41 +185,20 @@ func TestCreateFlavorVersion(t *testing.T) {
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
-					// plugins/myplugin/config.json not present -> its removed
 					{
-						Path: "paper.yml", // unchanged
+						Path: "paper.yml",
 						Hash: "pppppppppppppppp",
 					},
-					{
-						Path: "server.properties", // changed
-						Hash: "hash changed",
-					},
-					{
-						Path: "plugins/myplugin.jar", // added
-						Hash: "hash1",
-					},
-				}
-			}),
-			expectedDiff: resource.FlavorVersionDiff{
-				Added: []file.Hash{
-					{
-						Path: "plugins/myplugin.jar",
-						Hash: "hash1",
-					},
-				},
-				Removed: []file.Hash{
-					{
-						Path: "plugins/myplugin/config.json",
-						Hash: "cooooooooooooooo",
-					},
-				},
-				Changed: []file.Hash{
 					{
 						Path: "server.properties",
 						Hash: "hash changed",
 					},
-				},
-			},
+					{
+						Path: "plugins/myplugin.jar",
+						Hash: "hash1",
+					},
+				}
+			}),
 			prep: func(
 				repo *mock.MockChunkRepository,
 				newVersion resource.FlavorVersion,
@@ -264,26 +242,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 			prevVersion: fixture.FlavorVersion(),
 			newVersion:  uncleanPathVersion(),
 			expected:    ptr.Pointer(cleanedPathVersion()),
-			expectedDiff: resource.FlavorVersionDiff{
-				Added: []file.Hash{
-					{
-						Path: "plugins/myplugin.jar",
-						Hash: "hash1",
-					},
-				},
-				Removed: []file.Hash{
-					{
-						Path: "plugins/myplugin/config.json",
-						Hash: "cooooooooooooooo",
-					},
-				},
-				Changed: []file.Hash{
-					{
-						Path: "server.properties",
-						Hash: "hash changed",
-					},
-				},
-			},
 			prep: func(
 				repo *mock.MockChunkRepository,
 				newVersion resource.FlavorVersion,
@@ -449,17 +407,16 @@ func TestCreateFlavorVersion(t *testing.T) {
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Hash = "some-not-matching-hash"
 				v.FileHashes = []file.Hash{
-					// plugins/myplugin/config.json not present -> its removed
 					{
-						Path: "paper.yml", // unchanged
+						Path: "paper.yml",
 						Hash: "paper.yml-hash",
 					},
 					{
-						Path: "server.properties", // changed
+						Path: "server.properties",
 						Hash: "hash changed",
 					},
 					{
-						Path: "plugins/myplugin.jar", // added
+						Path: "plugins/myplugin.jar",
 						Hash: "hash1",
 					},
 				}
@@ -492,10 +449,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 						ImageURL:  "some-url",
 						CreatedAt: time.Time{},
 					}, nil)
-
-				repo.EXPECT().
-					LatestFlavorVersion(mocky.Anything, fixture.Flavor().ID).
-					Return(prevVersion, nil)
 			},
 			err: apierrs.ErrHashMismatch,
 		},
@@ -604,7 +557,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 
 			tt.prep(mockRepo, tt.newVersion, tt.prevVersion, mockAccess)
 
-			actualNewVersion, actualDiff, err := svc.CreateFlavorVersion(ctx, fixture.FlavorID, tt.newVersion)
+			actualNewVersion, err := svc.CreateFlavorVersion(ctx, fixture.FlavorID, tt.newVersion)
 
 			if tt.err != nil {
 				require.ErrorAs(t, err, &tt.err)
@@ -628,7 +581,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 				expected = *tt.expected
 			}
 			require.Equal(t, expected, actualNewVersion)
-			require.Equal(t, tt.expectedDiff, actualDiff)
 		})
 	}
 }

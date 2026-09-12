@@ -21,11 +21,9 @@ package worker
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane/blob"
@@ -35,7 +33,6 @@ import (
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/resource"
-	"github.com/spacechunks/explorer/internal/tarhelper"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -120,6 +117,10 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		return fmt.Errorf("flavor version: %w", err)
 	}
 
+	if !version.FilesUploaded {
+		return fmt.Errorf("files of flavor version %s have not been verified", version.ID)
+	}
+
 	var (
 		rootDir       = fmt.Sprintf("/tmp/%d", riverJob.ID)
 		filesDir      = rootDir + "/files"
@@ -142,34 +143,8 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 		return fmt.Errorf("create root dir: %w", err)
 	}
 
-	tb, err := os.Create(rootDir + "/changeset.tar.gz")
-	if err != nil {
-		return fmt.Errorf("open file: %w", err)
-	}
-
-	defer tb.Close()
-
-	if err := w.store.WriteTo(ctx, blob.ChangeSetKey(version.ID), tb); err != nil {
-		return fmt.Errorf("write tarball: %w", err)
-	}
-
-	if _, err := tb.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("seek: %w", err)
-	}
-
-	// the server root dir we use in our base image is /opt/paper
-	// so all files should be located right there.
-	paths, err := tarhelper.Untar(tb, serverRootDir)
-	if err != nil {
-		return fmt.Errorf("untar files: %w", err)
-	}
-
-	if err := w.upload(ctx, paths); err != nil {
-		return fmt.Errorf("upload files: %w", err)
-	}
-
-	if err := w.downloadMissing(ctx, serverRootDir, version.FileHashes, paths); err != nil {
-		return fmt.Errorf("download missing: %w", err)
+	if err := w.downloadFiles(ctx, serverRootDir, version.FileHashes); err != nil {
+		return fmt.Errorf("download files: %w", err)
 	}
 
 	rt, err := os.OpenRoot(serverRootDir)
@@ -214,47 +189,9 @@ func (w *CreateImageWorker) Work(ctx context.Context, riverJob *river.Job[job.Cr
 	return nil
 }
 
-func (w *CreateImageWorker) upload(ctx context.Context, filePaths []string) error {
-	objs := make([]blob.Object, 0)
-
-	for _, p := range filePaths {
-		obj, err := blob.NewFromFile(p)
-		if err != nil {
-			return fmt.Errorf("new object: %w", err)
-		}
-
-		objs = append(objs, obj)
-	}
-
-	// store will check if there are any duplicates
-	if err := w.store.PutBlob(ctx, blob.CASKeyPrefix, objs); err != nil {
-		return fmt.Errorf("upload objects: %w", err)
-	}
-
-	return nil
-}
-
-func (w *CreateImageWorker) downloadMissing(ctx context.Context, dest string, all []file.Hash, have []string) error {
-	var (
-		want    = make([]file.Hash, 0)
-		cleaned = make(map[string]struct{}, len(have))
-	)
-
-	for _, s := range have {
-		// strip out /tmp/123/opt/paper/ from /tmp/123/opt/paper/plugins/test.jar
-		// so we are left with plugins/test.jar. this is needed, so we can do
-		// a simple == check when comparing paths later.
-		cleaned[strings.Replace(s, dest+"/", "", 1)] = struct{}{}
-	}
-
-	for _, fh := range all {
-		if _, ok := cleaned[fh.Path]; !ok {
-			want = append(want, fh)
-		}
-	}
-
-	for _, wantHash := range want {
-		path := filepath.Join(dest, wantHash.Path)
+func (w *CreateImageWorker) downloadFiles(ctx context.Context, dest string, files []file.Hash) error {
+	for _, fh := range files {
+		path := filepath.Join(dest, fh.Path)
 
 		if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 			return fmt.Errorf("mkdir %s: %w", path, err)
@@ -265,9 +202,12 @@ func (w *CreateImageWorker) downloadMissing(ctx context.Context, dest string, al
 			return fmt.Errorf("create file: %w", err)
 		}
 
-		if err := w.store.WriteTo(ctx, blob.CASKeyPrefix+"/"+wantHash.Hash, f); err != nil {
-			return fmt.Errorf("write file (%s/%s): %w", wantHash.Path, wantHash.Hash, err)
+		if err := w.store.WriteTo(ctx, blob.CASKeyPrefix+"/"+fh.Hash, f); err != nil {
+			f.Close()
+			return fmt.Errorf("write file (%s/%s): %w", fh.Path, fh.Hash, err)
 		}
+
+		f.Close()
 	}
 
 	return nil

@@ -391,6 +391,17 @@ func CreateRiverClient(
 ) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 
+	verifyWorker := worker.NewVerifyFilesWorker(
+		logger.With("component", "verify-files-worker"),
+		chunkRepo,
+		blobStore,
+		jobClient,
+	)
+
+	if err := river.AddWorkerSafely[job.VerifyFiles](workers, verifyWorker); err != nil {
+		return nil, fmt.Errorf("add verify files worker: %w", err)
+	}
+
 	imgWorker := worker.NewCreateImageWorker(
 		logger.With("component", "image-worker"),
 		chunkRepo,

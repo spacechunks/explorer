@@ -171,16 +171,13 @@ func (s *Server) CreateFlavorVersion(
 		MaxPlayers:       req.MaxPlayers,
 	}
 
-	version, diff, err := s.service.CreateFlavorVersion(ctx, req.GetFlavorId(), domain)
+	version, err := s.service.CreateFlavorVersion(ctx, req.GetFlavorId(), domain)
 	if err != nil {
 		return nil, err
 	}
 
 	return &chunkv1alpha1.CreateFlavorVersionResponse{
-		Version:      codec.FlavorVersionToTransport(version),
-		ChangedFiles: codec.FileHashSliceToTransport(diff.Changed),
-		RemovedFiles: codec.FileHashSliceToTransport(diff.Removed),
-		AddedFiles:   codec.FileHashSliceToTransport(diff.Added),
+		Version: codec.FlavorVersionToTransport(version),
 	}, nil
 }
 
@@ -202,6 +199,20 @@ func (s *Server) GetUploadURL(
 
 	return &chunkv1alpha1.GetUploadURLResponse{
 		Url: url,
+	}, nil
+}
+
+func (s *Server) GetFilesToUpload(
+	ctx context.Context,
+	req *chunkv1alpha1.GetFilesToUploadRequest,
+) (*chunkv1alpha1.GetFilesToUploadResponse, error) {
+	files, err := s.service.GetFilesToUpload(ctx, req.GetFlavorVersionId())
+	if err != nil {
+		return nil, fmt.Errorf("files to upload: %w", err)
+	}
+
+	return &chunkv1alpha1.GetFilesToUploadResponse{
+		Files: codec.FileHashSliceToTransport(files),
 	}, nil
 }
 

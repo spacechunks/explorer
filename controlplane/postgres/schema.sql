@@ -25,7 +25,9 @@ CREATE TYPE public.build_status AS ENUM (
     'IMAGE_BUILD_FAILED',
     'CHECKPOINT_BUILD',
     'CHECKPOINT_BUILD_FAILED',
-    'COMPLETED'
+    'COMPLETED',
+    'FILES_VERIFICATION',
+    'FILES_VERIFICATION_FAILED'
 );
 
 
@@ -91,6 +93,17 @@ SET default_table_access_method = heap;
 CREATE TABLE public.blobs (
     hash character varying(16) NOT NULL,
     data bytea,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: cas_blobs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cas_blobs (
+    hash character varying(16) NOT NULL,
+    size_bytes bigint DEFAULT 0 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -389,6 +402,14 @@ ALTER TABLE ONLY public.river_notification ALTER COLUMN id SET DEFAULT nextval('
 
 ALTER TABLE ONLY public.blobs
     ADD CONSTRAINT blobs_pkey PRIMARY KEY (hash);
+
+
+--
+-- Name: cas_blobs cas_blobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cas_blobs
+    ADD CONSTRAINT cas_blobs_pkey PRIMARY KEY (hash);
 
 
 --
@@ -725,4 +746,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260610211305'),
     ('20260816162059'),
     ('20260816181957'),
-    ('20260825133124');
+    ('20260825133124'),
+    ('20260911190242'),
+    ('20260911192348');

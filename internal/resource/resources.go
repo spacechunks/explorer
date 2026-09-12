@@ -60,12 +60,14 @@ type Thumbnail struct {
 type FlavorVersionBuildStatus string
 
 const (
-	FlavorVersionBuildStatusPending               FlavorVersionBuildStatus = "PENDING"
-	FlavorVersionBuildStatusBuildImage            FlavorVersionBuildStatus = "IMAGE_BUILD"
-	FlavorVersionBuildStatusBuildCheckpoint       FlavorVersionBuildStatus = "CHECKPOINT_BUILD"
-	FlavorVersionBuildStatusBuildImageFailed      FlavorVersionBuildStatus = "IMAGE_BUILD_FAILED"
-	FlavorVersionBuildStatusBuildCheckpointFailed FlavorVersionBuildStatus = "CHECKPOINT_BUILD_FAILED"
-	FlavorVersionBuildStatusCompleted             FlavorVersionBuildStatus = "COMPLETED"
+	FlavorVersionBuildStatusPending                 FlavorVersionBuildStatus = "PENDING"
+	FlavorVersionBuildStatusBuildImage              FlavorVersionBuildStatus = "IMAGE_BUILD"
+	FlavorVersionBuildStatusBuildCheckpoint         FlavorVersionBuildStatus = "CHECKPOINT_BUILD"
+	FlavorVersionBuildStatusBuildImageFailed        FlavorVersionBuildStatus = "IMAGE_BUILD_FAILED"
+	FlavorVersionBuildStatusBuildCheckpointFailed   FlavorVersionBuildStatus = "CHECKPOINT_BUILD_FAILED"
+	FlavorVersionBuildStatusCompleted               FlavorVersionBuildStatus = "COMPLETED"
+	FlavorVersionBuildStatusFilesVerification       FlavorVersionBuildStatus = "FILES_VERIFICATION"
+	FlavorVersionBuildStatusFilesVerificationFailed FlavorVersionBuildStatus = "FILES_VERIFICATION_FAILED"
 )
 
 type Flavor struct {
@@ -77,10 +79,9 @@ type Flavor struct {
 	DeletedAt *time.Time      `json:"deletedAt"`
 }
 
-type FlavorVersionDiff struct {
-	Added   []file.Hash
-	Removed []file.Hash
-	Changed []file.Hash
+type Blob struct {
+	Hash      string
+	SizeBytes int64
 }
 
 type FlavorVersion struct {

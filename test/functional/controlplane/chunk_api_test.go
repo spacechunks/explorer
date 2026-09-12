@@ -19,10 +19,17 @@
 package controlplane
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -42,6 +49,7 @@ import (
 	imgtestdata "github.com/spacechunks/explorer/internal/image/testdata"
 	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/internal/resource/codec"
+	"github.com/spacechunks/explorer/internal/tarhelper"
 	"github.com/spacechunks/explorer/test"
 	"github.com/spacechunks/explorer/test/fixture"
 	"github.com/spacechunks/explorer/test/functional/controlplane/testdata"
@@ -858,7 +866,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 		prevVersion     *resource.FlavorVersion
 		newVersion      resource.FlavorVersion
 		expectedVersion *resource.FlavorVersion
-		diff            resource.FlavorVersionDiff
 		err             error
 		errCode         codes.Code
 		errMsgContains  string
@@ -867,9 +874,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 		{
 			name:       "create initial version",
 			newVersion: fixture.FlavorVersion(),
-			diff: resource.FlavorVersionDiff{
-				Added: fixture.FlavorVersion().FileHashes,
-			},
 		},
 		{
 			name:        "create second version with changed files",
@@ -877,67 +881,26 @@ func TestCreateFlavorVersion(t *testing.T) {
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
-					// plugins/myplugin/config.json not present -> its removed
 					{
-						Path: "paper.yml", // unchanged
+						Path: "paper.yml",
 						Hash: "pppppppppppppppp",
 					},
-					{
-						Path: "server.properties", // changed
-						Hash: "cccccccccccccccc",
-					},
-					{
-						Path: "plugins/myplugin.jar", // added
-						Hash: "yyyyyyyyyyyyyyyy",
-					},
-				}
-			}),
-			diff: resource.FlavorVersionDiff{
-				Added: []file.Hash{
-					{
-						Path: "plugins/myplugin.jar",
-						Hash: "yyyyyyyyyyyyyyyy",
-					},
-				},
-				Changed: []file.Hash{
 					{
 						Path: "server.properties",
 						Hash: "cccccccccccccccc",
 					},
-				},
-				Removed: []file.Hash{
 					{
-						Path: "plugins/myplugin/config.json",
-						Hash: "cooooooooooooooo",
+						Path: "plugins/myplugin.jar",
+						Hash: "yyyyyyyyyyyyyyyy",
 					},
-				},
-			},
+				}
+			}),
 		},
 		{
 			name:            "cleans paths",
 			prevVersion:     new(fixture.FlavorVersion()),
 			newVersion:      uncleanPathVersion(),
 			expectedVersion: new(cleanedPathVersion()),
-			diff: resource.FlavorVersionDiff{
-				Added: []file.Hash{
-					{
-						Path: "plugins/myplugin.jar",
-						Hash: "yyyyyyyyyyyyyyyy",
-					},
-				},
-				Changed: []file.Hash{
-					{
-						Path: "server.properties",
-						Hash: "cccccccccccccccc",
-					},
-				},
-				Removed: []file.Hash{
-					{
-						Path: "plugins/myplugin/config.json",
-						Hash: "cooooooooooooooo",
-					},
-				},
-			},
 		},
 		{
 			name:        "invalid paths",
@@ -1181,10 +1144,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			}
 
 			expected := &chunkv1alpha1.CreateFlavorVersionResponse{
-				Version:      expectedVersion,
-				AddedFiles:   codec.FileHashSliceToTransport(tt.diff.Added),
-				ChangedFiles: codec.FileHashSliceToTransport(tt.diff.Changed),
-				RemovedFiles: codec.FileHashSliceToTransport(tt.diff.Removed),
+				Version: expectedVersion,
 			}
 
 			if d := cmp.Diff(
@@ -1202,14 +1162,36 @@ func TestCreateFlavorVersion(t *testing.T) {
 func TestBuildFlavorVersion(t *testing.T) {
 	tests := []struct {
 		name string
+		prep func(t *testing.T, ctx context.Context, cp fixture.ControlPlane, fakes3 fixture.FakeS3, versionID string)
 		err  error
 	}{
 		{
 			name: "works",
+			prep: func(t *testing.T, ctx context.Context, cp fixture.ControlPlane, fakes3 fixture.FakeS3, versionID string) {
+				fakes3.UploadObject(t, blob.ChangeSetKey(versionID), testdata.FullChangeSetFile)
+			},
+		},
+		{
+			// happens when a previous version consisted of the exact same files
+			name: "works without tarball when files are already in the blob store",
+			prep: func(t *testing.T, ctx context.Context, cp fixture.ControlPlane, fakes3 fixture.FakeS3, versionID string) {
+				hashes := seedBlobStore(t, ctx)
+				cp.Postgres.InsertBlobs(t, hashes...)
+			},
 		},
 		{
 			name: "files not uploaded",
 			err:  apierrs.ErrFlavorFilesNotUploaded.GRPCStatus().Err(),
+		},
+		{
+			// versions from before the blob index might carry the flag
+			// even though their files never made it to the blob store.
+			name: "files not uploaded even though flag is set",
+			prep: func(t *testing.T, ctx context.Context, cp fixture.ControlPlane, fakes3 fixture.FakeS3, versionID string) {
+				_, err := cp.Postgres.Pool.Exec(ctx, `UPDATE flavor_versions SET files_uploaded = true WHERE id = $1`, versionID)
+				require.NoError(t, err)
+			},
+			err: apierrs.ErrFlavorFilesNotUploaded.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -1244,8 +1226,8 @@ func TestBuildFlavorVersion(t *testing.T) {
 
 			flavorVersionID := c.Flavors[0].Versions[0].ID
 
-			if tt.err == nil {
-				fakes3.UploadObject(t, blob.ChangeSetKey(flavorVersionID), testdata.FullChangeSetFile)
+			if tt.prep != nil {
+				tt.prep(t, ctx, cp, fakes3, flavorVersionID)
 			}
 
 			// push base image needed for testing
@@ -1271,6 +1253,13 @@ func TestBuildFlavorVersion(t *testing.T) {
 				return
 			}
 
+			require.NoError(t, err)
+
+			// verification runs first, so calling build again while it is
+			// running must be a no-op and not fail.
+			_, err = client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{
+				FlavorVersionId: flavorVersionID,
+			})
 			require.NoError(t, err)
 
 			var (
@@ -1312,10 +1301,93 @@ func TestBuildFlavorVersion(t *testing.T) {
 							})
 							require.NoError(t, err)
 							require.True(t, actualChunk.Chunk.Flavors[0].Versions[0].FilesUploaded)
+
+							// every file of the version has to be known to the blob index now
+							require.Equal(t, sortedHashes(c.Flavors[0].Versions[0].FileHashes), cp.Postgres.BlobHashes(t))
 							return
 						}
 					}
 				}
+			}
+		})
+	}
+}
+
+// this is the scenario that used to break image builds: the previous version
+// was created, but its files never got uploaded. the client must be told to
+// upload everything, not just what changed compared to the previous version.
+func TestGetFilesToUpload(t *testing.T) {
+	tests := []struct {
+		name     string
+		seed     func(t *testing.T, cp fixture.ControlPlane, fileHashes []file.Hash)
+		expected func(fileHashes []file.Hash) []file.Hash
+	}{
+		{
+			name: "previous version never uploaded, everything has to be uploaded",
+			seed: func(t *testing.T, cp fixture.ControlPlane, fileHashes []file.Hash) {},
+			expected: func(fileHashes []file.Hash) []file.Hash {
+				return fileHashes
+			},
+		},
+		{
+			name: "only files missing in the blob store",
+			seed: func(t *testing.T, cp fixture.ControlPlane, fileHashes []file.Hash) {
+				cp.Postgres.InsertBlobs(t, fileHashes[0].Hash)
+			},
+			expected: func(fileHashes []file.Hash) []file.Hash {
+				return fileHashes[1:]
+			},
+		},
+		{
+			name: "everything present",
+			seed: func(t *testing.T, cp fixture.ControlPlane, fileHashes []file.Hash) {
+				for _, fh := range fileHashes {
+					cp.Postgres.InsertBlobs(t, fh.Hash)
+				}
+			},
+			expected: func(fileHashes []file.Hash) []file.Hash {
+				return []file.Hash{}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ctx        = context.Background()
+				cp         = fixture.NewControlPlane(t)
+				fileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
+				c          = fixture.Chunk(func(tmp *resource.Chunk) {
+					// Versions[1] is the previous version and stays untouched, so
+					// it looks like it was created but never uploaded.
+					tmp.Flavors[0].Versions[0].FileHashes = fileHashes
+				})
+			)
+
+			sort.Slice(fileHashes, func(i, j int) bool {
+				return strings.Compare(fileHashes[i].Path, fileHashes[j].Path) < 0
+			})
+
+			fixture.RunFakeS3(t)
+			cp.Run(t)
+
+			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+			tt.seed(t, cp, fileHashes)
+
+			cp.AddUserAPIKey(t, &ctx, c.Owner)
+			client := cp.ChunkClient(t)
+
+			resp, err := client.GetFilesToUpload(ctx, &chunkv1alpha1.GetFilesToUploadRequest{
+				FlavorVersionId: c.Flavors[0].Versions[0].ID,
+			})
+			require.NoError(t, err)
+
+			expected := &chunkv1alpha1.GetFilesToUploadResponse{
+				Files: codec.FileHashSliceToTransport(tt.expected(fileHashes)),
+			}
+
+			if d := cmp.Diff(expected, resp, protocmp.Transform()); d != "" {
+				t.Fatalf("diff (-want +got):\n%s", d)
 			}
 		})
 	}
@@ -1433,9 +1505,14 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 			errMsgContains: "tarball_hash: must be at least 1 characters",
 		},
 		{
-			name: "files not uploaded",
+			name: "all files already in blob store",
 			req:  &chunkv1alpha1.GetUploadURLRequest{},
 			err:  apierrs.ErrFlavorFilesUploaded.GRPCStatus().Err(),
+		},
+		{
+			name: "verification running",
+			req:  &chunkv1alpha1.GetUploadURLRequest{},
+			err:  apierrs.ErrFlavorVersionVerifying.GRPCStatus().Err(),
 		},
 		{
 			name: "changeset file too large",
@@ -1461,8 +1538,24 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 			if errors.Is(tt.err, apierrs.ErrFlavorFilesUploaded.GRPCStatus().Err()) {
-				q := `UPDATE flavor_versions SET files_uploaded = true WHERE id = $1`
-				_, err := cp.Postgres.Pool.Exec(ctx, q, c.Flavors[0].Versions[0].ID)
+				for _, fh := range c.Flavors[0].Versions[0].FileHashes {
+					cp.Postgres.InsertBlobs(t, fh.Hash)
+				}
+
+				tt.req = &chunkv1alpha1.GetUploadURLRequest{
+					FlavorVersionId: c.Flavors[0].Versions[0].ID,
+					TarballHash:     "blabla",
+				}
+			}
+
+			if errors.Is(tt.err, apierrs.ErrFlavorVersionVerifying.GRPCStatus().Err()) {
+				q := `UPDATE flavor_versions SET build_status = $1 WHERE id = $2`
+				_, err := cp.Postgres.Pool.Exec(
+					ctx,
+					q,
+					resource.FlavorVersionBuildStatusFilesVerification,
+					c.Flavors[0].Versions[0].ID,
+				)
 				require.NoError(t, err)
 
 				tt.req = &chunkv1alpha1.GetUploadURLRequest{
@@ -1488,6 +1581,8 @@ func TestGetUploadURLRequestValidations(t *testing.T) {
 				require.Contains(t, st.Message(), tt.errMsgContains)
 				return
 			}
+
+			require.ErrorIs(t, err, tt.err)
 		})
 	}
 }
@@ -1885,6 +1980,21 @@ func TestFlavorInteractionsDontWorkAfterDelete(t *testing.T) {
 			},
 			err: apierrs.ErrNotFound.GRPCStatus().Err(),
 		},
+		{
+			name: "get files to upload",
+			chunkAction: func(
+				ctx context.Context,
+				c chunkv1alpha1.ChunkServiceClient,
+				chunk resource.Chunk,
+				flavor resource.Flavor,
+			) error {
+				_, err := c.GetFilesToUpload(ctx, &chunkv1alpha1.GetFilesToUploadRequest{
+					FlavorVersionId: flavor.Versions[0].ID,
+				})
+				return err
+			},
+			err: apierrs.ErrNotFound.GRPCStatus().Err(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2222,5 +2332,285 @@ func TestGetFlavor(t *testing.T) {
 				t.Fatalf("diff (-want +got):\n%s", d)
 			}
 		})
+	}
+}
+
+// walks through a publish the way the cli does it, including the case that
+// used to break builds: a version whose files were never uploaded, followed
+// by a version that only ships what changed compared to it.
+func TestPublishFlowEndToEnd(t *testing.T) {
+	var (
+		ctx        = context.Background()
+		fileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
+		c          = fixture.Chunk()
+		auth       = remote.WithAuth(&image.Auth{
+			Username: fixture.OCIRegsitryUser,
+			Password: fixture.OCIRegistryPass,
+		})
+	)
+
+	sort.Slice(fileHashes, func(i, j int) bool {
+		return strings.Compare(fileHashes[i].Path, fileHashes[j].Path) < 0
+	})
+
+	var (
+		cp       = fixture.NewControlPlane(t)
+		endpoint = fixture.RunRegistry(t)
+		fakes3   = fixture.RunFakeS3(t)
+	)
+
+	cp.Run(t,
+		fixture.WithOCIRegistryEndpoint(endpoint),
+		fixture.WithFakeS3Endpoint(fakes3.Endpoint),
+	)
+
+	fixture.RunFakeCRI(t)
+	fixture.RunCheckpointAPIFixtures(t, fixture.OCIRegsitryUser, fixture.OCIRegistryPass)
+
+	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptions{
+		WithFlavors: true,
+		WithOwner:   true,
+	})
+	cp.Postgres.InsertNode(t)
+
+	pusher, err := remote.NewPusher(auth)
+	require.NoError(t, err)
+
+	baseImgRef, err := name.ParseReference(fmt.Sprintf("%s/%s", endpoint, fixture.BaseImage))
+	require.NoError(t, err)
+
+	err = pusher.Push(ctx, baseImgRef, imgtestdata.Image(t))
+	require.NoError(t, err)
+
+	cp.AddUserAPIKey(t, &ctx, c.Owner)
+	client := cp.ChunkClient(t)
+
+	flavorID := c.Flavors[0].ID
+
+	// v1 gets created, but the files are never uploaded.
+
+	createVersion(t, ctx, client, flavorID, "v1", fileHashes)
+
+	// v2 consists of the same files. an old cli would diff against v1,
+	// find nothing to upload and the image build would blow up.
+
+	v2 := createVersion(t, ctx, client, flavorID, "v2", fileHashes)
+
+	requireFilesToUpload(t, ctx, client, v2, fileHashes)
+
+	// pretend to be that old cli and only upload a part of the files.
+
+	partial := tarFiles(t, "./testdata/serverdata", "./testdata/serverdata/server.properties")
+	uploadChangeSet(t, ctx, client, v2, partial)
+
+	_, err = client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{FlavorVersionId: v2})
+	require.NoError(t, err)
+
+	waitForAPIBuildStatus(t, ctx, client, c.ID, v2, chunkv1alpha1.BuildStatus_FILES_VERIFICATION_FAILED)
+
+	// what was in the partial tarball is in the blob store now,
+	// so only the rest is expected to be uploaded.
+
+	var serverProps file.Hash
+	for _, fh := range fileHashes {
+		if fh.Path == "server.properties" {
+			serverProps = fh
+		}
+	}
+	require.NotEmpty(t, serverProps.Hash)
+
+	requireFilesToUpload(t, ctx, client, v2, withoutHash(fileHashes, serverProps.Hash))
+
+	uploadChangeSet(t, ctx, client, v2, testdata.FullChangeSetFile)
+
+	_, err = client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{FlavorVersionId: v2})
+	require.NoError(t, err)
+
+	waitForAPIBuildStatus(t, ctx, client, c.ID, v2, chunkv1alpha1.BuildStatus_COMPLETED)
+	requireFilesToUpload(t, ctx, client, v2, []file.Hash{})
+
+	// v3 changes a single file. only that one has to be uploaded.
+
+	var (
+		v3Dir  = t.TempDir()
+		v3File = filepath.Join(v3Dir, "server.properties")
+	)
+
+	require.NoError(t, os.WriteFile(v3File, []byte("motd=changed\n"), 0644))
+
+	changed := testdata.ComputeFileHashes(t, v3Dir)[0]
+	require.Equal(t, "server.properties", changed.Path)
+
+	v3Hashes := make([]file.Hash, 0, len(fileHashes))
+	for _, fh := range fileHashes {
+		if fh.Path == "server.properties" {
+			v3Hashes = append(v3Hashes, changed)
+			continue
+		}
+		v3Hashes = append(v3Hashes, fh)
+	}
+
+	v3 := createVersion(t, ctx, client, flavorID, "v3", v3Hashes)
+
+	requireFilesToUpload(t, ctx, client, v3, []file.Hash{changed})
+
+	uploadChangeSet(t, ctx, client, v3, tarFiles(t, v3Dir, v3File))
+
+	_, err = client.BuildFlavorVersion(ctx, &chunkv1alpha1.BuildFlavorVersionRequest{FlavorVersionId: v3})
+	require.NoError(t, err)
+
+	waitForAPIBuildStatus(t, ctx, client, c.ID, v3, chunkv1alpha1.BuildStatus_COMPLETED)
+
+	// the image has to contain every file, not just the uploaded one
+	checkImage(t, ctx, auth, endpoint, v3, v3Hashes)
+}
+
+func createVersion(
+	t *testing.T,
+	ctx context.Context,
+	client chunkv1alpha1.ChunkServiceClient,
+	flavorID string,
+	version string,
+	fileHashes []file.Hash,
+) string {
+	v := codec.FlavorVersionToTransport(fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+		v.Version = version
+		v.FileHashes = fileHashes
+	}))
+
+	resp, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
+		FlavorId:         flavorID,
+		Version:          v.Version,
+		Hash:             v.Hash,
+		FileHashes:       v.FileHashes,
+		MinecraftVersion: v.MinecraftVersion,
+		MinPlayers:       v.MinPlayers,
+		MaxPlayers:       v.MaxPlayers,
+	})
+	require.NoError(t, err)
+
+	return resp.Version.Id
+}
+
+func requireFilesToUpload(
+	t *testing.T,
+	ctx context.Context,
+	client chunkv1alpha1.ChunkServiceClient,
+	versionID string,
+	expected []file.Hash,
+) {
+	resp, err := client.GetFilesToUpload(ctx, &chunkv1alpha1.GetFilesToUploadRequest{
+		FlavorVersionId: versionID,
+	})
+	require.NoError(t, err)
+
+	want := &chunkv1alpha1.GetFilesToUploadResponse{
+		Files: codec.FileHashSliceToTransport(expected),
+	}
+
+	if d := cmp.Diff(want, resp, protocmp.Transform()); d != "" {
+		t.Fatalf("files to upload mismatch (-want +got):\n%s", d)
+	}
+}
+
+func withoutHash(fileHashes []file.Hash, hash string) []file.Hash {
+	ret := make([]file.Hash, 0, len(fileHashes))
+	for _, fh := range fileHashes {
+		if fh.Hash == hash {
+			continue
+		}
+		ret = append(ret, fh)
+	}
+	return ret
+}
+
+func tarFiles(t *testing.T, rootDir string, paths ...string) []byte {
+	files := make([]*os.File, 0, len(paths))
+	for _, p := range paths {
+		f, err := os.Open(p)
+		require.NoError(t, err)
+
+		defer f.Close()
+
+		files = append(files, f)
+	}
+
+	dest := filepath.Join(t.TempDir(), "changeset.tar.gz")
+	require.NoError(t, tarhelper.TarFiles(rootDir, files, dest))
+
+	data, err := os.ReadFile(dest)
+	require.NoError(t, err)
+
+	return data
+}
+
+// uploads the tarball the same way the cli does: presigned url,
+// content length and sha256 checksum header.
+func uploadChangeSet(
+	t *testing.T,
+	ctx context.Context,
+	client chunkv1alpha1.ChunkServiceClient,
+	versionID string,
+	tarball []byte,
+) {
+	var (
+		digest = sha256.Sum256(tarball)
+		hash   = base64.StdEncoding.EncodeToString(digest[:])
+	)
+
+	resp, err := client.GetUploadURL(ctx, &chunkv1alpha1.GetUploadURLRequest{
+		FlavorVersionId:  versionID,
+		TarballHash:      hash,
+		TarballSizeBytes: uint64(len(tarball)),
+	})
+	require.NoError(t, err)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, resp.Url, bytes.NewReader(tarball))
+	require.NoError(t, err)
+
+	req.ContentLength = int64(len(tarball))
+	req.Header.Set("x-amz-checksum-sha256", hash)
+
+	uploadResp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	defer uploadResp.Body.Close()
+
+	body, _ := io.ReadAll(uploadResp.Body)
+	require.Equal(t, http.StatusOK, uploadResp.StatusCode, string(body))
+}
+
+func waitForAPIBuildStatus(
+	t *testing.T,
+	ctx context.Context,
+	client chunkv1alpha1.ChunkServiceClient,
+	chunkID string,
+	versionID string,
+	status chunkv1alpha1.BuildStatus,
+) {
+	var (
+		timeoutCtx, cancel = context.WithTimeout(ctx, 60*time.Second)
+		ticker             = time.NewTicker(500 * time.Millisecond)
+	)
+
+	defer cancel()
+
+	for {
+		select {
+		case <-timeoutCtx.Done():
+			t.Fatalf("timeout reached waiting for build status %s of version %s", status, versionID)
+			return
+		case <-ticker.C:
+			resp, err := client.GetChunk(ctx, &chunkv1alpha1.GetChunkRequest{Id: chunkID})
+			require.NoError(t, err)
+
+			for _, f := range resp.Chunk.Flavors {
+				for _, v := range f.Versions {
+					if v.Id == versionID && v.BuildStatus == status {
+						return
+					}
+				}
+			}
+		}
 	}
 }

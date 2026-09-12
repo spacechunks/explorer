@@ -45,6 +45,7 @@ const (
 	ChunkService_CreateFlavorVersion_FullMethodName           = "/chunk.v1alpha1.ChunkService/CreateFlavorVersion"
 	ChunkService_BuildFlavorVersion_FullMethodName            = "/chunk.v1alpha1.ChunkService/BuildFlavorVersion"
 	ChunkService_GetUploadURL_FullMethodName                  = "/chunk.v1alpha1.ChunkService/GetUploadURL"
+	ChunkService_GetFilesToUpload_FullMethodName              = "/chunk.v1alpha1.ChunkService/GetFilesToUpload"
 	ChunkService_GetSupportedMinecraftVersions_FullMethodName = "/chunk.v1alpha1.ChunkService/GetSupportedMinecraftVersions"
 	ChunkService_UploadThumbnail_FullMethodName               = "/chunk.v1alpha1.ChunkService/UploadThumbnail"
 	ChunkService_DeleteFlavor_FullMethodName                  = "/chunk.v1alpha1.ChunkService/DeleteFlavor"
@@ -120,11 +121,11 @@ type ChunkServiceClient interface {
 	//     with a space, underscore or slash. they cannot contain linux path
 	//     operators (.. or ../ or /).
 	CreateFlavor(ctx context.Context, in *CreateFlavorRequest, opts ...grpc.CallOption) (*CreateFlavorResponse, error)
-	// CreateFlavorVersion creates a new flavor version for a
-	// given flavor by determining the added, changed and removed
-	// files. it also prevents version duplicates, meaning either
-	// version numbers or the provided set of files match with
-	// an already existing version.
+	// CreateFlavorVersion creates a new flavor version for a given flavor
+	// from the provided file hashes. The file hashes describe the complete
+	// set of files of the version; which of them actually have to be uploaded
+	// is determined afterwards via GetFilesToUpload. Version numbers must be
+	// unique per flavor.
 	//
 	// Defined error codes:
 	// - NOT_FOUND
@@ -132,42 +133,60 @@ type ChunkServiceClient interface {
 	//
 	// - ALREADY_EXISTS:
 	//   - the flavor version about to be created is already present
-	//   - a version with the exact same set of files already exists
-	//
 	// - INVALID_ARGUMENT:
 	//   - the version is invalid. versions cannot start or end with a space,
 	//     underscore or slash. they cannot contain linux path operators (.. or ../ or /)
-	//
+	//   - a file path is invalid (absolute, or escaping the flavor root with ..)
 	// - FAILED_PRECONDITION:
 	//   - the provided version hash does not match with the provided file hashes
 	CreateFlavorVersion(ctx context.Context, in *CreateFlavorVersionRequest, opts ...grpc.CallOption) (*CreateFlavorVersionResponse, error)
 	// BuildFlavorVersion will initiate the process for building a checkpoint image.
-	// there are multiple steps involved. Calling this endpoint multiple times will
-	// have no effect, if the build process is ongoing. Build status can be retrieved
-	// by getting the flavor version.
+	// There are multiple steps involved: first the uploaded changeset is verified
+	// against the file hashes of the flavor version and every file is stored in the
+	// blob store, then the image and the checkpoint are built. Calling this endpoint
+	// multiple times has no effect while the process is ongoing. Progress can be
+	// observed via the build status of the flavor version. If the verification fails,
+	// the build status is set to FILES_VERIFICATION_FAILED; the client should call
+	// GetFilesToUpload again, upload the missing files and call this endpoint again.
 	//
 	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted flavor version or its flavor does not exist
 	// - FAILED_PRECONDITION:
-	//   - the flavor version files have not been uploaded yet.
+	//   - files of the flavor version are still missing and no changeset tarball
+	//     has been uploaded yet.
 	BuildFlavorVersion(ctx context.Context, in *BuildFlavorVersionRequest, opts ...grpc.CallOption) (*BuildFlavorVersionResponse, error)
 	// GetUploadURL returns a presigned URL for use with a S3 client. If the expiry date
 	// is reached the client can call this endpoint again and will receive a new valid
-	// URL. Calling this endpoint multiple without the expiry date being reached will
-	// lead to the same URL being returned.
+	// URL. Calling this endpoint multiple times without the expiry date being reached will
+	// lead to the same URL being returned. The URL is invalidated once the verification
+	// of the uploaded changeset has finished, regardless of its outcome.
 	//
 	// Defined error codes:
 	// - NOT_FOUND:
 	//   - the targeted flavor version does not exist
 	//
 	// - ALREADY_EXISTS:
-	//   - the tarball has already been uploaded
-	//
+	//   - all files of the flavor version are already present in the blob store
+	// - FAILED_PRECONDITION:
+	//   - the uploaded changeset is currently being verified
 	// - INVALID_ARGUMENT:
 	//   - the provided flavor version id is invalid
 	//   - the provided tarball hash is empty or does not meet the requirements.
 	//     for more information about what requirements are expected see tarball_hash
 	//     documentation of GetUploadURLRequest
+	//   - the tarball size exceeds the maximum allowed
 	GetUploadURL(ctx context.Context, in *GetUploadURLRequest, opts ...grpc.CallOption) (*GetUploadURLResponse, error)
+	// GetFilesToUpload returns the files of the flavor version whose content is not yet
+	// present in the blob store and therefore must be included in the changeset tarball.
+	// An empty list means nothing has to be uploaded and BuildFlavorVersion can be called.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted flavor version or its flavor does not exist
+	// - INVALID_ARGUMENT:
+	//   - the provided flavor version id is invalid
+	GetFilesToUpload(ctx context.Context, in *GetFilesToUploadRequest, opts ...grpc.CallOption) (*GetFilesToUploadResponse, error)
 	GetSupportedMinecraftVersions(ctx context.Context, in *GetSupportedMinecraftVersionsRequest, opts ...grpc.CallOption) (*GetSupportedMinecraftVersionsResponse, error)
 	// UploadThumbnail uploads the given PNG image. Formats other than PNG are not supported.
 	//
@@ -299,6 +318,16 @@ func (c *chunkServiceClient) GetUploadURL(ctx context.Context, in *GetUploadURLR
 	return out, nil
 }
 
+func (c *chunkServiceClient) GetFilesToUpload(ctx context.Context, in *GetFilesToUploadRequest, opts ...grpc.CallOption) (*GetFilesToUploadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFilesToUploadResponse)
+	err := c.cc.Invoke(ctx, ChunkService_GetFilesToUpload_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chunkServiceClient) GetSupportedMinecraftVersions(ctx context.Context, in *GetSupportedMinecraftVersionsRequest, opts ...grpc.CallOption) (*GetSupportedMinecraftVersionsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetSupportedMinecraftVersionsResponse)
@@ -417,11 +446,11 @@ type ChunkServiceServer interface {
 	//     with a space, underscore or slash. they cannot contain linux path
 	//     operators (.. or ../ or /).
 	CreateFlavor(context.Context, *CreateFlavorRequest) (*CreateFlavorResponse, error)
-	// CreateFlavorVersion creates a new flavor version for a
-	// given flavor by determining the added, changed and removed
-	// files. it also prevents version duplicates, meaning either
-	// version numbers or the provided set of files match with
-	// an already existing version.
+	// CreateFlavorVersion creates a new flavor version for a given flavor
+	// from the provided file hashes. The file hashes describe the complete
+	// set of files of the version; which of them actually have to be uploaded
+	// is determined afterwards via GetFilesToUpload. Version numbers must be
+	// unique per flavor.
 	//
 	// Defined error codes:
 	// - NOT_FOUND
@@ -429,42 +458,60 @@ type ChunkServiceServer interface {
 	//
 	// - ALREADY_EXISTS:
 	//   - the flavor version about to be created is already present
-	//   - a version with the exact same set of files already exists
-	//
 	// - INVALID_ARGUMENT:
 	//   - the version is invalid. versions cannot start or end with a space,
 	//     underscore or slash. they cannot contain linux path operators (.. or ../ or /)
-	//
+	//   - a file path is invalid (absolute, or escaping the flavor root with ..)
 	// - FAILED_PRECONDITION:
 	//   - the provided version hash does not match with the provided file hashes
 	CreateFlavorVersion(context.Context, *CreateFlavorVersionRequest) (*CreateFlavorVersionResponse, error)
 	// BuildFlavorVersion will initiate the process for building a checkpoint image.
-	// there are multiple steps involved. Calling this endpoint multiple times will
-	// have no effect, if the build process is ongoing. Build status can be retrieved
-	// by getting the flavor version.
+	// There are multiple steps involved: first the uploaded changeset is verified
+	// against the file hashes of the flavor version and every file is stored in the
+	// blob store, then the image and the checkpoint are built. Calling this endpoint
+	// multiple times has no effect while the process is ongoing. Progress can be
+	// observed via the build status of the flavor version. If the verification fails,
+	// the build status is set to FILES_VERIFICATION_FAILED; the client should call
+	// GetFilesToUpload again, upload the missing files and call this endpoint again.
 	//
 	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted flavor version or its flavor does not exist
 	// - FAILED_PRECONDITION:
-	//   - the flavor version files have not been uploaded yet.
+	//   - files of the flavor version are still missing and no changeset tarball
+	//     has been uploaded yet.
 	BuildFlavorVersion(context.Context, *BuildFlavorVersionRequest) (*BuildFlavorVersionResponse, error)
 	// GetUploadURL returns a presigned URL for use with a S3 client. If the expiry date
 	// is reached the client can call this endpoint again and will receive a new valid
-	// URL. Calling this endpoint multiple without the expiry date being reached will
-	// lead to the same URL being returned.
+	// URL. Calling this endpoint multiple times without the expiry date being reached will
+	// lead to the same URL being returned. The URL is invalidated once the verification
+	// of the uploaded changeset has finished, regardless of its outcome.
 	//
 	// Defined error codes:
 	// - NOT_FOUND:
 	//   - the targeted flavor version does not exist
 	//
 	// - ALREADY_EXISTS:
-	//   - the tarball has already been uploaded
-	//
+	//   - all files of the flavor version are already present in the blob store
+	// - FAILED_PRECONDITION:
+	//   - the uploaded changeset is currently being verified
 	// - INVALID_ARGUMENT:
 	//   - the provided flavor version id is invalid
 	//   - the provided tarball hash is empty or does not meet the requirements.
 	//     for more information about what requirements are expected see tarball_hash
 	//     documentation of GetUploadURLRequest
+	//   - the tarball size exceeds the maximum allowed
 	GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error)
+	// GetFilesToUpload returns the files of the flavor version whose content is not yet
+	// present in the blob store and therefore must be included in the changeset tarball.
+	// An empty list means nothing has to be uploaded and BuildFlavorVersion can be called.
+	//
+	// Defined error codes:
+	// - NOT_FOUND:
+	//   - the targeted flavor version or its flavor does not exist
+	// - INVALID_ARGUMENT:
+	//   - the provided flavor version id is invalid
+	GetFilesToUpload(context.Context, *GetFilesToUploadRequest) (*GetFilesToUploadResponse, error)
 	GetSupportedMinecraftVersions(context.Context, *GetSupportedMinecraftVersionsRequest) (*GetSupportedMinecraftVersionsResponse, error)
 	// UploadThumbnail uploads the given PNG image. Formats other than PNG are not supported.
 	//
@@ -539,6 +586,9 @@ func (UnimplementedChunkServiceServer) BuildFlavorVersion(context.Context, *Buil
 }
 func (UnimplementedChunkServiceServer) GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUploadURL not implemented")
+}
+func (UnimplementedChunkServiceServer) GetFilesToUpload(context.Context, *GetFilesToUploadRequest) (*GetFilesToUploadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFilesToUpload not implemented")
 }
 func (UnimplementedChunkServiceServer) GetSupportedMinecraftVersions(context.Context, *GetSupportedMinecraftVersionsRequest) (*GetSupportedMinecraftVersionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSupportedMinecraftVersions not implemented")
@@ -720,6 +770,24 @@ func _ChunkService_GetUploadURL_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChunkService_GetFilesToUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFilesToUploadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChunkServiceServer).GetFilesToUpload(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChunkService_GetFilesToUpload_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChunkServiceServer).GetFilesToUpload(ctx, req.(*GetFilesToUploadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChunkService_GetSupportedMinecraftVersions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetSupportedMinecraftVersionsRequest)
 	if err := dec(in); err != nil {
@@ -848,6 +916,10 @@ var ChunkService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUploadURL",
 			Handler:    _ChunkService_GetUploadURL_Handler,
+		},
+		{
+			MethodName: "GetFilesToUpload",
+			Handler:    _ChunkService_GetFilesToUpload_Handler,
 		},
 		{
 			MethodName: "GetSupportedMinecraftVersions",

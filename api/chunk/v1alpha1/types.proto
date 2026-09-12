@@ -35,6 +35,8 @@ enum BuildStatus {
   CHECKPOINT_BUILD = 3;
   CHECKPOINT_BUILD_FAILED = 4;
   COMPLETED = 5;
+  FILES_VERIFICATION = 6;
+  FILES_VERIFICATION_FAILED = 7;
 }
 
 // Chunk defines the configuration and metadata

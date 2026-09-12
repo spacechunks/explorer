@@ -19,7 +19,9 @@
 package tarhelper_test
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"os"
 	"path/filepath"
 	"sort"
@@ -92,4 +94,28 @@ func checkPaths(t *testing.T, want []string, got []string) {
 	})
 
 	require.Equal(t, want, got)
+}
+
+func TestUntarRejectsPathTraversal(t *testing.T) {
+	var buf bytes.Buffer
+	gzw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gzw)
+
+	content := []byte("evil")
+	require.NoError(t, tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeReg,
+		Name:     "../escape.txt",
+		Size:     int64(len(content)),
+	}))
+	_, err := tw.Write(content)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gzw.Close())
+
+	dest := t.TempDir()
+	_, err = tarhelper.Untar(&buf, dest)
+	require.Error(t, err)
+
+	_, statErr := os.Stat(filepath.Join(filepath.Dir(dest), "escape.txt"))
+	require.True(t, os.IsNotExist(statErr), "file must not be written outside dest")
 }

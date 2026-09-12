@@ -16,12 +16,14 @@ import (
 type BuildStatus string
 
 const (
-	BuildStatusPENDING               BuildStatus = "PENDING"
-	BuildStatusIMAGEBUILD            BuildStatus = "IMAGE_BUILD"
-	BuildStatusIMAGEBUILDFAILED      BuildStatus = "IMAGE_BUILD_FAILED"
-	BuildStatusCHECKPOINTBUILD       BuildStatus = "CHECKPOINT_BUILD"
-	BuildStatusCHECKPOINTBUILDFAILED BuildStatus = "CHECKPOINT_BUILD_FAILED"
-	BuildStatusCOMPLETED             BuildStatus = "COMPLETED"
+	BuildStatusPENDING                 BuildStatus = "PENDING"
+	BuildStatusIMAGEBUILD              BuildStatus = "IMAGE_BUILD"
+	BuildStatusIMAGEBUILDFAILED        BuildStatus = "IMAGE_BUILD_FAILED"
+	BuildStatusCHECKPOINTBUILD         BuildStatus = "CHECKPOINT_BUILD"
+	BuildStatusCHECKPOINTBUILDFAILED   BuildStatus = "CHECKPOINT_BUILD_FAILED"
+	BuildStatusCOMPLETED               BuildStatus = "COMPLETED"
+	BuildStatusFILESVERIFICATION       BuildStatus = "FILES_VERIFICATION"
+	BuildStatusFILESVERIFICATIONFAILED BuildStatus = "FILES_VERIFICATION_FAILED"
 )
 
 func (e *BuildStatus) Scan(src interface{}) error {
@@ -156,6 +158,12 @@ func (ns NullRiverJobState) Value() (driver.Value, error) {
 type Blob struct {
 	Hash      string
 	Data      []byte
+	CreatedAt time.Time
+}
+
+type CasBlob struct {
+	Hash      string
+	SizeBytes int64
 	CreatedAt time.Time
 }
 

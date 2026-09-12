@@ -81,6 +81,37 @@ func (c CreateImage) Validate() error {
 	return nil
 }
 
+type VerifyFiles struct {
+	FlavorVersionID string      `json:"flavorVersionId"`
+	BaseImage       string      `json:"baseImage"`
+	OCIRegistry     string      `json:"ociRegistry"`
+	SpanContext     SpanContext `json:"spanContext"`
+	ChunkID         string      `json:"chunkId"`
+	ChunkName       string      `json:"chunkName"`
+	FlavorID        string      `json:"flavorId"`
+	FlavorName      string      `json:"flavorName"`
+}
+
+func (VerifyFiles) Kind() string {
+	return "verify_files"
+}
+
+func (v VerifyFiles) Validate() error {
+	if _, err := uuid.Parse(v.FlavorVersionID); err != nil {
+		return ErrInvalidFlavorVersionID
+	}
+
+	if v.BaseImage == "" {
+		return ErrInvalidBaseImage
+	}
+
+	if v.OCIRegistry == "" {
+		return ErrInvalidOCIRegistry
+	}
+
+	return nil
+}
+
 type CreateCheckpoint struct {
 	FlavorVersionID string `json:"flavorVersionId"`
 	BaseImageURL    string `json:"baseImageUrl"`

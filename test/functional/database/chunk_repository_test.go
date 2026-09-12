@@ -29,6 +29,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertest"
+	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/test"
@@ -128,6 +129,55 @@ func TestInsertJob(t *testing.T) {
 		riverJob,
 		nil,
 	)
+}
+
+// jobs are unique by args while they are in flight. once a job finished,
+// inserting the same one again has to result in a new job, otherwise a
+// failed files verification could never be retried.
+func TestInsertJobAgainAfterPreviousFinished(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateRiverClient(t)
+
+	c := fixture.Chunk()
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	riverJob := job.VerifyFiles{
+		FlavorVersionID: c.Flavors[0].Versions[0].ID,
+		BaseImage:       "111",
+		OCIRegistry:     "3333",
+	}
+
+	versionID := c.Flavors[0].Versions[0].ID
+	status := string(resource.FlavorVersionBuildStatusFilesVerification)
+
+	require.NoError(t, pg.DB.InsertJob(ctx, versionID, status, riverJob))
+
+	// while the job is still pending, the same job is not inserted twice
+	require.NoError(t, pg.DB.InsertJob(ctx, versionID, status, riverJob))
+	require.Equal(t, 1, countJobs(t, ctx, pg, riverJob.Kind()))
+
+	_, err := pg.Pool.Exec(
+		ctx,
+		`UPDATE river_job SET state = 'completed', finalized_at = now() WHERE kind = $1`,
+		riverJob.Kind(),
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, pg.DB.InsertJob(ctx, versionID, status, riverJob))
+	require.Equal(t, 2, countJobs(t, ctx, pg, riverJob.Kind()))
+}
+
+func countJobs(t *testing.T, ctx context.Context, pg *fixture.Postgres, kind string) int {
+	var count int
+	err := pg.Pool.QueryRow(ctx, `SELECT count(*) FROM river_job WHERE kind = $1`, kind).Scan(&count)
+	require.NoError(t, err)
+	return count
 }
 
 func TestUpdateThumbnail(t *testing.T) {
@@ -453,4 +503,141 @@ func TestChunkByFlavorID(t *testing.T) {
 	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
 		t.Errorf("chunk mismatch (-want +got):\n%s", d)
 	}
+}
+
+// a flavor without any versions used to break the lookup, because the
+// columns of the joined tables are NULL in that case.
+func TestChunkByFlavorIDWithFlavorWithoutVersions(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+
+	expected := fixture.Chunk(func(tmp *resource.Chunk) {
+		tmp.Flavors[1].Versions = nil
+	})
+
+	pg.CreateChunk(t, &expected, fixture.CreateOptionsAll)
+
+	actual, err := pg.DB.ChunkByFlavorID(ctx, expected.Flavors[0].ID)
+	require.NoError(t, err)
+
+	if d := cmp.Diff(expected, actual, test.IgnoreFields(test.IgnoredChunkFields...)); d != "" {
+		t.Errorf("chunk mismatch (-want +got):\n%s", d)
+	}
+}
+
+func TestChunkByFlavorIDNotFound(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	pg.Run(t, ctx)
+
+	_, err := pg.DB.ChunkByFlavorID(ctx, test.NewUUIDv7(t))
+	require.ErrorIs(t, err, apierrs.ErrChunkNotFound)
+}
+
+func TestBlobs(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	pg.Run(t, ctx)
+
+	err := pg.DB.InsertBlobs(ctx, []resource.Blob{
+		{Hash: "aaaaaaaaaaaaaaaa", SizeBytes: 1},
+		{Hash: "bbbbbbbbbbbbbbbb", SizeBytes: 2},
+	})
+	require.NoError(t, err)
+
+	// inserting the same hash twice must not fail
+	err = pg.DB.InsertBlobs(ctx, []resource.Blob{
+		{Hash: "aaaaaaaaaaaaaaaa", SizeBytes: 1},
+	})
+	require.NoError(t, err)
+
+	existing, err := pg.DB.ExistingBlobHashes(ctx, []string{"aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb", "cccccccccccccccc"})
+	require.NoError(t, err)
+	require.Equal(t, map[string]struct{}{
+		"aaaaaaaaaaaaaaaa": {},
+		"bbbbbbbbbbbbbbbb": {},
+	}, existing)
+
+	existing, err = pg.DB.ExistingBlobHashes(ctx, []string{})
+	require.NoError(t, err)
+	require.Empty(t, existing)
+
+	err = pg.DB.DeleteBlobs(ctx, []string{"aaaaaaaaaaaaaaaa"})
+	require.NoError(t, err)
+
+	existing, err = pg.DB.ExistingBlobHashes(ctx, []string{"aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb"})
+	require.NoError(t, err)
+	require.Equal(t, map[string]struct{}{
+		"bbbbbbbbbbbbbbbb": {},
+	}, existing)
+}
+
+func TestSetFlavorVersionFilesUploaded(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+
+	c := fixture.Chunk()
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	id := c.Flavors[0].Versions[0].ID
+
+	err := pg.DB.SetFlavorVersionFilesUploaded(ctx, id, true)
+	require.NoError(t, err)
+
+	version, err := pg.DB.FlavorVersionByID(ctx, id)
+	require.NoError(t, err)
+	require.True(t, version.FilesUploaded)
+
+	err = pg.DB.SetFlavorVersionFilesUploaded(ctx, id, false)
+	require.NoError(t, err)
+
+	version, err = pg.DB.FlavorVersionByID(ctx, id)
+	require.NoError(t, err)
+	require.False(t, version.FilesUploaded)
+}
+
+func TestClearFlavorVersionPresignedURLData(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertMinecraftVersion(t)
+
+	c := fixture.Chunk()
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	id := c.Flavors[0].Versions[0].ID
+
+	err := pg.DB.UpdateFlavorVersionPresignedURLData(ctx, id, time.Now().Add(1*time.Hour), "http://example.com")
+	require.NoError(t, err)
+
+	version, err := pg.DB.FlavorVersionByID(ctx, id)
+	require.NoError(t, err)
+	require.NotNil(t, version.PresignedURLExpiryDate)
+
+	err = pg.DB.ClearFlavorVersionPresignedURLData(ctx, id)
+	require.NoError(t, err)
+
+	version, err = pg.DB.FlavorVersionByID(ctx, id)
+	require.NoError(t, err)
+	require.Nil(t, version.PresignedURLExpiryDate)
+	require.Nil(t, version.PresignedURL)
 }

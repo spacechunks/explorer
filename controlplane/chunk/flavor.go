@@ -22,9 +22,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 
@@ -84,153 +82,72 @@ func (s *svc) CreateFlavorVersion(
 	ctx context.Context,
 	flavorID string,
 	version resource.FlavorVersion,
-) (resource.FlavorVersion, resource.FlavorVersionDiff, error) {
+) (resource.FlavorVersion, error) {
 	actorEmail, ok := ctx.Value(contextkey.ActorIDPID).(string)
 	if !ok {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, errors.New("actor_id not found in context")
+		return resource.FlavorVersion{}, errors.New("actor_id not found in context")
 	}
 
 	if err := s.access.AccessAuthorized(
 		ctx,
 		authz.WithOwnershipRule(actorEmail, authz.FlavorResourceDef(flavorID)),
 	); err != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("access: %w", err)
+		return resource.FlavorVersion{}, fmt.Errorf("access: %w", err)
 	}
 
 	f, err := s.repo.FlavorByID(ctx, flavorID)
 	if err != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("flavor by id: %w", err)
+		return resource.FlavorVersion{}, fmt.Errorf("flavor by id: %w", err)
 	}
 
 	if f.DeletedAt != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrNotFound
+		return resource.FlavorVersion{}, apierrs.ErrNotFound
 	}
 
 	exists, err := s.repo.FlavorVersionExists(ctx, flavorID, version.Version)
 	if err != nil {
-		return resource.FlavorVersion{},
-			resource.FlavorVersionDiff{},
-			fmt.Errorf("flavor version exists: %w", err)
+		return resource.FlavorVersion{}, fmt.Errorf("flavor version exists: %w", err)
 	}
 
 	if exists {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrFlavorVersionExists
+		return resource.FlavorVersion{}, apierrs.ErrFlavorVersionExists
 	}
 
-	_, err = s.repo.GetMinecraftVersionByVersion(ctx, version.MinecraftVersion)
-	if err != nil {
+	if _, err := s.repo.GetMinecraftVersionByVersion(ctx, version.MinecraftVersion); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return resource.FlavorVersion{},
-				resource.FlavorVersionDiff{},
-				apierrs.ErrMinecraftVersionNotSupported
+			return resource.FlavorVersion{}, apierrs.ErrMinecraftVersionNotSupported
 		}
-
-		return resource.FlavorVersion{},
-			resource.FlavorVersionDiff{},
-			fmt.Errorf("minecraft version exists: %w", err)
+		return resource.FlavorVersion{}, fmt.Errorf("minecraft version exists: %w", err)
 	}
 
 	if err := cleanFileHashPaths(version.FileHashes); err != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, err
-	}
-
-	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
-	if err != nil {
-		return resource.FlavorVersion{},
-			resource.FlavorVersionDiff{},
-			fmt.Errorf("latest flavor version file hashes: %w", err)
+		return resource.FlavorVersion{}, err
 	}
 
 	newContentTree, err := file.HashTree(version.FileHashes)
 	if err != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("new content tree: %w", err)
+		return resource.FlavorVersion{}, fmt.Errorf("new content tree: %w", err)
 	}
 
 	if file.HashTreeRootString(newContentTree) != version.Hash {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrHashMismatch
+		return resource.FlavorVersion{}, apierrs.ErrHashMismatch
 	}
 
-	var (
-		unchanged = make([]file.Hash, 0)
-		changed   = make([]file.Hash, 0)
-		added     = make([]file.Hash, 0)
-		removed   = make([]file.Hash, 0)
-	)
-
-	prevMap := make(map[string]file.Hash, len(prevVersion.FileHashes))
-	for _, v := range prevVersion.FileHashes {
-		prevMap[v.Path] = v
+	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
+	if err != nil {
+		return resource.FlavorVersion{}, fmt.Errorf("latest flavor version: %w", err)
 	}
 
-	uploadedMap := make(map[string]file.Hash, len(version.FileHashes))
-	for _, v := range version.FileHashes {
-		uploadedMap[v.Path] = v
-	}
-
-	for _, prev := range slices.Collect(maps.Values(prevMap)) {
-		uploaded, ok := uploadedMap[prev.Path]
-		if ok {
-			//  did not change, ignore
-			if uploaded.Hash == prev.Hash {
-				unchanged = append(unchanged, uploaded)
-				continue
-			}
-
-			changed = append(changed, uploaded)
-			continue
-		}
-
-		// it does not exist in the uploaded hashes, but was previously present, this means
-		// the file has been deleted.
-		removed = append(removed, prev)
-	}
-
-	for _, uploaded := range slices.Collect(maps.Values(uploadedMap)) {
-		if _, ok := prevMap[uploaded.Path]; ok {
-			continue
-		}
-
-		// the uploaded file was not previously present, this means it is new
-		added = append(added, uploaded)
-	}
-
-	var (
-		diff = resource.FlavorVersionDiff{
-			Added:   added,
-			Removed: removed,
-			Changed: changed,
-		}
-		sortByPath = func(sl []file.Hash) {
-			sort.Slice(sl, func(i, j int) bool {
-				return strings.Compare(sl[i].Path, sl[j].Path) < 0
-			})
-		}
-	)
-
-	sortByPath(unchanged)
-	sortByPath(changed)
-	sortByPath(added)
-	sortByPath(removed)
-
-	changes := make([]file.Hash, 0, len(changed)+len(added))
-	changes = append(changes, changed...)
-	changes = append(changes, added...)
-	sortByPath(changes)
-
-	all := make([]file.Hash, 0, len(unchanged)+len(changes))
-	all = append(all, changes...)
-	all = append(all, unchanged...)
-
-	sortByPath(all)
-
-	version.FileHashes = all
+	sort.Slice(version.FileHashes, func(i, j int) bool {
+		return strings.Compare(version.FileHashes[i].Path, version.FileHashes[j].Path) < 0
+	})
 
 	created, err := s.repo.CreateFlavorVersion(ctx, flavorID, version, prevVersion.ID)
 	if err != nil {
-		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, fmt.Errorf("create flavor version: %w", err)
+		return resource.FlavorVersion{}, fmt.Errorf("create flavor version: %w", err)
 	}
 
-	return created, diff, nil
+	return created, nil
 }
 
 func cleanFileHashPaths(hashes []file.Hash) error {
@@ -290,25 +207,11 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 		return fmt.Errorf("flavor version: %w", err)
 	}
 
-	if !version.FilesUploaded {
-		exists, err := s.s3Store.ObjectExists(ctx, blob.ChangeSetKey(versionID))
-		if err != nil {
-			return fmt.Errorf("changeset exists : %w", err)
-		}
-
-		if !exists {
-			return apierrs.ErrFlavorFilesNotUploaded
-		}
-
-		if err := s.repo.MarkFlavorVersionFilesUploaded(ctx, versionID); err != nil {
-			return fmt.Errorf("mark files: %w", err)
-		}
-	}
-
 	// do not fail the request if there is already a job running,
 	// or it is already completed, because those states do not
 	// indicate that anything is wrong.
-	if version.BuildStatus == resource.FlavorVersionBuildStatusBuildCheckpoint ||
+	if version.BuildStatus == resource.FlavorVersionBuildStatusFilesVerification ||
+		version.BuildStatus == resource.FlavorVersionBuildStatusBuildCheckpoint ||
 		version.BuildStatus == resource.FlavorVersionBuildStatusBuildImage ||
 		version.BuildStatus == resource.FlavorVersionBuildStatusCompleted {
 		return nil
@@ -323,6 +226,51 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 	c, err := s.repo.ChunkByFlavorID(ctx, flavorID)
 	if err != nil {
 		return fmt.Errorf("chunk by flavor id: %w", err)
+	}
+
+	mcVersion, err := s.repo.GetMinecraftVersionByVersion(ctx, version.MinecraftVersion)
+	if err != nil {
+		return fmt.Errorf("minecraft version: %w", err)
+	}
+
+	missing, err := s.filesToUpload(ctx, version)
+	if err != nil {
+		return fmt.Errorf("files to upload: %w", err)
+	}
+
+	// the blob index is the single source of truth. versions that were marked as
+	// uploaded by the previous flow, but whose files never reached the blob store,
+	// are routed through verification as well.
+	if !version.FilesUploaded || len(missing) > 0 {
+		if len(missing) > 0 {
+			exists, err := s.s3Store.ObjectExists(ctx, blob.ChangeSetKey(versionID))
+			if err != nil {
+				return fmt.Errorf("changeset exists: %w", err)
+			}
+
+			if !exists {
+				return apierrs.ErrFlavorFilesNotUploaded
+			}
+		}
+
+		if err := s.jobClient.InsertJob(
+			ctx,
+			versionID,
+			string(resource.FlavorVersionBuildStatusFilesVerification),
+			job.VerifyFiles{
+				FlavorVersionID: versionID,
+				BaseImage:       mcVersion.ImageURL,
+				OCIRegistry:     s.cfg.Registry,
+				SpanContext:     spanCtx,
+				ChunkID:         c.ID,
+				ChunkName:       c.Name,
+				FlavorID:        f.ID,
+				FlavorName:      f.Name,
+			},
+		); err != nil {
+			return fmt.Errorf("insert verify files job: %w", err)
+		}
+		return nil
 	}
 
 	if version.BuildStatus == resource.FlavorVersionBuildStatusBuildCheckpointFailed {
@@ -341,14 +289,9 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 			string(resource.FlavorVersionBuildStatusBuildCheckpoint),
 			createCheckpoint,
 		); err != nil {
-			return fmt.Errorf("insert create image job: %w", err)
+			return fmt.Errorf("insert create checkpoint job: %w", err)
 		}
 		return nil
-	}
-
-	mcVersion, err := s.repo.GetMinecraftVersionByVersion(ctx, version.MinecraftVersion)
-	if err != nil {
-		return fmt.Errorf("minecraft version: %w", err)
 	}
 
 	if err := s.jobClient.InsertJob(ctx, versionID, string(resource.FlavorVersionBuildStatusBuildImage), job.CreateImage{

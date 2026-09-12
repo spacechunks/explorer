@@ -27,6 +27,53 @@ func (_m *MockBlobS3Store) EXPECT() *MockBlobS3Store_Expecter {
 	return &MockBlobS3Store_Expecter{mock: &_m.Mock}
 }
 
+// DeleteObject provides a mock function with given fields: ctx, key
+func (_m *MockBlobS3Store) DeleteObject(ctx context.Context, key string) error {
+	ret := _m.Called(ctx, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteObject")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, key)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockBlobS3Store_DeleteObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteObject'
+type MockBlobS3Store_DeleteObject_Call struct {
+	*mock.Call
+}
+
+// DeleteObject is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *MockBlobS3Store_Expecter) DeleteObject(ctx interface{}, key interface{}) *MockBlobS3Store_DeleteObject_Call {
+	return &MockBlobS3Store_DeleteObject_Call{Call: _e.mock.On("DeleteObject", ctx, key)}
+}
+
+func (_c *MockBlobS3Store_DeleteObject_Call) Run(run func(ctx context.Context, key string)) *MockBlobS3Store_DeleteObject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockBlobS3Store_DeleteObject_Call) Return(_a0 error) *MockBlobS3Store_DeleteObject_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockBlobS3Store_DeleteObject_Call) RunAndReturn(run func(context.Context, string) error) *MockBlobS3Store_DeleteObject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectExists provides a mock function with given fields: ctx, key
 func (_m *MockBlobS3Store) ObjectExists(ctx context.Context, key string) (bool, error) {
 	ret := _m.Called(ctx, key)

@@ -47,7 +47,8 @@ const (
 	OAuthAllowedAudience    = "public-functest-client"
 	OAuthTokenIssuer        = "http://localhost:3081"
 	ResourcePackTemplateKey = "explorer/pack_template.zip"
-	MaxChangeSetTarballSize = 1024
+	// large enough for the changeset tarballs in testdata, small enough to be exceeded in tests
+	MaxChangeSetTarballSize = 64 * 1024
 )
 
 type ControlPlane struct {

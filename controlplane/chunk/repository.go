@@ -41,7 +41,11 @@ type Repository interface {
 		prevVersionID string,
 	) (resource.FlavorVersion, error)
 	FlavorVersionHashByID(ctx context.Context, id string) (string, error)
-	MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error
+	SetFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string, uploaded bool) error
+	ClearFlavorVersionPresignedURLData(ctx context.Context, flavorVersionID string) error
+	ExistingBlobHashes(ctx context.Context, hashes []string) (map[string]struct{}, error)
+	InsertBlobs(ctx context.Context, blobs []resource.Blob) error
+	DeleteBlobs(ctx context.Context, hashes []string) error
 	FlavorVersionByID(ctx context.Context, id string) (resource.FlavorVersion, error)
 	UpdateFlavorVersionBuildStatus(
 		ctx context.Context,

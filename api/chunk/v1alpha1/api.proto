@@ -93,51 +93,73 @@ service ChunkService {
   //     operators (.. or ../ or /).
   rpc CreateFlavor(CreateFlavorRequest) returns (CreateFlavorResponse);
 
-  // CreateFlavorVersion creates a new flavor version for a
-  // given flavor by determining the added, changed and removed
-  // files. it also prevents version duplicates, meaning either
-  // version numbers or the provided set of files match with
-  // an already existing version.
+  // CreateFlavorVersion creates a new flavor version for a given flavor
+  // from the provided file hashes. The file hashes describe the complete
+  // set of files of the version; which of them actually have to be uploaded
+  // is determined afterwards via GetFilesToUpload. Version numbers must be
+  // unique per flavor.
   //
   // Defined error codes:
   // - NOT_FOUND
   //   - the affected flavor does not exist
   // - ALREADY_EXISTS:
   //   - the flavor version about to be created is already present
-  //   - a version with the exact same set of files already exists
   // - INVALID_ARGUMENT:
   //   - the version is invalid. versions cannot start or end with a space,
   //     underscore or slash. they cannot contain linux path operators (.. or ../ or /)
+  //   - a file path is invalid (absolute, or escaping the flavor root with ..)
   // - FAILED_PRECONDITION:
   //   - the provided version hash does not match with the provided file hashes
   rpc CreateFlavorVersion(CreateFlavorVersionRequest) returns (CreateFlavorVersionResponse);
 
   // BuildFlavorVersion will initiate the process for building a checkpoint image.
-  // there are multiple steps involved. Calling this endpoint multiple times will
-  // have no effect, if the build process is ongoing. Build status can be retrieved
-  // by getting the flavor version.
+  // There are multiple steps involved: first the uploaded changeset is verified
+  // against the file hashes of the flavor version and every file is stored in the
+  // blob store, then the image and the checkpoint are built. Calling this endpoint
+  // multiple times has no effect while the process is ongoing. Progress can be
+  // observed via the build status of the flavor version. If the verification fails,
+  // the build status is set to FILES_VERIFICATION_FAILED; the client should call
+  // GetFilesToUpload again, upload the missing files and call this endpoint again.
   //
   // Defined error codes:
+  // - NOT_FOUND:
+  //   - the targeted flavor version or its flavor does not exist
   // - FAILED_PRECONDITION:
-  //   - the flavor version files have not been uploaded yet.
+  //   - files of the flavor version are still missing and no changeset tarball
+  //     has been uploaded yet.
   rpc BuildFlavorVersion(BuildFlavorVersionRequest) returns (BuildFlavorVersionResponse);
 
   // GetUploadURL returns a presigned URL for use with a S3 client. If the expiry date
   // is reached the client can call this endpoint again and will receive a new valid
-  // URL. Calling this endpoint multiple without the expiry date being reached will
-  // lead to the same URL being returned.
+  // URL. Calling this endpoint multiple times without the expiry date being reached will
+  // lead to the same URL being returned. The URL is invalidated once the verification
+  // of the uploaded changeset has finished, regardless of its outcome.
   //
   // Defined error codes:
   // - NOT_FOUND:
   //   - the targeted flavor version does not exist
   // - ALREADY_EXISTS:
-  //   - the tarball has already been uploaded
+  //   - all files of the flavor version are already present in the blob store
+  // - FAILED_PRECONDITION:
+  //   - the uploaded changeset is currently being verified
   // - INVALID_ARGUMENT:
   //   - the provided flavor version id is invalid
   //   - the provided tarball hash is empty or does not meet the requirements.
   //     for more information about what requirements are expected see tarball_hash
   //     documentation of GetUploadURLRequest
+  //   - the tarball size exceeds the maximum allowed
   rpc GetUploadURL(GetUploadURLRequest) returns (GetUploadURLResponse);
+
+  // GetFilesToUpload returns the files of the flavor version whose content is not yet
+  // present in the blob store and therefore must be included in the changeset tarball.
+  // An empty list means nothing has to be uploaded and BuildFlavorVersion can be called.
+  //
+  // Defined error codes:
+  // - NOT_FOUND:
+  //   - the targeted flavor version or its flavor does not exist
+  // - INVALID_ARGUMENT:
+  //   - the provided flavor version id is invalid
+  rpc GetFilesToUpload(GetFilesToUploadRequest) returns (GetFilesToUploadResponse);
 
   rpc GetSupportedMinecraftVersions(GetSupportedMinecraftVersionsRequest) returns (GetSupportedMinecraftVersionsResponse);
 
@@ -293,9 +315,7 @@ message CreateFlavorVersionRequest {
 
 message CreateFlavorVersionResponse {
   FlavorVersion version = 1;
-  repeated FileHashes changed_files = 2;
-  repeated FileHashes removed_files = 3;
-  repeated FileHashes added_files = 4;
+  reserved 2, 3, 4;
 }
 
 message BuildFlavorVersionRequest {
@@ -312,6 +332,14 @@ message GetUploadURLRequest {
   string tarball_hash = 2 [(buf.validate.field).string.min_len = 1];
 
   uint64 tarball_size_bytes = 3;
+}
+
+message GetFilesToUploadRequest {
+  string flavor_version_id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetFilesToUploadResponse {
+  repeated FileHashes files = 1;
 }
 
 message GetUploadURLResponse {

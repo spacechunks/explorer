@@ -197,6 +197,53 @@ func (_c *MockChunkRepository_ChunkByFlavorID_Call) RunAndReturn(run func(contex
 	return _c
 }
 
+// ClearFlavorVersionPresignedURLData provides a mock function with given fields: ctx, flavorVersionID
+func (_m *MockChunkRepository) ClearFlavorVersionPresignedURLData(ctx context.Context, flavorVersionID string) error {
+	ret := _m.Called(ctx, flavorVersionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClearFlavorVersionPresignedURLData")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, flavorVersionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockChunkRepository_ClearFlavorVersionPresignedURLData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClearFlavorVersionPresignedURLData'
+type MockChunkRepository_ClearFlavorVersionPresignedURLData_Call struct {
+	*mock.Call
+}
+
+// ClearFlavorVersionPresignedURLData is a helper method to define mock.On call
+//   - ctx context.Context
+//   - flavorVersionID string
+func (_e *MockChunkRepository_Expecter) ClearFlavorVersionPresignedURLData(ctx interface{}, flavorVersionID interface{}) *MockChunkRepository_ClearFlavorVersionPresignedURLData_Call {
+	return &MockChunkRepository_ClearFlavorVersionPresignedURLData_Call{Call: _e.mock.On("ClearFlavorVersionPresignedURLData", ctx, flavorVersionID)}
+}
+
+func (_c *MockChunkRepository_ClearFlavorVersionPresignedURLData_Call) Run(run func(ctx context.Context, flavorVersionID string)) *MockChunkRepository_ClearFlavorVersionPresignedURLData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_ClearFlavorVersionPresignedURLData_Call) Return(_a0 error) *MockChunkRepository_ClearFlavorVersionPresignedURLData_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockChunkRepository_ClearFlavorVersionPresignedURLData_Call) RunAndReturn(run func(context.Context, string) error) *MockChunkRepository_ClearFlavorVersionPresignedURLData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateChunk provides a mock function with given fields: ctx, _a1
 func (_m *MockChunkRepository) CreateChunk(ctx context.Context, _a1 resource.Chunk) (resource.Chunk, error) {
 	ret := _m.Called(ctx, _a1)
@@ -371,6 +418,53 @@ func (_c *MockChunkRepository_CreateFlavorVersion_Call) RunAndReturn(run func(co
 	return _c
 }
 
+// DeleteBlobs provides a mock function with given fields: ctx, hashes
+func (_m *MockChunkRepository) DeleteBlobs(ctx context.Context, hashes []string) error {
+	ret := _m.Called(ctx, hashes)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteBlobs")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) error); ok {
+		r0 = rf(ctx, hashes)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockChunkRepository_DeleteBlobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteBlobs'
+type MockChunkRepository_DeleteBlobs_Call struct {
+	*mock.Call
+}
+
+// DeleteBlobs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - hashes []string
+func (_e *MockChunkRepository_Expecter) DeleteBlobs(ctx interface{}, hashes interface{}) *MockChunkRepository_DeleteBlobs_Call {
+	return &MockChunkRepository_DeleteBlobs_Call{Call: _e.mock.On("DeleteBlobs", ctx, hashes)}
+}
+
+func (_c *MockChunkRepository_DeleteBlobs_Call) Run(run func(ctx context.Context, hashes []string)) *MockChunkRepository_DeleteBlobs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_DeleteBlobs_Call) Return(_a0 error) *MockChunkRepository_DeleteBlobs_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockChunkRepository_DeleteBlobs_Call) RunAndReturn(run func(context.Context, []string) error) *MockChunkRepository_DeleteBlobs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteFlavor provides a mock function with given fields: ctx, id
 func (_m *MockChunkRepository) DeleteFlavor(ctx context.Context, id string) error {
 	ret := _m.Called(ctx, id)
@@ -414,6 +508,65 @@ func (_c *MockChunkRepository_DeleteFlavor_Call) Return(_a0 error) *MockChunkRep
 }
 
 func (_c *MockChunkRepository_DeleteFlavor_Call) RunAndReturn(run func(context.Context, string) error) *MockChunkRepository_DeleteFlavor_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ExistingBlobHashes provides a mock function with given fields: ctx, hashes
+func (_m *MockChunkRepository) ExistingBlobHashes(ctx context.Context, hashes []string) (map[string]struct{}, error) {
+	ret := _m.Called(ctx, hashes)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ExistingBlobHashes")
+	}
+
+	var r0 map[string]struct{}
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) (map[string]struct{}, error)); ok {
+		return rf(ctx, hashes)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) map[string]struct{}); ok {
+		r0 = rf(ctx, hashes)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]struct{})
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, hashes)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockChunkRepository_ExistingBlobHashes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExistingBlobHashes'
+type MockChunkRepository_ExistingBlobHashes_Call struct {
+	*mock.Call
+}
+
+// ExistingBlobHashes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - hashes []string
+func (_e *MockChunkRepository_Expecter) ExistingBlobHashes(ctx interface{}, hashes interface{}) *MockChunkRepository_ExistingBlobHashes_Call {
+	return &MockChunkRepository_ExistingBlobHashes_Call{Call: _e.mock.On("ExistingBlobHashes", ctx, hashes)}
+}
+
+func (_c *MockChunkRepository_ExistingBlobHashes_Call) Run(run func(ctx context.Context, hashes []string)) *MockChunkRepository_ExistingBlobHashes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_ExistingBlobHashes_Call) Return(_a0 map[string]struct{}, _a1 error) *MockChunkRepository_ExistingBlobHashes_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockChunkRepository_ExistingBlobHashes_Call) RunAndReturn(run func(context.Context, []string) (map[string]struct{}, error)) *MockChunkRepository_ExistingBlobHashes_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -876,6 +1029,53 @@ func (_c *MockChunkRepository_GetMinecraftVersionByVersion_Call) RunAndReturn(ru
 	return _c
 }
 
+// InsertBlobs provides a mock function with given fields: ctx, blobs
+func (_m *MockChunkRepository) InsertBlobs(ctx context.Context, blobs []resource.Blob) error {
+	ret := _m.Called(ctx, blobs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InsertBlobs")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []resource.Blob) error); ok {
+		r0 = rf(ctx, blobs)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockChunkRepository_InsertBlobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InsertBlobs'
+type MockChunkRepository_InsertBlobs_Call struct {
+	*mock.Call
+}
+
+// InsertBlobs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - blobs []resource.Blob
+func (_e *MockChunkRepository_Expecter) InsertBlobs(ctx interface{}, blobs interface{}) *MockChunkRepository_InsertBlobs_Call {
+	return &MockChunkRepository_InsertBlobs_Call{Call: _e.mock.On("InsertBlobs", ctx, blobs)}
+}
+
+func (_c *MockChunkRepository_InsertBlobs_Call) Run(run func(ctx context.Context, blobs []resource.Blob)) *MockChunkRepository_InsertBlobs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]resource.Blob))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_InsertBlobs_Call) Return(_a0 error) *MockChunkRepository_InsertBlobs_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockChunkRepository_InsertBlobs_Call) RunAndReturn(run func(context.Context, []resource.Blob) error) *MockChunkRepository_InsertBlobs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LatestFlavorVersion provides a mock function with given fields: ctx, flavorID
 func (_m *MockChunkRepository) LatestFlavorVersion(ctx context.Context, flavorID string) (resource.FlavorVersion, error) {
 	ret := _m.Called(ctx, flavorID)
@@ -1087,17 +1287,17 @@ func (_c *MockChunkRepository_MarkFlavorDeleted_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// MarkFlavorVersionFilesUploaded provides a mock function with given fields: ctx, flavorVersionID
-func (_m *MockChunkRepository) MarkFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string) error {
-	ret := _m.Called(ctx, flavorVersionID)
+// SetFlavorVersionFilesUploaded provides a mock function with given fields: ctx, flavorVersionID, uploaded
+func (_m *MockChunkRepository) SetFlavorVersionFilesUploaded(ctx context.Context, flavorVersionID string, uploaded bool) error {
+	ret := _m.Called(ctx, flavorVersionID, uploaded)
 
 	if len(ret) == 0 {
-		panic("no return value specified for MarkFlavorVersionFilesUploaded")
+		panic("no return value specified for SetFlavorVersionFilesUploaded")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, flavorVersionID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) error); ok {
+		r0 = rf(ctx, flavorVersionID, uploaded)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1105,31 +1305,32 @@ func (_m *MockChunkRepository) MarkFlavorVersionFilesUploaded(ctx context.Contex
 	return r0
 }
 
-// MockChunkRepository_MarkFlavorVersionFilesUploaded_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkFlavorVersionFilesUploaded'
-type MockChunkRepository_MarkFlavorVersionFilesUploaded_Call struct {
+// MockChunkRepository_SetFlavorVersionFilesUploaded_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetFlavorVersionFilesUploaded'
+type MockChunkRepository_SetFlavorVersionFilesUploaded_Call struct {
 	*mock.Call
 }
 
-// MarkFlavorVersionFilesUploaded is a helper method to define mock.On call
+// SetFlavorVersionFilesUploaded is a helper method to define mock.On call
 //   - ctx context.Context
 //   - flavorVersionID string
-func (_e *MockChunkRepository_Expecter) MarkFlavorVersionFilesUploaded(ctx interface{}, flavorVersionID interface{}) *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call {
-	return &MockChunkRepository_MarkFlavorVersionFilesUploaded_Call{Call: _e.mock.On("MarkFlavorVersionFilesUploaded", ctx, flavorVersionID)}
+//   - uploaded bool
+func (_e *MockChunkRepository_Expecter) SetFlavorVersionFilesUploaded(ctx interface{}, flavorVersionID interface{}, uploaded interface{}) *MockChunkRepository_SetFlavorVersionFilesUploaded_Call {
+	return &MockChunkRepository_SetFlavorVersionFilesUploaded_Call{Call: _e.mock.On("SetFlavorVersionFilesUploaded", ctx, flavorVersionID, uploaded)}
 }
 
-func (_c *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call) Run(run func(ctx context.Context, flavorVersionID string)) *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call {
+func (_c *MockChunkRepository_SetFlavorVersionFilesUploaded_Call) Run(run func(ctx context.Context, flavorVersionID string, uploaded bool)) *MockChunkRepository_SetFlavorVersionFilesUploaded_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(bool))
 	})
 	return _c
 }
 
-func (_c *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call) Return(_a0 error) *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call {
+func (_c *MockChunkRepository_SetFlavorVersionFilesUploaded_Call) Return(_a0 error) *MockChunkRepository_SetFlavorVersionFilesUploaded_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call) RunAndReturn(run func(context.Context, string) error) *MockChunkRepository_MarkFlavorVersionFilesUploaded_Call {
+func (_c *MockChunkRepository_SetFlavorVersionFilesUploaded_Call) RunAndReturn(run func(context.Context, string, bool) error) *MockChunkRepository_SetFlavorVersionFilesUploaded_Call {
 	_c.Call.Return(run)
 	return _c
 }

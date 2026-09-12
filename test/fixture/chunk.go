@@ -19,19 +19,15 @@
 package fixture
 
 import (
-	"fmt"
-	"hash"
 	"log"
 	"net/netip"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/cbergoon/merkletree"
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/resource"
-	"github.com/zeebo/xxh3"
 )
 
 const (
@@ -141,19 +137,12 @@ func FlavorVersion(mod ...func(v *resource.FlavorVersion)) resource.FlavorVersio
 	sorted := make([]file.Hash, len(version.FileHashes))
 	copy(sorted, version.FileHashes)
 
-	content := make([]merkletree.Content, 0, len(version.FileHashes))
-	for _, f := range version.FileHashes {
-		content = append(content, f)
-	}
-
-	tree, err := merkletree.NewTreeWithHashStrategy(content, func() hash.Hash {
-		return xxh3.New()
-	})
+	tree, err := file.HashTree(version.FileHashes)
 	if err != nil {
 		log.Fatalf("create merkle tree: %v", err)
 	}
 
-	version.Hash = fmt.Sprintf("%x", tree.MerkleRoot())
+	version.Hash = file.HashTreeRootString(tree)
 
 	// call twice in case we need to modify the hash
 	for _, mod := range mod {

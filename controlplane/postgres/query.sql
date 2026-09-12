@@ -84,20 +84,8 @@ UPDATE chunks SET deleted_at = now() WHERE id = $1;
 -- name: DeleteChunk :exec
 DELETE FROM chunks WHERE id = $1;
 
--- name: GetChunkByFlavorID :many
-SELECT
-    sqlc.embed(c),
-    sqlc.embed(fs),
-    sqlc.embed(v),
-    sqlc.embed(vf),
-    sqlc.embed(u)
-FROM flavors f
-    JOIN chunks c  ON c.id = f.chunk_id
-    JOIN flavors fs ON fs.chunk_id = c.id
-    LEFT JOIN flavor_versions v       ON v.flavor_id = fs.id
-    LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-    LEFT JOIN users u                 ON u.id = c.owner_id
-WHERE f.id = $1;
+-- name: ChunkIDByFlavorID :one
+SELECT chunk_id FROM flavors WHERE id = $1;
 
 /*
  * FLAVORS
@@ -149,8 +137,11 @@ VALUES
 -- name: FlavorVersionHashByID :one
 SELECT hash FROM flavor_versions WHERE id = $1;
 
--- name: MarkFlavorVersionFilesUploaded :exec
-UPDATE flavor_versions SET files_uploaded = TRUE WHERE id = $1;
+-- name: SetFlavorVersionFilesUploaded :exec
+UPDATE flavor_versions SET files_uploaded = $2 WHERE id = $1;
+
+-- name: ClearFlavorVersionPresignedURLData :exec
+UPDATE flavor_versions SET presigned_url = NULL, presigned_url_expiry_date = NULL WHERE id = $1;
 
 -- name: UpdateFlavorVersionBuildStatus :exec
 UPDATE flavor_versions SET build_status = $1 WHERE id = $2;
@@ -202,14 +193,17 @@ WHERE f.id = $1;
  * BLOB STORE
  */
 
--- name: BulkInsertBlobData :batchexec
-INSERT INTO blobs
-    (hash, data)
-VALUES ($1, $2)
-ON CONFLICT DO NOTHING;
+-- name: InsertBlobs :batchexec
+INSERT INTO cas_blobs
+    (hash, size_bytes)
+VALUES
+    ($1, $2) ON CONFLICT (hash) DO NOTHING;
 
--- name: BulkGetBlobData :batchmany
-SELECT * FROM blobs WHERE hash = $1;
+-- name: ExistingBlobHashes :many
+SELECT hash FROM cas_blobs WHERE hash = ANY(sqlc.arg('hashes')::varchar[]);
+
+-- name: DeleteBlobs :exec
+DELETE FROM cas_blobs WHERE hash = ANY(sqlc.arg('hashes')::varchar[]);
 
 /*
  * INSTANCES

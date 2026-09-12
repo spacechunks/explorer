@@ -60,7 +60,7 @@ func imageWorkerSetup(
 	c *resource.Chunk,
 	auth remote.Option,
 	changeSet []byte,
-) (*fixture.Postgres, string, name.Reference) {
+) (*fixture.Postgres, fixture.FakeS3, string, name.Reference) {
 	var (
 		pg               = fixture.NewPostgres()
 		registryEndpoint = fixture.RunRegistry(t)
@@ -81,23 +81,136 @@ func imageWorkerSetup(
 	err = pusher.Push(ctx, baseImgRef, imgtestdata.Image(t))
 	require.NoError(t, err)
 
-	fakes3.UploadObject(t, blob.ChangeSetKey(c.Flavors[0].Versions[0].ID), changeSet)
+	if changeSet != nil {
+		fakes3.UploadObject(t, blob.ChangeSetKey(c.Flavors[0].Versions[0].ID), changeSet)
+	}
 
-	return pg, registryEndpoint, baseImgRef
+	return pg, fakes3, registryEndpoint, baseImgRef
 }
 
-func TestImageWorkerCreatesImageWithNoMissingFiles(t *testing.T) {
+func insertVerifyFilesJob(
+	ctx context.Context,
+	pg *fixture.Postgres,
+	flavorVersionID string,
+	baseImgRef name.Reference,
+	endpoint string,
+) error {
+	return pg.DB.InsertJob(
+		ctx,
+		flavorVersionID,
+		string(resource.FlavorVersionBuildStatusFilesVerification),
+		job.VerifyFiles{
+			FlavorVersionID: flavorVersionID,
+			BaseImage:       baseImgRef.String(),
+			OCIRegistry:     endpoint,
+		},
+	)
+}
+
+// puts every file of the serverdata testdata into the blob store and returns their hashes.
+func seedBlobStore(t *testing.T, ctx context.Context) []string {
+	var (
+		store  = blob.NewS3Store(fixture.Bucket, fixture.NewS3Client(t, ctx), nil)
+		objs   = make([]blob.Object, 0)
+		hashes = make([]string, 0)
+	)
+
+	err := filepath.WalkDir("./testdata/serverdata", func(path string, d fs.DirEntry, _ error) error {
+		if d.IsDir() {
+			return nil
+		}
+
+		obj, err := blob.NewFromFile(path)
+		require.NoError(t, err)
+
+		h, err := obj.Hash()
+		require.NoError(t, err)
+
+		objs = append(objs, obj)
+		hashes = append(hashes, h)
+		return nil
+	})
+	require.NoError(t, err)
+
+	err = store.PutBlob(ctx, blob.CASKeyPrefix, objs)
+	require.NoError(t, err)
+
+	return hashes
+}
+
+func waitForBuildStatus(
+	t *testing.T,
+	ctx context.Context,
+	pg *fixture.Postgres,
+	flavorVersionID string,
+	status resource.FlavorVersionBuildStatus,
+) resource.FlavorVersion {
+	var (
+		timeoutCtx, cancel = context.WithTimeout(ctx, 20*time.Second)
+		ticker             = time.NewTicker(200 * time.Millisecond)
+	)
+
+	defer cancel()
+
+	for {
+		select {
+		case <-timeoutCtx.Done():
+			t.Fatalf("timeout reached waiting for build status %s", status)
+			return resource.FlavorVersion{}
+		case <-ticker.C:
+			version, err := pg.DB.FlavorVersionByID(ctx, flavorVersionID)
+			require.NoError(t, err)
+
+			if version.BuildStatus == status {
+				return version
+			}
+		}
+	}
+}
+
+func computeTestFileHash(t *testing.T) string {
+	f, err := os.Open("./testdata/testfile1.txt")
+	require.NoError(t, err)
+
+	defer f.Close()
+
+	hash, err := file.ComputeHashStr(f)
+	require.NoError(t, err)
+
+	return hash
+}
+
+// returns the distinct hashes, because files with the same
+// content only show up once in the blob store.
+func sortedHashes(fileHashes []file.Hash) []string {
+	seen := make(map[string]struct{}, len(fileHashes))
+	hashes := make([]string, 0, len(fileHashes))
+	for _, fh := range fileHashes {
+		if _, ok := seen[fh.Hash]; ok {
+			continue
+		}
+		seen[fh.Hash] = struct{}{}
+		hashes = append(hashes, fh.Hash)
+	}
+	sort.Strings(hashes)
+	return hashes
+}
+
+func TestImageWorkerCreatesImageFromBlobStore(t *testing.T) {
 	var (
 		ctx        = context.Background()
 		fileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
 		c          = ptr.Pointer(fixture.Chunk(func(tmp *resource.Chunk) {
 			tmp.Flavors[0].Versions[0].FileHashes = fileHashes
+			tmp.Flavors[0].Versions[0].FilesUploaded = true
 		}))
 	)
 
-	pg, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, testdata.FullChangeSetFile)
+	pg, _, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, nil)
 
 	flavorVersionID := c.Flavors[0].Versions[0].ID
+
+	seedBlobStore(t, ctx)
 
 	err := pg.DB.InsertJob(ctx, flavorVersionID, string(resource.FlavorVersionBuildStatusBuildImage), job.CreateImage{
 		FlavorVersionID: flavorVersionID,
@@ -109,63 +222,209 @@ func TestImageWorkerCreatesImageWithNoMissingFiles(t *testing.T) {
 	checkImage(t, ctx, auth, endpoint, flavorVersionID, fileHashes)
 }
 
-func TestImageWorkerCreatesImageWithMissingFilesDownloadedFromBlobStore(t *testing.T) {
+func TestImageWorkerRefusesUnverifiedFiles(t *testing.T) {
 	var (
 		ctx        = context.Background()
 		fileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
 		c          = ptr.Pointer(fixture.Chunk(func(tmp *resource.Chunk) {
-			f, err := os.Open("./testdata/testfile1.txt")
-			require.NoError(t, err)
-
-			defer f.Close()
-
-			hash, err := file.ComputeHashStr(f)
-			require.NoError(t, err)
-
-			fileHashes = append(fileHashes, file.Hash{
-				Path: "testfile1.txt",
-				Hash: hash,
-			})
 			tmp.Flavors[0].Versions[0].FileHashes = fileHashes
+			tmp.Flavors[0].Versions[0].FilesUploaded = false
 		}))
-		auth = remote.WithAuth(&image.Auth{
-			Username: fixture.OCIRegsitryUser,
-			Password: fixture.OCIRegistryPass,
-		})
 	)
 
-	pg, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, testdata.AddTestFileChangeSet)
+	pg, _, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, nil)
 
-	var (
-		flavorVersionID = c.Flavors[0].Versions[0].ID
-		store           = blob.NewS3Store(fixture.Bucket, fixture.NewS3Client(t, ctx), nil)
-		objs            = make([]blob.Object, 0)
-	)
+	flavorVersionID := c.Flavors[0].Versions[0].ID
 
-	err := filepath.WalkDir("./testdata/serverdata", func(path string, d fs.DirEntry, _ error) error {
-		if d.IsDir() {
-			return nil
-		}
+	seedBlobStore(t, ctx)
 
-		obj, err := blob.NewFromFile(path)
-		require.NoError(t, err)
-
-		objs = append(objs, obj)
-		return nil
-	})
-	require.NoError(t, err)
-
-	err = store.PutBlob(ctx, blob.CASKeyPrefix, objs)
-	require.NoError(t, err)
-
-	err = pg.DB.InsertJob(ctx, flavorVersionID, string(resource.FlavorVersionBuildStatusBuildImage), job.CreateImage{
+	err := pg.DB.InsertJob(ctx, flavorVersionID, string(resource.FlavorVersionBuildStatusBuildImage), job.CreateImage{
 		FlavorVersionID: flavorVersionID,
 		BaseImage:       baseImgRef.String(),
 		OCIRegistry:     endpoint,
 	})
 	require.NoError(t, err)
 
+	var (
+		timeoutCtx, cancel = context.WithTimeout(ctx, 20*time.Second)
+		ticker             = time.NewTicker(200 * time.Millisecond)
+	)
+
+	defer cancel()
+
+	for {
+		select {
+		case <-timeoutCtx.Done():
+			t.Fatal("timeout reached")
+			return
+		case <-ticker.C:
+			var errs string
+			err := pg.Pool.
+				QueryRow(ctx, `SELECT COALESCE(errors::text, '') FROM river_job WHERE kind = $1`, job.CreateImage{}.Kind()).
+				Scan(&errs)
+			require.NoError(t, err)
+
+			if !strings.Contains(errs, "have not been verified") {
+				continue
+			}
+
+			return
+		}
+	}
+}
+
+func TestVerifyFilesWorkerIngestsChangeSetAndBuildsImage(t *testing.T) {
+	var (
+		ctx        = context.Background()
+		fileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
+		c          = ptr.Pointer(fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Flavors[0].Versions[0].FileHashes = fileHashes
+		}))
+	)
+
+	pg, fakes3, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, testdata.FullChangeSetFile)
+
+	flavorVersionID := c.Flavors[0].Versions[0].ID
+
+	err := insertVerifyFilesJob(ctx, pg, flavorVersionID, baseImgRef, endpoint)
+	require.NoError(t, err)
+
+	// the image only gets built if the verify worker chained the image job
 	checkImage(t, ctx, auth, endpoint, flavorVersionID, fileHashes)
+
+	version, err := pg.DB.FlavorVersionByID(ctx, flavorVersionID)
+	require.NoError(t, err)
+	require.True(t, version.FilesUploaded)
+	require.Nil(t, version.PresignedURLExpiryDate)
+
+	require.Equal(t, sortedHashes(fileHashes), pg.BlobHashes(t))
+
+	for _, fh := range fileHashes {
+		fakes3.RequireObjectExists(t, blob.CASKeyPrefix+"/"+fh.Hash)
+	}
+
+	require.False(t, fakes3.ObjectExists(t, blob.ChangeSetKey(flavorVersionID)), "tarball should be gone")
+}
+
+func TestVerifyFilesWorkerFailsWhenFilesAreMissing(t *testing.T) {
+	var (
+		ctx          = context.Background()
+		fileHashes   = testdata.ComputeFileHashes(t, "./testdata/serverdata")
+		testFileHash = computeTestFileHash(t)
+		c            = ptr.Pointer(fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Flavors[0].Versions[0].FileHashes = append(fileHashes, file.Hash{
+				Path: "testfile1.txt",
+				Hash: testFileHash,
+			})
+		}))
+	)
+
+	// the changeset only contains testfile1.txt, everything else is missing
+	pg, fakes3, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, testdata.AddTestFileChangeSet)
+
+	flavorVersionID := c.Flavors[0].Versions[0].ID
+
+	err := pg.DB.UpdateFlavorVersionPresignedURLData(
+		ctx,
+		flavorVersionID,
+		time.Now().Add(1*time.Hour),
+		"http://example.com",
+	)
+	require.NoError(t, err)
+
+	err = insertVerifyFilesJob(ctx, pg, flavorVersionID, baseImgRef, endpoint)
+	require.NoError(t, err)
+
+	version := waitForBuildStatus(t, ctx, pg, flavorVersionID, resource.FlavorVersionBuildStatusFilesVerificationFailed)
+
+	require.False(t, version.FilesUploaded)
+	require.Nil(t, version.PresignedURLExpiryDate, "presigned url should be cleared")
+
+	// what was in the tarball is fine and has been ingested, the rest is missing
+	require.Equal(t, []string{testFileHash}, pg.BlobHashes(t))
+	fakes3.RequireObjectExists(t, blob.CASKeyPrefix+"/"+testFileHash)
+
+	require.True(t, fakes3.ObjectExists(t, blob.ChangeSetKey(flavorVersionID)), "tarball should be kept")
+}
+
+func TestVerifyFilesWorkerRejectsUndeclaredFiles(t *testing.T) {
+	var (
+		ctx          = context.Background()
+		fileHashes   = testdata.ComputeFileHashes(t, "./testdata/serverdata")
+		testFileHash = computeTestFileHash(t)
+		c            = ptr.Pointer(fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Flavors[0].Versions[0].FileHashes = fileHashes
+		}))
+	)
+
+	// testfile1.txt is not part of the declared files
+	pg, fakes3, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, testdata.AddTestFileChangeSet)
+
+	flavorVersionID := c.Flavors[0].Versions[0].ID
+
+	err := insertVerifyFilesJob(ctx, pg, flavorVersionID, baseImgRef, endpoint)
+	require.NoError(t, err)
+
+	version := waitForBuildStatus(t, ctx, pg, flavorVersionID, resource.FlavorVersionBuildStatusFilesVerificationFailed)
+
+	require.False(t, version.FilesUploaded)
+
+	// nothing of a bad changeset must end up in the blob store
+	require.Empty(t, pg.BlobHashes(t))
+	require.False(t, fakes3.ObjectExists(t, blob.CASKeyPrefix+"/"+testFileHash))
+}
+
+func TestVerifyFilesWorkerSucceedsWithoutChangeSet(t *testing.T) {
+	var (
+		ctx        = context.Background()
+		fileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
+		c          = ptr.Pointer(fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Flavors[0].Versions[0].FileHashes = fileHashes
+		}))
+	)
+
+	pg, _, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, nil)
+
+	flavorVersionID := c.Flavors[0].Versions[0].ID
+
+	// everything is already in the blob store, e.g. because a previous
+	// version consisted of the exact same files.
+	hashes := seedBlobStore(t, ctx)
+	pg.InsertBlobs(t, hashes...)
+
+	err := insertVerifyFilesJob(ctx, pg, flavorVersionID, baseImgRef, endpoint)
+	require.NoError(t, err)
+
+	checkImage(t, ctx, auth, endpoint, flavorVersionID, fileHashes)
+
+	version, err := pg.DB.FlavorVersionByID(ctx, flavorVersionID)
+	require.NoError(t, err)
+	require.True(t, version.FilesUploaded)
+}
+
+func TestVerifyFilesWorkerRemovesStaleBlobRows(t *testing.T) {
+	var (
+		ctx        = context.Background()
+		fileHashes = testdata.ComputeFileHashes(t, "./testdata/serverdata")
+		c          = ptr.Pointer(fixture.Chunk(func(tmp *resource.Chunk) {
+			tmp.Flavors[0].Versions[0].FileHashes = fileHashes
+		}))
+	)
+
+	pg, _, endpoint, baseImgRef := imageWorkerSetup(t, ctx, c, auth, nil)
+
+	flavorVersionID := c.Flavors[0].Versions[0].ID
+
+	// the index claims the files exist, but s3 has nothing
+	pg.InsertBlobs(t, sortedHashes(fileHashes)...)
+
+	err := insertVerifyFilesJob(ctx, pg, flavorVersionID, baseImgRef, endpoint)
+	require.NoError(t, err)
+
+	version := waitForBuildStatus(t, ctx, pg, flavorVersionID, resource.FlavorVersionBuildStatusFilesVerificationFailed)
+
+	require.False(t, version.FilesUploaded)
+	require.Empty(t, pg.BlobHashes(t), "stale rows should have been removed")
 }
 
 func TestResourcePackWorkerRunsSuccessfully(t *testing.T) {

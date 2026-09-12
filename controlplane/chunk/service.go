@@ -27,6 +27,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/blob"
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/user"
+	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/resource"
 )
 
@@ -40,7 +41,7 @@ type Service interface {
 		ctx context.Context,
 		flavorID string,
 		version resource.FlavorVersion,
-	) (resource.FlavorVersion, resource.FlavorVersionDiff, error)
+	) (resource.FlavorVersion, error)
 	BuildFlavorVersion(ctx context.Context, versionID string) error
 	GetUploadURL(
 		ctx context.Context,
@@ -48,6 +49,7 @@ type Service interface {
 		tarballHash string,
 		tarballSizeBytes uint64,
 	) (string, error)
+	GetFilesToUpload(ctx context.Context, flavorVersionID string) ([]file.Hash, error)
 	GetSupportedMinecraftVersions(ctx context.Context) ([]string, error)
 	UpdateThumbnail(ctx context.Context, chunkID string, imageData []byte) error
 	DeleteFlavor(ctx context.Context, id string) error

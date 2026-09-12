@@ -230,6 +230,15 @@ func newPlan(logger *slog.Logger, cfg config.Config, supportedVersions []string,
 		// - are we already in a building the version? yes -> just watch
 		// - has the build failed? yes -> retry
 
+		// verification is running on the server, nothing to do but watch
+		if remoteVersion.BuildStatus == chunkv1alpha1.BuildStatus_FILES_VERIFICATION {
+			p.actionables = append(p.actionables, actionable{
+				flavor: local,
+				phase:  buildPhaseBuildComplete,
+			})
+			continue
+		}
+
 		if !remoteVersion.FilesUploaded {
 			if local.hash != remoteVersion.Hash {
 				p.conflicts = append(p.conflicts, versionMismatchConflict{
