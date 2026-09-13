@@ -1149,7 +1149,6 @@ func TestCreateFlavorVersion(t *testing.T) {
 					re.Version.Id,
 				)
 				require.NoError(t, err)
-
 			}
 
 			version := codec.FlavorVersionToTransport(tt.newVersion)
