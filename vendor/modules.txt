@@ -23,8 +23,8 @@ github.com/Microsoft/go-winio/internal/fs
 github.com/Microsoft/go-winio/internal/socket
 github.com/Microsoft/go-winio/internal/stringbuffer
 github.com/Microsoft/go-winio/pkg/guid
-# github.com/Oudwins/zog v0.22.2
-## explicit; go 1.21.0
+# github.com/Oudwins/zog v0.23.0
+## explicit; go 1.23.0
 github.com/Oudwins/zog
 github.com/Oudwins/zog/conf
 github.com/Oudwins/zog/i18n/en

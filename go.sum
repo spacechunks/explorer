@@ -20,6 +20,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/Oudwins/zog v0.22.2 h1:neSFVFsn7cd4azB9+2hK1sn1By5UZGc8o28vNWJhUIE=
 github.com/Oudwins/zog v0.22.2/go.mod h1:c4ADJ2zNkJp37ZViNy1o3ZZoeMvO7UQVO7BaPtRoocg=
+github.com/Oudwins/zog v0.23.0 h1:aNjOcy7mE5NWOQVR9sFO1L0YCKfEjWMlaUTNquKGRQY=
+github.com/Oudwins/zog v0.23.0/go.mod h1:yznncrIHC5tQeOui28FMz67LEGZV3nAoCdWL5t8QsNM=
 github.com/amacneil/dbmate/v2 v2.35.1 h1:8R47oxFyo0tuP90Qh6Z/1aePOUuHctZqww/w0pFTR1M=
 github.com/amacneil/dbmate/v2 v2.35.1/go.mod h1:hs95L4ZDoQ51SCmvlEchCmA09G9ftPIL5Rrmc0yVTxs=
 github.com/antlr4-go/antlr/v4 v4.13.1 h1:SqQKkuVZ+zWkMMNkjy5FZe5mr5WURWnlpmOuzYWrPrQ=

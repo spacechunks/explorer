@@ -13,7 +13,7 @@ type ZogSchema interface {
 	validate(ctx *p.SchemaCtx)
 	getType() zconst.ZogType
 	setCoercer(c CoercerFunc)
-	toZSS() *zss.ZSSSchema
+	toZSS(*ZSSSerializeCtx) *zss.ZSSSchema
 }
 
 // This is a common interface for all complex schemas (i.e structs, slices, pointers...)
@@ -57,7 +57,8 @@ func primitiveParsing[T p.ZogPrimitive](ctx *p.SchemaCtx, processors []p.ZProces
 
 	destPtr, ok := ctx.ValPtr.(*T)
 	if !ok {
-		p.Panicf(p.PanicTypeCast, ctx.String(), ctx.DType, ctx.ValPtr)
+		ctx.Errors.Add(ctx.IssueFromInvalidType("pointer matching primitive schema type", ctx.ValPtr, "parsing a primitive schema"))
+		return
 	}
 
 	// 2. cast data to string & handle default/required
@@ -114,7 +115,10 @@ func primitiveValidation[T p.ZogPrimitive](ctx *p.SchemaCtx, processors []p.ZPro
 
 	valPtr, ok := ctx.ValPtr.(*T)
 	if !ok {
-		p.Panicf(p.PanicTypeCast, ctx.String(), ctx.DType, ctx.ValPtr)
+		// We have to go directly to the exec context as that is what formats. We cannot use ctx because it will try to catch the issue and this is an uncatchable issue
+		// since we cannot set the value as its not of type *T
+		ctx.ExecCtx.AddIssue(ctx.IssueFromInvalidType("pointer matching primitive schema type", ctx.ValPtr, "validating a primitive schema"))
+		return
 	}
 
 	// 2. cast data to string & handle default/required

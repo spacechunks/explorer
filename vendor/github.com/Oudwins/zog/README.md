@@ -35,6 +35,7 @@ Killer Features:
   - **zhttp**: parse http forms & query params
   - **zjson**: parse json
   - **i18n**: Opinionated solution to good i18n zog errors
+- **Agent skill**: So you can write as little boilerplate as possible yourself.
 
 > **API Stability:**
 >
@@ -48,11 +49,19 @@ Killer Features:
 
 Or don't, below is the quickstart guide
 
+
+#### **Optional: Install the AI agent skill**
+
+Zog includes an agent skill with usage guidance, common mistakes, and best practices. 
+Install it via `npx skills add https://github.com/Oudwins/zog` or by copying it from the skills directory
+
+
 #### **1 Install**
 
 ```bash
 go get github.com/Oudwins/zog
 ```
+
 
 #### **2 Create a user schema and its struct**
 

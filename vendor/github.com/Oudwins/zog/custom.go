@@ -51,7 +51,10 @@ func (c *Custom[T]) process(ctx *p.SchemaCtx) {
 	}
 	ptr, ok := ctx.ValPtr.(*T)
 	if !ok {
-		p.Panicf(p.PanicTypeCast, ctx.String(), ctx.DType, ctx.ValPtr)
+		// We have to go directly to the exec context as that is what formats. We cannot use ctx because it will try to catch the issue and this is an uncatchable issue
+		// since we cannot set the value as its not of type *T
+		ctx.ExecCtx.AddIssue(ctx.IssueFromInvalidType("pointer matching custom schema type", ctx.ValPtr, "parsing a custom schema"))
+		return
 	}
 	*ptr = d
 
@@ -79,7 +82,10 @@ func (c *Custom[T]) validate(ctx *p.SchemaCtx) {
 	ctx.Processor = &c.test
 	ptr, ok := ctx.ValPtr.(*T)
 	if !ok {
-		p.Panicf(p.PanicTypeCast, ctx.String(), ctx.DType, ctx.ValPtr)
+		// We have to go directly to the exec context as that is what formats. We cannot use ctx because it will try to catch the issue and this is an uncatchable issue
+		// since we cannot set the value as its not of type *T
+		ctx.ExecCtx.AddIssue(ctx.IssueFromInvalidType("pointer matching custom schema type", ctx.ValPtr, "validating a custom schema"))
+		return
 	}
 	c.test.Func(ptr, ctx)
 }
@@ -98,7 +104,7 @@ type EXPERIMENTAL_PUBLIC_ZOG_SCHEMA interface {
 	Validate(ctx *p.SchemaCtx)
 	GetType() zconst.ZogType
 	SetCoercer(c CoercerFunc)
-	ToZSS() *zss.ZSSSchema
+	ToZSS(ctx *ZSSSerializeCtx) *zss.ZSSSchema
 }
 
 // Experimental API
@@ -129,6 +135,6 @@ func (c *CustomSchema) setCoercer(coercer CoercerFunc) {
 	c.schema.SetCoercer(coercer)
 }
 
-func (c *CustomSchema) toZSS() *zss.ZSSSchema {
-	return c.schema.ToZSS()
+func (c *CustomSchema) toZSS(ctx *ZSSSerializeCtx) *zss.ZSSSchema {
+	return c.schema.ToZSS(ctx)
 }
