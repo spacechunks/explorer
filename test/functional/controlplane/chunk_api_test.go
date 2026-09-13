@@ -1104,10 +1104,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 		{
 			name:        "creating flavor version where the previous one has its files not uploaded fails",
 			prevVersion: new(fixture.FlavorVersion()),
-			newVersion:  fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 			}),
-			err:         apierrs.ErrPreviousFilesNotUploaded.GRPCStatus().Err(),
+			err: apierrs.ErrPreviousFilesNotUploaded.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
