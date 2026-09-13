@@ -853,6 +853,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 		return version
 	}
 
+	prevVersionFilesUploaded := fixture.FlavorVersion(func(tmp *resource.FlavorVersion) {
+		tmp.FilesUploaded = true
+	})
+
 	tests := []struct {
 		name            string
 		prevVersion     *resource.FlavorVersion
@@ -873,7 +877,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "create second version with changed files",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
@@ -915,7 +919,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:            "cleans paths",
-			prevVersion:     new(fixture.FlavorVersion()),
+			prevVersion:     new(prevVersionFilesUploaded),
 			newVersion:      uncleanPathVersion(),
 			expectedVersion: new(cleanedPathVersion()),
 			diff: resource.FlavorVersionDiff{
@@ -941,7 +945,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "invalid paths",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
@@ -976,13 +980,13 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version already exists",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion:  fixture.FlavorVersion(),
 			err:         apierrs.ErrFlavorVersionExists.GRPCStatus().Err(),
 		},
 		{
 			name:        "version hash mismatch",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.Hash = "wrong-hash"
@@ -991,7 +995,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "unsupported minecraft version",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.MinecraftVersion = "abcdef"
@@ -1000,7 +1004,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version starting with space does not work",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = " hello"
 			}),
@@ -1009,7 +1013,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version starting with .. does not work",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "..hello"
 			}),
@@ -1018,7 +1022,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version starting with ../ does not work",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "../hello"
 			}),
@@ -1027,7 +1031,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version starting with ... does not work",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "...hello"
 			}),
@@ -1036,7 +1040,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version ending with space does not work",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "hello "
 			}),
@@ -1045,7 +1049,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version ending with .. does not work",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "hello.."
 			}),
@@ -1054,7 +1058,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version ending with /.. does not work",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "hello/.."
 			}),
@@ -1063,7 +1067,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version containing /../ does not work",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "hello/../world"
 			}),
@@ -1072,7 +1076,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version containing / does not work",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "hello/world"
 			}),
@@ -1081,7 +1085,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "minPlayers has to be greater than 0",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.MinPlayers = 0
 			}),
@@ -1090,12 +1094,20 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "maxPlayers has to be greater than 0",
-			prevVersion: new(fixture.FlavorVersion()),
+			prevVersion: new(prevVersionFilesUploaded),
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.MaxPlayers = 0
 			}),
 			errCode:        codes.InvalidArgument,
 			errMsgContains: "maxPlayers: must be greater than 0",
+		},
+		{
+			name:        "creating flavor version where the previous one has its files not uploaded fails",
+			prevVersion: new(fixture.FlavorVersion()),
+			newVersion:  fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+				v.Version = "v2"
+			}),
+			err:         apierrs.ErrPreviousFilesNotUploaded.GRPCStatus().Err(),
 		},
 	}
 	for _, tt := range tests {
@@ -1119,7 +1131,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 			client := cp.ChunkClient(t)
 
 			if tt.prevVersion != nil {
-				_, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
+				re, err := client.CreateFlavorVersion(ctx, &chunkv1alpha1.CreateFlavorVersionRequest{
 					FlavorId:         c.Flavors[0].ID,
 					Version:          tt.prevVersion.Version,
 					Hash:             tt.prevVersion.Hash,
@@ -1129,6 +1141,15 @@ func TestCreateFlavorVersion(t *testing.T) {
 					MaxPlayers:       tt.prevVersion.MaxPlayers,
 				})
 				require.NoError(t, err)
+
+				_, err = cp.Postgres.Pool.Exec(
+					ctx,
+					`UPDATE flavor_versions SET files_uploaded = $1 WHERE id = $2`,
+					tt.prevVersion.FilesUploaded,
+					re.Version.Id,
+				)
+				require.NoError(t, err)
+
 			}
 
 			version := codec.FlavorVersionToTransport(tt.newVersion)

@@ -5,8 +5,10 @@ package mock
 import (
 	context "context"
 
-	resource "github.com/spacechunks/explorer/internal/resource"
+	file "github.com/spacechunks/explorer/internal/file"
 	mock "github.com/stretchr/testify/mock"
+
+	resource "github.com/spacechunks/explorer/internal/resource"
 
 	time "time"
 )
@@ -22,6 +24,54 @@ type MockChunkRepository_Expecter struct {
 
 func (_m *MockChunkRepository) EXPECT() *MockChunkRepository_Expecter {
 	return &MockChunkRepository_Expecter{mock: &_m.Mock}
+}
+
+// AddFlavorVersionFileHashes provides a mock function with given fields: ctx, flavorVersionID, hashes
+func (_m *MockChunkRepository) AddFlavorVersionFileHashes(ctx context.Context, flavorVersionID string, hashes []file.Hash) error {
+	ret := _m.Called(ctx, flavorVersionID, hashes)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddFlavorVersionFileHashes")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, []file.Hash) error); ok {
+		r0 = rf(ctx, flavorVersionID, hashes)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockChunkRepository_AddFlavorVersionFileHashes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddFlavorVersionFileHashes'
+type MockChunkRepository_AddFlavorVersionFileHashes_Call struct {
+	*mock.Call
+}
+
+// AddFlavorVersionFileHashes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - flavorVersionID string
+//   - hashes []file.Hash
+func (_e *MockChunkRepository_Expecter) AddFlavorVersionFileHashes(ctx interface{}, flavorVersionID interface{}, hashes interface{}) *MockChunkRepository_AddFlavorVersionFileHashes_Call {
+	return &MockChunkRepository_AddFlavorVersionFileHashes_Call{Call: _e.mock.On("AddFlavorVersionFileHashes", ctx, flavorVersionID, hashes)}
+}
+
+func (_c *MockChunkRepository_AddFlavorVersionFileHashes_Call) Run(run func(ctx context.Context, flavorVersionID string, hashes []file.Hash)) *MockChunkRepository_AddFlavorVersionFileHashes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].([]file.Hash))
+	})
+	return _c
+}
+
+func (_c *MockChunkRepository_AddFlavorVersionFileHashes_Call) Return(_a0 error) *MockChunkRepository_AddFlavorVersionFileHashes_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockChunkRepository_AddFlavorVersionFileHashes_Call) RunAndReturn(run func(context.Context, string, []file.Hash) error) *MockChunkRepository_AddFlavorVersionFileHashes_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // AllChunkThumbnailHashes provides a mock function with given fields: ctx

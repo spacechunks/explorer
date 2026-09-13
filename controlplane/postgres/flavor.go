@@ -120,7 +120,7 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (resourc
 		latest, err := q.LatestFlavorVersionByFlavorID(ctx, flavorID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return nil
+				return apierrs.ErrNotFound
 			}
 			return fmt.Errorf("get flavor version: %w", err)
 		}
@@ -143,13 +143,14 @@ func (db *DB) LatestFlavorVersion(ctx context.Context, flavorID string) (resourc
 		})
 
 		ret = resource.FlavorVersion{
-			ID:         latest.ID,
-			Version:    latest.Version,
-			Hash:       latest.Hash,
-			FileHashes: hashes,
-			CreatedAt:  latest.CreatedAt,
-			MinPlayers: uint32(latest.MinPlayers),
-			MaxPlayers: uint32(latest.MaxPlayers),
+			ID:            latest.ID,
+			Version:       latest.Version,
+			Hash:          latest.Hash,
+			FileHashes:    hashes,
+			CreatedAt:     latest.CreatedAt,
+			MinPlayers:    uint32(latest.MinPlayers),
+			MaxPlayers:    uint32(latest.MaxPlayers),
+			FilesUploaded: latest.FilesUploaded,
 		}
 
 		return nil
@@ -191,6 +192,10 @@ func (db *DB) CreateFlavorVersion(
 
 		if err := q.CreateFlavorVersion(ctx, createParams); err != nil {
 			return fmt.Errorf("create flavor version: %w", err)
+		}
+
+		if len(version.FileHashes) == 0 {
+			return nil
 		}
 
 		dbHashes := make([]query.BulkInsertFlavorFileHashesParams, 0, len(version.FileHashes))
@@ -469,6 +474,25 @@ func (db *DB) InsertJob(ctx context.Context, flavorVersionID string, status stri
 		}); err != nil {
 			return fmt.Errorf("insert job: %w", err)
 		}
+		return nil
+	})
+}
+
+func (db *DB) AddFlavorVersionFileHashes(ctx context.Context, flavorVersionID string, hashes []file.Hash) error {
+	return db.do(ctx, func(q *query.Queries) error {
+		dbHashes := make([]query.BulkInsertFlavorFileHashesParams, 0, len(hashes))
+		for _, f := range hashes {
+			dbHashes = append(dbHashes, query.BulkInsertFlavorFileHashesParams{
+				FlavorVersionID: flavorVersionID,
+				FileHash:        f.Hash,
+				FilePath:        f.Path,
+			})
+		}
+
+		if err := db.bulkExecAndClose(q.BulkInsertFlavorFileHashes(ctx, dbHashes)); err != nil {
+			return fmt.Errorf("bulk insert flavor files: %w", err)
+		}
+
 		return nil
 	})
 }

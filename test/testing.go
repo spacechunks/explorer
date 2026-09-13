@@ -19,8 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package test
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"crypto/sha1"
@@ -29,6 +31,7 @@ import (
 	"net"
 	"net/url"
 	"slices"
+	"sort"
 	"testing"
 	"time"
 
@@ -103,4 +106,45 @@ func MustParseURL(t *testing.T, s string) *url.URL {
 	u, err := url.Parse(s)
 	require.NoError(t, err)
 	return u
+}
+
+// CreateTarGz builds an in-memory tar.gz archive from a map of
+// archive paths to file contents. Keys are written in sorted order so the
+// resulting bytes are deterministic across runs (Go map iteration is not).
+func CreateTarGz(t *testing.T, files map[string]string) []byte {
+	t.Helper()
+
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+
+	for _, name := range names {
+		content := files[name]
+		hdr := &tar.Header{
+			Name:     name,
+			Mode:     00644,
+			Size:     int64(len(content)),
+			Typeflag: tar.TypeReg,
+		}
+
+		err := tw.WriteHeader(hdr)
+		require.NoError(t, err)
+
+		_, err = tw.Write([]byte(content))
+		require.NoError(t, err)
+	}
+
+	err := tw.Close()
+	require.NoError(t, err)
+
+	err = gz.Close()
+	require.NoError(t, err)
+
+	return buf.Bytes()
 }
