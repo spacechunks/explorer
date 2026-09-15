@@ -43,7 +43,7 @@ type Ctx interface {
 	HasErrored() bool
 }
 
-func NewExecCtx(errs ZogIssues, fmter IssueFmtFunc) *ExecCtx {
+func NewExecCtx(errs *ErrsList, fmter IssueFmtFunc) *ExecCtx {
 	c := ExecCtxPool.Get().(*ExecCtx)
 	c.Fmter = fmter
 	c.Errors = errs
@@ -55,7 +55,7 @@ func NewExecCtx(errs ZogIssues, fmter IssueFmtFunc) *ExecCtx {
 
 type ExecCtx struct {
 	Fmter  IssueFmtFunc
-	Errors ZogIssues
+	Errors *ErrsList
 	m      map[string]any
 }
 
@@ -165,6 +165,14 @@ func (c *SchemaCtx) Issue() *ZogIssue {
 	// e.Dtype = c.DType
 	// e.Value = c.Data
 	return NewZogIssue().SetPath(c.Path.ToListClone()).SetDType(c.DType).SetValue(c.Data)
+}
+
+func (c *SchemaCtx) IssueFromInvalidType(expected string, received any, operation string) *ZogIssue {
+	return c.Issue().SetCode(zconst.IssueCodeInvalidType).SetError(zconst.ErrorInvalidTypeMessage(expected, received, c.Path.String(), c.DType, c.Data, operation))
+}
+
+func (c *SchemaCtx) IssueFromMissingStructField(fieldName string) *ZogIssue {
+	return c.Issue().SetCode(zconst.IssueCodeMissingField).SetError(zconst.ErrorMissingStructField(fieldName, c.Path.String(), c.DType, c.Data))
 }
 
 // Please don't depend on this method it may change

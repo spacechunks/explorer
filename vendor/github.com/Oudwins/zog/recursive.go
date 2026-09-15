@@ -31,7 +31,9 @@ func (l *lazySchema) validate(ctx *p.SchemaCtx) {
 }
 func (l *lazySchema) getType() zconst.ZogType  { return l.get().getType() }
 func (l *lazySchema) setCoercer(c CoercerFunc) { l.get().setCoercer(c) }
-func (l *lazySchema) toZSS() *zss.ZSSSchema    { return l.get().toZSS() }
+func (l *lazySchema) toZSS(ctx *ZSSSerializeCtx) *zss.ZSSSchema {
+	return ctx.refFor(l.get().(ZSSSerializable), ctx.currentType)
+}
 
 func lazy(fn func() ZogSchema) *lazySchema {
 	return &lazySchema{fn: fn}

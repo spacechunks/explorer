@@ -1,13 +1,26 @@
 package zsscore // Zog Schema Specification
 
-import "github.com/Oudwins/zog/zconst" // TODO make zog schemas for all of these to validate them!
+import (
+	"strconv"
+
+	"github.com/Oudwins/zog/zconst"
+)
+
+func ZSSRefFromKey(key int) string {
+	return "#/$defs/" + ZSSDefKeyFromKey(key)
+}
+
+func ZSSDefKeyFromKey(key int) string {
+	return "schema" + strconv.Itoa(key)
+}
 
 type ZSSDocument struct {
-	Version ZSSVersion `json:"$schema"` // URL to ZSS Json Schema file(e.g., "https://zog.dev/zss/0.0.1/schema.json")
-	Root    *ZSSSchema `json:"root"`
+	URI  ZSSSchemaVersion      `json:"$schema"` // URL to ZSS Json Schema file(e.g., "https://zog.dev/zss/0.0.1/schema.json")
+	Root *ZSSSchema            `json:"root"`
+	Defs map[string]*ZSSSchema `json:"$defs,omitempty"`
 }
 type ZSSProcessor struct {
-	Kind        zconst.ZogProcessor `json:"kind"` // "transform", "validator"
+	Kind        zconst.ZogProcessor `json:"kind"` // "test", "transform"
 	Test        *ZSSTest            `json:"test"`
 	Transformer *ZSSTransformer     `json:"transformer"`
 }
@@ -29,26 +42,29 @@ type ZSSGoType struct {
 	Display string `json:"display"` // Full type string (e.g., "*mypkg.User", "[]string")
 }
 
-type ZSSSchemaChildKind = string
+type ZSSFieldMeta struct {
+	Tags string `json:"tags,omitempty"`
+}
 
-const (
-	ZSSSchemaChildKindShape  ZSSSchemaChildKind = "shape"
-	ZSSSchemaChildKindSchema ZSSSchemaChildKind = "schema"
-)
-
-type ZSSSchemaChild struct {
-	Kind   ZSSSchemaChildKind   `json:"kind"` // shape or schema
-	Schema *ZSSSchema           `json:"schema,omitempty"`
-	Shape  map[string]ZSSSchema `json:"shape,omitempty"`
+type ZSSExtension struct {
+	URI     string `json:"uri"`
+	Content any    `json:"content,omitempty"`
 }
 
 type ZSSSchema struct {
-	Kind         string           `json:"kind"`              // "string", "number", "bool", "time", "slice", "struct", "ptr"
-	GoTypes      []ZSSGoType      `json:"goTypes,omitempty"` // Type metadata (only if ZSS Exhaustive Metadata is enabled)
-	Format       *string          `json:"format"`            // Used for time.Time schemas only right now. (Only if ZSS Exhaustive Metadata is enabled)
-	Processors   []ZSSProcessor   `json:"processors"`
-	Childs       []ZSSSchemaChild `json:"childs"`
-	Required     *ZSSTest         `json:"required"`
-	DefaultValue any              `json:"defaultValue"`
-	CatchValue   any              `json:"catchValue"`
+	Ref          *string                 `json:"$ref,omitempty"`
+	Kind         zconst.ZogType          `json:"kind,omitempty"` // one of the first party ZogTypes or a custom one with an extension
+	Extension    *ZSSExtension           `json:"extension,omitempty"`
+	GoTypes      []ZSSGoType             `json:"goTypes,omitempty"` // Type metadata
+	Format       *string                 `json:"format,omitempty"`  // Used for time.Time schemas only right now. (Only if ZSS Exhaustive Metadata is enabled)
+	Processors   []ZSSProcessor          `json:"processors,omitempty"`
+	Fields       map[string]*ZSSSchema   `json:"fields,omitempty"`    // struct only
+	FieldMeta    map[string]ZSSFieldMeta `json:"fieldMeta,omitempty"` // struct only
+	Element      *ZSSSchema              `json:"element,omitempty"`   // ptr, slice, preprocess, boxed
+	Key          *ZSSSchema              `json:"key,omitempty"`       // map only
+	Value        *ZSSSchema              `json:"value,omitempty"`     // map only
+	Children     []*ZSSSchema            `json:"children,omitempty"`  // union only
+	Required     *ZSSTest                `json:"required,omitempty"`
+	DefaultValue any                     `json:"defaultValue,omitempty"`
+	CatchValue   any                     `json:"catchValue,omitempty"`
 }

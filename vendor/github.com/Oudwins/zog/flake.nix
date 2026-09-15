@@ -5,18 +5,20 @@
 
   outputs = { self, nixpkgs }:
     let
-      goVersion = 22; # Change this to update the whole stack
+      goVersion = 23; # Change this to update the whole stack
       nodejsVersion = 18; # Change this to update the docs
 
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-      forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ self.overlays.default ];
-        };
-      });
-    in
-    {
+      supportedSystems =
+        [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      forEachSupportedSystem = f:
+        nixpkgs.lib.genAttrs supportedSystems (system:
+          f {
+            pkgs = import nixpkgs {
+              inherit system;
+              overlays = [ self.overlays.default ];
+            };
+          });
+    in {
       overlays.default = final: prev: {
         go = final."go_1_${toString goVersion}";
         nodejs = final."nodejs_${toString nodejsVersion}";
