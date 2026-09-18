@@ -108,7 +108,7 @@ func newCreateCommand(_ context.Context, cliCtx cli.Context) *cobra.Command {
 	defaults := state.DefaultConfig
 	cmd.Flags().String("control-plane-endpoint", defaults.ControlPlaneEndpoint, "The control-plane endpoint to use")
 	cmd.Flags().String("idp-issuer-endpoint", defaults.IDPIssuerEndpoint, "The IDP endpoint to use for authentication")
-	cmd.Flags().String("idp-client-id", defaults.IDPIssuerEndpoint, "The client ID to use for authentication with the IDP")
+	cmd.Flags().String("idp-client-id", defaults.IDPClientID, "The client ID to use for authentication with the IDP")
 	cmd.Flags().StringArray("idp-scopes", defaults.IDPScopes, "The scopes to use when authenticating with the IDP")
 	cmd.Flags().Bool("set", false, "Sets the profile as active")
 
