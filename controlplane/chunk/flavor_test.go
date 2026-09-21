@@ -165,6 +165,10 @@ func TestCreateFlavorVersion(t *testing.T) {
 		return version
 	}
 
+	prevVersionFilesUploaded := fixture.FlavorVersion(func(tmp *resource.FlavorVersion) {
+		tmp.FilesUploaded = true
+	})
+
 	tests := []struct {
 		name         string
 		prevVersion  resource.FlavorVersion
@@ -182,7 +186,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 	}{
 		{
 			name:        "works",
-			prevVersion: fixture.FlavorVersion(),
+			prevVersion: prevVersionFilesUploaded,
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
@@ -261,7 +265,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "cleans paths",
-			prevVersion: fixture.FlavorVersion(),
+			prevVersion: prevVersionFilesUploaded,
 			newVersion:  uncleanPathVersion(),
 			expected:    ptr.Pointer(cleanedPathVersion()),
 			expectedDiff: resource.FlavorVersionDiff{
@@ -326,7 +330,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "rejects relative traversal paths",
-			prevVersion: fixture.FlavorVersion(),
+			prevVersion: prevVersionFilesUploaded,
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
@@ -390,7 +394,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "rejects absolute paths",
-			prevVersion: fixture.FlavorVersion(),
+			prevVersion: prevVersionFilesUploaded,
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Version = "v2"
 				v.FileHashes = []file.Hash{
@@ -445,7 +449,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version hash mismatch",
-			prevVersion: fixture.FlavorVersion(),
+			prevVersion: prevVersionFilesUploaded,
 			newVersion: fixture.FlavorVersion(func(v *resource.FlavorVersion) {
 				v.Hash = "some-not-matching-hash"
 				v.FileHashes = []file.Hash{
@@ -501,7 +505,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "version already exists",
-			prevVersion: fixture.FlavorVersion(),
+			prevVersion: prevVersionFilesUploaded,
 			newVersion:  fixture.FlavorVersion(),
 			prep: func(
 				repo *mock.MockChunkRepository,
@@ -528,7 +532,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "minecraft version unsupported",
-			prevVersion: fixture.FlavorVersion(),
+			prevVersion: prevVersionFilesUploaded,
 			newVersion:  fixture.FlavorVersion(),
 			prep: func(
 				repo *mock.MockChunkRepository,
@@ -559,7 +563,7 @@ func TestCreateFlavorVersion(t *testing.T) {
 		},
 		{
 			name:        "flavor deleted",
-			prevVersion: fixture.FlavorVersion(),
+			prevVersion: prevVersionFilesUploaded,
 			newVersion:  fixture.FlavorVersion(),
 			prep: func(
 				repo *mock.MockChunkRepository,

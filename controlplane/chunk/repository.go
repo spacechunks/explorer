@@ -22,6 +22,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/resource"
 )
 
@@ -60,6 +61,7 @@ type Repository interface {
 	MarkFlavorDeleted(ctx context.Context, id string) error
 	FlavorByID(ctx context.Context, id string) (resource.Flavor, error)
 	ChunkByFlavorID(ctx context.Context, flavorID string) (resource.Chunk, error)
+	AddFlavorVersionFileHashes(ctx context.Context, flavorVersionID string, hashes []file.Hash) error
 }
 
 type ArchiveRepository interface {

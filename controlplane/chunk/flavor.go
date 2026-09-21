@@ -22,7 +22,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -36,6 +38,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/internal/file"
 	"github.com/spacechunks/explorer/internal/resource"
+	"github.com/spacechunks/explorer/internal/tarhelper"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -136,9 +139,23 @@ func (s *svc) CreateFlavorVersion(
 
 	prevVersion, err := s.repo.LatestFlavorVersion(ctx, flavorID)
 	if err != nil {
-		return resource.FlavorVersion{},
-			resource.FlavorVersionDiff{},
-			fmt.Errorf("latest flavor version file hashes: %w", err)
+		// super, super, ugly, but as of right now i don't want to refactor
+		// (it returns ErrNotFound, if this is the first flavor version)
+		if errors.Is(err, apierrs.ErrNotFound) {
+			prevVersion.FilesUploaded = true
+		} else {
+			return resource.FlavorVersion{},
+				resource.FlavorVersionDiff{},
+				fmt.Errorf("latest flavor version file hashes: %w", err)
+		}
+	}
+
+	// we do not allow creating a new flavor version when the previous one did not have their
+	// files uploaded, because we depend on the uploaded files, when building the image later.
+	// this is because we only upload what changed between versions. if the previous changes
+	// are not uploaded to s3, the build_image job will fail.
+	if !prevVersion.FilesUploaded {
+		return resource.FlavorVersion{}, resource.FlavorVersionDiff{}, apierrs.ErrPreviousFilesNotUploaded
 	}
 
 	newContentTree, err := file.HashTree(version.FileHashes)
@@ -211,19 +228,6 @@ func (s *svc) CreateFlavorVersion(
 	sortByPath(changed)
 	sortByPath(added)
 	sortByPath(removed)
-
-	changes := make([]file.Hash, 0, len(changed)+len(added))
-	changes = append(changes, changed...)
-	changes = append(changes, added...)
-	sortByPath(changes)
-
-	all := make([]file.Hash, 0, len(unchanged)+len(changes))
-	all = append(all, changes...)
-	all = append(all, unchanged...)
-
-	sortByPath(all)
-
-	version.FileHashes = all
 
 	created, err := s.repo.CreateFlavorVersion(ctx, flavorID, version, prevVersion.ID)
 	if err != nil {
@@ -298,6 +302,15 @@ func (s *svc) BuildFlavorVersion(ctx context.Context, versionID string) error {
 
 		if !exists {
 			return apierrs.ErrFlavorFilesNotUploaded
+		}
+
+		hashes, err := s.computeFileHashes(ctx, versionID)
+		if err != nil {
+			return fmt.Errorf("compute file hashes: %w", err)
+		}
+
+		if err := s.repo.AddFlavorVersionFileHashes(ctx, versionID, hashes); err != nil {
+			return fmt.Errorf("add flavor version hashes: %w", err)
 		}
 
 		if err := s.repo.MarkFlavorVersionFilesUploaded(ctx, versionID); err != nil {
@@ -411,4 +424,71 @@ func (s *svc) GetFlavor(ctx context.Context, id string) (resource.Flavor, error)
 	}
 
 	return f, nil
+}
+
+func (s *svc) computeFileHashes(ctx context.Context, versionID string) ([]file.Hash, error) {
+	dir, err := os.MkdirTemp("", fmt.Sprintf("changeset-%s-*", versionID))
+	if err != nil {
+		return nil, fmt.Errorf("create tmp dir: %w", err)
+	}
+
+	set, err := os.Create(filepath.Join(dir, "changeset.tar.gz"))
+	if err != nil {
+		return nil, fmt.Errorf("tmp file: %w", err)
+	}
+
+	defer set.Close()
+
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			s.logger.Error("failed to remove temp dir", "err", err)
+		}
+	}()
+
+	if err := s.s3Store.WriteTo(ctx, blob.ChangeSetKey(versionID), set); err != nil {
+		return nil, fmt.Errorf("write: %w", err)
+	}
+
+	if _, err := set.Seek(0, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("seek: %w", err)
+	}
+
+	paths, err := tarhelper.Untar(set, dir)
+	if err != nil {
+		return nil, fmt.Errorf("untar: %w", err)
+	}
+
+	hashes := make([]file.Hash, 0, len(paths))
+
+	for _, p := range paths {
+		if err := func() error {
+			f, err := os.Open(p)
+			if err != nil {
+				return fmt.Errorf("open: %w", err)
+			}
+
+			defer f.Close()
+
+			hash, err := file.ComputeHashStr(f)
+			if err != nil {
+				return fmt.Errorf("compute hash: %w", err)
+			}
+
+			serverRootPath, err := filepath.Rel(dir, p)
+			if err != nil {
+				return fmt.Errorf("server root path: %w", err)
+			}
+
+			hashes = append(hashes, file.Hash{
+				Path: serverRootPath,
+				Hash: hash,
+			})
+
+			return nil
+		}(); err != nil {
+			return nil, err
+		}
+	}
+
+	return hashes, nil
 }

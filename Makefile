@@ -33,6 +33,7 @@ generate: sqlc genproto mocks
 fmt:
 	@find . -type f -name '*.go' \
        -not -path './vendor/*' \
+       -not -path './.idea/*' \
        -not -name '*.pb.go' \
        -exec gofmt -w {} +
 
