@@ -16,7 +16,7 @@ require (
 	github.com/cbergoon/merkletree v0.5.0
 	github.com/cilium/ebpf v0.22.0
 	github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2
-	github.com/containernetworking/cni v1.3.0
+	github.com/containernetworking/cni v1.3.1
 	github.com/containernetworking/plugins v1.9.1
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/envoyproxy/go-control-plane v0.14.0
