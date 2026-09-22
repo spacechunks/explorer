@@ -37,7 +37,7 @@ require (
 	github.com/lestrrat-go/httprc/v3 v3.0.6
 	github.com/lestrrat-go/jwx/v4 v4.4.0
 	github.com/magiconair/properties v1.18.11
-	github.com/moby/moby/api v1.55.0
+	github.com/moby/moby/api v1.56.0
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
