@@ -19,7 +19,11 @@
 package chunk_test
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
+	"io"
 	"log/slog"
 	"os"
 	"testing"
@@ -38,6 +42,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/spacechunks/explorer/controlplane/blob"
+	"github.com/spacechunks/explorer/test"
 )
 
 func TestCreateFlavor(t *testing.T) {
@@ -635,4 +642,174 @@ func TestCreateFlavorVersion(t *testing.T) {
 			require.Equal(t, tt.expectedDiff, actualDiff)
 		})
 	}
+}
+
+func TestBuildFlavorVersion(t *testing.T) {
+	var (
+		ctx        = context.Background()
+		versionID  = test.NewUUIDv7(t)
+		flavorID   = fixture.FlavorID
+		mockRepo   = mock.NewMockChunkRepository(t)
+		mockS3     = mock.NewMockBlobS3Store(t)
+		mockJob    = mock.NewMockJobClient(t)
+		mockAccess = mock.NewMockAuthzAccessEvaluator(t)
+	)
+
+	ctx = context.WithValue(ctx, contextkey.ActorIDPID, "bfv")
+
+	version := fixture.FlavorVersion(func(v *resource.FlavorVersion) {
+		v.ID = versionID
+		v.FilesUploaded = false
+		v.BuildStatus = resource.FlavorVersionBuildStatusPending
+	})
+
+	flavor := fixture.Flavor(func(f *resource.Flavor) {
+		f.ID = flavorID
+	})
+
+	chunkResource := fixture.Chunk()
+
+	mcVersion := resource.MinecraftVersion{
+		Version:  version.MinecraftVersion,
+		ImageURL: "minecraft-image",
+	}
+
+	changeset := createTestChangeset(t, map[string]string{
+		"server.properties": "allow-flight=false",
+		"paper.yml":         "config-version: 13",
+	})
+
+	mockAccess.EXPECT().
+		AccessAuthorized(
+			mocky.Anything,
+			mocky.AnythingOfType("authz.AccessRuleOption"),
+		).
+		Return(nil)
+
+	mockRepo.EXPECT().
+		FlavorIDByFlavorVersionID(
+			mocky.Anything,
+			versionID,
+		).
+		Return(flavorID, nil)
+
+	mockRepo.EXPECT().
+		FlavorByID(
+			mocky.Anything,
+			flavorID,
+		).
+		Return(flavor, nil)
+
+	mockRepo.EXPECT().
+		FlavorVersionByID(
+			mocky.Anything,
+			versionID,
+		).
+		Return(version, nil)
+
+	mockS3.EXPECT().
+		ObjectExists(
+			mocky.Anything,
+			blob.ChangeSetKey(versionID),
+		).
+		Return(true, nil)
+
+	mockS3.EXPECT().
+		WriteTo(
+			mocky.Anything,
+			blob.ChangeSetKey(versionID),
+			mocky.Anything,
+		).
+		Run(func(_ context.Context, _ string, w io.Writer) {
+			_, err := w.Write(changeset)
+			require.NoError(t, err)
+		}).
+		Return(nil)
+
+	mockRepo.EXPECT().
+		AddFlavorVersionFileHashes(
+			mocky.Anything,
+			versionID,
+			mocky.MatchedBy(func(hashes []file.Hash) bool {
+				require.Len(t, hashes, 2)
+
+				for _, hash := range hashes {
+					require.NotEmpty(t, hash.Hash)
+				}
+
+				return true
+			}),
+		).
+		Return(nil)
+
+	mockRepo.EXPECT().
+		MarkFlavorVersionFilesUploaded(
+			mocky.Anything,
+			versionID,
+		).
+		Return(nil)
+
+	mockRepo.EXPECT().
+		ChunkByFlavorID(
+			mocky.Anything,
+			flavorID,
+		).
+		Return(chunkResource, nil)
+
+	mockRepo.EXPECT().
+		GetMinecraftVersionByVersion(
+			mocky.Anything,
+			version.MinecraftVersion,
+		).
+		Return(mcVersion, nil)
+
+	mockJob.EXPECT().
+		InsertJob(
+			mocky.Anything,
+			versionID,
+			string(resource.FlavorVersionBuildStatusBuildImage),
+			mocky.Anything,
+		).
+		Return(nil)
+
+	svc, err := chunk.NewService(
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		mockRepo,
+		mockJob,
+		mockS3,
+		mockAccess,
+		chunk.Config{
+			Registry: "registry.example.com",
+		},
+		mock.NewMockUserRepository(t),
+	)
+	require.NoError(t, err)
+
+	err = svc.BuildFlavorVersion(ctx, versionID)
+	require.NoError(t, err)
+}
+
+func createTestChangeset(t *testing.T, files map[string]string) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+
+	for name, content := range files {
+		err := tw.WriteHeader(&tar.Header{
+			Name: name,
+			Mode: 0o644,
+			Size: int64(len(content)),
+		})
+		require.NoError(t, err)
+
+		_, err = tw.Write([]byte(content))
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, tw.Close())
+	require.NoError(t, gz.Close())
+
+	return buf.Bytes()
 }
