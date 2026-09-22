@@ -19,10 +19,8 @@
 package chunk_test
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -40,6 +38,7 @@ import (
 	"github.com/spacechunks/explorer/test/fixture"
 	mocky "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/zeebo/xxh3"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/proto"
 
@@ -645,6 +644,11 @@ func TestCreateFlavorVersion(t *testing.T) {
 }
 
 func TestBuildFlavorVersion(t *testing.T) {
+	const (
+		serverProperties = "allow-flight=false"
+		paperYAML        = "config-version: 13"
+	)
+
 	tests := []struct {
 		name          string
 		filesUploaded bool
@@ -698,8 +702,11 @@ func TestBuildFlavorVersion(t *testing.T) {
 								got[hash.Path] = hash.Hash
 							}
 
-							return got["server.properties"] != "" &&
-								got["paper.yml"] != ""
+							serverPropertiesHash := xxh3.HashString(serverProperties)
+							paperHash := xxh3.HashString(paperYAML)
+
+							return got["server.properties"] == fmt.Sprintf("%016x", serverPropertiesHash) &&
+								got["paper.yml"] == fmt.Sprintf("%016x", paperHash)
 						}),
 					).
 					Return(nil)
@@ -775,9 +782,9 @@ func TestBuildFlavorVersion(t *testing.T) {
 				ImageURL: "minecraft-image",
 			}
 
-			changeset := createTestChangeset(t, map[string]string{
-				"server.properties": "allow-flight=false",
-				"paper.yml":         "config-version: 13",
+			changeset := test.CreateTarGz(t, map[string]string{
+				"server.properties": serverProperties,
+				"paper.yml":         paperYAML,
 			})
 
 			mockAccess.EXPECT().
@@ -863,29 +870,4 @@ func TestBuildFlavorVersion(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
-}
-
-func createTestChangeset(t *testing.T, files map[string]string) []byte {
-	t.Helper()
-
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	tw := tar.NewWriter(gz)
-
-	for name, content := range files {
-		err := tw.WriteHeader(&tar.Header{
-			Name: name,
-			Mode: 0o644,
-			Size: int64(len(content)),
-		})
-		require.NoError(t, err)
-
-		_, err = tw.Write([]byte(content))
-		require.NoError(t, err)
-	}
-
-	require.NoError(t, tw.Close())
-	require.NoError(t, gz.Close())
-
-	return buf.Bytes()
 }
