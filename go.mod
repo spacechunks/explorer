@@ -35,7 +35,7 @@ require (
 	github.com/johannesboyne/gofakes3 v1.2.0
 	github.com/jwx-go/jwkfetch/v4 v4.0.4
 	github.com/lestrrat-go/httprc/v3 v3.0.6
-	github.com/lestrrat-go/jwx/v4 v4.4.0
+	github.com/lestrrat-go/jwx/v4 v4.5.0
 	github.com/magiconair/properties v1.18.11
 	github.com/moby/moby/api v1.56.0
 	github.com/peterbourgon/ff/v3 v3.4.0
