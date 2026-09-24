@@ -382,7 +382,7 @@ github.com/envoyproxy/go-control-plane/ratelimit/service/ratelimit/v3
 # github.com/envoyproxy/protoc-gen-validate v1.3.3
 ## explicit; go 1.24.1
 github.com/envoyproxy/protoc-gen-validate/validate
-# github.com/exaring/otelpgx v0.11.1
+# github.com/exaring/otelpgx v0.12.0
 ## explicit; go 1.25.0
 github.com/exaring/otelpgx
 # github.com/felixge/httpsnoop v1.1.0
