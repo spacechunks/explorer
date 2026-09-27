@@ -944,8 +944,8 @@ github.com/tklauser/numcpus
 ## explicit; go 1.24
 github.com/valyala/fastjson
 github.com/valyala/fastjson/fastfloat
-# github.com/vektra/mockery/v2 v2.53.6
-## explicit; go 1.24.0
+# github.com/vektra/mockery/v2 v2.53.7
+## explicit; go 1.25.0
 github.com/vektra/mockery/v2
 github.com/vektra/mockery/v2/cmd
 github.com/vektra/mockery/v2/pkg
