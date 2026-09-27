@@ -156,7 +156,9 @@ func (c *Conn) Notify(ctx context.Context, method string, params interface{}, op
 	return err
 }
 
-// Reply sends a successful response with a result.
+// Reply sends a successful response with a result. It returns after writing
+// the response to the ObjectStream; it does not wait for the peer to receive or
+// process the response.
 func (c *Conn) Reply(ctx context.Context, id ID, result interface{}) error {
 	resp := &Response{ID: id}
 	if err := resp.SetResult(result); err != nil {
@@ -186,8 +188,9 @@ func (c *Conn) close(cause error) error {
 	}
 	c.closed = true
 
-	for _, call := range c.pending {
+	for id, call := range c.pending {
 		close(call.done)
+		delete(c.pending, id)
 	}
 
 	close(c.disconnect)
@@ -318,6 +321,10 @@ func (c *Conn) send(_ context.Context, m *anyMessage, wait bool) (cc *call, err 
 	// responses.
 	if m.request != nil && wait {
 		c.mu.Lock()
+		if c.closed {
+			c.mu.Unlock()
+			return nil, ErrClosed
+		}
 		id = m.request.ID
 		c.pending[id] = cc
 		c.mu.Unlock()
