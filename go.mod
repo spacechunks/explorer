@@ -171,9 +171,9 @@ require (
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/riverqueue/river/cmd/river v0.47.0 // indirect
-	github.com/riverqueue/river/riverdriver v0.45.0 // indirect
-	github.com/riverqueue/river/riverdriver/riversqlite v0.45.0 // indirect
-	github.com/riverqueue/river/rivershared v0.45.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.47.0 // indirect
+	github.com/riverqueue/river/riverdriver/riversqlite v0.47.0 // indirect
+	github.com/riverqueue/river/rivershared v0.47.0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/ryszard/goskiplist v0.0.0-20150312221310-2dfbae5fcf46 // indirect
 	github.com/safchain/ethtool v0.6.2 // indirect
