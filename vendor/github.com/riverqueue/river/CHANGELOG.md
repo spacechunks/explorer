@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.47.0] - 2026-09-01
+
+### Added
+
+- Added hook for River's CLI command framework that can be used to inject custom SQLite initialization. Used by River Pro. [PR #1369](https://github.com/riverqueue/river/pull/1369).
+
+## [0.46.0] - 2026-08-29
+
+### Added
+
+- Added `riverdatabasesql.NewWithPgxListener` for using a dedicated Pgx pool to receive Postgres notifications while continuing to execute jobs and transactions through `database/sql`. [PR #1366](https://github.com/riverqueue/river/pull/1366).
+
 ## [0.45.0] - 2026-08-25
 
 ### Changed
