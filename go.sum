@@ -276,6 +276,8 @@ github.com/hetznercloud/hcloud-go/v2 v2.48.0 h1:P3biOxqEufOxp2xBEZTZGIl56xK4sFbw
 github.com/hetznercloud/hcloud-go/v2 v2.48.0/go.mod h1:J9QH6j8pRH0K3+HlqgOlQ8abXagWTD/GpTkfra2et+g=
 github.com/hetznercloud/hcloud-go/v2 v2.49.0 h1:QXONxfgXIF99PFJknkVw+LrQQB4PB5IbEjEDh4Hfmig=
 github.com/hetznercloud/hcloud-go/v2 v2.49.0/go.mod h1:J9QH6j8pRH0K3+HlqgOlQ8abXagWTD/GpTkfra2et+g=
+github.com/hetznercloud/hcloud-go/v2 v2.50.0 h1:ECWYFFGTU0/ftWjTBDPDtqpqxEbCAJYG9KHWpHPUoDo=
+github.com/hetznercloud/hcloud-go/v2 v2.50.0/go.mod h1:J9QH6j8pRH0K3+HlqgOlQ8abXagWTD/GpTkfra2et+g=
 github.com/huandu/xstrings v1.4.0 h1:D17IlohoQq4UcpqD7fDk80P7l+lwAmlFaBHgOipl2FU=
 github.com/huandu/xstrings v1.4.0/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
 github.com/iancoleman/strcase v0.3.0 h1:nTXanmYxhfFAMjZL34Ov6gkzEsSJZ5DbhxWjvSASxEI=
