@@ -40,6 +40,7 @@ import (
 )
 
 const Namespace = "checkpoint"
+
 type Service interface {
 	CreateCheckpoint(ctx context.Context, baseRef name.Reference) (string, error)
 	CheckpointStatus(checkpointID string) *status.Status
