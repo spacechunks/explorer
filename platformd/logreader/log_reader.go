@@ -16,7 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-package checkpoint
+package logreader
 
 import (
 	"context"
@@ -30,22 +30,24 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
-var paperServerReadyRegex = regexp.MustCompile(`Done \(\d+\.\d+s\)! For help, type "help"`)
+type RemoteCMDExecutorFactory func(url string) (remotecommand.Executor, error)
 
-type logReader struct {
+var PaperServerReadyRegex = regexp.MustCompile(`Done \(\d+\.\d+s\)! For help, type "help"`)
+
+type LogReader struct {
 	exec remotecommand.Executor
 
 	cancel context.CancelFunc
 	regex  *regexp.Regexp
 }
 
-func newLogReader(exec remotecommand.Executor) *logReader {
-	return &logReader{
+func NewLogReader(exec remotecommand.Executor) *LogReader {
+	return &LogReader{
 		exec: exec,
 	}
 }
 
-func (r *logReader) WaitForRegex(ctx context.Context, regex *regexp.Regexp) error {
+func (r *LogReader) WaitForRegex(ctx context.Context, regex *regexp.Regexp) error {
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -62,7 +64,7 @@ func (r *logReader) WaitForRegex(ctx context.Context, regex *regexp.Regexp) erro
 	return nil
 }
 
-func (r *logReader) Write(p []byte) (n int, err error) {
+func (r *LogReader) Write(p []byte) (n int, err error) {
 	if r.regex.Match(p) {
 		r.cancel()
 	}

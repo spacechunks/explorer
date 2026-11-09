@@ -8,13 +8,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/internal/resource"
 	"github.com/spacechunks/explorer/internal/resource/codec"
 	"github.com/spacechunks/explorer/platformd/cri"
+	"github.com/spacechunks/explorer/platformd/logreader"
 	"github.com/spacechunks/explorer/platformd/status"
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
@@ -34,6 +34,9 @@ type svc struct {
 	criService   cri.Service
 	registryAuth cri.RegistryAuth
 	cfg          Config
+
+	// this factory function allows us to inject a mock executor for testing.
+	newRemoteCMDExecutor logreader.RemoteCMDExecutorFactory
 }
 
 func NewService(
@@ -41,12 +44,14 @@ func NewService(
 	cfg Config,
 	criService cri.Service,
 	registryAuth cri.RegistryAuth,
+	newRemoteCMDExecutor logreader.RemoteCMDExecutorFactory,
 ) Service {
 	return &svc{
-		logger:       logger.With("component", "workload-service"),
-		criService:   criService,
-		registryAuth: registryAuth,
-		cfg:          cfg,
+		logger:               logger.With("component", "workload-service"),
+		criService:           criService,
+		registryAuth:         registryAuth,
+		cfg:                  cfg,
+		newRemoteCMDExecutor: newRemoteCMDExecutor,
 	}
 }
 
@@ -118,9 +123,9 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 		return fmt.Errorf("create pod: %w", err)
 	}
 
-	if _, err := s.criService.EnsureImage(ctx, w.CheckpointImage, s.registryAuth); err != nil {
-		return fmt.Errorf("pull checkpoint image if not present: %w", err)
-	}
+	//if _, err := s.criService.EnsureImage(ctx, w.CheckpointImage, s.registryAuth); err != nil {
+	//	return fmt.Errorf("pull checkpoint image if not present: %w", err)
+	//}
 
 	if _, err := s.criService.EnsureImage(ctx, s.cfg.ServerMonImage, cri.Unauthenticated); err != nil {
 		return fmt.Errorf("pull servermon image if not present: %w", err)
@@ -136,8 +141,8 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 				Name: w.Name,
 			},
 			Image: &runtimev1.ImageSpec{
-				UserSpecifiedImage: w.CheckpointImage,
-				Image:              w.CheckpointImage,
+				UserSpecifiedImage: w.BaseImage,
+				Image:              w.BaseImage,
 			},
 			Labels: w.Labels,
 			// this is just a dummy value, it has no effect.
@@ -219,22 +224,48 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 
 	logger.InfoContext(ctx, "started servermon container", "container_id", serverMonCtrID)
 
-	info, err := s.criService.ContainerInfo(ctx, mcCtrID)
+	attachResp, err := s.criService.Attach(ctx, &runtimev1.AttachRequest{
+		ContainerId: mcCtrID,
+		Stdout:      true,
+	})
 	if err != nil {
-		return fmt.Errorf("container info: %w", err)
+		return fmt.Errorf("attach container: %w", err)
 	}
 
-	proc, err := os.FindProcess(info.Pid)
+	remoteexec, err := s.newRemoteCMDExecutor(attachResp.Url)
 	if err != nil {
-		return fmt.Errorf("find process: %w", err)
+		return fmt.Errorf("create remote cmd executor: %w", err)
 	}
 
-	// default behavior of SIGCONT is to simply continue the process,
-	// so if plugins do not add a handler for it, the mc server continues
-	// to live. other signals might terminate the process.
-	if err := proc.Signal(syscall.SIGCONT); err != nil {
-		return fmt.Errorf("signal process: %w", err)
+	r := logreader.NewLogReader(remoteexec)
+
+	// do not use ctx as parent for this context, because we only want to
+	// cause WaitForRegex to stop executing if the timeout is reached and
+	// not the other functions that have ctx being passed to them prior
+	// to the waitContainerReady call.
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := r.WaitForRegex(timeoutCtx, logreader.PaperServerReadyRegex); err != nil {
+		return fmt.Errorf("reading logs: %w", err)
 	}
+
+	//info, err := s.criService.ContainerInfo(ctx, mcCtrID)
+	//if err != nil {
+	//	return fmt.Errorf("container info: %w", err)
+	//}
+	//
+	//proc, err := os.FindProcess(info.Pid)
+	//if err != nil {
+	//	return fmt.Errorf("find process: %w", err)
+	//}
+	//
+	//// default behavior of SIGCONT is to simply continue the process,
+	//// so if plugins do not add a handler for it, the mc server continues
+	//// to live. other signals might terminate the process.
+	//if err := proc.Signal(syscall.SIGCONT); err != nil {
+	//	return fmt.Errorf("signal process: %w", err)
+	//}
 
 	return nil
 }
