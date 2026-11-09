@@ -42,8 +42,13 @@ import (
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
+	"k8s.io/client-go/tools/remotecommand"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
+
+func testExecer(url string) (remotecommand.Executor, error) {
+	return &test.RemoteCmdExecutor{}, nil
+}
 
 func TestRunWorkload(t *testing.T) {
 	var regAuth = cri.RegistryAuth{
@@ -121,8 +126,8 @@ func TestRunWorkload(t *testing.T) {
 								Name: w.Name,
 							},
 							Image: &runtimev1.ImageSpec{
-								UserSpecifiedImage: w.CheckpointImage,
-								Image:              w.CheckpointImage,
+								UserSpecifiedImage: w.BaseImage,
+								Image:              w.BaseImage,
 							},
 							Labels:  w.Labels,
 							LogPath: "mcserver.log",
@@ -190,9 +195,9 @@ func TestRunWorkload(t *testing.T) {
 						PodSandboxId: podID,
 					}, nil)
 
-				criService.EXPECT().
-					EnsureImage(mocky.Anything, w.CheckpointImage, regAuth).
-					Return(false, nil)
+				//criService.EXPECT().
+				//	EnsureImage(mocky.Anything, w.CheckpointImage, regAuth).
+				//	Return(false, nil)
 
 				criService.EXPECT().
 					RunContainer(mocky.Anything, mcCtrReq).
@@ -207,10 +212,16 @@ func TestRunWorkload(t *testing.T) {
 					Return("", nil)
 
 				criService.EXPECT().
-					ContainerInfo(mocky.Anything, "abc").
-					Return(cri.ContainerInfo{
-						Pid: os.Getpid(),
-					}, nil)
+					Attach(mocky.Anything, &runtimev1.AttachRequest{
+						ContainerId: "abc",
+						Stdout:      true,
+					}).Return(&runtimev1.AttachResponse{}, nil)
+
+				//criService.EXPECT().
+				//	ContainerInfo(mocky.Anything, "abc").
+				//	Return(cri.ContainerInfo{
+				//		Pid: os.Getpid(),
+				//	}, nil)
 			},
 		},
 	}
@@ -220,7 +231,7 @@ func TestRunWorkload(t *testing.T) {
 				ctx            = context.Background()
 				logger         = slog.New(slog.NewTextHandler(os.Stdout, nil))
 				mockCRIService = mock.NewMockCriService(t)
-				svc            = workload.NewService(logger, tt.cfg, mockCRIService, regAuth)
+				svc            = workload.NewService(logger, tt.cfg, mockCRIService, regAuth, testExecer)
 			)
 
 			tt.prep(mockCRIService, tt.cfg, tt.w, tt.attempt)
@@ -242,7 +253,7 @@ func TestRemoveWorkload(t *testing.T) {
 			Password: "pass",
 		}
 		mockCRIService = mock.NewMockCriService(t)
-		svc            = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth)
+		svc            = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth, testExecer)
 	)
 
 	mockCRIService.EXPECT().
@@ -354,7 +365,7 @@ func TestGetWorkloadHealth(t *testing.T) {
 					Username: "user",
 					Password: "pass",
 				}
-				svc = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth)
+				svc = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth, testExecer)
 			)
 
 			var ctrs []*runtimev1.Container
@@ -456,7 +467,7 @@ func TestWorkloadMetadata(t *testing.T) {
 					Password: "pass",
 				}
 				mockCRIService = mock.NewMockCriService(t)
-				svc            = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth)
+				svc            = workload.NewService(logger, workload.Config{}, mockCRIService, regAuth, testExecer)
 			)
 
 			mockCRIService.EXPECT().

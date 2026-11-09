@@ -36,14 +36,10 @@ import (
 	"github.com/spacechunks/explorer/platformd/logreader"
 	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
-	"k8s.io/client-go/tools/remotecommand"
 	runtimev1 "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
 const Namespace = "checkpoint"
-
-type RemoteCMDExecutorFactory func(url string) (remotecommand.Executor, error)
-
 type Service interface {
 	CreateCheckpoint(ctx context.Context, baseRef name.Reference) (string, error)
 	CheckpointStatus(checkpointID string) *status.Status
@@ -59,7 +55,7 @@ type ServiceImpl struct {
 	sockHandler datapath.SockHandler
 
 	// this factory function allows us to inject a mock executor for testing.
-	newRemoteCMDExecutor RemoteCMDExecutorFactory
+	newRemoteCMDExecutor logreader.RemoteCMDExecutorFactory
 }
 
 func NewService(
@@ -68,7 +64,7 @@ func NewService(
 	criService cri.Service,
 	imgService image.Service,
 	statusStore status.Store,
-	newRemoteCMDExecutor RemoteCMDExecutorFactory,
+	newRemoteCMDExecutor logreader.RemoteCMDExecutorFactory,
 	portAlloc *workload.PortAllocator,
 	sockCleaner datapath.SockHandler,
 ) *ServiceImpl {

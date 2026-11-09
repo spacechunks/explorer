@@ -30,6 +30,8 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
+type RemoteCMDExecutorFactory func(url string) (remotecommand.Executor, error)
+
 var PaperServerReadyRegex = regexp.MustCompile(`Done \(\d+\.\d+s\)! For help, type "help"`)
 
 type LogReader struct {

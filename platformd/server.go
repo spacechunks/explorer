@@ -122,6 +122,9 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			},
 			criSvc,
 			registryAuth,
+			func(url string) (remotecommand.Executor, error) {
+				return logreader.NewSPDYExecutor(url)
+			},
 		)
 		proxySvc = proxy.NewService(
 			s.logger.With("component", "proxy-service"),

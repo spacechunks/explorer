@@ -34,6 +34,9 @@ type svc struct {
 	criService   cri.Service
 	registryAuth cri.RegistryAuth
 	cfg          Config
+
+	// this factory function allows us to inject a mock executor for testing.
+	newRemoteCMDExecutor logreader.RemoteCMDExecutorFactory
 }
 
 func NewService(
@@ -41,12 +44,14 @@ func NewService(
 	cfg Config,
 	criService cri.Service,
 	registryAuth cri.RegistryAuth,
+	newRemoteCMDExecutor logreader.RemoteCMDExecutorFactory,
 ) Service {
 	return &svc{
-		logger:       logger.With("component", "workload-service"),
-		criService:   criService,
-		registryAuth: registryAuth,
-		cfg:          cfg,
+		logger:               logger.With("component", "workload-service"),
+		criService:           criService,
+		registryAuth:         registryAuth,
+		cfg:                  cfg,
+		newRemoteCMDExecutor: newRemoteCMDExecutor,
 	}
 }
 
@@ -227,12 +232,12 @@ func (s *svc) RunWorkload(ctx context.Context, w Workload, attempt uint) error {
 		return fmt.Errorf("attach container: %w", err)
 	}
 
-	spdy, err := logreader.NewSPDYExecutor(attachResp.Url)
+	remoteexec, err := s.newRemoteCMDExecutor(attachResp.Url)
 	if err != nil {
-		return fmt.Errorf("spdy executor: %w", err)
+		return fmt.Errorf("create remote cmd executor: %w", err)
 	}
 
-	r := logreader.NewLogReader(spdy)
+	r := logreader.NewLogReader(remoteexec)
 
 	// do not use ctx as parent for this context, because we only want to
 	// cause WaitForRegex to stop executing if the timeout is reached and
