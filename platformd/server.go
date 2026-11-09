@@ -19,6 +19,7 @@ import (
 	instancev1alpha1 "github.com/spacechunks/explorer/api/instance/v1alpha1"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/platformd/garbage"
+	"github.com/spacechunks/explorer/platformd/logreader"
 	"github.com/spacechunks/explorer/platformd/status"
 	"google.golang.org/grpc/credentials"
 	"k8s.io/client-go/tools/remotecommand"
@@ -152,7 +153,7 @@ func (s *Server) Run(ctx context.Context, cfg Config) error {
 			image.NewService(checkSvcLogger, cfg.RegistryUser, cfg.RegistryPass, "/tmp"),
 			statusStore,
 			func(url string) (remotecommand.Executor, error) {
-				return checkpoint.NewSPDYExecutor(url)
+				return logreader.NewSPDYExecutor(url)
 			},
 			portAlloc,
 			datapath.NewLinuxSockHandler(bpf),

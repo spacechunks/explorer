@@ -1,4 +1,4 @@
-package checkpoint
+package logreader
 
 import (
 	"context"
@@ -28,12 +28,12 @@ func TestLogReader(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := newLogReader(&test.RemoteCmdExecutor{})
+			r := NewLogReader(&test.RemoteCmdExecutor{})
 
 			ctx, cancel := context.WithTimeout(context.Background(), tt.deadline)
 			defer cancel()
 
-			err := r.WaitForRegex(ctx, paperServerReadyRegex)
+			err := r.WaitForRegex(ctx, PaperServerReadyRegex)
 
 			if tt.err != nil {
 				require.ErrorIs(t, err, tt.err)

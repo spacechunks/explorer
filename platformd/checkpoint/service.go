@@ -33,6 +33,7 @@ import (
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/platformd/cri"
+	"github.com/spacechunks/explorer/platformd/logreader"
 	"github.com/spacechunks/explorer/platformd/status"
 	"github.com/spacechunks/explorer/platformd/workload"
 	"k8s.io/client-go/tools/remotecommand"
@@ -248,7 +249,7 @@ func (s *ServiceImpl) checkpoint(ctx context.Context, id string, baseRef name.Re
 	logger.InfoContext(
 		ctx,
 		"waiting for regex",
-		"regex", paperServerReadyRegex.String(),
+		"regex", logreader.PaperServerReadyRegex.String(),
 	)
 
 	ctrID, err := s.waitContainerReady(ctx, id, baseRef.String(), s.cfg.ContainerReadyTimeout)
@@ -325,7 +326,7 @@ func (s *ServiceImpl) waitContainerReady(
 		return "", fmt.Errorf("spdy executor: %w", err)
 	}
 
-	r := newLogReader(exec)
+	r := logreader.NewLogReader(exec)
 
 	// do not use ctx as parent for this context, because we only want to
 	// cause WaitForRegex to stop executing if the timeout is reached and
@@ -334,7 +335,7 @@ func (s *ServiceImpl) waitContainerReady(
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	if err := r.WaitForRegex(timeoutCtx, paperServerReadyRegex); err != nil {
+	if err := r.WaitForRegex(timeoutCtx, logreader.PaperServerReadyRegex); err != nil {
 		return "", fmt.Errorf("reading logs: %w", err)
 	}
 
