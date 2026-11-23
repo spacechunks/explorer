@@ -58,8 +58,8 @@ github.com/Oudwins/zog/pkgs/internals
 github.com/Oudwins/zog/pkgs/internals/is
 github.com/Oudwins/zog/pkgs/zss/core
 github.com/Oudwins/zog/zconst
-# github.com/amacneil/dbmate/v2 v2.36.0
-## explicit; go 1.25.0
+# github.com/amacneil/dbmate/v2 v2.38.1
+## explicit; go 1.26.0
 github.com/amacneil/dbmate/v2/pkg/dbmate
 github.com/amacneil/dbmate/v2/pkg/dbutil
 github.com/amacneil/dbmate/v2/pkg/driver/postgres
@@ -541,8 +541,8 @@ github.com/json-iterator/go
 # github.com/jwx-go/jwkfetch/v4 v4.0.4
 ## explicit; go 1.26.0
 github.com/jwx-go/jwkfetch/v4
-# github.com/klauspost/compress v1.19.2
-## explicit; go 1.24
+# github.com/klauspost/compress v1.20.2
+## explicit; go 1.25
 github.com/klauspost/compress
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
@@ -1107,7 +1107,7 @@ golang.org/x/exp/slices
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.59.0
+# golang.org/x/net v0.60.0
 ## explicit; go 1.26.0
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
