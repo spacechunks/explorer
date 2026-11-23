@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/amacneil/dbmate/v2/pkg/dbutil"
@@ -19,16 +20,18 @@ import (
 
 // Error codes
 var (
-	ErrNoMigrationFiles      = errors.New("no migration files found")
-	ErrInvalidURL            = errors.New("invalid url, have you set your --url flag or DATABASE_URL environment variable?")
-	ErrNoRollback            = errors.New("can't rollback: no migrations have been applied")
-	ErrCantConnect           = errors.New("unable to connect to database")
-	ErrUnsupportedDriver     = errors.New("unsupported driver")
-	ErrNoMigrationName       = errors.New("please specify a name for the new migration")
-	ErrMigrationAlreadyExist = errors.New("file already exists")
-	ErrMigrationDirNotFound  = errors.New("could not find migrations directory")
-	ErrMigrationNotFound     = errors.New("can't find migration file")
-	ErrCreateDirectory       = errors.New("unable to create directory")
+	ErrNoMigrationFiles                    = errors.New("no migration files found")
+	ErrInvalidURL                          = errors.New("invalid url, have you set your --url flag or DATABASE_URL environment variable?")
+	ErrNoRollback                          = errors.New("can't rollback: no migrations have been applied")
+	ErrCantConnect                         = errors.New("unable to connect to database")
+	ErrUnsupportedDriver                   = errors.New("unsupported driver")
+	ErrNoMigrationName                     = errors.New("please specify a name for the new migration")
+	ErrMigrationAlreadyExist               = errors.New("file already exists")
+	ErrMigrationDirNotFound                = errors.New("could not find migrations directory")
+	ErrMigrationNotFound                   = errors.New("can't find migration file")
+	ErrCreateDirectory                     = errors.New("unable to create directory")
+	ErrMigrationLockUnsupported            = errors.New("driver does not support the migration lock")
+	ErrMigrationApplicationNameUnsupported = errors.New("driver does not support migration application_name")
 )
 
 // migrationFileRegexp pattern for valid migration files
@@ -64,6 +67,13 @@ type DB struct {
 	WaitTimeout time.Duration
 	// Additional arguments for the subcommand being invoked e.g. pg_dump/mysqldump
 	Args []string
+	// UseMigrationLock holds an exclusive lock for the duration of the migration run,
+	// so that concurrent dbmate instances wait for each other (see DriverMigrationLock)
+	UseMigrationLock bool
+	// MigrationLockTimeout specifies maximum time to wait for the migration lock
+	MigrationLockTimeout time.Duration
+	// MigrationApplicationName records the migration version in application_name during execution (PostgreSQL only)
+	MigrationApplicationName bool
 }
 
 // StatusResult represents an available migration status
@@ -75,19 +85,22 @@ type StatusResult struct {
 // New initializes a new dbmate database
 func New(databaseURL *url.URL) *DB {
 	return &DB{
-		AutoDumpSchema:      true,
-		DatabaseURL:         databaseURL,
-		FS:                  nil,
-		Log:                 os.Stdout,
-		MigrationsDir:       []string{"./db/migrations"},
-		MigrationsTableName: "schema_migrations",
-		SchemaFile:          "./db/schema.sql",
-		Strict:              false,
-		Verbose:             false,
-		WaitBefore:          false,
-		WaitInterval:        time.Second,
-		WaitTimeout:         60 * time.Second,
-		Args:                []string{},
+		AutoDumpSchema:           true,
+		DatabaseURL:              databaseURL,
+		FS:                       nil,
+		Log:                      os.Stdout,
+		MigrationsDir:            []string{"./db/migrations"},
+		MigrationsTableName:      "schema_migrations",
+		SchemaFile:               "./db/schema.sql",
+		Strict:                   false,
+		Verbose:                  false,
+		WaitBefore:               false,
+		WaitInterval:             time.Second,
+		WaitTimeout:              60 * time.Second,
+		Args:                     []string{},
+		UseMigrationLock:         false,
+		MigrationLockTimeout:     5 * time.Minute,
+		MigrationApplicationName: false,
 	}
 }
 
@@ -355,7 +368,33 @@ func (db *DB) Migrate() error {
 		return err
 	}
 
-	migrations, err := db.FindMigrations()
+	if db.MigrationApplicationName {
+		if _, ok := drv.(DriverMigrationContext); !ok {
+			return ErrMigrationApplicationNameUnsupported
+		}
+	}
+
+	var sqlDB *sql.DB
+	if db.UseMigrationLock {
+		drvLock, ok := drv.(DriverMigrationLock)
+		if !ok {
+			return ErrMigrationLockUnsupported
+		}
+
+		// every statement below runs on the connection holding the lock, and the
+		// deferred close is what releases it (see DriverMigrationLock)
+		sqlDB, err = drvLock.OpenWithMigrationLock(db.MigrationLockTimeout)
+	} else {
+		sqlDB, err = drv.Open()
+	}
+	if err != nil {
+		return err
+	}
+	defer dbutil.MustClose(sqlDB)
+
+	// applied migrations must be read after the lock is acquired, otherwise an
+	// instance that waited for the lock would re-apply what the holder just did
+	migrations, err := db.findMigrations(drv, sqlDB)
 	if err != nil {
 		return err
 	}
@@ -384,11 +423,9 @@ func (db *DB) Migrate() error {
 		)
 	}
 
-	sqlDB, err := db.openDatabaseForMigration(drv)
-	if err != nil {
+	if err := drv.CreateMigrationsTable(sqlDB); err != nil {
 		return err
 	}
-	defer dbutil.MustClose(sqlDB)
 
 	for _, migration := range pendingMigrations {
 		fmt.Fprintf(db.Log, "Applying: %s\n", migration.FileName)
@@ -400,7 +437,11 @@ func (db *DB) Migrate() error {
 			return err
 		}
 
-		for _, migrationSection := range parsed {
+		for i, migrationSection := range parsed {
+			// record the migration version only after the final section, so a
+			// file with multiple migrate:up sections inserts its version
+			// exactly once instead of once per section (see #820).
+			isLastSection := i == len(parsed)-1
 			execMigration := func(tx dbutil.Transaction) error {
 				// run actual migration
 				result, err := tx.Exec(migrationSection.Up)
@@ -411,24 +452,37 @@ func (db *DB) Migrate() error {
 				}
 
 				// record migration
+				if !isLastSection {
+					return nil
+				}
 				return drv.InsertMigration(tx, migration.Version)
 			}
 
 			if migrationSection.UpOptions.Transaction() {
 				// begin transaction
-				err = doTransaction(sqlDB, execMigration)
+				err = doTransaction(sqlDB, func(tx dbutil.Transaction) error {
+					if db.MigrationApplicationName {
+						if ctxDrv, ok := drv.(DriverMigrationContext); ok {
+							if err := ctxDrv.SetMigrationContext(tx, migration.Version); err != nil {
+								return err
+							}
+						}
+					}
+
+					return execMigration(tx)
+				})
 			} else {
 				// run outside of transaction
 				err = execMigration(sqlDB)
 			}
 
-			elapsed := time.Since(start)
-			fmt.Fprintf(db.Log, "Applied: %s in %s\n", migration.FileName, elapsed)
-
 			if err != nil {
 				return err
 			}
 		}
+
+		elapsed := time.Since(start)
+		fmt.Fprintf(db.Log, "Applied: %s in %s\n", migration.FileName, elapsed)
 	}
 
 	// automatically update schema file, silence errors
@@ -476,6 +530,33 @@ func (db *DB) FindMigrations() ([]Migration, error) {
 	}
 	defer dbutil.MustClose(sqlDB)
 
+	return db.findMigrations(drv, sqlDB)
+}
+
+// checkLatestAppliedMigrationFile returns an error if the most recently applied
+// migration has no file, so rollback does not silently undo an older one instead
+func checkLatestAppliedMigrationFile(drv Driver, sqlDB *sql.DB, latest *Migration) error {
+	applied, err := drv.SelectMigrations(sqlDB, -1)
+	if err != nil {
+		return err
+	}
+
+	missing := ""
+	for version := range applied {
+		if (latest == nil || version > latest.Version) && version > missing {
+			missing = version
+		}
+	}
+
+	if missing != "" {
+		return fmt.Errorf("%w for applied migration `%s`, can't rollback in --strict mode", ErrMigrationNotFound, missing)
+	}
+
+	return nil
+}
+
+// findMigrations lists all available migrations using an existing connection
+func (db *DB) findMigrations(drv Driver, sqlDB *sql.DB) ([]Migration, error) {
 	// find applied migrations
 	appliedMigrations := map[string]bool{}
 	migrationsTableExists, err := drv.MigrationsTableExists(sqlDB)
@@ -539,6 +620,12 @@ func (db *DB) Rollback() error {
 		return err
 	}
 
+	if db.MigrationApplicationName {
+		if _, ok := drv.(DriverMigrationContext); !ok {
+			return ErrMigrationApplicationNameUnsupported
+		}
+	}
+
 	sqlDB, err := db.openDatabaseForMigration(drv)
 	if err != nil {
 		return err
@@ -558,6 +645,12 @@ func (db *DB) Rollback() error {
 		}
 	}
 
+	if db.Strict {
+		if err := checkLatestAppliedMigrationFile(drv, sqlDB, latest); err != nil {
+			return err
+		}
+	}
+
 	if latest == nil {
 		return ErrNoRollback
 	}
@@ -571,7 +664,15 @@ func (db *DB) Rollback() error {
 		return err
 	}
 
-	for _, migrationSection := range parsedSections {
+	// roll back sections in reverse order, so a later section is undone
+	// before an earlier one it may depend on
+	for i := len(parsedSections) - 1; i >= 0; i-- {
+		migrationSection := parsedSections[i]
+		// remove the migration record only after the final section to run
+		// (the first in the file), so a file with multiple migrate:down
+		// sections deletes its version exactly once instead of once per
+		// section (see #820).
+		isLastSection := i == 0
 		execMigration := func(tx dbutil.Transaction) error {
 			// rollback migration
 			result, err := tx.Exec(migrationSection.Down)
@@ -582,28 +683,41 @@ func (db *DB) Rollback() error {
 			}
 
 			// remove migration record
+			if !isLastSection {
+				return nil
+			}
 			return drv.DeleteMigration(tx, latest.Version)
 		}
 
 		if migrationSection.DownOptions.Transaction() {
 			// begin transaction
-			err = doTransaction(sqlDB, execMigration)
+			err = doTransaction(sqlDB, func(tx dbutil.Transaction) error {
+				if db.MigrationApplicationName {
+					if ctxDrv, ok := drv.(DriverMigrationContext); ok {
+						if err := ctxDrv.SetMigrationContext(tx, latest.Version); err != nil {
+							return err
+						}
+					}
+				}
+
+				return execMigration(tx)
+			})
 		} else {
 			// run outside of transaction
 			err = execMigration(sqlDB)
 		}
 
-		elapsed := time.Since(start)
-		fmt.Fprintf(db.Log, "Rolled back: %s in %s\n", latest.FileName, elapsed)
-
 		if err != nil {
 			return err
 		}
+	}
 
-		// automatically update schema file, silence errors
-		if db.AutoDumpSchema {
-			_ = db.DumpSchema()
-		}
+	elapsed := time.Since(start)
+	fmt.Fprintf(db.Log, "Rolled back: %s in %s\n", latest.FileName, elapsed)
+
+	// automatically update schema file, silence errors
+	if db.AutoDumpSchema {
+		_ = db.DumpSchema()
 	}
 
 	return nil
@@ -611,32 +725,96 @@ func (db *DB) Rollback() error {
 
 // Status shows the status of all migrations
 func (db *DB) Status(quiet bool) (int, error) {
-	results, err := db.FindMigrations()
+	drv, err := db.Driver()
 	if err != nil {
 		return -1, err
 	}
 
-	var totalApplied int
-	var line string
+	sqlDB, err := drv.Open()
+	if err != nil {
+		return -1, err
+	}
+	defer dbutil.MustClose(sqlDB)
 
-	for _, res := range results {
-		if res.Applied {
-			line = fmt.Sprintf("[X] %s", res.FileName)
-			totalApplied++
-		} else {
-			line = fmt.Sprintf("[ ] %s", res.FileName)
-		}
-		if !quiet {
-			fmt.Fprintln(db.Log, line)
-		}
+	results, err := db.findMigrations(drv, sqlDB)
+	if err != nil {
+		return -1, err
 	}
 
-	totalPending := len(results) - totalApplied
+	missing, err := appliedMigrationsWithoutFile(drv, sqlDB, results)
+	if err != nil {
+		return -1, err
+	}
+
+	type statusLine struct {
+		version string
+		text    string
+	}
+	lines := make([]statusLine, 0, len(results)+len(missing))
+
+	var totalApplied, totalPending int
+	for _, res := range results {
+		if res.Applied {
+			lines = append(lines, statusLine{res.Version, fmt.Sprintf("[X] %s", res.FileName)})
+			totalApplied++
+		} else {
+			lines = append(lines, statusLine{res.Version, fmt.Sprintf("[ ] %s", res.FileName)})
+			totalPending++
+		}
+	}
+	for _, version := range missing {
+		lines = append(lines, statusLine{version, fmt.Sprintf("[?] %s (file not found)", version)})
+		totalApplied++
+	}
+	sort.SliceStable(lines, func(i, j int) bool { return lines[i].version < lines[j].version })
+
 	if !quiet {
+		for _, line := range lines {
+			fmt.Fprintln(db.Log, line.text)
+		}
 		fmt.Fprintln(db.Log)
 		fmt.Fprintf(db.Log, "Applied: %d\n", totalApplied)
 		fmt.Fprintf(db.Log, "Pending: %d\n", totalPending)
 	}
 
+	if db.Strict && len(missing) > 0 {
+		noun := "migration"
+		if len(missing) > 1 {
+			noun = "migrations"
+		}
+		return totalPending, fmt.Errorf(
+			"%w for applied %s `%s` in --strict mode",
+			ErrMigrationNotFound,
+			noun,
+			strings.Join(missing, "`, `"),
+		)
+	}
+
 	return totalPending, nil
+}
+
+// appliedMigrationsWithoutFile returns the sorted versions recorded in the
+// migrations table that have no matching migration file
+func appliedMigrationsWithoutFile(drv Driver, sqlDB *sql.DB, migrations []Migration) ([]string, error) {
+	exists, err := drv.MigrationsTableExists(sqlDB)
+	if err != nil || !exists {
+		return nil, err
+	}
+
+	applied, err := drv.SelectMigrations(sqlDB, -1)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, migration := range migrations {
+		delete(applied, migration.Version)
+	}
+
+	missing := make([]string, 0, len(applied))
+	for version := range applied {
+		missing = append(missing, version)
+	}
+	sort.Strings(missing)
+
+	return missing, nil
 }
