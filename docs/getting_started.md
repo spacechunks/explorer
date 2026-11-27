@@ -77,6 +77,8 @@ chunk:
   name: MyChunk
   # Describe your chunks in a few words (100-character limit)
   description: this is a description
+  # path to the thumbnail that should be displayed. has to be 512x512
+  thumbnail: /path/to/thumbnail.png
   # You can have up to 4 tags categorizing your Chunk (25-character limit)
   tags:
     - tag1
