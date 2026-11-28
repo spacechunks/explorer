@@ -153,6 +153,8 @@ func (w *CreateInstanceWorker) Work(ctx context.Context, riverJob *river.Job[job
 				}
 
 				return river.JobCancel(fmt.Errorf("server %s entered error state", serverID))
+			default:
+				// server still transitioning (pending/creating/updating/deleting), keep polling
 			}
 		case <-ctx.Done():
 			return ctx.Err()
