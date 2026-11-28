@@ -228,13 +228,13 @@ type FlavorVersionFile struct {
 type Instance struct {
 	ID              string
 	FlavorVersionID string
-	NodeID          string
 	Port            *int32
 	State           InstanceState
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	OwnerID         string
 	OrderedBy       string
+	Address         pgtype.Text
 }
 
 type MinecraftVersion struct {

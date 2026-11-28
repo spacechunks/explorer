@@ -110,9 +110,17 @@ func (w *CreateInstanceWorker) Work(ctx context.Context, riverJob *river.Job[job
 
 			switch status.State {
 			case serverapi.StateRunning:
-				var port uint16
+				var (
+					address string
+					port    uint16
+				)
 				if status.Network != nil {
+					address = status.Network.Address
 					port = status.Network.Port
+				}
+
+				if err := w.insRepo.UpdateInstance(ctx, riverJob.Args.InstanceID, address, port); err != nil {
+					return fmt.Errorf("update instance: %w", err)
 				}
 
 				if err := w.insRepo.ApplyStatusReports(ctx, []resource.InstanceStatusReport{

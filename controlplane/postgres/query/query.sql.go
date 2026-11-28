@@ -7,7 +7,6 @@ package query
 
 import (
 	"context"
-	"net/netip"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -174,40 +173,6 @@ func (q *Queries) ArchiveFlavorVersion(ctx context.Context, arg ArchiveFlavorVer
 		arg.CreatedAt,
 	)
 	return err
-}
-
-const bestNode = `-- name: BestNode :one
-SELECT n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots, COUNT(i.id) AS instance_count FROM nodes n
-LEFT JOIN instances i ON i.node_id = n.id
-WHERE n.slots > (SELECT COUNT(*) FROM instances WHERE node_id = n.id)
-GROUP BY n.id
-ORDER BY instance_count ASC, random() ASC
-LIMIT 1
-`
-
-type BestNodeRow struct {
-	ID                    string
-	Name                  string
-	Address               netip.Addr
-	CheckpointApiEndpoint string
-	CreatedAt             time.Time
-	Slots                 int32
-	InstanceCount         int64
-}
-
-func (q *Queries) BestNode(ctx context.Context) (BestNodeRow, error) {
-	row := q.db.QueryRow(ctx, bestNode)
-	var i BestNodeRow
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Address,
-		&i.CheckpointApiEndpoint,
-		&i.CreatedAt,
-		&i.Slots,
-		&i.InstanceCount,
-	)
-	return i, err
 }
 
 const chunkOwnerByChunkID = `-- name: ChunkOwnerByChunkID :one
@@ -405,15 +370,14 @@ const createInstance = `-- name: CreateInstance :exec
  */
 
 INSERT INTO instances
-    (id, flavor_version_id, node_id, state, owner_id, created_at, updated_at, ordered_by)
+    (id, flavor_version_id, state, owner_id, created_at, updated_at, ordered_by)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8)
+    ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateInstanceParams struct {
 	ID              string
 	FlavorVersionID string
-	NodeID          string
 	State           InstanceState
 	OwnerID         string
 	CreatedAt       time.Time
@@ -425,7 +389,6 @@ func (q *Queries) CreateInstance(ctx context.Context, arg CreateInstanceParams) 
 	_, err := q.db.Exec(ctx, createInstance,
 		arg.ID,
 		arg.FlavorVersionID,
-		arg.NodeID,
 		arg.State,
 		arg.OwnerID,
 		arg.CreatedAt,
@@ -649,11 +612,11 @@ SELECT
     vf.flavor_version_id, vf.file_hash, vf.file_path, vf.created_at,
     u.id, u.nickname, u.created_at, u.updated_at, u.idp_id
 FROM flavors f
-         JOIN chunks c  ON c.id = f.chunk_id
-         JOIN flavors fs ON fs.chunk_id = c.id
-         LEFT JOIN flavor_versions v       ON v.flavor_id = fs.id
-         LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
-         LEFT JOIN users u                 ON u.id = c.owner_id
+    JOIN chunks c  ON c.id = f.chunk_id
+    JOIN flavors fs ON fs.chunk_id = c.id
+    LEFT JOIN flavor_versions v       ON v.flavor_id = fs.id
+    LEFT JOIN flavor_version_files vf ON vf.flavor_version_id = v.id
+    LEFT JOIN users u                 ON u.id = c.owner_id
 WHERE f.id = $1
 `
 
@@ -907,14 +870,12 @@ SELECT
     v.id, v.flavor_id, v.hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, v.min_players, v.max_players,
     c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at,
     f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at,
-    n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots,
     u.id, u.nickname, u.created_at, u.updated_at, u.idp_id,
-    i.id, i.flavor_version_id, i.node_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, i.ordered_by
+    i.id, i.flavor_version_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, i.ordered_by, i.address
 FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN flavors f ON f.id = v.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
-    JOIN nodes n ON i.node_id = n.id
     JOIN users u ON u.id = i.owner_id
 WHERE i.id = $1
 `
@@ -923,7 +884,6 @@ type GetInstanceRow struct {
 	FlavorVersion FlavorVersion
 	Chunk         Chunk
 	Flavor        Flavor
-	Node          Node
 	User          User
 	Instance      Instance
 }
@@ -967,12 +927,6 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.Flavor.CreatedAt,
 			&i.Flavor.UpdatedAt,
 			&i.Flavor.DeletedAt,
-			&i.Node.ID,
-			&i.Node.Name,
-			&i.Node.Address,
-			&i.Node.CheckpointApiEndpoint,
-			&i.Node.CreatedAt,
-			&i.Node.Slots,
 			&i.User.ID,
 			&i.User.Nickname,
 			&i.User.CreatedAt,
@@ -980,109 +934,13 @@ func (q *Queries) GetInstance(ctx context.Context, id string) ([]GetInstanceRow,
 			&i.User.IdpID,
 			&i.Instance.ID,
 			&i.Instance.FlavorVersionID,
-			&i.Instance.NodeID,
 			&i.Instance.Port,
 			&i.Instance.State,
 			&i.Instance.CreatedAt,
 			&i.Instance.UpdatedAt,
 			&i.Instance.OwnerID,
 			&i.Instance.OrderedBy,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getInstancesByNodeID = `-- name: GetInstancesByNodeID :many
-SELECT
-    v.id, v.flavor_id, v.hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, v.min_players, v.max_players,
-    c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at,
-    f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at,
-    n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots,
-    u.id, u.nickname, u.created_at, u.updated_at, u.idp_id,
-    i.id, i.flavor_version_id, i.node_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, i.ordered_by
-FROM instances i
-    JOIN flavor_versions v ON i.flavor_version_id = v.id
-    JOIN flavors f ON f.id = v.flavor_id
-    JOIN chunks c ON c.id = f.chunk_id
-    JOIN nodes n ON i.node_id = n.id
-    JOIN users u ON u.id = i.owner_id
-WHERE i.node_id = $1
-`
-
-type GetInstancesByNodeIDRow struct {
-	FlavorVersion FlavorVersion
-	Chunk         Chunk
-	Flavor        Flavor
-	Node          Node
-	User          User
-	Instance      Instance
-}
-
-func (q *Queries) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]GetInstancesByNodeIDRow, error) {
-	rows, err := q.db.Query(ctx, getInstancesByNodeID, nodeID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetInstancesByNodeIDRow
-	for rows.Next() {
-		var i GetInstancesByNodeIDRow
-		if err := rows.Scan(
-			&i.FlavorVersion.ID,
-			&i.FlavorVersion.FlavorID,
-			&i.FlavorVersion.Hash,
-			&i.FlavorVersion.BuildStatus,
-			&i.FlavorVersion.Version,
-			&i.FlavorVersion.FilesUploaded,
-			&i.FlavorVersion.PrevVersionID,
-			&i.FlavorVersion.CreatedAt,
-			&i.FlavorVersion.PresignedUrlExpiryDate,
-			&i.FlavorVersion.PresignedUrl,
-			&i.FlavorVersion.MinecraftVersion,
-			&i.FlavorVersion.MinPlayers,
-			&i.FlavorVersion.MaxPlayers,
-			&i.Chunk.ID,
-			&i.Chunk.Name,
-			&i.Chunk.Description,
-			&i.Chunk.Tags,
-			&i.Chunk.CreatedAt,
-			&i.Chunk.UpdatedAt,
-			&i.Chunk.OwnerID,
-			&i.Chunk.ThumbnailHash,
-			&i.Chunk.ThumbnailUpdatedAt,
-			&i.Chunk.DeletedAt,
-			&i.Flavor.ID,
-			&i.Flavor.ChunkID,
-			&i.Flavor.Name,
-			&i.Flavor.CreatedAt,
-			&i.Flavor.UpdatedAt,
-			&i.Flavor.DeletedAt,
-			&i.Node.ID,
-			&i.Node.Name,
-			&i.Node.Address,
-			&i.Node.CheckpointApiEndpoint,
-			&i.Node.CreatedAt,
-			&i.Node.Slots,
-			&i.User.ID,
-			&i.User.Nickname,
-			&i.User.CreatedAt,
-			&i.User.UpdatedAt,
-			&i.User.IdpID,
-			&i.Instance.ID,
-			&i.Instance.FlavorVersionID,
-			&i.Instance.NodeID,
-			&i.Instance.Port,
-			&i.Instance.State,
-			&i.Instance.CreatedAt,
-			&i.Instance.UpdatedAt,
-			&i.Instance.OwnerID,
-			&i.Instance.OrderedBy,
+			&i.Instance.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -1372,15 +1230,13 @@ SELECT
     v.id, v.flavor_id, v.hash, v.build_status, v.version, v.files_uploaded, v.prev_version_id, v.created_at, v.presigned_url_expiry_date, v.presigned_url, v.minecraft_version, v.min_players, v.max_players,
     c.id, c.name, c.description, c.tags, c.created_at, c.updated_at, c.owner_id, c.thumbnail_hash, c.thumbnail_updated_at, c.deleted_at,
     f.id, f.chunk_id, f.name, f.created_at, f.updated_at, f.deleted_at,
-    n.id, n.name, n.address, n.checkpoint_api_endpoint, n.created_at, n.slots,
     u.id, u.nickname, u.created_at, u.updated_at, u.idp_id,
-    i.id, i.flavor_version_id, i.node_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, i.ordered_by
+    i.id, i.flavor_version_id, i.port, i.state, i.created_at, i.updated_at, i.owner_id, i.ordered_by, i.address
 FROM instances i
     JOIN paged_instances pi ON pi.id = i.id
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN flavors f ON f.id = v.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
-    JOIN nodes n ON i.node_id = n.id
     JOIN users u ON u.id = i.owner_id
 ORDER BY i.id
 `
@@ -1394,7 +1250,6 @@ type ListInstancesWithPaginationRow struct {
 	FlavorVersion FlavorVersion
 	Chunk         Chunk
 	Flavor        Flavor
-	Node          Node
 	User          User
 	Instance      Instance
 }
@@ -1438,12 +1293,6 @@ func (q *Queries) ListInstancesWithPagination(ctx context.Context, arg ListInsta
 			&i.Flavor.CreatedAt,
 			&i.Flavor.UpdatedAt,
 			&i.Flavor.DeletedAt,
-			&i.Node.ID,
-			&i.Node.Name,
-			&i.Node.Address,
-			&i.Node.CheckpointApiEndpoint,
-			&i.Node.CreatedAt,
-			&i.Node.Slots,
 			&i.User.ID,
 			&i.User.Nickname,
 			&i.User.CreatedAt,
@@ -1451,13 +1300,13 @@ func (q *Queries) ListInstancesWithPagination(ctx context.Context, arg ListInsta
 			&i.User.IdpID,
 			&i.Instance.ID,
 			&i.Instance.FlavorVersionID,
-			&i.Instance.NodeID,
 			&i.Instance.Port,
 			&i.Instance.State,
 			&i.Instance.CreatedAt,
 			&i.Instance.UpdatedAt,
 			&i.Instance.OwnerID,
 			&i.Instance.OrderedBy,
+			&i.Instance.Address,
 		); err != nil {
 			return nil, err
 		}
@@ -1590,6 +1439,25 @@ type UpdateFlavorVersionPresignedURLDataParams struct {
 
 func (q *Queries) UpdateFlavorVersionPresignedURLData(ctx context.Context, arg UpdateFlavorVersionPresignedURLDataParams) error {
 	_, err := q.db.Exec(ctx, updateFlavorVersionPresignedURLData, arg.PresignedUrlExpiryDate, arg.PresignedUrl, arg.ID)
+	return err
+}
+
+const updateInstance = `-- name: UpdateInstance :exec
+UPDATE instances SET
+    address = $1,
+    port = $2,
+    updated_at = now()
+WHERE id = $3
+`
+
+type UpdateInstanceParams struct {
+	Address pgtype.Text
+	Port    *int32
+	ID      string
+}
+
+func (q *Queries) UpdateInstance(ctx context.Context, arg UpdateInstanceParams) error {
+	_, err := q.db.Exec(ctx, updateInstance, arg.Address, arg.Port, arg.ID)
 	return err
 }
 

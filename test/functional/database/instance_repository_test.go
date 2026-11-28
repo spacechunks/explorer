@@ -34,40 +34,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBestNodeSelectsAndExhaustsSlots(t *testing.T) {
-	var (
-		ctx = context.Background()
-		pg  = fixture.NewPostgres()
-	)
-
-	pg.Run(t, ctx)
-	pg.InsertNode(t)
-	pg.InsertMinecraftVersion(t)
-	pg.CreateRiverClient(t)
-
-	c := fixture.Chunk()
-	c.Flavors = []resource.Flavor{c.Flavors[0]}
-	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
-
-	n, err := pg.DB.BestNode(ctx)
-	require.NoError(t, err)
-	require.Equal(t, fixture.Node().ID, n.ID)
-
-	slots := fixture.Node().Slots
-	for i := 0; i < slots; i++ {
-		ins := fixture.Instance()
-		ins.ID = test.NewUUIDv7(t)
-		ins.Chunk = c
-		ins.FlavorVersion = c.Flavors[0].Versions[0]
-		ins.Owner = c.Owner
-		_, err := pg.DB.CreateInstance(ctx, ins, fixture.Node().ID)
-		require.NoError(t, err)
-	}
-
-	_, err = pg.DB.BestNode(ctx)
-	require.ErrorIs(t, err, apierrs.ErrNoSlotsAvailable)
-}
-
 func TestCreateInstance(t *testing.T) {
 	// TODO:
 	// * check that creating does not work if no flavor is present
@@ -94,13 +60,14 @@ func TestCreateInstance(t *testing.T) {
 	expected.FlavorVersion = c.Flavors[0].Versions[0]
 	expected.Flavor = c.Flavors[0]
 	expected.Port = nil                             // port will not be saved when creating
+	expected.Address = ""                           // address will not be known until the server api creates the server
 	expected.FlavorVersion.FileHashes = nil         // will not be returned atm
 	expected.Chunk.Owner = resource.User{}          // will not be returned atm
 	expected.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
 	expected.Flavor.Versions = nil                  // will not be returned atm
 	expected.Owner = c.Owner
 
-	actual, err := pg.DB.CreateInstance(ctx, expected, fixture.Node().ID)
+	actual, err := pg.DB.CreateInstance(ctx, expected)
 	require.NoError(t, err)
 
 	if d := cmp.Diff(
@@ -261,107 +228,11 @@ func TestGetInstanceByID(t *testing.T) {
 	}
 }
 
-func TestGetInstancesByNodeID(t *testing.T) {
-	var (
-		ctx    = context.Background()
-		pg     = fixture.NewPostgres()
-		nodeID = fixture.Node().ID
-	)
-
-	pg.Run(t, ctx)
-	pg.InsertNode(t)
-	pg.InsertMinecraftVersion(t)
-	pg.CreateRiverClient(t)
-
-	chunks := []resource.Chunk{
-		fixture.Chunk(func(c *resource.Chunk) {
-			c.ID = "01953e54-8ac5-7c1a-b468-dffdc26d2087"
-			c.Name = "chunk1"
-			c.Owner.Nickname = "user1"
-			c.Owner.IDPID = "1"
-			c.Flavors = []resource.Flavor{
-				fixture.Flavor(func(f *resource.Flavor) {
-					f.ID = test.NewUUIDv7(t)
-					f.Name = "flavor_" + test.RandHexStr(t)
-				}),
-			}
-		}),
-		fixture.Chunk(func(c *resource.Chunk) {
-			c.ID = "01953e54-b686-764a-874f-dbc45b67152c"
-			c.Name = "chunk2"
-			c.Owner.Nickname = "user2"
-			c.Owner.IDPID = "2"
-			c.Flavors = []resource.Flavor{
-				fixture.Flavor(func(f *resource.Flavor) {
-					f.ID = test.NewUUIDv7(t)
-					f.Name = "flavor_" + test.RandHexStr(t)
-				}),
-			}
-		}),
-	}
-
-	var expected []resource.Instance
-
-	for i := range chunks {
-		pg.CreateChunk(t, &chunks[i], fixture.CreateOptionsAll)
-
-		v := chunks[i].Flavors[0].Versions[0]
-		v.FileHashes = nil // not returned atm
-
-		ins := resource.Instance{
-			ID:            test.NewUUIDv7(t),
-			Chunk:         chunks[i],
-			Flavor:        chunks[i].Flavors[0],
-			FlavorVersion: v,
-			Address:       fixture.Node().Addr,
-			State:         resource.InstanceStatePending,
-			CreatedAt:     chunks[i].CreatedAt,
-			UpdatedAt:     chunks[i].UpdatedAt,
-			Owner:         chunks[i].Owner,
-			OrderedBy:     "ordered_by",
-		}
-
-		ins.Chunk.Owner = resource.User{}          // will not be returned atm
-		ins.Chunk.Thumbnail = resource.Thumbnail{} // will not be returned atm
-		ins.Chunk.DeletedAt = nil                  // will not be returned atm
-		ins.Flavor.Versions = nil                  // will not be returned atm
-
-		// see FIXME in GetInstancesByNodeID
-		ins.Chunk.Flavors = nil
-
-		_, err := pg.DB.CreateInstance(ctx, ins, nodeID)
-		require.NoError(t, err)
-
-		expected = append(expected, ins)
-	}
-
-	sort.Slice(expected, func(i, j int) bool {
-		return strings.Compare(expected[i].ID, expected[j].ID) < 0
-	})
-
-	acutalInstances, err := pg.DB.GetInstancesByNodeID(ctx, nodeID)
-	require.NoError(t, err)
-
-	sort.Slice(acutalInstances, func(i, j int) bool {
-		return strings.Compare(acutalInstances[i].ID, acutalInstances[j].ID) < 0
-	})
-
-	if d := cmp.Diff(
-		expected,
-		acutalInstances,
-		test.IgnoreFields(test.IgnoredInstanceFields...),
-		cmpopts.EquateComparable(netip.Addr{}),
-	); d != "" {
-		t.Fatalf("TestGetInstancesByNodeID() mismatch (-want +got):\n%s", d)
-	}
-}
-
 func TestCountInstancesByFlavorID(t *testing.T) {
 	var (
-		ctx    = context.Background()
-		pg     = fixture.NewPostgres()
-		nodeID = fixture.Node().ID
-		c      = fixture.Chunk()
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
 	)
 
 	pg.Run(t, ctx)
@@ -383,16 +254,68 @@ func TestCountInstancesByFlavorID(t *testing.T) {
 		tmp.Owner = c.Owner
 	})
 
-	_, err := pg.DB.CreateInstance(ctx, ins1, nodeID)
+	_, err := pg.DB.CreateInstance(ctx, ins1)
 	require.NoError(t, err)
 
-	_, err = pg.DB.CreateInstance(ctx, ins2, nodeID)
+	_, err = pg.DB.CreateInstance(ctx, ins2)
 	require.NoError(t, err)
 
 	count, err := pg.DB.CountInstancesByFlavorVersionID(ctx, version.ID)
 	require.NoError(t, err)
 
 	require.Equal(t, uint(2), count)
+}
+
+func TestUpdateInstance(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+		c   = fixture.Chunk()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertNode(t)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateRiverClient(t)
+	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
+
+	ins := fixture.Instance(func(tmp *resource.Instance) {
+		tmp.ID = test.NewUUIDv7(t)
+		tmp.FlavorVersion = c.Flavors[0].Versions[0]
+		tmp.Owner = c.Owner
+	})
+
+	created, err := pg.DB.CreateInstance(ctx, ins)
+	require.NoError(t, err)
+
+	var (
+		address = "203.0.113.42"
+		port    = uint16(30000)
+	)
+
+	require.NoError(t, pg.DB.UpdateInstance(ctx, created.ID, address, port))
+
+	actual, err := pg.DB.GetInstanceByID(ctx, created.ID)
+	require.NoError(t, err)
+
+	require.Equal(t, address, actual.Address)
+	require.NotNil(t, actual.Port)
+	require.Equal(t, port, *actual.Port)
+}
+
+func TestUpdateInstanceNoopIfInstanceDoesNotExist(t *testing.T) {
+	var (
+		ctx = context.Background()
+		pg  = fixture.NewPostgres()
+	)
+
+	pg.Run(t, ctx)
+	pg.InsertNode(t)
+	pg.InsertMinecraftVersion(t)
+	pg.CreateRiverClient(t)
+
+	err := pg.DB.UpdateInstance(ctx, test.NewUUIDv7(t), "203.0.113.42", 30000)
+	require.NoError(t, err)
 }
 
 // TODO: add test for applystatusreports

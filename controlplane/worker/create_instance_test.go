@@ -101,6 +101,10 @@ func TestCreateInstanceWorker(t *testing.T) {
 
 			if tt.state == serverapi.StateRunning {
 				mockInsRepo.EXPECT().
+					UpdateInstance(mocky.Anything, ins.ID, "10.0.0.1", port).
+					Return(nil)
+
+				mockInsRepo.EXPECT().
 					ApplyStatusReports(mocky.Anything, []resource.InstanceStatusReport{
 						{
 							InstanceID: ins.ID,
@@ -287,6 +291,63 @@ func TestCreateInstanceWorkerCreateServerFails(t *testing.T) {
 	mockServerClient.EXPECT().
 		CreateServer(mocky.Anything, ins.ID, image).
 		Return("", wantErr)
+
+	w := worker.NewCreateInstanceWorker(
+		logger,
+		mockInsRepo,
+		mockServerClient,
+		worker.CreateInstanceWorkerConfig{
+			Timeout:             10 * time.Second,
+			StatusCheckInterval: 5 * time.Millisecond,
+			RegistryEndpoint:    registryEndpoint,
+		},
+	)
+
+	riverJob := &river.Job[job.CreateInstance]{
+		JobRow: &rivertype.JobRow{},
+		Args: job.CreateInstance{
+			InstanceID: ins.ID,
+		},
+	}
+
+	err := w.Work(ctx, riverJob)
+	require.ErrorIs(t, err, wantErr)
+}
+
+func TestCreateInstanceWorkerUpdateInstanceFails(t *testing.T) {
+	var (
+		ctx              = context.Background()
+		logger           = slog.New(slog.NewTextHandler(os.Stdout, nil))
+		mockInsRepo      = mock.NewMockInstanceRepository(t)
+		mockServerClient = mock.NewMockServerapiClient(t)
+		ins              = fixture.Instance()
+		serverID         = "server-id"
+		image            = fmt.Sprintf("%s/%s:base", registryEndpoint, ins.FlavorVersion.ID)
+		port             = uint16(25565)
+		wantErr          = errors.New("update instance failed")
+	)
+
+	mockInsRepo.EXPECT().
+		GetInstanceByID(mocky.Anything, ins.ID).
+		Return(ins, nil)
+
+	mockServerClient.EXPECT().
+		CreateServer(mocky.Anything, ins.ID, image).
+		Return(serverID, nil)
+
+	mockServerClient.EXPECT().
+		GetServer(mocky.Anything, serverID).
+		Return(serverapi.Status{
+			State: serverapi.StateRunning,
+			Network: &serverapi.Network{
+				Address: "10.0.0.1",
+				Port:    port,
+			},
+		}, nil)
+
+	mockInsRepo.EXPECT().
+		UpdateInstance(mocky.Anything, ins.ID, "10.0.0.1", port).
+		Return(wantErr)
 
 	w := worker.NewCreateInstanceWorker(
 		logger,

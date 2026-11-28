@@ -24,8 +24,6 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -47,7 +45,6 @@ type Service interface {
 		ownerIDPID string,
 		orderedBy string,
 	) (resource.Instance, error)
-	DiscoverInstances(ctx context.Context, nodeID string) ([]resource.Instance, error)
 	ReceiveInstanceStatusReports(ctx context.Context, reports []resource.InstanceStatusReport) error
 }
 
@@ -104,11 +101,6 @@ func (s *svc) RunFlavorVersion(
 	ownerIDPID string,
 	orderedBy string,
 ) (resource.Instance, error) {
-	n, err := s.nodeRepo.BestNode(ctx)
-	if err != nil {
-		return resource.Instance{}, fmt.Errorf("best node: %w", err)
-	}
-
 	u, err := s.userRepo.GetUserByIDPID(ctx, ownerIDPID)
 	if err != nil {
 		// FIXME: think of a way to automatically create users for service accounts
@@ -160,7 +152,7 @@ func (s *svc) RunFlavorVersion(
 		OrderedBy: orderedBy,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-	}, n.ID)
+	})
 	if err != nil {
 		return resource.Instance{}, fmt.Errorf("create instance: %w", err)
 	}
@@ -176,22 +168,6 @@ func (s *svc) RunFlavorVersion(
 	)
 
 	return ins, nil
-}
-
-func (s *svc) DiscoverInstances(ctx context.Context, nodeID string) ([]resource.Instance, error) {
-	instances, err := s.insRepo.GetInstancesByNodeID(ctx, nodeID)
-	if err != nil {
-		return nil, err
-	}
-
-	s.logger.DebugContext(ctx, "found instances", "instances", len(instances), "node_id", nodeID)
-
-	// sort to return consistent output
-	sort.Slice(instances, func(i, j int) bool {
-		return strings.Compare(instances[i].ID, instances[j].ID) < 0
-	})
-
-	return instances, nil
 }
 
 func (s *svc) ReceiveInstanceStatusReports(ctx context.Context, reports []resource.InstanceStatusReport) error {

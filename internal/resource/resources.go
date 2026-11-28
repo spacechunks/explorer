@@ -19,7 +19,6 @@
 package resource
 
 import (
-	"net/netip"
 	"time"
 
 	"github.com/spacechunks/explorer/internal/file"
@@ -119,7 +118,7 @@ type Instance struct {
 	Chunk         Chunk
 	FlavorVersion FlavorVersion
 	Flavor        Flavor
-	Address       netip.Addr
+	Address       string
 	State         InstanceState
 	Port          *uint16
 	Owner         User

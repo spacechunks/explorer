@@ -25,10 +25,12 @@ import (
 )
 
 type Repository interface {
-	CreateInstance(ctx context.Context, instance resource.Instance, nodeID string) (resource.Instance, error)
+	CreateInstance(ctx context.Context, instance resource.Instance) (resource.Instance, error)
 	ListInstances(ctx context.Context, pageSize int, afterID *string) ([]resource.Instance, error)
 	GetInstanceByID(ctx context.Context, id string) (resource.Instance, error)
-	GetInstancesByNodeID(ctx context.Context, id string) ([]resource.Instance, error)
+
+	// UpdateInstance updates the address and port of the instance with the given id.
+	UpdateInstance(ctx context.Context, id string, address string, port uint16) error
 
 	// ApplyStatusReports updates instances rows that are not in [instance.InstanceStateDeleted] state.
 	// all other instances will be removed from the table.

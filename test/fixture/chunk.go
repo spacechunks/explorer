@@ -173,7 +173,7 @@ func Instance(mod ...func(i *resource.Instance)) resource.Instance {
 		Chunk:         c,
 		Flavor:        c.Flavors[0],
 		FlavorVersion: c.Flavors[0].Versions[0],
-		Address:       netip.MustParseAddr("198.51.100.1"),
+		Address:       "198.51.100.1",
 		State:         resource.InstanceStatePending,
 		Port:          new(uint16(1337)),
 		Owner:         c.Owner,

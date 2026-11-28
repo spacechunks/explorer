@@ -34,5 +34,4 @@ type Node struct {
 
 type Repository interface {
 	RandomNode(ctx context.Context) (Node, error)
-	BestNode(ctx context.Context) (Node, error)
 }

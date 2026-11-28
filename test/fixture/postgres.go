@@ -315,7 +315,7 @@ func (p *Postgres) CreateInstance(t *testing.T, nodeID string, ins *resource.Ins
 		}
 	}
 
-	created, err := p.DB.CreateInstance(ctx, *ins, nodeID)
+	created, err := p.DB.CreateInstance(ctx, *ins)
 	require.NoError(t, err)
 
 	*ins = created

@@ -24,6 +24,7 @@ import (
 	"sort"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/job"
@@ -33,11 +34,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID string) (resource.Instance, error) {
+func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance) (resource.Instance, error) {
 	params := query.CreateInstanceParams{
 		ID:              ins.ID,
 		FlavorVersionID: ins.FlavorVersion.ID,
-		NodeID:          nodeID,
 		State:           query.InstanceState(ins.State),
 		OwnerID:         ins.Owner.ID,
 		CreatedAt:       ins.CreatedAt,
@@ -118,7 +118,7 @@ func (db *DB) ListInstances(ctx context.Context, pageSize int, afterID *string) 
 			// known beforehand atm, thus it will always be nil when creating.
 			i := resource.Instance{
 				ID:        row.Instance.ID,
-				Address:   row.Node.Address,
+				Address:   row.Instance.Address.String,
 				State:     resource.InstanceState(row.Instance.State),
 				CreatedAt: row.Instance.CreatedAt.UTC(),
 				UpdatedAt: row.Instance.UpdatedAt.UTC(),
@@ -208,77 +208,22 @@ func (db *DB) GetInstanceByID(ctx context.Context, id string) (resource.Instance
 	return ret, nil
 }
 
-func (db *DB) GetInstancesByNodeID(ctx context.Context, nodeID string) ([]resource.Instance, error) {
-	ret := make([]resource.Instance, 0)
+// UpdateInstance updates the address and port of the instance with the given id.
+func (db *DB) UpdateInstance(ctx context.Context, id string, address string, port uint16) error {
 	if err := db.do(ctx, func(q *query.Queries) error {
-		rows, err := q.GetInstancesByNodeID(ctx, nodeID)
-		if err != nil {
-			return err
-		}
-
-		// FIXME: for now it is okay to not return the full chunk object
-		// with all flavors, because we don't need it atm. but for consistency
-		// purposes it should be considered.
-
-		for _, row := range rows {
-			var port *uint16
-			if row.Instance.Port != nil {
-				port = new(uint16(*row.Instance.Port))
-			}
-
-			ret = append(ret, resource.Instance{
-				ID: row.Instance.ID,
-				Chunk: resource.Chunk{
-					ID:          row.Chunk.ID,
-					Name:        row.Chunk.Name,
-					Description: row.Chunk.Description,
-					Tags:        row.Chunk.Tags,
-					CreatedAt:   row.Chunk.CreatedAt.UTC(),
-					UpdatedAt:   row.Chunk.UpdatedAt.UTC(),
-					DeletedAt:   nil, // not needed atm
-				},
-				Flavor: resource.Flavor{
-					ID:        row.Flavor.ID,
-					Name:      row.Flavor.Name,
-					Versions:  nil, // not needed atm
-					CreatedAt: row.Flavor.CreatedAt.UTC(),
-					UpdatedAt: row.Flavor.UpdatedAt.UTC(),
-					DeletedAt: nil, // not needed atm
-				},
-				FlavorVersion: resource.FlavorVersion{
-					ID:               row.FlavorVersion.ID,
-					Version:          row.FlavorVersion.Version,
-					MinecraftVersion: row.FlavorVersion.MinecraftVersion,
-					Hash:             row.FlavorVersion.Hash,
-					FileHashes:       nil,
-					FilesUploaded:    row.FlavorVersion.FilesUploaded,
-					BuildStatus:      resource.FlavorVersionBuildStatus(row.FlavorVersion.BuildStatus),
-					CreatedAt:        row.FlavorVersion.CreatedAt.UTC(),
-					MinPlayers:       uint32(row.FlavorVersion.MinPlayers),
-					MaxPlayers:       uint32(row.FlavorVersion.MaxPlayers),
-				},
-				Owner: resource.User{
-					ID:        row.User.ID,
-					Nickname:  row.User.Nickname,
-					IDPID:     row.User.IdpID,
-					CreatedAt: row.User.CreatedAt,
-					UpdatedAt: row.User.UpdatedAt,
-				},
-				Address:   row.Node.Address,
-				State:     resource.InstanceState(row.Instance.State),
-				Port:      port,
-				CreatedAt: row.Instance.CreatedAt.UTC(),
-				UpdatedAt: row.Instance.UpdatedAt.UTC(),
-				OrderedBy: row.Instance.OrderedBy,
-			})
-		}
-
-		return nil
+		return q.UpdateInstance(ctx, query.UpdateInstanceParams{
+			Address: pgtype.Text{
+				String: address,
+				Valid:  true,
+			},
+			Port: ptr.Pointer(int32(port)),
+			ID:   id,
+		})
 	}); err != nil {
-		return nil, err
+		return fmt.Errorf("update instance: %w", err)
 	}
 
-	return ret, nil
+	return nil
 }
 
 // ApplyStatusReports updates instances rows that are not in [instance.InstanceStateDeleted] state.
@@ -364,7 +309,7 @@ func (db *DB) getInstanceByID(ctx context.Context, q *query.Queries, id string) 
 	// known beforehand atm, thus it will always be nil when creating.
 	ret := resource.Instance{
 		ID:        row.Instance.ID,
-		Address:   row.Node.Address,
+		Address:   row.Instance.Address.String,
 		State:     resource.InstanceState(row.Instance.State),
 		CreatedAt: row.Instance.CreatedAt.UTC(),
 		UpdatedAt: row.Instance.UpdatedAt.UTC(),

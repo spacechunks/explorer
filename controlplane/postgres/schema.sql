@@ -203,13 +203,13 @@ CREATE TABLE public.flavors (
 CREATE TABLE public.instances (
     id uuid NOT NULL,
     flavor_version_id uuid NOT NULL,
-    node_id uuid NOT NULL,
     port integer,
     state public.instance_state DEFAULT 'PENDING'::public.instance_state NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     owner_id uuid NOT NULL,
-    ordered_by character varying(100) DEFAULT ''::character varying NOT NULL
+    ordered_by character varying(100) DEFAULT ''::character varying NOT NULL,
+    address text
 );
 
 
@@ -675,14 +675,6 @@ ALTER TABLE ONLY public.instances
 
 
 --
--- Name: instances instances_node_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.instances
-    ADD CONSTRAINT instances_node_id_fkey FOREIGN KEY (node_id) REFERENCES public.nodes(id);
-
-
---
 -- Name: instances instances_owner_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -725,4 +717,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260610211305'),
     ('20260816162059'),
     ('20260816181957'),
-    ('20260825133124');
+    ('20260825133124'),
+    ('20261128183911'),
+    ('20261128184358');

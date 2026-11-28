@@ -4,14 +4,6 @@
 -- name: RandomNode :one
 SELECT * FROM nodes ORDER BY random() LIMIT 1;
 
--- name: BestNode :one
-SELECT n.*, COUNT(i.id) AS instance_count FROM nodes n
-LEFT JOIN instances i ON i.node_id = n.id
-WHERE n.slots > (SELECT COUNT(*) FROM instances WHERE node_id = n.id)
-GROUP BY n.id
-ORDER BY instance_count ASC, random() ASC
-LIMIT 1;
-
 /*
  * CHUNKS
  */
@@ -217,9 +209,9 @@ SELECT * FROM blobs WHERE hash = $1;
 
 -- name: CreateInstance :exec
 INSERT INTO instances
-    (id, flavor_version_id, node_id, state, owner_id, created_at, updated_at, ordered_by)
+    (id, flavor_version_id, state, owner_id, created_at, updated_at, ordered_by)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8);
+    ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: ListInstancesWithPagination :many
 WITH paged_instances AS (
@@ -232,7 +224,6 @@ SELECT
     sqlc.embed(v),
     sqlc.embed(c),
     sqlc.embed(f),
-    sqlc.embed(n),
     sqlc.embed(u),
     sqlc.embed(i)
 FROM instances i
@@ -240,7 +231,6 @@ FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN flavors f ON f.id = v.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
-    JOIN nodes n ON i.node_id = n.id
     JOIN users u ON u.id = i.owner_id
 ORDER BY i.id;
 
@@ -249,36 +239,25 @@ SELECT
     sqlc.embed(v),
     sqlc.embed(c),
     sqlc.embed(f),
-    sqlc.embed(n),
     sqlc.embed(u),
     sqlc.embed(i)
 FROM instances i
     JOIN flavor_versions v ON i.flavor_version_id = v.id
     JOIN flavors f ON f.id = v.flavor_id
     JOIN chunks c ON c.id = f.chunk_id
-    JOIN nodes n ON i.node_id = n.id
     JOIN users u ON u.id = i.owner_id
 WHERE i.id = $1;
-
--- name: GetInstancesByNodeID :many
-SELECT
-    sqlc.embed(v),
-    sqlc.embed(c),
-    sqlc.embed(f),
-    sqlc.embed(n),
-    sqlc.embed(u),
-    sqlc.embed(i)
-FROM instances i
-    JOIN flavor_versions v ON i.flavor_version_id = v.id
-    JOIN flavors f ON f.id = v.flavor_id
-    JOIN chunks c ON c.id = f.chunk_id
-    JOIN nodes n ON i.node_id = n.id
-    JOIN users u ON u.id = i.owner_id
-WHERE i.node_id = $1;
 
 -- name: BulkUpdateInstanceStateAndPort :batchexec
 UPDATE instances SET
     state = $1,
+    port = $2,
+    updated_at = now()
+WHERE id = $3;
+
+-- name: UpdateInstance :exec
+UPDATE instances SET
+    address = $1,
     port = $2,
     updated_at = now()
 WHERE id = $3;
