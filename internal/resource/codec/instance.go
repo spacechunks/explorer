@@ -65,7 +65,7 @@ func InstanceToTransport(ins resource.Instance) *instancev1alpha1.Instance {
 			CreatedAt: timestamppb.New(ins.Owner.CreatedAt),
 			UpdatedAt: timestamppb.New(ins.Owner.UpdatedAt),
 		},
-		Ip:        ins.Address.String(),
+		Ip:        ins.Address,
 		Port:      port,
 		State:     state,
 		OrderedBy: ins.OrderedBy,

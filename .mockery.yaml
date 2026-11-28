@@ -68,3 +68,6 @@ packages:
   github.com/spacechunks/explorer/controlplane/user:
     interfaces:
       Repository:
+  github.com/spacechunks/explorer/controlplane/serverapi:
+    interfaces:
+      Client:

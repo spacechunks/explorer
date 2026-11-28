@@ -25,6 +25,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	chunkv1alpha1 "github.com/spacechunks/explorer/api/chunk/v1alpha1"
@@ -65,6 +66,7 @@ func TestGetInstance(t *testing.T) {
 			)
 
 			cp.Run(t)
+			cp.Postgres.AttachRiverClient(t)
 			cp.Postgres.InsertNode(t)
 
 			if tt.create {
@@ -112,6 +114,7 @@ func TestAPIListInstances(t *testing.T) {
 	)
 
 	cp.Run(t)
+	cp.Postgres.AttachRiverClient(t)
 
 	cp.Postgres.InsertNode(t)
 
@@ -212,14 +215,15 @@ func TestRunFlavorVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ctx = context.Background()
-				cp  = fixture.NewControlPlane(t)
-				c   = fixture.Chunk(func(tmp *resource.Chunk) {
+				ctx        = context.Background()
+				cp         = fixture.NewControlPlane(t)
+				fakeServer = fixture.NewFakeServerAPI(t)
+				c          = fixture.Chunk(func(tmp *resource.Chunk) {
 					tmp.Flavors[0].Versions[0].BuildStatus = resource.FlavorVersionBuildStatusCompleted
 				})
 			)
 
-			cp.Run(t)
+			cp.Run(t, fixture.WithServerAPIEndpoint(fakeServer.URL))
 
 			cp.Postgres.InsertNode(t)
 			cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
@@ -261,7 +265,7 @@ func TestRunFlavorVersion(t *testing.T) {
 					CreatedAt: timestamppb.New(c.Owner.CreatedAt),
 					UpdatedAt: timestamppb.New(c.Owner.UpdatedAt),
 				},
-				Ip:        fixture.Node().Addr.String(),
+				Ip:        "", // address is not known until the server api creates the server
 				State:     instancev1alpha1.InstanceState_PENDING,
 				OrderedBy: "orderer",
 			}
@@ -300,6 +304,20 @@ func TestRunFlavorVersion(t *testing.T) {
 			); d != "" {
 				t.Fatalf("diff (-want +got):\n%s", d)
 			}
+
+			require.Eventually(t, func() bool {
+				got, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
+					Id: resp.GetInstance().GetId(),
+				})
+				return err == nil && got.GetInstance().GetState() == instancev1alpha1.InstanceState_RUNNING
+			}, 10*time.Second, 100*time.Millisecond, "instance never reached running state")
+
+			final, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
+				Id: resp.GetInstance().GetId(),
+			})
+			require.NoError(t, err)
+			require.Equal(t, fixture.FakeServerAPIAddress, final.GetInstance().GetIp())
+			require.Equal(t, uint32(fixture.FakeServerAPIPort), final.GetInstance().GetPort())
 		})
 	}
 }
@@ -394,7 +412,7 @@ func TestRunFlavorVersionFailsIfFlavorVersionIsNotCompleted(t *testing.T) {
 					CreatedAt: timestamppb.New(c.Owner.CreatedAt),
 					UpdatedAt: timestamppb.New(c.Owner.UpdatedAt),
 				},
-				Ip:        fixture.Node().Addr.String(),
+				Ip:        "", // address is not known until the server api creates the server
 				State:     instancev1alpha1.InstanceState_PENDING,
 				OrderedBy: "orderer",
 			}
@@ -429,126 +447,6 @@ func TestRunFlavorVersionFailsIfFlavorVersionIsNotCompleted(t *testing.T) {
 	}
 }
 
-func TestDiscoverInstances(t *testing.T) {
-	tests := []struct {
-		name        string
-		nodeID      string
-		input       []resource.Instance
-		getExpected func([]resource.Instance) []*instancev1alpha1.Instance
-		err         error
-	}{
-		{
-			name:   "can discover instances",
-			nodeID: fixture.Node().ID,
-			input: []resource.Instance{
-				fixture.Instance(func(i *resource.Instance) {
-					i.ID = test.NewUUIDv7(t)
-					i.Chunk = fixture.Chunk(func(c *resource.Chunk) {
-						c.ID = test.NewUUIDv7(t)
-						c.Flavors = []resource.Flavor{
-							fixture.Flavor(func(f *resource.Flavor) {
-								f.Name = "f1"
-							}),
-						}
-					})
-					i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
-				}),
-				fixture.Instance(func(i *resource.Instance) {
-					i.ID = test.NewUUIDv7(t)
-					i.Chunk = fixture.Chunk(func(c *resource.Chunk) {
-						c.ID = test.NewUUIDv7(t)
-						c.Flavors = []resource.Flavor{
-							fixture.Flavor(func(f *resource.Flavor) {
-								f.Name = "f2"
-							}),
-						}
-					})
-					i.FlavorVersion = i.Chunk.Flavors[0].Versions[0]
-				}),
-			},
-			getExpected: func(instances []resource.Instance) []*instancev1alpha1.Instance {
-				ret := make([]*instancev1alpha1.Instance, 0, len(instances))
-				for _, ins := range instances {
-					ins.Port = nil                     // port will be nil at this point
-					ins.FlavorVersion.FileHashes = nil // not returned atm
-					ret = append(ret, codec.InstanceToTransport(ins))
-				}
-				return ret
-			},
-		},
-		{
-			name:   "wrong node id returns no instances",
-			nodeID: "019556c6-ee21-7997-b97e-52e999e60a71",
-			input: []resource.Instance{
-				fixture.Instance(),
-			},
-			getExpected: func(instances []resource.Instance) []*instancev1alpha1.Instance {
-				return nil
-			},
-		},
-		{
-			name:   "no node id returns error",
-			nodeID: "",
-			input: []resource.Instance{
-				fixture.Instance(),
-			},
-			getExpected: func(instances []resource.Instance) []*instancev1alpha1.Instance {
-				return nil
-			},
-			err: apierrs.ErrNodeKeyMissing.GRPCStatus().Err(),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var (
-				ctx = context.Background()
-				cp  = fixture.NewControlPlane(t)
-			)
-
-			cp.Run(t)
-			cp.Postgres.InsertNode(t)
-
-			for idx := range tt.input {
-				cp.Postgres.CreateInstance(t, fixture.Node().ID, &tt.input[idx])
-			}
-
-			cp.AddUserAPIKey(t, &ctx, fixture.Chunk().Owner)
-
-			var (
-				client   = cp.InstanceClient(t)
-				expected = tt.getExpected(tt.input)
-			)
-
-			resp, err := client.DiscoverInstances(ctx, &instancev1alpha1.DiscoverInstanceRequest{
-				NodeKey: tt.nodeID,
-			})
-
-			if tt.err == nil {
-				require.NoError(t, err)
-				sort.Slice(expected, func(i, j int) bool {
-					return strings.Compare(expected[i].GetId(), expected[j].GetId()) < 0
-				})
-
-				if d := cmp.Diff(
-					expected,
-					resp.Instances,
-					protocmp.Transform(),
-					test.IgnoredProtoInstanceFields,
-					test.IgnoredProtoFlavorVersionFields,
-					test.IgnoredProtoChunkFields,
-					test.IgnoredProtoUserFields,
-				); d != "" {
-					t.Fatalf("diff (-want +got):\n%s", d)
-				}
-				return
-			}
-
-			require.ErrorIs(t, err, tt.err)
-		})
-	}
-}
-
 func TestReceiveInstanceStatusReports(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -565,6 +463,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			expected: fixture.Instance(func(i *resource.Instance) {
 				i.State = resource.InstanceCreationFailed
 				i.Port = ptr.Pointer(uint16(420))
+				i.Address = ""                   // address will not be known until the server api creates the server
 				i.FlavorVersion.FileHashes = nil // not returned atm
 			}),
 		},
@@ -587,6 +486,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			)
 
 			cp.Run(t)
+			cp.Postgres.AttachRiverClient(t)
 
 			cp.Postgres.InsertNode(t)
 			cp.Postgres.CreateInstance(t, fixture.Node().ID, &ins)
@@ -603,23 +503,25 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			resp, err := client.DiscoverInstances(ctx, &instancev1alpha1.DiscoverInstanceRequest{
-				NodeKey: fixture.Node().ID,
+			if reflect.DeepEqual(tt.expected, resource.Instance{}) {
+				_, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
+					Id: ins.ID,
+				})
+				require.ErrorIs(t, err, apierrs.ErrInstanceNotFound.GRPCStatus().Err())
+				return
+			}
+
+			tt.expected.Owner = ins.Owner
+			tt.expected.Flavor = ins.Flavor
+
+			resp, err := client.GetInstance(ctx, &instancev1alpha1.GetInstanceRequest{
+				Id: ins.ID,
 			})
 			require.NoError(t, err)
 
-			var expected []*instancev1alpha1.Instance
-			if !reflect.DeepEqual(tt.expected, resource.Instance{}) {
-				tt.expected.Owner = ins.Owner
-				tt.expected.Flavor = ins.Flavor
-				expected = []*instancev1alpha1.Instance{
-					codec.InstanceToTransport(tt.expected),
-				}
-			}
-
 			if d := cmp.Diff(
-				resp.Instances,
-				expected,
+				codec.InstanceToTransport(tt.expected),
+				resp.GetInstance(),
 				protocmp.Transform(),
 				test.IgnoredProtoFlavorVersionFields,
 				test.IgnoredProtoChunkFields,

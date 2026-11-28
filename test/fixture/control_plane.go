@@ -72,6 +72,7 @@ type ControlPlaneRunOption func(*ControlPlaneRunOptions)
 type ControlPlaneRunOptions struct {
 	OCIRegistryEndpoint string
 	FakeS3Endpoint      string
+	ServerAPIEndpoint   string
 }
 
 func WithOCIRegistryEndpoint(endpoint string) ControlPlaneRunOption {
@@ -86,6 +87,12 @@ func WithFakeS3Endpoint(endpoint string) ControlPlaneRunOption {
 	}
 }
 
+func WithServerAPIEndpoint(endpoint string) ControlPlaneRunOption {
+	return func(opts *ControlPlaneRunOptions) {
+		opts.ServerAPIEndpoint = endpoint
+	}
+}
+
 func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 	ctx := context.Background()
 
@@ -95,6 +102,7 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 	defaultOpts := ControlPlaneRunOptions{
 		OCIRegistryEndpoint: "http://localhost:5000",
 		FakeS3Endpoint:      "http://localhost:3080",
+		ServerAPIEndpoint:   "http://localhost:3082",
 	}
 
 	for _, opt := range opts {
@@ -136,6 +144,9 @@ func (c ControlPlane) Run(t *testing.T, opts ...ControlPlaneRunOption) {
 				ImagePlatform:                 "",
 				CheckpointJobTimeout:          20 * time.Second,
 				CheckpointStatusCheckInterval: 1 * time.Second,
+				ServerAPIEndpoint:             defaultOpts.ServerAPIEndpoint,
+				InstanceJobTimeout:            20 * time.Second,
+				InstanceStatusCheckInterval:   200 * time.Millisecond,
 				Bucket:                        Bucket,
 				AccessKey:                     "accesskey",
 				SecretKey:                     "secretkey",

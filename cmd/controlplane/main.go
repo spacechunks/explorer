@@ -53,6 +53,9 @@ func main() {
 		imagePlatform            = fs.String("image-platform", "linux/amd64", "the platform that will be specified when pulling the base image. must match with all configured platformd hosts e.g. linux/amd64") //nolint:lll
 		checkJobTimeout          = fs.Duration("checkpoint-job-timeout", 5*time.Minute, "when to abort the checkpointing job")                                                                                    //nolint:lll
 		checkStatusCheckInterval = fs.Duration("checkpoint-status-check-interval", 3*time.Second, "how often the status check endpoint for a checkpoint should be called")                                        //nolint:lll
+		serverAPIEndpoint        = fs.String("server-api-endpoint", "", "base url of the control plane server api used to manage minigame servers")                                                               //nolint:lll
+		instanceJobTimeout       = fs.Duration("instance-job-timeout", 5*time.Minute, "when to abort the create instance job")                                                                                    //nolint:lll
+		instanceStatusInterval   = fs.Duration("instance-status-check-interval", 3*time.Second, "how often the server status should be checked while creating an instance")                                       //nolint:lll
 		bucket                   = fs.String("bucket", "explorer-data", "bucket to use for storing change sets and backend for content-addressable storage")                                                      //nolint:lll
 		accessKey                = fs.String("access-key", "", "access key to use for accessing the bucket")                                                                                                      //nolint:lll
 		secretKey                = fs.String("secret-key", "", "secret key to use for accessing the bucket")                                                                                                      //nolint:lll
@@ -95,6 +98,9 @@ func main() {
 			ImagePlatform:                 *imagePlatform,
 			CheckpointJobTimeout:          *checkJobTimeout,
 			CheckpointStatusCheckInterval: *checkStatusCheckInterval,
+			ServerAPIEndpoint:             *serverAPIEndpoint,
+			InstanceJobTimeout:            *instanceJobTimeout,
+			InstanceStatusCheckInterval:   *instanceStatusInterval,
 			Bucket:                        *bucket,
 			AccessKey:                     *accessKey,
 			SecretKey:                     *secretKey,

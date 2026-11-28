@@ -105,29 +105,6 @@ func (s *Server) RunFlavorVersion(
 	}, nil
 }
 
-func (s *Server) DiscoverInstances(
-	ctx context.Context,
-	req *instancev1alpha1.DiscoverInstanceRequest,
-) (*instancev1alpha1.DiscoverInstanceResponse, error) {
-	if req.GetNodeKey() == "" {
-		return nil, apierrs.ErrNodeKeyMissing
-	}
-
-	instances, err := s.service.DiscoverInstances(ctx, req.GetNodeKey())
-	if err != nil {
-		return nil, fmt.Errorf("discovering instances: %w", err)
-	}
-
-	ret := make([]*instancev1alpha1.Instance, 0, len(instances))
-	for _, ins := range instances {
-		ret = append(ret, codec.InstanceToTransport(ins))
-	}
-
-	return &instancev1alpha1.DiscoverInstanceResponse{
-		Instances: ret,
-	}, nil
-}
-
 func (s *Server) ReceiveInstanceStatusReports(
 	ctx context.Context,
 	req *instancev1alpha1.ReceiveInstanceStatusReportsRequest,

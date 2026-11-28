@@ -127,9 +127,9 @@ func (_c *MockInstanceRepository_CountInstancesByFlavorVersionID_Call) RunAndRet
 	return _c
 }
 
-// CreateInstance provides a mock function with given fields: ctx, _a1, nodeID
-func (_m *MockInstanceRepository) CreateInstance(ctx context.Context, _a1 resource.Instance, nodeID string) (resource.Instance, error) {
-	ret := _m.Called(ctx, _a1, nodeID)
+// CreateInstance provides a mock function with given fields: ctx, _a1
+func (_m *MockInstanceRepository) CreateInstance(ctx context.Context, _a1 resource.Instance) (resource.Instance, error) {
+	ret := _m.Called(ctx, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateInstance")
@@ -137,17 +137,17 @@ func (_m *MockInstanceRepository) CreateInstance(ctx context.Context, _a1 resour
 
 	var r0 resource.Instance
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, resource.Instance, string) (resource.Instance, error)); ok {
-		return rf(ctx, _a1, nodeID)
+	if rf, ok := ret.Get(0).(func(context.Context, resource.Instance) (resource.Instance, error)); ok {
+		return rf(ctx, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, resource.Instance, string) resource.Instance); ok {
-		r0 = rf(ctx, _a1, nodeID)
+	if rf, ok := ret.Get(0).(func(context.Context, resource.Instance) resource.Instance); ok {
+		r0 = rf(ctx, _a1)
 	} else {
 		r0 = ret.Get(0).(resource.Instance)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, resource.Instance, string) error); ok {
-		r1 = rf(ctx, _a1, nodeID)
+	if rf, ok := ret.Get(1).(func(context.Context, resource.Instance) error); ok {
+		r1 = rf(ctx, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -163,14 +163,13 @@ type MockInstanceRepository_CreateInstance_Call struct {
 // CreateInstance is a helper method to define mock.On call
 //   - ctx context.Context
 //   - _a1 resource.Instance
-//   - nodeID string
-func (_e *MockInstanceRepository_Expecter) CreateInstance(ctx interface{}, _a1 interface{}, nodeID interface{}) *MockInstanceRepository_CreateInstance_Call {
-	return &MockInstanceRepository_CreateInstance_Call{Call: _e.mock.On("CreateInstance", ctx, _a1, nodeID)}
+func (_e *MockInstanceRepository_Expecter) CreateInstance(ctx interface{}, _a1 interface{}) *MockInstanceRepository_CreateInstance_Call {
+	return &MockInstanceRepository_CreateInstance_Call{Call: _e.mock.On("CreateInstance", ctx, _a1)}
 }
 
-func (_c *MockInstanceRepository_CreateInstance_Call) Run(run func(ctx context.Context, _a1 resource.Instance, nodeID string)) *MockInstanceRepository_CreateInstance_Call {
+func (_c *MockInstanceRepository_CreateInstance_Call) Run(run func(ctx context.Context, _a1 resource.Instance)) *MockInstanceRepository_CreateInstance_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(resource.Instance), args[2].(string))
+		run(args[0].(context.Context), args[1].(resource.Instance))
 	})
 	return _c
 }
@@ -180,7 +179,7 @@ func (_c *MockInstanceRepository_CreateInstance_Call) Return(_a0 resource.Instan
 	return _c
 }
 
-func (_c *MockInstanceRepository_CreateInstance_Call) RunAndReturn(run func(context.Context, resource.Instance, string) (resource.Instance, error)) *MockInstanceRepository_CreateInstance_Call {
+func (_c *MockInstanceRepository_CreateInstance_Call) RunAndReturn(run func(context.Context, resource.Instance) (resource.Instance, error)) *MockInstanceRepository_CreateInstance_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -242,65 +241,6 @@ func (_c *MockInstanceRepository_GetInstanceByID_Call) RunAndReturn(run func(con
 	return _c
 }
 
-// GetInstancesByNodeID provides a mock function with given fields: ctx, id
-func (_m *MockInstanceRepository) GetInstancesByNodeID(ctx context.Context, id string) ([]resource.Instance, error) {
-	ret := _m.Called(ctx, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetInstancesByNodeID")
-	}
-
-	var r0 []resource.Instance
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) ([]resource.Instance, error)); ok {
-		return rf(ctx, id)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) []resource.Instance); ok {
-		r0 = rf(ctx, id)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]resource.Instance)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockInstanceRepository_GetInstancesByNodeID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInstancesByNodeID'
-type MockInstanceRepository_GetInstancesByNodeID_Call struct {
-	*mock.Call
-}
-
-// GetInstancesByNodeID is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id string
-func (_e *MockInstanceRepository_Expecter) GetInstancesByNodeID(ctx interface{}, id interface{}) *MockInstanceRepository_GetInstancesByNodeID_Call {
-	return &MockInstanceRepository_GetInstancesByNodeID_Call{Call: _e.mock.On("GetInstancesByNodeID", ctx, id)}
-}
-
-func (_c *MockInstanceRepository_GetInstancesByNodeID_Call) Run(run func(ctx context.Context, id string)) *MockInstanceRepository_GetInstancesByNodeID_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockInstanceRepository_GetInstancesByNodeID_Call) Return(_a0 []resource.Instance, _a1 error) *MockInstanceRepository_GetInstancesByNodeID_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockInstanceRepository_GetInstancesByNodeID_Call) RunAndReturn(run func(context.Context, string) ([]resource.Instance, error)) *MockInstanceRepository_GetInstancesByNodeID_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ListInstances provides a mock function with given fields: ctx, pageSize, afterID
 func (_m *MockInstanceRepository) ListInstances(ctx context.Context, pageSize int, afterID *string) ([]resource.Instance, error) {
 	ret := _m.Called(ctx, pageSize, afterID)
@@ -357,6 +297,55 @@ func (_c *MockInstanceRepository_ListInstances_Call) Return(_a0 []resource.Insta
 }
 
 func (_c *MockInstanceRepository_ListInstances_Call) RunAndReturn(run func(context.Context, int, *string) ([]resource.Instance, error)) *MockInstanceRepository_ListInstances_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateInstance provides a mock function with given fields: ctx, id, address, port
+func (_m *MockInstanceRepository) UpdateInstance(ctx context.Context, id string, address string, port uint16) error {
+	ret := _m.Called(ctx, id, address, port)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateInstance")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, uint16) error); ok {
+		r0 = rf(ctx, id, address, port)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockInstanceRepository_UpdateInstance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateInstance'
+type MockInstanceRepository_UpdateInstance_Call struct {
+	*mock.Call
+}
+
+// UpdateInstance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - address string
+//   - port uint16
+func (_e *MockInstanceRepository_Expecter) UpdateInstance(ctx interface{}, id interface{}, address interface{}, port interface{}) *MockInstanceRepository_UpdateInstance_Call {
+	return &MockInstanceRepository_UpdateInstance_Call{Call: _e.mock.On("UpdateInstance", ctx, id, address, port)}
+}
+
+func (_c *MockInstanceRepository_UpdateInstance_Call) Run(run func(ctx context.Context, id string, address string, port uint16)) *MockInstanceRepository_UpdateInstance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(uint16))
+	})
+	return _c
+}
+
+func (_c *MockInstanceRepository_UpdateInstance_Call) Return(_a0 error) *MockInstanceRepository_UpdateInstance_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockInstanceRepository_UpdateInstance_Call) RunAndReturn(run func(context.Context, string, string, uint16) error) *MockInstanceRepository_UpdateInstance_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -51,6 +51,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/node"
 	"github.com/spacechunks/explorer/controlplane/postgres"
+	"github.com/spacechunks/explorer/controlplane/serverapi"
 	"github.com/spacechunks/explorer/controlplane/user"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
@@ -140,6 +141,8 @@ func (s *Server) Run(ctx context.Context) error {
 		imgService = image.NewService(s.logger, s.cfg.OCIRegistryUser, s.cfg.OCIRegistryPass, s.cfg.ImageCacheDir)
 	)
 
+	serverClient := serverapi.NewClient(s.cfg.ServerAPIEndpoint)
+
 	riverClient, err := CreateRiverClient(
 		s.logger,
 		db,
@@ -166,6 +169,12 @@ func (s *Server) Run(ctx context.Context) error {
 			ItemDir:           s.cfg.ResourcePackItemDir,
 			TextureDir:        s.cfg.ResourcePackTextureDir,
 		},
+		worker.CreateInstanceWorkerConfig{
+			Timeout:             s.cfg.InstanceJobTimeout,
+			StatusCheckInterval: s.cfg.InstanceStatusCheckInterval,
+			RegistryEndpoint:    s.cfg.OCIRegistry,
+		},
+		serverClient,
 		db,
 		db,
 	)
@@ -386,6 +395,8 @@ func CreateRiverClient(
 	imgWorkerCfg worker.CreateImageWorkerConfig,
 	checkWorkerCfg worker.CreateCheckpointWorkerConfig,
 	packWorkerCfg worker.CreateResourcePackWorkerConfig,
+	insWorkerCfg worker.CreateInstanceWorkerConfig,
+	serverClient serverapi.Client,
 	insRepo instance.Repository,
 	archiveRepo chunk.ArchiveRepository,
 ) (*river.Client[pgx.Tx], error) {
@@ -425,6 +436,17 @@ func CreateRiverClient(
 
 	if err := river.AddWorkerSafely[job.CreateResourcePack](workers, packWorker); err != nil {
 		return nil, fmt.Errorf("add create checkpoint worker: %w", err)
+	}
+
+	insWorker := worker.NewCreateInstanceWorker(
+		logger.With("component", "instance-worker"),
+		insRepo,
+		serverClient,
+		insWorkerCfg,
+	)
+
+	if err := river.AddWorkerSafely[job.CreateInstance](workers, insWorker); err != nil {
+		return nil, fmt.Errorf("add create instance worker: %w", err)
 	}
 
 	archiveWorker := worker.NewArchiveWorker(
