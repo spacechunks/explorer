@@ -43,6 +43,7 @@ func TestBestNodeSelectsAndExhaustsSlots(t *testing.T) {
 	pg.Run(t, ctx)
 	pg.InsertNode(t)
 	pg.InsertMinecraftVersion(t)
+	pg.CreateRiverClient(t)
 
 	c := fixture.Chunk()
 	c.Flavors = []resource.Flavor{c.Flavors[0]}
@@ -82,6 +83,7 @@ func TestCreateInstance(t *testing.T) {
 	pg.Run(t, ctx)
 	pg.InsertNode(t)
 	pg.InsertMinecraftVersion(t)
+	pg.CreateRiverClient(t)
 
 	c.Flavors = []resource.Flavor{c.Flavors[0]}
 
@@ -123,6 +125,7 @@ func TestDBListInstances(t *testing.T) {
 
 	pg.InsertNode(t)
 	pg.InsertMinecraftVersion(t)
+	pg.CreateRiverClient(t)
 
 	// make sure we only have one flavor, the fixture has 2 configured by default
 	// but for this test we only we need one.
@@ -213,6 +216,7 @@ func TestGetInstanceByID(t *testing.T) {
 			pg.Run(t, ctx)
 			pg.InsertNode(t)
 			pg.InsertMinecraftVersion(t)
+			pg.CreateRiverClient(t)
 
 			if tt.create {
 				tt.expected.Owner = tt.expected.Chunk.Owner
@@ -267,6 +271,7 @@ func TestGetInstancesByNodeID(t *testing.T) {
 	pg.Run(t, ctx)
 	pg.InsertNode(t)
 	pg.InsertMinecraftVersion(t)
+	pg.CreateRiverClient(t)
 
 	chunks := []resource.Chunk{
 		fixture.Chunk(func(c *resource.Chunk) {
@@ -362,6 +367,7 @@ func TestCountInstancesByFlavorID(t *testing.T) {
 	pg.Run(t, ctx)
 	pg.InsertNode(t)
 	pg.InsertMinecraftVersion(t)
+	pg.CreateRiverClient(t)
 	pg.CreateChunk(t, &c, fixture.CreateOptionsAll)
 
 	version := c.Flavors[0].Versions[0]

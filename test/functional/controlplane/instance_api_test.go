@@ -65,6 +65,7 @@ func TestGetInstance(t *testing.T) {
 			)
 
 			cp.Run(t)
+			cp.Postgres.AttachRiverClient(t)
 			cp.Postgres.InsertNode(t)
 
 			if tt.create {
@@ -112,6 +113,7 @@ func TestAPIListInstances(t *testing.T) {
 	)
 
 	cp.Run(t)
+	cp.Postgres.AttachRiverClient(t)
 
 	cp.Postgres.InsertNode(t)
 
@@ -507,6 +509,7 @@ func TestDiscoverInstances(t *testing.T) {
 			)
 
 			cp.Run(t)
+			cp.Postgres.AttachRiverClient(t)
 			cp.Postgres.InsertNode(t)
 
 			for idx := range tt.input {
@@ -587,6 +590,7 @@ func TestReceiveInstanceStatusReports(t *testing.T) {
 			)
 
 			cp.Run(t)
+			cp.Postgres.AttachRiverClient(t)
 
 			cp.Postgres.InsertNode(t)
 			cp.Postgres.CreateInstance(t, fixture.Node().ID, &ins)

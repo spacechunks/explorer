@@ -2091,6 +2091,7 @@ func TestRunFlavorVersionNoSlotsAvailable(t *testing.T) {
 
 	cp.Run(t)
 
+	cp.Postgres.AttachRiverClient(t)
 	cp.Postgres.InsertNode(t)
 	cp.Postgres.CreateChunk(t, &c, fixture.CreateOptionsAll)
 

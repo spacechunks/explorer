@@ -32,8 +32,10 @@ import (
 
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/moby/moby/api/types/container"
+	"github.com/riverqueue/river"
 	"github.com/spacechunks/explorer/controlplane"
 	"github.com/spacechunks/explorer/controlplane/blob"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
@@ -120,12 +122,40 @@ func (p *Postgres) Run(t *testing.T, ctx context.Context) {
 // CreateRiverClient creates a new river client calling [controlplane.CreateRiverClient]
 // and assigning it to the [postgres.DB] instance wrapped by this struct. do not call this
 // function if you are using postgres in combination with the control plane fixture as this
-// could override the river client set by the control plane.
+// would start a second, independent river client/worker pool next to the one already
+// started and used by the control plane. use [Postgres.AttachRiverClient] instead in that
+// case.
 //
 // also needs to be called AFTER [Postgres.Run].
 func (p *Postgres) CreateRiverClient(t *testing.T) {
+	ctx := context.Background()
+
+	riverClient := p.newRiverClient(t)
+
+	err := riverClient.Start(ctx)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		riverClient.Stop(ctx)
+	})
+}
+
+// AttachRiverClient creates a new river client, just like [Postgres.CreateRiverClient],
+// and assigns it to the [postgres.DB] instance wrapped by this struct, but never starts
+// it. this means no jobs will be worked by it. it exists solely to allow inserting jobs
+// via [postgres.DB], e.g. when directly creating database records as part of test setup
+// (bypassing the control planes API), without having the jobs actually be worked by a
+// second river client/worker pool running next to the one already started by the control
+// plane fixture.
+//
+// also needs to be called AFTER [Postgres.Run].
+func (p *Postgres) AttachRiverClient(t *testing.T) {
+	p.newRiverClient(t)
+}
+
+func (p *Postgres) newRiverClient(t *testing.T) *river.Client[pgx.Tx] {
 	if p.Pool == nil || p.DB == nil {
-		t.Fatal("db connection is nil, call CreateRiverClient after Run")
+		t.Fatal("db connection is nil, call after Run")
 	}
 
 	var (
@@ -167,12 +197,7 @@ func (p *Postgres) CreateRiverClient(t *testing.T) {
 
 	p.DB.SetRiverClient(riverClient)
 
-	err = riverClient.Start(ctx)
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		riverClient.Stop(ctx)
-	})
+	return riverClient
 }
 
 type CreateOptions struct {
