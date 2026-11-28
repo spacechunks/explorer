@@ -38,6 +38,7 @@ import (
 	"github.com/spacechunks/explorer/controlplane/blob"
 	cperrs "github.com/spacechunks/explorer/controlplane/errors"
 	"github.com/spacechunks/explorer/controlplane/postgres"
+	"github.com/spacechunks/explorer/controlplane/serverapi"
 	"github.com/spacechunks/explorer/controlplane/worker"
 	"github.com/spacechunks/explorer/internal/image"
 	"github.com/spacechunks/explorer/internal/resource"
@@ -153,6 +154,12 @@ func (p *Postgres) CreateRiverClient(t *testing.T) {
 		worker.CreateResourcePackWorkerConfig{
 			PackTemplateKey: "blabla",
 		},
+		worker.CreateInstanceWorkerConfig{
+			Timeout:             5 * time.Second,
+			StatusCheckInterval: 1 * time.Second,
+			RegistryEndpoint:    "http://localhost:5000",
+		},
+		serverapi.NewClient("http://localhost:5001"),
 		p.DB,
 		p.DB,
 	)

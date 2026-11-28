@@ -28,6 +28,7 @@ var (
 	ErrInvalidFlavorVersionID = errors.New("invalid flavor version id")
 	ErrInvalidBaseImage       = errors.New("invalid base image")
 	ErrInvalidOCIRegistry     = errors.New("invalid registry")
+	ErrInvalidInstanceID      = errors.New("invalid instance id")
 )
 
 type SpanContext struct {
@@ -108,6 +109,23 @@ func (c CreateCheckpoint) Validate() error {
 
 func (CreateCheckpoint) Kind() string {
 	return "create_checkpoint"
+}
+
+type CreateInstance struct {
+	InstanceID  string      `json:"instanceId"`
+	SpanContext SpanContext `json:"spanContext,omitempty"`
+}
+
+func (c CreateInstance) Validate() error {
+	if _, err := uuid.Parse(c.InstanceID); err != nil {
+		return ErrInvalidInstanceID
+	}
+
+	return nil
+}
+
+func (CreateInstance) Kind() string {
+	return "create_instance"
 }
 
 type CreateResourcePack struct {

@@ -24,10 +24,13 @@ import (
 	"sort"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/riverqueue/river"
 	apierrs "github.com/spacechunks/explorer/controlplane/errors"
+	"github.com/spacechunks/explorer/controlplane/job"
 	"github.com/spacechunks/explorer/controlplane/postgres/query"
 	"github.com/spacechunks/explorer/internal/ptr"
 	"github.com/spacechunks/explorer/internal/resource"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID string) (resource.Instance, error) {
@@ -46,6 +49,22 @@ func (db *DB) CreateInstance(ctx context.Context, ins resource.Instance, nodeID 
 	if err := db.doTX(ctx, func(tx pgx.Tx, q *query.Queries) error {
 		if err := q.CreateInstance(ctx, params); err != nil {
 			return fmt.Errorf("create instance: %w", err)
+		}
+
+		span := trace.SpanFromContext(ctx)
+
+		if _, err := db.riverClient.InsertTx(ctx, tx, job.CreateInstance{
+			InstanceID: params.ID,
+			SpanContext: job.SpanContext{
+				TraceID: span.SpanContext().TraceID().String(),
+				SpanID:  span.SpanContext().SpanID().String(),
+			},
+		}, &river.InsertOpts{
+			UniqueOpts: river.UniqueOpts{
+				ByArgs: true,
+			},
+		}); err != nil {
+			return fmt.Errorf("insert create instance job: %w", err)
 		}
 
 		ins, err := db.getInstanceByID(ctx, q, params.ID)

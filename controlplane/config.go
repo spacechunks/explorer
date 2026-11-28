@@ -30,6 +30,9 @@ type Config struct {
 	ImagePlatform                 string
 	CheckpointJobTimeout          time.Duration
 	CheckpointStatusCheckInterval time.Duration
+	ServerAPIEndpoint             string
+	InstanceJobTimeout            time.Duration
+	InstanceStatusCheckInterval   time.Duration
 	Bucket                        string
 	AccessKey                     string
 	SecretKey                     string
